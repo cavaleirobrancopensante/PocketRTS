@@ -1047,7 +1047,7 @@ const BASE_UNITS := {
 		"tongue_e": 13,
 		"walk_e": 14,
 	}},
-	"brood_mother": {"cell": Vector2i(418, 296), "anchor": Vector2(209, 294), "frames": {
+	"brood_mother": {"cell": Vector2i(528, 373), "anchor": Vector2(264, 371), "frames": {
 		"attack_e": 6,
 		"attack_n": 6,
 		"attack_ne": 6,
@@ -1095,7 +1095,7 @@ const BASE_UNITS := {
 		"walk_s": 6,
 		"walk_se": 6,
 	}},
-	"tyrannosaur": {"cell": Vector2i(242, 176), "anchor": Vector2(121, 174), "frames": {
+	"tyrannosaur": {"cell": Vector2i(268, 195), "anchor": Vector2(134, 193), "frames": {
 		"attack_e": 6,
 		"attack_n": 6,
 		"attack_ne": 6,

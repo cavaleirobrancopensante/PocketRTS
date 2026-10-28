@@ -40,7 +40,10 @@ KEY = 40
 HOLE = 1500
 
 # kind -> south-east walk width in game px (the anchor of the creature's size)
-TARGET_W = {"brood_mother": 250, "rootmaw": 84, "tyrannosaur": 128}
+# (checked in game, tools/shot_brood_new.gd scale.png: the Clocktower's gear ring is about 350 px across, a Cottage 72 px
+# wide, a Barracks 140 px: the Mother rooted in her nest about as wide as the ring, the Rootmaw a bit wider than the
+# Cottage, the Tyrannosaur about the Barracks' width)
+TARGET_W = {"brood_mother": 315, "rootmaw": 84, "tyrannosaur": 142}
 
 # kind -> list of sheets: (file, [row specs], ref (row, frame), fudge)
 # a row spec: (anim, dir) or None (row skipped); frames: all of the row, or (anim, dir, [indices])

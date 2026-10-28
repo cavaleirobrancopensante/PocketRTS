@@ -1,13 +1,15 @@
 extends SceneTree
 ## Pictures of THE NEW BROOD in a match (docs/brood_new.md; docs/shots/brood_new/):
 ##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1600x900 --fixed-fps 30 --script res://tools/shot_brood_new.gd -- <outdir>
-## scale.png       the Brood Mother, a Rootmaw, the Tyrannosaur and two Mound Turtles (rooted, walking: stand-ins) beside a Crown Cottage, a Barracks and a Clocktower
+## scale.png       in a row with their names: a Rootmaw by a Cottage, the Tyrannosaur by a Barracks, the Brood Mother (rooted) by a
+##                 Clocktower and its gear ring, a Mound Turtle (rooted: its stand-in) by a Clutch Mound; scale_mother.png closer
 ## card_*.png      the command cards: the Mother's (her eggs), a rooted Rootmaw's (UPROOT, HAUL)
 ## start.png       the start: the Mother and the first Rootmaw finishing their rooting, the grubs
 ## harvest.png     grubs taking food at a rooted, well-fed Rootmaw's flank and carrying it to the Mother
 ## rootmaw_fed.png a rooted Rootmaw full of food, close
 ## laying_NN.png   the Mother walking and laying eggs (a frame every 0.1 s: tools/make the GIF from them)
-## fertilise.png   the Tyrannosaur breathing on the Mother's eggs (red-gold mist, the eggs turning red)
+## fertilise_N.png the Tyrannosaur breathing on the Mother's eggs (red-gold mist, the eggs turning red)
+## egg_NN.png      one egg: yellow-green, reddening under the breath, red, cracking, a Raptor on the open shell (the GIF)
 ## haul.png        a Rootmaw hauling its food, and a spilled pile
 ## fight.png       the Mother, the Tyrannosaur and Raptors against Crown Musketeers
 var main: Node
@@ -68,6 +70,100 @@ func free_spot(near: Vector2i, w: int, h: int, skip: Array = []) -> Vector2i:
 	return Vector2i(-1, -1)
 
 
+## The scale row (scale.png, scale_mother.png).
+func _scale_row() -> void:
+	var area: Vector2i = free_spot(Vector2i(Game.W / 2 - 23, Game.H / 2 - 7), 46, 13)
+	if area.x < 0:
+		area = free_spot(Vector2i(8, 8), 46, 13)
+	var y := area.y + 2
+	var cot: Building = g._add_building("cottage", 1, Vector2i(area.x + 1, y + 2), true)
+	var bar: Building = g._add_building("barracks", 1, Vector2i(area.x + 8, y + 1), true)
+	var tow: Building = g._add_building("clocktower", 1, Vector2i(area.x + 18, y), true)
+	var mnd: Building = g._add_building("clutch_mound", 1, Vector2i(area.x + 38, y + 2), true)
+	var base_y: float = (y + 4) * Defs.TILE + 2.0
+	var mw: Unit = g._add_unit(BroodNew.MAW, 0, Vector2(cot.rect().end.x + 52.0, cot.rect().end.y))
+	var ty: Unit = g._add_unit(BroodNew.FATHER, 0, Vector2(bar.rect().end.x + 76.0, bar.rect().end.y))
+	var mo: Unit = g._add_unit(BroodNew.QUEEN, 0, Vector2(tow.rect().end.x + 180.0, tow.rect().end.y))
+	var tu: Unit = g._add_unit(BroodNew.TURTLE, 0, Vector2(mnd.rect().end.x + 52.0, mnd.rect().end.y))
+	mo.tesla_mode = "deployed"
+	tu.tesla_mode = "deployed"
+	for u in [mw, ty, mo, tu]:
+		u.facing = BroodNew.SE
+		u.cmd_hold()
+	var ring: float = GearNet.ring_r("clocktower", tow.size, false)
+	var labels := Node2D.new()
+	labels.z_index = 50
+	g.world.add_child(labels)
+	var items := [[cot, "Cottage"], [bar, "Barracks"], [tow, "Clocktower"], [mnd, "Clutch Mound"], [mw, "Rootmaw"], [ty, "Tyrannosaur"],
+		[mo, "Brood Mother"], [tu, "Mound Turtle"]]
+	labels.draw.connect(func() -> void:
+		var font := ThemeDB.fallback_font
+		for it in items:
+			var e = it[0]
+			var top: Vector2
+			if e is Building:
+				top = Vector2(e.rect().get_center().x, e.rect().position.y - 70.0 if e.kind != "clocktower" else e.rect().position.y - 130.0)
+			else:
+				top = e.position - Vector2(0, float(ArtData.UNITS[e.art]["anchor"].y) + 14.0)
+			var txt: String = it[1]
+			var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
+			var col := Color(1.0, 0.95, 0.6) if e is Unit else Color(0.85, 0.9, 1.0)
+			labels.draw_string_outline(font, top - Vector2(w * 0.5, 0), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, 6, Color(0, 0, 0, 0.9))
+			labels.draw_string(font, top - Vector2(w * 0.5, 0), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, col))
+	labels.queue_redraw()
+	# the sizes, measured on the pictures in game px (the sprite's drawn width)
+	print("SIZES gear ring %d px across; Clocktower %d; Cottage %d; Barracks %d; Clutch Mound %d" % [int(ring * 2.0),
+		_bw(tow), _bw(cot), _bw(bar), _bw(mnd)])
+	await create_timer(0.8).timeout
+	print("SIZES Brood Mother rooted %d (walking %d); Rootmaw %d; Tyrannosaur %d; Mound Turtle rooted %d" % [_uw(mo),
+		_strip_w("brood_mother", "walk_se"), _uw(mw), _uw(ty), _uw(tu)])
+	g.camera.position = Vector2((cot.rect().position.x + tu.position.x) * 0.5 + 20.0, base_y - 40.0)
+	g.camera.zoom = Vector2(1.08, 1.08)
+	await _snap("scale", 0.6)
+	g.camera.position = Vector2((tow.rect().position.x + mo.position.x + 150.0) * 0.5, base_y - 60.0)
+	g.camera.zoom = Vector2(1.6, 1.6)
+	await _snap("scale_mother", 0.6)
+	labels.queue_free()
+	for u in [mw, ty, mo, tu]:
+		g.consume_unit(u)
+	for b in [cot, bar, tow, mnd]:
+		b.take_damage(9999999.0, null)
+	g.swamp_dirty = true
+
+
+## Drawn width (px) of a building's picture, of a unit's strip frame on show, of an art's strip's first frame.
+func _bw(b: Building) -> int:
+	var t: Texture2D = b.sprite.texture if b.sprite else null
+	return _alpha_w(t.get_image(), 0, t.get_width()) if t else 0
+
+
+func _uw(u: Unit) -> int:
+	var t: Texture2D = u.sprite.texture
+	var n: int = maxi(1, u.sprite.hframes)
+	var fw: int = t.get_width() / n
+	return _alpha_w(t.get_image(), u.sprite.frame * fw, fw)
+
+
+func _strip_w(art: String, strip: String) -> int:
+	var t: Texture2D = load("res://assets/units/%s/%s.png" % [art, strip])
+	var n := int(ArtData.UNITS[art]["frames"][strip])
+	return _alpha_w(t.get_image(), 0, t.get_width() / n)
+
+
+func _alpha_w(img: Image, x0: int, w: int) -> int:
+	if img.is_compressed():
+		img.decompress()
+	var lo := 99999
+	var hi := -1
+	for x in range(x0, x0 + w):
+		for y in range(0, img.get_height(), 2):
+			if img.get_pixel(x, y).a > 0.5:
+				lo = mini(lo, x)
+				hi = maxi(hi, x)
+				break
+	return hi - lo + 1 if hi >= 0 else 0
+
+
 func walk_spot(p: Vector2, tiles: float) -> Vector2:
 	for i in 32:
 		var q: Vector2 = p + Vector2.from_angle(TAU * i / 32.0) * tiles * Defs.TILE
@@ -111,31 +207,10 @@ func _run() -> void:
 	g.camera.position = maw.position + Vector2(0, -30)
 	g.camera.zoom = Vector2(3.0, 3.0)
 	await _snap("rootmaw_fed", 1.0)
-	# scale: the three beside a Cottage, a Barracks and a Clocktower, somewhere open
-	# an open stretch 22 x 12 tiles near the middle of the map
-	var area: Vector2i = free_spot(Vector2i(Game.W / 2 - 11, Game.H / 2 - 6), 22, 12)
-	var b1: Building = g._add_building("cottage", 1, area + Vector2i(1, 2), true)
-	var b2: Building = g._add_building("barracks", 1, area + Vector2i(6, 1), true)
-	var b3: Building = g._add_building("clocktower", 1, area + Vector2i(14, 1), true)
-	g.swamp_dirty = true
-	var row_y: float = maxf(b1.rect().end.y, maxf(b2.rect().end.y, b3.rect().end.y)) + 90.0
-	var q2: Unit = g._add_unit(BroodNew.QUEEN, 0, Vector2(b1.center().x, row_y + 20.0))
-	q2.facing = BroodNew.SE
-	var m2: Unit = g._add_unit(BroodNew.MAW, 0, Vector2(b2.center().x, row_y))
-	m2.facing = BroodNew.SE
-	var f2: Unit = g._add_unit(BroodNew.FATHER, 0, Vector2(b3.center().x, row_y))
-	f2.facing = BroodNew.SE
-	var t2: Unit = g._add_unit(BroodNew.TURTLE, 0, Vector2(b3.rect().end.x + 70.0, row_y - 10.0))
-	t2.tesla_mode = "deployed"        # (the Mound Turtle sunk into the mud: the old Clutch Mound's picture, a stand-in)
-	var t3: Unit = g._add_unit(BroodNew.TURTLE, 0, Vector2(b3.rect().end.x + 70.0, row_y + 80.0))
-	t3.facing = BroodNew.SE
-	for u in [q2, m2, f2, t3]:
-		u.cmd_hold()
-	g.camera.position = Vector2(b2.center().x + 60.0, (b2.center().y + row_y) * 0.5 + 20.0)
-	g.camera.zoom = Vector2(1.0, 1.0)
-	await _snap("scale", 1.0)
-	for u in [q2, m2, f2, t2, t3]:
-		g.consume_unit(u)
+	# scale: each creature on clear ground beside the building it should match, its name above it (code-drawn text):
+	# the Rootmaw by a Cottage (a bit bigger), the Tyrannosaur by a Barracks (the same size), the Brood Mother rooted by a
+	# Clocktower (as big as its gear ring), the Mound Turtle rooted by the old Clutch Mound (it is its stand-in picture)
+	await _scale_row()
 	# the Mother walks and lays
 	g.players[0]["gold"] = 5000
 	g.players[0]["res2"] = 500.0
@@ -154,17 +229,28 @@ func _run() -> void:
 	await create_timer(3.0).timeout
 	q.cmd_deploy()
 	await create_timer(float(Defs.NB["queen_switch"]) + 0.5).timeout
-	# the father breathes on the eggs
-	var f: Unit = g._add_unit(BroodNew.FATHER, 0, walk_spot(q.position + Vector2(-110, -10), 1.5))
+	# the father breathes on the eggs: he stands west of the nest, the eggs roll out south-west of her, so he faces them
+	# south-east (his breath frames' own view)
+	var f: Unit = g._add_unit(BroodNew.FATHER, 0, q.position + Vector2(-140.0, -2.0))
 	f.cmd_stop()
 	await create_timer(1.0).timeout
-	q.facing = Vector2(-1, 0.3).normalized()       # (her back to the father: the eggs drop by him)
-	for i in 4:
+	q.nb["eggs"] = 10
+	q.cmd_lay("raptor")
+	var egg: Unit = g.units.filter(func(u) -> bool: return u.kind == BroodNew.EGG and not u.dead).back()
+	g.camera.position = (f.position + egg.position) * 0.5 + Vector2(0, -26)
+	g.camera.zoom = Vector2(2.6, 2.6)
+	# the GIF: one egg yellow-green, reddening under his breath, red, cracking and a Raptor out on the open shell
+	for i in 72:
+		if i == 24:
+			g.camera.position = egg.position + Vector2(0, -16)
+		await _snap("egg_%02d" % i, 0.2)
+	for i in 3:
 		q.cmd_lay("raptor")
-	g.camera.position = (q.position + f.position) * 0.5 + Vector2(0, -20)
-	g.camera.zoom = Vector2(1.8, 1.8)
-	for i in 6:
-		await _snap("fertilise_%d" % i, 0.5)
+	await create_timer(0.6).timeout
+	g.camera.position = (f.position + q.position + Vector2(-34, 60)) * 0.5 + Vector2(0, -20)
+	g.camera.zoom = Vector2(2.2, 2.2)
+	for i in 4:
+		await _snap("fertilise_%d" % i, 0.45)
 	# HAUL and a spilled pile
 	var m3: Unit = g._add_unit(BroodNew.MAW, 0, walk_spot(q.position, 12.0))
 	m3.nb["food"] = 250.0

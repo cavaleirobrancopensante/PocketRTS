@@ -254,8 +254,12 @@ static func lay(g: Game, q: Unit, k: String) -> String:
 	# eggs fall in a little fan behind her (the n-th egg of the clutch a little to one side)
 	var n := int(q.nb.get("laid", 0))
 	q.nb["laid"] = n + 1
-	var side := back.orthogonal() * float((n % 5) - 2) * 9.0
-	var p := q.position + back * (q.radius * 0.8) + side
+	var side := back.orthogonal() * float((n % 5) - 2) * 11.0
+	var p := q.position + back * (q.radius + 14.0) + side
+	if rooted(q) or q.tesla_mode != "packed":
+		# rooted, curled round her nest facing south-east: the eggs roll out in front of the nest's rim, south-west of her
+		# middle, where they can be seen (behind her they lay under her great body)
+		p = q.position + Vector2(-34.0 + float((n % 5) - 2) * 15.0, q.radius + 16.0 + float(n % 2) * 8.0)
 	if not g._walkable(g.cell_of(p)):
 		p = q.position + side * 0.3
 	var e := g._add_unit(EGG, q.team, p)
@@ -274,6 +278,7 @@ static func egg_time(k: String) -> float:
 ## The hatching's two halves: HATCH_IN s before the creature comes out the egg cracks (the sheet's first hatch frames),
 ## then the creature stands on the open shell, which breaks apart and goes after HATCH_OUT s.
 const HATCH_IN := 0.8
+const RED_EGG := Vector3(1.75, 0.42, 0.26)      # (the shader tint of a fertilised egg: a strong red the yellow-green sheet turns into)
 const HATCH_OUT := 0.9
 
 
@@ -340,6 +345,8 @@ static func father_tick(g: Game, f: Unit, delta: float) -> void:
 	# (busy: walking somewhere or fighting; a shove from a neighbour doesn't count)
 	var busy := f.phase != "" or f.target != null or not (f.order in ["idle", "hold"])
 	if egg != null and (not is_instance_valid(egg) or egg.dead or int(egg.nb.get("fert", 0)) != 1 or busy):
+		if is_instance_valid(egg) and int(egg.nb.get("fert", 0)) == 1:
+			egg.nb["redden"] = 0.0       # (broken off: it is yellow-green again until he comes back)
 		f.nb.erase("fe")
 		_mist_node(f).queue_redraw()
 		f.nb["ft"] = 0.0
@@ -372,6 +379,7 @@ static func father_tick(g: Game, f: Unit, delta: float) -> void:
 	if f.visible and g.view_rect.has_point(f.position):
 		_mist_node(f).queue_redraw()        # (the breath's mist moves every frame: draw_mist)
 	f.nb["ft"] = float(f.nb.get("ft", 0.0)) - delta
+	egg.nb["redden"] = clampf(1.0 - float(f.nb["ft"]) / float(Defs.NB["fert_time"]), 0.0, 1.0)     # (it turns red as he breathes)
 	f.nb["mist"] = float(f.nb.get("mist", 0.0)) - delta
 	if float(f.nb["mist"]) <= 0.0 and f.visible and g.view_rect.has_point(f.position):
 		f.nb["mist"] = 0.18
@@ -406,16 +414,22 @@ static func draw_mist(f: Unit, n: Node2D) -> void:
 	if not fertilising(f) or f.dead:
 		return
 	var egg: Unit = f.nb["fe"]
-	var mouth := f.facing.normalized() * f.radius * 1.1 + Vector2(0, -22)
-	var to := egg.position - f.position + Vector2(0, -6)
+	# (from his lowered jaws: well ahead of his middle and low, as the breath frames hold the head)
+	var mouth := f.facing.normalized() * f.radius * 1.9 + Vector2(0, -20)
+	var to := egg.position - f.position + Vector2(0, -8)
 	var clk: float = f.game.clock
-	for i in 16:
-		var k := fposmod(float(i) / 16.0 + clk * 0.9, 1.0)
-		var p := mouth.lerp(to, k) + Vector2(sin(clk * 5.0 + i * 1.7), cos(clk * 4.0 + i * 2.3)) * (3.0 + 7.0 * k)
-		var col := Color(1.0, 0.42, 0.16).lerp(Color(1.0, 0.86, 0.35), 0.5 + 0.5 * sin(i * 1.3 + clk * 3.0))
-		col.a = 0.6 * sin(k * PI)
-		n.draw_circle(p, 3.0 + 6.0 * k, col)
-	n.draw_circle(to, 12.0, Color(1.0, 0.6, 0.25, 0.35 + 0.15 * sin(clk * 9.0)))
+	# a soft wide haze along the stream, then the bright puffs rolling down it
+	for i in 6:
+		var k0 := float(i) / 5.0
+		n.draw_circle(mouth.lerp(to, k0), 8.0 + 10.0 * k0, Color(1.0, 0.5, 0.2, 0.18))
+	for i in 22:
+		var k := fposmod(float(i) / 22.0 + clk * 0.9, 1.0)
+		var p := mouth.lerp(to, k) + Vector2(sin(clk * 5.0 + i * 1.7), cos(clk * 4.0 + i * 2.3)) * (3.0 + 8.0 * k)
+		var col := Color(1.0, 0.32, 0.1).lerp(Color(1.0, 0.85, 0.3), 0.5 + 0.5 * sin(i * 1.3 + clk * 3.0))
+		col.a = 0.9 * sin(k * PI)
+		n.draw_circle(p, 4.0 + 8.0 * k, col)
+		n.draw_circle(p, 1.5 + 3.0 * k, Color(1.0, 0.95, 0.7, col.a))
+	n.draw_circle(to, 16.0, Color(1.0, 0.55, 0.2, 0.4 + 0.2 * sin(clk * 9.0)))
 
 
 ## SACRIFICE at the Mother: she turns on the creature offered up and devours it (her swipe frames).
@@ -844,10 +858,11 @@ static func animate(u: Unit, n: int) -> void:
 		var dr := float(u.nb.get("drop", 0.0))
 		s.position = Vector2(0.0, -46.0 * pow(dr / float(Defs.NB["drop"]), 2.0)) if dr > 0.0 else Vector2.ZERO
 		# a fertilised egg glows red-gold (code; the sheet's egg is the waiting yellow-green one)
-		var red := int(u.nb.get("fert", 0)) == 2 and not u.nb.has("out")
-		if red != bool(u.nb.get("tinted", false)):
+		# (it reddens under the father's breath, then stays red until it hatches)
+		var red := 0.0 if u.nb.has("out") else (1.0 if int(u.nb.get("fert", 0)) == 2 else float(u.nb.get("redden", 0.0)))
+		if absf(red - float(u.nb.get("tinted", 0.0))) > 0.04:
 			u.nb["tinted"] = red
-			(s.material as ShaderMaterial).set_shader_parameter("tint", Vector3(1.45, 0.6, 0.4) if red else Vector3.ONE)
+			(s.material as ShaderMaterial).set_shader_parameter("tint", Vector3.ONE.lerp(RED_EGG, red))
 	# HAUL without its own sheet yet: the walk, the body swollen (code; docs/art_style_inconsistency.md)
 	if u.kind == MAW and u.tesla_mode == "packed" and not ArtData.UNITS[MAW]["frames"].has("haul_se"):
 		var f3 := clampf(float(u.nb.get("food", 0.0)) / float(Defs.NB["maw_cap"]), 0.0, 1.0)
@@ -934,6 +949,7 @@ static func unit_load(u: Unit, d: Dictionary) -> void:
 			u.nb[k] = int(u.nb[k])
 	u.nb["m"] = u.tesla_mode
 	u.nb.erase("tinted")          # (a fresh sprite: the egg's red is put on again)
+	u.nb.erase("redden")
 	if u.kind == TURTLE and u.tesla_mode != "packed":
 		u.radius = float(Defs.NB["turtle_rooted_r"])
 		if not u.game.nb_walls.has(u):
