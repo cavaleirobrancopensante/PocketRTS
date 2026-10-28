@@ -10,11 +10,13 @@ Robust to the spacing and the grid (2 rows of 7, 4 + 4 + 4 + 2, one long row...)
 from the sheet's border, everything that differs from it is a picture; nearby pieces of one picture (a gap inside an
 icon, a frame and what is in it) are joined; pieces too small to be an icon are dropped; if there are still more than
 14, the smallest are joined to their nearest neighbour. Each icon is cut with a small margin, made square on the
-background, scaled to 64 x 64, and its dark background made transparent (soft edge). The game picks the files up
+background, scaled to 64 x 64, and its dark background made transparent (soft edge). The sheet's brass frames are
+cut away (the picture inside is what reads at 18 px) unless --framed. The game picks the files up
 by themselves (UnitStats.texture: the drawn placeholder is used while a file is missing).
 
 Usage (from the repo root):
-  python3 tools/import_stat_icons.py [SHEET] [--contact FILE] [--keep-bg]
+  python3 tools/import_stat_icons.py [SHEET] [--contact FILE] [--keep-bg] [--framed]
+  (no SHEET: the owner's sheet, with the single-icon REDOS in place of the sheet's pictures; --framed keeps the frames)
   python3 tools/import_stat_icons.py --selftest     (cuts a made-up sheet with uneven spacing into a temp folder)
 Then: godot --headless --import."""
 import os
@@ -26,6 +28,9 @@ from PIL import Image, ImageDraw
 NAMES = ["melee", "ranged", "area", "range", "attack_speed", "armour", "health", "speed", "sight",
          "vs_armoured", "vs_buildings", "hits_air", "supply", "no_attack"]
 SHEET = "art/redraws/stat_icons_chatgpt.png"
+# single-icon redos that replace the sheet's picture (one framed icon on the same ground each)
+REDOS = {"melee": "art/redraws/stat_icon_melee_chatgpt.png"}      # (the sheet's first, a sword and a claw, was bad)
+INSET = 0.14        # the brass frame round each icon: cut away (its share of the frame's side), the picture kept
 OUT = "assets/ui/stats"
 SIZE = 64
 
@@ -134,12 +139,34 @@ def find_icons(px, n=len(NAMES)):
     return [b for r in rows for b in sorted(r, key=lambda b: b[2])], bg
 
 
-def cut(px, box, bg, keep_bg=False):
-    """One icon: a small margin, square on the ground, SIZE x SIZE, the ground made transparent."""
-    H, W = px.shape[:2]
+def inner(px, box):
+    """The picture inside an icon's brass frame: the frame cut away, then trimmed to what differs from the frame's
+    dark inside (with a small margin), and that inside colour (the new ground)."""
     y0, y1, x0, x1 = box
-    m = int(max(y1 - y0, x1 - x0) * 0.06)
-    y0, y1, x0, x1 = max(0, y0 - m), min(H, y1 + m), max(0, x0 - m), min(W, x1 + m)
+    iy, ix = int((y1 - y0) * INSET), int((x1 - x0) * INSET)
+    y0, y1, x0, x1 = y0 + iy, y1 - iy, x0 + ix, x1 - ix
+    sub = px[y0:y1, x0:x1]
+    ground = np.median(np.concatenate([sub[:3].reshape(-1, 3), sub[-3:].reshape(-1, 3)]), 0)
+    on = distance(sub, ground) > 40
+    ys, xs = np.nonzero(on)
+    if len(ys):
+        m = int(max(y1 - y0, x1 - x0) * 0.03)
+        y0, y1, x0, x1 = (y0 + max(0, ys.min() - m), y0 + min(sub.shape[0], ys.max() + 1 + m),
+                          x0 + max(0, xs.min() - m), x0 + min(sub.shape[1], xs.max() + 1 + m))
+    return [y0, y1, x0, x1], ground
+
+
+def cut(px, box, bg, keep_bg=False, framed=False):
+    """One icon: a small margin, square on the ground, SIZE x SIZE, the ground made transparent. Unless `framed`,
+    the brass frame is cut away first (at 16-20 px on the card a frame would leave the picture too small)."""
+    H, W = px.shape[:2]
+    if not framed:
+        box, bg = inner(px, box)
+        y0, y1, x0, x1 = box
+    else:
+        y0, y1, x0, x1 = box
+        m = int(max(y1 - y0, x1 - x0) * 0.06)
+        y0, y1, x0, x1 = max(0, y0 - m), min(H, y1 + m), max(0, x0 - m), min(W, x1 + m)
     side = max(y1 - y0, x1 - x0)
     sq = np.empty((side, side, 3))
     sq[:] = bg
@@ -151,13 +178,21 @@ def cut(px, box, bg, keep_bg=False):
     return Image.fromarray(np.dstack([rgb, alpha]).round().clip(0, 255).astype(np.uint8), "RGBA")
 
 
-def run(sheet, out, contact=None, keep_bg=False):
+def run(sheet, out, contact=None, keep_bg=False, framed=False, redos=None):
     px = np.array(Image.open(sheet).convert("RGB")).astype(float)
     boxes, bg = find_icons(px)
     os.makedirs(out, exist_ok=True)
     icons = []
     for name, b in zip(NAMES, boxes):
-        ic = cut(px, b, bg, keep_bg)
+        src = px
+        if redos and name in redos and os.path.exists(redos[name]):
+            src = np.array(Image.open(redos[name]).convert("RGB")).astype(float)
+            rb, rbg = find_icons(src, 1)
+            b, bg_used = rb[0], rbg
+            print("%-13s the redo %s" % (name, redos[name]))
+        else:
+            bg_used = bg
+        ic = cut(src, b, bg_used, keep_bg, framed)
         ic.save(os.path.join(out, name + ".png"))
         icons.append(ic)
         print("%-13s from %4d,%4d  %dx%d" % (name, b[2], b[0], b[3] - b[2], b[1] - b[0]))
@@ -197,7 +232,7 @@ def selftest():
     px = np.array(im).astype(float)
     boxes, _ = find_icons(px)
     ok = len(boxes) == 14 and all(abs(b[2] - w[0]) < 12 and abs(b[0] - w[1]) < 12 for b, w in zip(boxes, want))
-    run(path, os.path.join(tmp, "out"))
+    run(path, os.path.join(tmp, "out"), framed=True)
     print("selftest:", "PASS" if ok else "FAIL", tmp)
     sys.exit(0 if ok else 1)
 
@@ -212,5 +247,6 @@ if __name__ == "__main__":
         contact = args[args.index("--contact") + 1]
         del args[args.index("--contact"):args.index("--contact") + 2]
     keep = "--keep-bg" in args
-    args = [a for a in args if a != "--keep-bg"]
-    run(args[0] if args else SHEET, OUT, contact, keep)
+    framed = "--framed" in args
+    args = [a for a in args if a not in ("--keep-bg", "--framed")]
+    run(args[0] if args else SHEET, OUT, contact, keep, framed, None if args else REDOS)

@@ -6,8 +6,8 @@ extends RefCounted
 ## shield...); its tooltip (hover; a tap on a phone) explains it and gives the trained value. Special attacks (pistol,
 ## bayonet, charge, canister, splash, nets, spells...) are named at the end of the row, a line each in their tooltip.
 ## Works for every unit of every faction (tools/test_unit_stats.gd); a building shows its armour and sight.
-## Icons: assets/ui/stats/<name>.png once the owner's ChatGPT sheet is cut (tools/import_stat_icons.py); until then
-## each is drawn here in code (placeholders, logged in docs/art_style_inconsistency.md).
+## Icons: assets/ui/stats/<name>.png, the owner's ChatGPT sheet cut by tools/import_stat_icons.py; the shapes drawn in
+## draw_icon are only a fallback for a missing file.
 
 ## The icons, in the order of the owner's sheet (art/redraws/stat_icons_chatgpt.png).
 const ICONS := ["melee", "ranged", "area", "range", "attack_speed", "armour", "health", "speed", "sight",
@@ -15,7 +15,7 @@ const ICONS := ["melee", "ranged", "area", "range", "attack_speed", "armour", "h
 const DIR := "res://assets/ui/stats/"
 ## The row's height on the card (the selection panel is this much taller than it was: Hud._layout).
 const ROW_H := 22.0
-const ICON := 16.0
+const ICON := 18.0
 const HI := Color(0.62, 0.9, 1.0)        # a number changed from the trained one (better or worse: see the tooltip)
 const LOW := Color(1.0, 0.62, 0.5)       # ...made worse (run down, acid)
 const STRIKE := 0.35                     # Unit._strike_time's default
@@ -550,7 +550,7 @@ static func tip(c: Dictionary) -> Dictionary:
 	return {"title": String(c["title"]), "stats": String(c.get("stats", "")), "body": String(c.get("body", ""))}
 
 
-# ------------------------------------------------------------------ placeholder icons (until the ChatGPT sheet)
+# ------------------------------------------------------------------ fallback icons (a missing assets/ui/stats file)
 
 const INK := Color(0.93, 0.88, 0.74)
 const INK_DIM := Color(0.93, 0.88, 0.74, 0.45)
