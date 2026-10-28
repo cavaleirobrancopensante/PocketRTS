@@ -4,10 +4,17 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
-	{"v": "0.15.4", "items": [
+	{"v": "0.15.6", "items": [
 		"BIG BATTLES RUN ABOUT TWICE AS FAST (the owner's question: 200 Raptors a side, docs/swarm_perf.md). In a melee of 400 Raptors the game's own work each tick is about half what it was, and the longest frames are a third as long. A unit looking for a target now looks only at enemies, nearest first; units pushing each other apart skip the ones too far away; the unit's tick asks less. The game plays out exactly the same as before.",
 		"Fewer stutters in a big match: the replay's pictures and the 15-second autosave (now written a little each frame) no longer land on the same frame as a game tick, and with a hundred soldiers selected the command card takes under 2 ms instead of 14 (the MOUNT and LEAD buttons asked every man for the nearest horse).",
 		"In a big battle on screen (more than about 160 units in view) the units' pictures change 10 times a second instead of 15, and a unit's sprite no longer flicks between two facings when it turns by a hair (the Labourer's rule, now for every unit). Only the drawing changes.",
+	]},
+	{"v": "0.15.5", "items": [
+		"CLIFF SIDES: the east and west edges of high ground now have a visible side wall, a narrow strip of the same rock as the south walls, with the high ground's lip along its top edge. West-facing walls are a little lit; east-facing walls are in shadow and cast a slightly deeper shadow on the ground beside them. A sideways ramp now clearly climbs a cliff instead of seeming to lead onto flat ground. Only the drawing changed: the ground, paths and building spots are the same.",
+	]},
+	{"v": "0.15.4", "items": [
+		"RAMPS, AS THE OWNER DREW THEM: the cliff edge now runs straight up to both sides of every ramp, at its own row: no tile sticks out and none is pulled back beside the planks. The ramps themselves are the same cells as before.",
+		"RAMP RAILS: a low stone kerb runs down both sides of every ramp, from the cliff to the row above its bottom one. No unit can cross it, so you get onto a ramp only straight on at its top or its bottom, or from the side onto its bottom row. The ground beside a ramp is normal ground again: the invisible block of 0.15.3 is gone, and units can walk and stand at the foot of the cliff. Paths, group moves, pushing and knockback all keep to the rails, on every map, the editor's too.",
 	]},
 	{"v": "0.15.3", "items": [
 		"RAMPS, AS THE OWNER WANTS THEM: the cliff walls added beside the ramps in 0.15.2 are gone, and the map looks exactly as in 0.15.1 again, with no extra tiles. Instead, the cells beside a ramp's top two rows, under or against the drawn cliff wall, are an invisible block: nothing can walk, stand or be built there, so no unit stands on the drawn wall and looks as if it floats. The ramp keeps its three lanes, and units on it go straight up and down the planks.",

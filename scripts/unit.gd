@@ -3927,7 +3927,7 @@ func _shut_gates() -> Array:
 
 func _open_gates(cells: Array) -> void:
 	for c in cells:
-		game.astar.set_point_solid(c, false)
+		game.astar.set_point_solid(c, game.rail_side.has(game.idx(c)))
 
 
 ## Can it walk up to `e` (its enemies' gates shut)?
@@ -3945,7 +3945,7 @@ func _walk_reaches_point(p: Vector2) -> bool:
 	if a.x < 0 or b.x < 0:
 		return false
 	var shut := _shut_gates()
-	var ok: bool = not game.astar.get_id_path(a, b).is_empty()
+	var ok: bool = not game.astar.get_id_path(game.path_cell(a), game.path_cell(b)).is_empty()
 	_open_gates(shut)
 	return ok
 
@@ -4081,6 +4081,7 @@ func _tow_clear(p: Vector2, f: Vector2) -> bool:
 ## sliding along x or y, else it stays. (Wedged already: the plain terrain rule pops it out.)
 func _tow_resolve(pos: Vector2, before: Vector2) -> Vector2:
 	pos = pos.clamp(Vector2(radius, radius), Vector2(Game.W, Game.H) * Game.T - Vector2(radius, radius))
+	pos = game.rail_fix(pos, before, _tow_body())       # (the ramp rails: docs/ramp_funnel.md)
 	if _tow_clear(pos, facing):
 		return pos
 	if not _tow_clear(before, facing):
@@ -4302,7 +4303,7 @@ func _siege_reaches(e: Entity) -> bool:
 		b = game.nearest_free(b, 3)
 	if a.x < 0 or b.x < 0:
 		return false
-	return not game.astar_siege.get_id_path(a, b).is_empty()
+	return not game.astar_siege.get_id_path(game.path_cell(a, true), game.path_cell(b, true)).is_empty()
 
 
 ## The enemy wall or gate piece to break to get at `e`: of the pieces in sight it can walk
@@ -4331,7 +4332,7 @@ func _wall_toward(e: Entity) -> Building:
 		var ok := false
 		for dv in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 			var c: Vector2i = b.cell + dv
-			if game.open_cell(c) and a.x >= 0 and not game.astar.get_id_path(a, c).is_empty():
+			if game.open_cell(c) and a.x >= 0 and not game.astar.get_id_path(game.path_cell(a), game.path_cell(c)).is_empty():
 				ok = true
 				break
 		if ok:

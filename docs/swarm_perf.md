@@ -1,4 +1,4 @@
-# Swarm performance: 200 Raptors a side (0.15.4)
+# Swarm performance: 200 Raptors a side (0.15.6)
 
 The owner asked, on 2026-10-28: "Raptors cost one supply, so in theory we could have 200 Raptors in a 200-supply game.
 Can the game render this safely with the FPS and stay playable? This is very important. Imagine a mirror match-up with
@@ -40,7 +40,7 @@ can't play."
 - Headless runs measure the game's side: the simulation, and the scripts that prepare the drawing.
 - Rendered runs use a software renderer (llvmpipe, on xvfb). It draws on the processor. It is many times slower than
   any graphics card, so its drawing times are not what a player sees. They are shown for the draw call counts.
-- "Before" is origin/main at 0.15.3. "After" is this branch.
+- "Before" is origin/main at 0.15.3. "After" is this branch (0.15.6, with origin/main of 0.15.5 merged in; the numbers were taken with 0.15.3 merged, before 0.15.4 and 0.15.5, which changed ramps and cliff edges, not units).
 
 ## The numbers: the game's side (headless)
 
