@@ -18,6 +18,8 @@ var out := "user://ramp_funnel"
 var before := false
 var grid := false
 var maps: Array = []
+var empty := false             # empty=1: the ramp alone, no units (a clean look)
+var zoom := 2.0
 var want_dirs: Array = ["south", "north", "east", "west"]
 var map_i := -1
 var done_dirs := {}
@@ -55,6 +57,8 @@ func _initialize() -> void:
 			"grid": grid = kv[1] == "1"
 			"maps": maps = Array(kv[1].split(","))
 			"dirs": want_dirs = Array(kv[1].split(","))
+			"empty": empty = kv[1] == "1"
+			"zoom": zoom = float(kv[1])
 	if maps.is_empty():
 		maps = MapGen.all_ids()
 	MapGen.no_funnel = before
@@ -159,6 +163,8 @@ func _ramp_case(map: String, dn: String, r: Dictionary) -> void:
 		["clock_soldier", rows[mini(2, n - 2)][0] - side * 2 + down * 0, rows[mini(2, n - 2)][0], true],
 		["great_winder", rows[1][-1] + side * 3, rows[1][-1], true],
 	]
+	if empty:
+		plan = []
 	for p in plan:
 		var u: Unit = g._add_unit(p[0], 0, cen.call(p[1]))
 		if u:
@@ -195,7 +201,7 @@ func _ramp_case(map: String, dn: String, r: Dictionary) -> void:
 				u.path = PackedVector2Array([pu[1]])
 				u.path_i = 0
 				u.repath_t = 999.0
-	var tag := "%s_%s_%s%s" % ["before" if before else "new", dn, map, "_grid" if grid else ""]
+	var tag := "%s_%s_%s%s%s" % ["before" if before else "new", dn, map, "_grid" if grid else "", "_empty" if empty else ""]
 	_shot(tag)
 	m.queue_free()
 	for u in us:
@@ -207,7 +213,7 @@ func _ramp_case(map: String, dn: String, r: Dictionary) -> void:
 func _aim(at: Vector2) -> void:
 	var cam: Camera2D = g.camera
 	cam.position = at
-	cam.zoom = Vector2(2.0, 2.0)
+	cam.zoom = Vector2(zoom, zoom)
 	cam.reset_smoothing()
 	for i in 30:
 		await process_frame
