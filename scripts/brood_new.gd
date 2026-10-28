@@ -526,9 +526,19 @@ static func egg_spot(g: Game, q: Unit, pref: Vector2) -> Array:
 				best = pt
 	if best != Vector2.INF:
 		return [best, false]
-	# boxed in: on the creature at her front, just past her rim
-	var top := _rim(r, want) + want * 0.6 * Defs.TILE
-	return [top.clamp(Vector2(8, 8), Vector2(Game.W, Game.H) * Defs.TILE - Vector2(8, 8)), true]
+	# boxed in: on the creature at her front, just past her rim (side by side along it: not on another egg)
+	var lim := Vector2(Game.W, Game.H) * Defs.TILE - Vector2(8, 8)
+	var top := (_rim(r, want) + want * 0.6 * Defs.TILE).clamp(Vector2(8, 8), lim)
+	for i in 24:
+		var sx := float((i + 1) / 2) * 20.0 * (1.0 if i % 2 == 0 else -1.0)
+		var pt := (top + want.orthogonal() * sx).clamp(Vector2(8, 8), lim)
+		var lone := true
+		for o in g.units_near(pt, 20.0):
+			if o.kind == EGG and not o.dead and not o.nb.has("out") and o.position.distance_to(pt) < 18.0:
+				lone = false
+		if lone:
+			return [pt, true]
+	return [top, true]
 
 
 ## Where a ray from the rect's centre along dir leaves it.

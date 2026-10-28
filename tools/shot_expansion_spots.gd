@@ -4,7 +4,8 @@ extends SceneTree
 ##       out:/abs/dir [maps:a,b,...] [close:1]
 ## <out>/<map>.png: the whole map, fog lifted, HUD hidden (a Crown player against a Clockwork computer);
 ## close:1 also <out>/close_crown_<map>.png, close_clockwork_<map>.png (the player's natural, HUD and minimap on) and
-## place_crown_<map>.png / place_clockwork_<map>.png (placing a hall: the spots a touch brighter).
+## place_crown_<map>.png / place_clockwork_<map>.png (placing a hall: the spots a touch brighter, labelled) and
+## label_crown_<map>.png / label_clockwork_<map>.png (zoomed in on the best spot: its "OPTIMAL EXPANSION SPOT" label).
 var main: Node
 var out := ""
 var maps: Array = []
@@ -77,6 +78,14 @@ func _snap(name: String) -> void:
 	print("shot ", name)
 
 
+## (the game is paused here: its view rect and overlay, where the labels are drawn, are brought up to date by hand)
+func _snap_view(g: Game, name: String) -> void:
+	await _frames(3)
+	g.update_view_rect()
+	g.overlay.queue_redraw()
+	await _snap(name)
+
+
 func _ui(g: Game, on: bool) -> void:
 	if g.hud:
 		g.hud.visible = on
@@ -119,11 +128,19 @@ func _run() -> void:
 			g2.camera.zoom = Vector2(0.75, 0.75)
 			g2.camera.position = home.lerp(spot, 0.8)
 			g2.camera.reset_smoothing()
-			await _snap("close_%s_%s" % [fac, map])
+			await _snap_view(g2, "close_%s_%s" % [fac, map])
+			# zoomed in to a normal view: the spot's label (ExpansionSpots.draw_labels)
+			g2.camera.zoom = Vector2(1.1, 1.1)
+			g2.camera.position = spot
+			g2.camera.reset_smoothing()
+			await _snap_view(g2, "label_%s_%s" % [fac, map])
+			g2.camera.zoom = Vector2(0.75, 0.75)
+			g2.camera.position = home.lerp(spot, 0.8)
+			g2.camera.reset_smoothing()
 			g2.controls.begin_place(g2.faction_hall(g2.human))
 			g2.exp_spots._placing = true
 			g2.exp_spots._key = "-"
 			g2.exp_spots.refresh()
-			await _snap("place_%s_%s" % [fac, map])
+			await _snap_view(g2, "place_%s_%s" % [fac, map])
 			await _end()
 	quit(0)

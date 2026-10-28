@@ -143,7 +143,7 @@ func _tile(c: Vector2i, best: bool, size: Vector2i = MapGen.HALL) -> void:
 ## or nearer (LABEL_ZOOM; zoomed out the gold squares speak for themselves and words would clutter), and always while
 ## placing a hall or a Mound Turtle. Its size follows the zoom so it stays about LABEL_PX on screen.
 const LABEL_ZOOM := 0.85
-const LABEL_PX := 13.0
+const LABEL_PX := 15.0
 
 
 ## The label's font size in map pixels now (0: not shown).
