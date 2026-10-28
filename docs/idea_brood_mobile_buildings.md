@@ -106,3 +106,14 @@ Still to settle with him (see the chat, 2026-10-28): which units root and what e
 - (17:20) DECIDED (owner): each SACRIFICE at the Mother gives her 1 egg at once (as well as the essence), with no age or type rule for now; the grub cycle (lay, feed back, lay) is to be judged in playtests, not guarded in advance. If her clutch is full, no extra egg.
 - (17:16) PROPOSED (Claude, not yet confirmed): the Mother's growth stages raise her egg rate: stage 1 10 eggs held / 1 per 6 s; stage 2 about 15% bigger, 15 eggs, about 50% faster; stage 3 about 30% bigger, 20 eggs, about twice as fast; growing costs food and time while rooted (no laying meanwhile); bigger = a bigger, slower target with a wider swamp.
 - (17:55) DECIDED (owner): the Mother is the ONLY producer, so her egg laying may be raised by SEVERAL levers that STACK (the other factions scale by building more production buildings; the Brood scales only through her): (1) growth stages (bigger, more eggs held, faster laying, unlock fathers); (2) FATHERS near her: their pheromones make her lay faster, each father within reach adds to the rate (lore: as in some real lizards, the males' presence and courtship speed the female's egg development); (3) Mound Turtles rooted on NEW GROUND (an expansion: about 15+ tiles from her and from other counted turtles; turtles at home give supply and swamp only): lore: their chimneys pump scent into the swamp water, she tastes new territory and lays more. All three stack; the totals are set by the math in docs/brood_new_stages.md so each phase of the game matches the other factions' production.
+- (19:19) OWNER PLAYTEST of 0.15.13 (decisions and fixes):
+  1. The Tyrannosaur needs a clear indicator of where to nest: a radius round the Mother (the father range) shown while placing/selecting him.
+  2. Rooted creatures are drawn on the top layer and hide units (grubs vanish under the Queen): rooted ones go in the BUILDING layer so units draw over them.
+  3. A rooted creature is a building: its command card is a building's (no move, attack, stop, hold), only its own commands.
+  4. DECIDED: the STRUCTURE-UNITS (Rootmaw, Mound Turtle, Tyrannosaur and later fathers) come from GRUBS: select a grub and turn it into one (like the old Brood's grub building). The Mother lays only units (grubs and warriors), not structure-units.
+  5. Grubs still show the old Brood buildings on their card: they must not.
+  6. A laid egg can be selected but doesn't show what it will hatch; eggs need a rally point.
+  7. Right-clicking with a rooted creature selected sets a RALLY POINT (it must not uproot); UPROOT is only the button.
+  8. ROOT works like BUILD: a placement ghost on the grid to plan where it roots; it walks there and roots.
+  9. Rooted, the colliders are much bigger (a building's footprint).
+  10. Rooted creatures don't pulsate when idle: they animate only while producing (laying, fertilising) or being harvested.
