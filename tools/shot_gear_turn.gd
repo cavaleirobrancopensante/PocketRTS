@@ -5,11 +5,14 @@ extends SceneTree
 ##   winder: a Winder walks in across the band to repair the Clocktower (not carried), a Clock Soldier left idle on the band
 ##           rides round beside him, and the GEAR VIEW's chevrons show which way each band turns;
 ##   raid:   a Crown raid (Musketeers and Horsemen) on a Clockwork base whose Clock Soldiers hold on the rings.
-##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1600x900 --fixed-fps 30 --script res://tools/shot_gear_turn.gd -- docs/shots/gear_turn [only=hold]
+##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1600x900 --fixed-fps 30 --script res://tools/shot_gear_turn.gd -- docs/shots/gear_turn [only=hold] [frames=<dir>]
+##   python3 tools/gear_turn_gif.py <frames dir> docs/shots/gear_turn
+## The stills go to the out dir; the GIFs' raw frames to <frames dir> (default user://gear_turn_frames: never into the repo).
 const U := preload("res://tools/gear_test_util.gd")
 var g: Game
 var out := "docs/shots/gear_turn"
 var only := ""
+var frames_dir := ""
 var t := 0.0
 var started := false
 
@@ -18,9 +21,14 @@ func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("only="):
 			only = a.substr(5)
+		elif a.begins_with("frames="):
+			frames_dir = a.substr(7)
 		else:
 			out = a
 	DirAccess.make_dir_recursive_absolute(out)
+	if frames_dir == "":
+		frames_dir = ProjectSettings.globalize_path("user://gear_turn_frames")
+	print("frames in ", frames_dir)
 	Defs.gear_turn = true
 	seed(7)
 	g = U.make(root, ["clockwork", "crown"], "ashford_crossing", true)
@@ -38,11 +46,15 @@ func _snap(path: String, wait := 0.0) -> void:
 	if wait > 0.0:
 		await create_timer(wait).timeout
 	await process_frame
-	root.get_viewport().get_texture().get_image().save_png(path)
+	var img := root.get_viewport().get_texture().get_image()
+	if path.ends_with(".jpg"):
+		img.save_jpg(path, 0.85)
+	else:
+		img.save_png(path)
 
 
 func _frames(name: String, n: int, every: float) -> void:
-	var dir := "%s/gif_%s" % [out, name]
+	var dir := "%s/gif_%s" % [frames_dir, name]
 	DirAccess.make_dir_recursive_absolute(dir)
 	for i in n:
 		await _snap("%s/f%03d.png" % [dir, i], every)
@@ -97,11 +109,11 @@ func _run() -> void:
 			m.hp = 5000.0
 			men.append(m)
 		g.camera.position = hall.center() + Vector2(0, 10)
-		g.camera.zoom = Vector2(1.5, 1.5)
+		g.camera.zoom = Vector2(2.4, 2.4)
 		await create_timer(1.0).timeout
-		await _snap("%s/hold_start.png" % out)
+		await _snap("%s/hold_start.jpg" % out)
 		await _frames("hold", 48, 0.2)
-		await _snap("%s/hold_end.png" % out)
+		await _snap("%s/hold_end.jpg" % out)
 		for m in men:
 			if is_instance_valid(m):
 				m.die()
@@ -123,11 +135,15 @@ func _run() -> void:
 		var rider: Unit = g._add_unit("clock_soldier", 0, _band_spot(hall, 200.0))
 		rider.auto_work = false
 		g.camera.position = (hall.center() + far) * 0.5
-		g.camera.zoom = Vector2(1.6, 1.6)
-		g.gear_net.view = true
-		await _frames("winder", 44, 0.2)
+		g.camera.zoom = Vector2(2.2, 2.2)
+		await _frames("winder", 30, 0.2)
+		g.gear_net.view = true          # (then the GEAR VIEW: every turning band shows its chevrons)
+		var dir := "%s/gif_winder" % frames_dir
+		for i in 20:
+			await _snap("%s/f%03d.png" % [dir, 30 + i], 0.2)
+		await _snap("%s/winder_view.jpg" % out)
 		g.gear_net.view = false
-		await _snap("%s/winder_end.png" % out)
+		await _snap("%s/winder_end.jpg" % out)
 		rider.die()
 		rp.die()
 		hall.hp = hall.max_hp
@@ -141,14 +157,14 @@ func _run() -> void:
 				var d: Unit = g._add_unit("clock_soldier", 0, p)
 				d.cmd_hold()
 				defenders.append(d)
-		var from := hall.center() + Vector2(-620, 260)
+		var from := hall.center() + Vector2(480, 220)
 		var cc := g.cell_center(g.nearest_free(g.cell_of(from), 8))
 		for k in 10:
 			var kind := "cuirassier" if k < 3 else "musketeer"
 			var u: Unit = g._add_unit(kind, 1, g.cell_center(g.nearest_free(g.cell_of(cc + Vector2((k % 4) * 26.0, (k / 4) * 26.0)), 4)))
 			u.cmd_move(hall.center(), true)
-		g.camera.position = hall.center() + Vector2(-180, 90)
-		g.camera.zoom = Vector2(1.05, 1.05)
+		g.camera.position = hall.center() + Vector2(160, 70)
+		g.camera.zoom = Vector2(1.5, 1.5)
 		await _frames("raid", 60, 0.25)
-		await _snap("%s/raid_end.png" % out)
+		await _snap("%s/raid_end.jpg" % out)
 	quit(0)

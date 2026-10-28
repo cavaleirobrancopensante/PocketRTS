@@ -39,6 +39,7 @@ static func carriable(u: Unit) -> bool:
 	return not u._towed()
 
 
+const GRIP := 1.5             # s a walker stuck by the ride stands firm (see tick)
 const FREE_ORDERS := ["idle", "hold", "move", "amove", "attack", "follow"]
 
 
@@ -117,5 +118,31 @@ static func tick(u: Unit, want: Vector2, delta: float) -> Vector2:
 		return want
 	u.gt_carry = v
 	u.ride_t += delta
+	# A walker the ride keeps pressed into a corner (a squeeze between two buildings' corners, a cliff's step) could be held
+	# there for good: the ride pushes it back as fast as it walks round. So once a second its progress toward its next
+	# waypoint is checked; under a quarter of its speed made good, it gets a grip on the floor for GRIP seconds (not carried
+	# meanwhile: it walks out of the squeeze) and counts as stuck (Unit._move repaths; near its goal, Unit._arrived calls it
+	# there).
+	if u.gt_grip > 0.0:
+		u.gt_grip -= delta
+		u.gt_carry = Vector2.ZERO
+		return want
+	if want.length() > 5.0:
+		var wp: Vector2 = u.path[u.path_i] if u.path_i < u.path.size() else u.path_goal
+		if u.gt_w <= 0.0 or wp != u.gt_wp:
+			u.gt_wp = wp
+			u.gt_d = u.position.distance_to(wp) if wp != Vector2.INF else 0.0
+			u.gt_w = 0.0
+		u.gt_w += delta
+		if u.gt_w >= 1.0:
+			if wp != Vector2.INF and u.position.distance_to(wp) > u.gt_d - u.speed * 0.25:
+				u.gt_grip = GRIP
+				u.stuck_t = maxf(u.stuck_t, 1.7)
+				u.gripped += 1
+			u.gt_w = 0.0
+	else:
+		u.gt_w = 0.0
+	var was := u.position
 	u.position = game.resolve_terrain(u.position + v * delta, u.position, u.radius, u.team)
+	u.last_pos += u.position - was       # (the ride is not progress of its own: pressed into a corner it is still stuck, and repaths)
 	return want

@@ -814,12 +814,12 @@ func _draw() -> void:
 		draw_ring(self, it[0], it[1], it[2], it[3], it[4], it[5], true, false)
 	for it in items:
 		draw_ring(self, it[0], it[1], it[2], it[3], it[4], it[5], false, true)
-	if Defs.gear_turn and not bands.is_empty():
-		_draw_turning()
 	var ctl = game.controls
 	var placing: String = ctl.place_kind if ctl and ctl.mode == "place" and Defs.BUILDINGS.has(ctl.place_kind) else ""
 	if view:
 		_draw_view()
+	if Defs.gear_turn and not bands.is_empty():
+		_draw_turning()          # (over the gear view's wash, so its chevrons read)
 	# THE TURRET CIRCLES: while a turret is placed (or in the gear view), every turret's circle of ground
 	if placing == Defs.CW_TURRET or view:
 		_draw_turret_circles(placing == Defs.CW_TURRET and ctl.ghost_cell.x >= 0, ctl.ghost_cell if ctl else Vector2i(-1, -1))

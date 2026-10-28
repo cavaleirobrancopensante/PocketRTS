@@ -75,6 +75,16 @@ func _process(delta: float) -> bool:
 			var o: String = u.order
 			if u.target != null and is_instance_valid(u.target):
 				o += "+fighting"
+			if float(ride[u]) > 25.0 and float(ride[u]) < 70.0 and OS.get_cmdline_user_args().has("debug") and int(ride[u] / 3.0) != int((float(ride[u]) - delta) / 3.0):
+				var cc: Vector2i = g.cell_of(u.position)
+				var rows := []
+				for yy in range(-2, 4):
+					var row := ""
+					for xx in range(-2, 3):
+						row += str(g.solid[g.idx(cc + Vector2i(xx, yy))])
+					rows.append(row)
+				print("  cells round ", cc, " ", rows, " blds ", g.buildings.filter(func(b): return b.rect().grow(40).has_point(u.position)).map(func(b): return [b.kind, b.rect()]))
+				print("DEBUG %s t%d order %s pos %s wp %s path %d/%d stuck %.1f vel %s carry %s" % [u.kind, u.team, u.order, u.position, u.path[u.path_i] if u.path_i < u.path.size() else Vector2.INF, u.path_i, u.path.size(), u.stuck_t, u.velocity, u.gt_carry])
 			if float(ride[u]) > float(worst.get(o, [0.0])[0]):
 				worst[o] = [float(ride[u]), u.kind, u.team]
 		elif ride.has(u):
@@ -92,7 +102,11 @@ func _process(delta: float) -> bool:
 			if is_instance_valid(u):
 				steps += u.steps_taken
 				failed += u.steps_failed
-		print("NOTE  step-offs by the computer: %d (pinned and gave up: %d) among the units alive" % [steps, failed])
+		var grips := 0
+		for u in g.units:
+			if is_instance_valid(u):
+				grips += u.gripped
+		print("NOTE  step-offs by the computer: %d (pinned and gave up: %d) among the units alive; walkers that had to grip the floor: %d" % [steps, failed, grips])
 		var bad := []
 		for o in worst:
 			print("NOTE  longest ride in one go, order %-16s %.1f s (%s, team %d)" % [o, worst[o][0], worst[o][1], worst[o][2]])

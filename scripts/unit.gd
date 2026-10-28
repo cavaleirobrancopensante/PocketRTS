@@ -91,6 +91,11 @@ var gt_on := 0.0
 var gt_off := Vector2.INF
 var gt_t := 0.0
 var ride_t := 0.0
+var gt_w := 0.0                 # (walking on a band) seconds since gt_wp / gt_d were taken: its progress is checked once a second
+var gt_wp := Vector2.INF         # ...the waypoint it was walking to then
+var gt_d := 0.0                  # ...and how far from it it was
+var gt_grip := 0.0               # > 0: stuck by the ride, it stands firm on the band (not carried) this long
+var gripped := 0                 # (tests) times that happened
 var steps_taken := 0
 var steps_failed := 0
 # Crown abilities

@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.102", "items": [
+		"TURNING GEARS (an EXPERIMENT, the owner's idea, on by default for now): only the outer toothed band of a Clockwork building's gear ring turns; the plate in the middle stays still. Any ground unit standing on a turning band is carried round with the teeth, about a tile a second, and meshed rings turn opposite ways. A unit that stays on the band keeps going round: idle units and units on HOLD ride until you move them off. A unit walking across drifts sideways for the time it is on the band and still gets where it was sent.",
+		"Workers at work (Winders going to a press, a building site, a repair) walk straight in across the band and are never carried. Flyers, limbered guns and the big machines (Field Cannon, Spring Ballista, Great Winder) are not carried either. The computer walks its own idle and HOLD units off a band after a second. A carried unit kicks up a little dust; point at a band, or open the GEAR VIEW, to see gold chevrons running the way it turns.",
+		"To switch it off: Settings > TURNING GEARS (experiment) > OFF. It applies from the next match: a match keeps the rule it started with, and an online game and a replay follow the host's.",
+	]},
 	{"v": "0.14.101", "items": [
 		"NEW COG PRESS ART (the owner's drawing): the Cog Press is now an open iron gantry press facing south-east, a stamping ram inside the frame and a crate of fresh cogs at its feet, so it no longer looks like the Mainspring. Its red bars take your side's colour. While Winders wind it, the ram falls fast onto the cog in its tray, holds for the stamp and climbs back slowly (a 12-frame loop). New pictures for the press being built (on scaffolding), damaged and destroyed, and a new portrait.",
 		"COG PRESS STAMP: a quiet, heavy stamp sounds as the ram hits the cog (cut from the owner's two stamp recordings, pitched down with a little iron under it). Only presses you can see are heard, on every other stroke, and a row of presses never drums: at most one stamp in 0.7 s.",
