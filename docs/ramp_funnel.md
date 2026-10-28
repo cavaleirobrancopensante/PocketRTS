@@ -8,7 +8,7 @@ Every ramp is cut into a notch in the plateau's edge. The map maker (MapGen._ram
 
 The wall art is drawn on the plateau's last row. So on the ramp's top rows, the low ground beside the planks sits right under the drawn wall. A unit could walk there, from the low ground or by stepping sideways off the planks. Its picture then covered the wall and it seemed to hover beside the ramp. A ramp in effect had a mouth five cells wide at the top, not three.
 
-The check found this beside every ramp on every built-in map: 238 ramps, going down to the south, north, east and west.
+The new check found this beside every ramp on all 27 built-in maps, on ramps going down to the south, north, east and west.
 
 ## Fix
 
@@ -35,5 +35,12 @@ The pictures are made with tools/shot_ramp_funnel.gd. Add "before=1" for the old
 
 ## Tests
 
-- tools/test_ramp_funnel.gd checks every ramp of every built-in map, with 2 players and with the most players the map holds. Nothing beside a funnel row can be walked on, no high ground beside any ramp row can be walked on, the top opens onto high ground as wide as the planks, the foot opens onto low ground, and there's a walk from the top to the foot. Before the fix it failed 954 times. Now it passes, on 62 ramps going south, 62 going north, 57 going east and 57 going west.
-- The map, pathing, wall, gear-ring and save tests were run again after the change. The release commit lists them.
+- tools/test_ramp_funnel.gd checks every ramp of every built-in map, with 2 players and with the most players the map holds. Nothing beside a funnel row can be walked on, no high ground beside any ramp row can be walked on, the top opens onto high ground as wide as the planks, the foot opens onto low ground, and there's a walk from the top to the foot. Before the fix it failed 954 times. Now it passes. Counting each map's 2-player and full layouts, it checks 62 ramps going south, 62 going north, 57 going east and 57 going west.
+- These still pass, on the bigger maps of 0.15.0: test_start_layout, test_expansion_spots, test_pathing, test_ai_placement, test_ai_wall_vs_rush (the wall is built with a gate), test_ai_army_response, test_gear_rules, test_cliff_horse, test_replay and test_files.
+- test_pathing_match, a six-minute Crown against Clockwork game on Greenhold: units were stuck for 1.6% of their moving time, none of it at a cliff, and no unit was stuck for 10 seconds or more.
+- test_terrain_same pins each map's ground. Its hashes were recorded again, because the ground beside the ramps changed on purpose.
+- The lobby's map pictures (assets/maps) were made again.
+
+## Left as it is
+
+A big machine is wider in its picture than on the ground. A Great Winder standing on the edge of a ramp's planks still hangs a little over the wall beside it. Its feet stay on the planks.
