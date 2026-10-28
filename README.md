@@ -2,7 +2,7 @@
 
 *(a working title: the game was called Holdfast until October 2026, but that name belongs to another game; the web address, the app file and the repository keep the old name for now so links and installs keep working)*
 
-**Play in your browser (version 0.14.104): https://holdfastrts.github.io/Holdfast/**
+**Play in your browser (version 0.15.3): https://holdfastrts.github.io/Holdfast/**
 
 **Android app: https://holdfastrts.github.io/Holdfast/Holdfast.apk** (rebuilt on every push; allow installs from your browser, then install over the old one to update)
 
@@ -180,7 +180,7 @@ Every match is recorded: a skirmish, a match between computers you watch, and on
 
 - **Sandbox**: set up any match in the usual lobby, then use the SANDBOX panel in the match. You can spawn any unit or building of any faction for any player, delete things, add resources, lift the fog, switch AIs off, speed up time (x2, x4), or take **control** of another player.
 - **Map editor** (on a computer or a phone):
-  - **NEW** picks the size: presets from 48x48 (tiny 1v1) to 192x160 (4v4) and 192x192, or your own width and height in steps of 4, square, wide or tall. Pan and zoom as in a match (right drag, WASD and the wheel on a computer; two fingers on a phone, where **DRAG: PAINT / PAN** at the top makes one finger move the map too).
+  - **NEW** picks the size: presets from 64x64 (tiny 1v1) to 252x210 (4v4) and 256x256, or your own width and height in steps of 4, square, wide or tall. Pan and zoom as in a match (right drag, WASD and the wheel on a computer; two fingers on a phone, where **DRAG: PAINT / PAN** at the top makes one finger move the map too).
   - **Terrain**: ground (also the eraser), high ground, ramps, water (lava in volcanic and ashland lands), fords, trees and rocks, with a **round or square brush of size 1-8** or **FILL** (floods an area of the same terrain). A ramp painted across a plateau's edge is squared into a clean rectangle; one that doesn't join high ground to low ground shows **red**.
   - **LAND** and **MIX**: every biome, each with a swatch of its ground, and an optional second one blended in (diagonal, patches or middle).
   - **PROPS**: all the decorations in a palette grouped by kind (trees, rocks, plants, ruins, buildings, camp, farm, stores) with thumbnails, plus whole **groups** (farm, camp, ruins, village...) placed in one click. ERASE (or a right click) removes one. Big ones (red frame: tents, houses, arches) block like rocks; the rest are only for looks, in the editor and in the match.
@@ -203,35 +203,35 @@ Every map is fair: it is turned through its middle, so every player has a twin s
 
 | Map | Players | Size | Biome | Layout |
 | --- | --- | --- | --- | --- |
-| Greenhold | 1v1 (up to 4) | 84x60 | Grass | Crossroads: open ground, a hill in the middle |
-| Highmoor | 1v1 (up to 4) | 84x60 | Autumn | Highlands: mains on high ground, one ramp |
-| Dune Sea | 1v1 (up to 4) | 84x60 | Desert | Crossroads |
-| Frostfang | 1v1 (up to 4) | 84x60 | Snow | Highlands |
-| Twin Fords | 1v1 (up to 4) | 84x60 | Grass | Rivers: three fords are the only crossings |
-| Ashfall | 1v1 (up to 4) | 84x60 | Volcanic | Highlands |
-| Mirewood | 1v1 (up to 4) | 84x60 | Marsh | Rivers |
-| Border March | 1v1 (up to 4) | 84x60 | Snow and grass | Rivers |
-| Red Coast | 1v1 (up to 4) | 84x60 | Desert and marsh | Highlands |
-| Kestrel Rise | 1v1 | 64x64 | Steppe | Small: a hill in the middle with a ramp from each side |
-| Cinder Steps | 1v1 | 70x56 | Ashland | Tiny: a lava flow with three basalt crossings |
-| Glimmerdeep | 1v1 | 80x80 | Glowwood | Ruins and pools in a dark wood, a lookout hill |
-| Ashford Crossing | 1v1 | 96x96 | Heath | A broad river corner to corner, three fords |
-| Thornwood Maze | 1v1 | 100x76 | Pinewood | Walls of pine with gaps: a maze of lanes |
-| Saltmarsh Isles | 1v1 | 104x80 | Coast | Four islands joined by coral shallows |
-| Hollowfen | 1v1 | 112x84 | Bog and marsh | A reedy channel with four fords, pools, many bases |
-| Redrock Canyon | 1v1 | 64x104 | Canyon | Tall: cliff walls leave narrow passes |
-| Frostmere | 1v1 | 72x112 | Tundra | Tall: a frozen mere with three ice fords |
-| Amberfall Vale | 1v1 | 88x120 | Fall | Tall: a stream, two lookout hills, many bases |
-| Twin Crowns | 2v2 | 128x96 | Heath and old kingdom | Allies side by side, a crowned hill between |
-| Jade Wilds | 2v2 | 120x120 | Jungle | Thick jungle, a winding river with five fords |
-| Shattered Coast | 2v2 | 136x100 | Coast | Islands linked by shallows |
-| Ember Reach | 2v2 | 112x136 | Ashland and volcanic | Two lava flows make three lanes around a mesa |
-| Whitecap Pass | 2v2 | 132x104 | Tundra and snow | A mountain wall with three passes |
-| Kingsfield | 3v3 | 160x128 | Grass and old kingdom | Farmland, hedgerows, villages, a central hill |
-| Pinewall Marches | 3v3 | 144x168 | Pinewood | Walls of pine and a river with five fords |
-| The Sundered Realm | 4v4 | 192x160 | Old kingdom and ashland | Gigantic: a great river and a burnt heartland |
+| Greenhold | 1v1 (up to 4) | 110x80 | Grass | Crossroads: open ground, a hill in the middle |
+| Highmoor | 1v1 (up to 4) | 110x80 | Autumn | Highlands: mains on high ground, one ramp |
+| Dune Sea | 1v1 (up to 4) | 110x80 | Desert | Crossroads |
+| Frostfang | 1v1 (up to 4) | 110x80 | Snow | Highlands |
+| Twin Fords | 1v1 (up to 4) | 110x80 | Grass | Rivers: three fords are the only crossings |
+| Ashfall | 1v1 (up to 4) | 110x80 | Volcanic | Highlands |
+| Mirewood | 1v1 (up to 4) | 110x80 | Marsh | Rivers |
+| Border March | 1v1 (up to 4) | 110x80 | Snow and grass | Rivers |
+| Red Coast | 1v1 (up to 4) | 110x80 | Desert and marsh | Highlands |
+| Kestrel Rise | 1v1 | 84x84 | Steppe | Small: a hill in the middle with a ramp from each side |
+| Cinder Steps | 1v1 | 92x74 | Ashland | Tiny: a lava flow with three basalt crossings |
+| Glimmerdeep | 1v1 | 104x104 | Glowwood | Ruins and pools in a dark wood, a lookout hill |
+| Ashford Crossing | 1v1 | 116x116 | Heath | A broad river corner to corner, three fords |
+| Thornwood Maze | 1v1 | 116x88 | Pinewood | Walls of pine with gaps: a maze of lanes |
+| Saltmarsh Isles | 1v1 | 120x92 | Coast | Four islands joined by coral shallows |
+| Hollowfen | 1v1 | 128x96 | Bog and marsh | A reedy channel with four fords, pools, many bases |
+| Redrock Canyon | 1v1 | 84x136 | Canyon | Tall: cliff walls leave narrow passes |
+| Frostmere | 1v1 | 82x128 | Tundra | Tall: a frozen mere with three ice fords |
+| Amberfall Vale | 1v1 | 106x146 | Fall | Tall: a stream, two lookout hills, many bases |
+| Twin Crowns | 2v2 | 168x126 | Heath and old kingdom | Allies side by side, a crowned hill between |
+| Jade Wilds | 2v2 | 158x158 | Jungle | Thick jungle, a winding river with five fords |
+| Shattered Coast | 2v2 | 178x132 | Coast | Islands linked by shallows |
+| Ember Reach | 2v2 | 146x178 | Ashland and volcanic | Two lava flows make three lanes around a mesa |
+| Whitecap Pass | 2v2 | 172x136 | Tundra and snow | A mountain wall with three passes |
+| Kingsfield | 3v3 | 210x168 | Grass and old kingdom | Farmland, hedgerows, villages, a central hill |
+| Pinewall Marches | 3v3 | 188x220 | Pinewood | Walls of pine and a river with five fords |
+| The Sundered Realm | 4v4 | 252x210 | Old kingdom and ashland | Gigantic: a great river and a burnt heartland |
 
-The named maps are data in `scripts/map_data.gd` (hall spots, plateaus, rivers, ridges, woods, decoration groups) built by `scripts/mapgen.gd`. After changing one, run `tools/make_map_previews.gd` for the lobby's pictures (assets/maps), and `tools/check_maps.gd` for the map editor's CHECK on every named map (or `custom:<name>` for one of yours; exits with 1 on a problem).
+Every map was made bigger in 0.15.0, with more base sites: sizes, walks and bases per side in `docs/map_sizes.md`. The named maps are data in `scripts/map_data.gd` (hall spots, plateaus, rivers, ridges, woods, decoration groups) built by `scripts/mapgen.gd`. After changing one, run `tools/make_map_previews.gd` for the lobby's pictures (assets/maps), and `tools/check_maps.gd` for the map editor's CHECK on every named map (or `custom:<name>` for one of yours; exits with 1 on a problem).
 
 ### Economy labels and the battle report
 - Each economy structure shows its crew as **X/Y** (green when full). Farms also show a harvest bar.

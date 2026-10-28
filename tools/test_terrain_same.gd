@@ -1,37 +1,38 @@
 extends SceneTree
 ## The cliff drawing (game.gd _render_ground) must never change the map itself: for every
 ## named map the height map, cliff cells, ramps and passability (solid) hash to the values
-## recorded on main before the cliff work (re-recorded after the tree and rock thinning, which changes `solid`).
+## recorded on main before the cliff work (re-recorded after the tree and rock thinning, which changes `solid`, for the bigger maps of 0.15.0, and for the ramp funnels of 0.15.2 and 0.15.3, which in 0.15.3
+## change only `solid`: docs/ramp_funnel.md).
 ##   godot --headless --script res://tools/test_terrain_same.gd           (checks)
 ##   godot --headless --script res://tools/test_terrain_same.gd -- record (prints a fresh table)
 const HASHES := {
-	"ashford_crossing": 21127261170301842,
-	"kestrel_rise": 121070159463820,
-	"thornwood_maze": 53273085444550735,
-	"redrock_canyon": 63765906812682953,
-	"saltmarsh_isles": 3373217922627904,
-	"glimmerdeep": 17698455545535844,
-	"frostmere": 23194935201241691,
-	"cinder_steps": 71025100548959507,
-	"hollowfen": 18114729844896497,
-	"amberfall_vale": 41711374298363396,
-	"twin_crowns": 21183110829599356,
-	"jade_wilds": 68398800195243569,
-	"shattered_coast": 71738383790403050,
-	"ember_reach": 70196919186014510,
-	"whitecap_pass": 538643375216470,
-	"kingsfield": 24438996543352092,
-	"pinewall_marches": 65401966238469119,
-	"sundered_realm": 23894700769075698,
-	"greenhold": 45120068248564440,
-	"highmoor": 66586796606739732,
-	"dune_sea": 29916644938338296,
-	"frostfang": 64169907657876533,
-	"twin_fords": 7442931970561508,
-	"ashfall": 43804998276487882,
-	"mirewood": 46504888983627315,
-	"border_march": 22256288697890725,
-	"red_coast": 39931084460171418
+	"ashford_crossing": 57634949782959946,
+	"kestrel_rise": 8112362231298935,
+	"thornwood_maze": 58158191696373368,
+	"redrock_canyon": 17730760160973845,
+	"saltmarsh_isles": 56662963320587730,
+	"glimmerdeep": 43838494978274017,
+	"frostmere": 39104419713066326,
+	"cinder_steps": 54821170952227780,
+	"hollowfen": 32819180609847611,
+	"amberfall_vale": 87688717094654,
+	"twin_crowns": 59870995779944258,
+	"jade_wilds": 7535621342270837,
+	"shattered_coast": 46486758386139366,
+	"ember_reach": 61011874605686131,
+	"whitecap_pass": 37422135294035728,
+	"kingsfield": 50217660882147222,
+	"pinewall_marches": 71491316635778114,
+	"sundered_realm": 55422619810585474,
+	"greenhold": 27928086971046961,
+	"highmoor": 47506519190171519,
+	"dune_sea": 8511823825813415,
+	"frostfang": 49666251348685466,
+	"twin_fords": 65006130829491419,
+	"ashfall": 32690440179943398,
+	"mirewood": 14677240389006586,
+	"border_march": 28417626846297477,
+	"red_coast": 48357475426414004
 }
 
 

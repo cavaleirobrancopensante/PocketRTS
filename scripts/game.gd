@@ -7,9 +7,9 @@ extends Node2D
 signal ended(winner: int)
 
 ## The map's size in cells: set from the map before the match is built (MapGen.size_of);
-## 84 x 60 for the classic maps and custom ones.
-static var W := 84
-static var H := 60
+## 110 x 80 for the classic maps (MapGen.CLASSIC; 84 x 60 before 0.15.0), a custom map's own.
+static var W := 110
+static var H := 80
 const T := Defs.TILE
 const HASH := 64
 
@@ -95,6 +95,7 @@ var solid := PackedByteArray()           # 0 free, 1 terrain, 2 building, 3 gate
 var water := PackedByteArray()
 var height := PackedByteArray()          # 1 = high ground
 var ramp := PackedByteArray()
+var ramp_block := {}                   # map index -> true: a cell beside a ramp's top blocked (MapGen.block_ramp_sides)
 var cliff := PackedByteArray()
 var map_id := "random"
 var map_name := ""
@@ -757,6 +758,12 @@ func next_site(u: Unit) -> Building:
 
 
 func _setup_astar() -> void:
+	# (the ramp funnel: the cells beside a ramp's top, under the drawn wall, are blocked; docs/ramp_funnel.md)
+	for i in ramp_block:
+		if solid[i] == 1 and cliff[i] == 0 and not _terrain_kind.has(i):
+			solid[i] = 0
+	ramp_block.clear()
+	mapgen.block_ramp_sides()
 	astar.region = Rect2i(0, 0, W, H)
 	astar.cell_size = Vector2(T, T)
 	astar.offset = Vector2(T, T) * 0.5
@@ -1660,14 +1667,18 @@ func _paint_ramps(img: Image, area := Rect2i(0, 0, W, H)) -> void:
 						var ends := a.lerp(z, f)
 						var track: Color = path_t.get_pixel(px, py)
 						var col := ends.lerp(track, smoothstep(0.0, 0.18, f) * (1.0 - smoothstep(0.82, 1.0, f)))
-						col = col.darkened(0.04 + 0.12 * f)
+						# (the planks a touch darker and stronger than the ground round them, so the
+						# ramp reads as the only way through: docs/ramp_funnel.md)
+						col = col.darkened(0.08 + 0.12 * f)
 						var step_d := fmod(p.dot(dir) - lo_p, 8.0)
 						if step_d < 1.0:
-							col = col.darkened(0.3)
+							col = col.darkened(0.38)
 						elif step_d < 2.0:
-							col = col.lightened(0.15)
-						# clear edges down both sides: a dark line with a lit rim inside it,
-						# and a wedge of cliff rock at the top that narrows down the slope
+							col = col.lightened(0.18)
+						# clear edges down both sides: a wedge of cliff rock at the top that narrows
+						# down the slope, then a stone kerb the whole way down (a dark outer line, a
+						# lit stone strip, a dark inner line) and the walls' shadow on the planks
+						# beside it, deepest at the top
 						# how far this pixel is from the ramp's side edge (the side of its cell
 						# that faces a cell which isn't ramp)
 						var sd := 99.0
@@ -1677,12 +1688,22 @@ func _paint_ramps(img: Image, area := Rect2i(0, 0, W, H)) -> void:
 						if not pos_open.get(c, false):
 							sd = minf(sd, float(T) - 1.0 - along)
 						var wedge := 8.0 * (1.0 - f)
+						var k := sd - wedge
 						if sd < wedge:
 							col = face_t.get_pixel(px, py).darkened(0.1 + 0.25 * (1.0 - sd / maxf(wedge, 0.01)))
-						elif sd < wedge + 2.0 and f < 0.92:
-							col = col.darkened(0.6)
-						elif sd < wedge + 4.0 and f < 0.92:
-							col = col.lightened(0.3)
+						elif k < 1.0:
+							col = col.darkened(0.7)
+						elif k < 4.0:
+							var stone: Color = face_t.get_pixel(px, py).lerp(Color(0.62, 0.6, 0.55), 0.55)
+							col = stone.lightened(0.3) if k < 2.0 else stone
+						elif k < 5.0:
+							col = col.darkened(0.55)
+						elif k < 12.0:
+							col = col.darkened(0.3 * (1.0 - (k - 5.0) / 7.0) * (1.0 - 0.6 * f))
+						# a shadow line across the top, where the planks leave the high ground
+						var td := p.dot(dir) - lo_p
+						if td < 3.0 and sd >= wedge:
+							col = col.darkened(0.4 * (1.0 - td / 3.0))
 						col.a = 1.0
 						img.set_pixel((c.x - area.position.x) * T + px, (c.y - area.position.y) * T + py, col)
 

@@ -201,6 +201,8 @@ static func sweepable(u: Unit, b) -> bool:
 		return false
 	if String(w.d.get("faction", "")) != "clockwork" or w.kind == "horse":
 		return false
+	if float(w.get_meta("gw_skip", -1.0)) > u.game.clock:
+		return false          # (it could not get to it a moment ago: sweep_tick)
 	if not w.has_meta("gw_by"):
 		return true
 	var by = w.get_meta("gw_by")
@@ -242,6 +244,8 @@ static func cmd_sweep(u: Unit, b: Unit) -> void:
 	u.target = null
 	u.work = ""
 	u.set_meta("gw_sweep", 0.0)
+	u.set_meta("gw_best", INF)
+	u.set_meta("gw_stall", 0.0)
 	b.set_meta("gw_by", u)
 
 
@@ -286,7 +290,28 @@ static func sweep_tick(u: Unit, delta: float) -> Vector2:
 		_sweep_done(u)
 		return Vector2.ZERO
 	var w := b as Unit
-	if w.position.distance_to(u.position) < u.radius + float(G["sweep_reach"]):
+	# Getting closer? Soldiers standing round the wreck (the army it fell in) can keep the big machine from rolling right
+	# over it. Held off for `stall` s within `sweep_near` px of its edge, it sweeps from there; held off for `stall_out` s
+	# anywhere, it gives this wreck up for `skip` s and looks for another (else it would push at the crowd for good).
+	var dw := w.position.distance_to(u.position)
+	var near := dw < u.radius + float(G["sweep_reach"])
+	if not near and u.work != "sweeping":
+		if dw < float(u.get_meta("gw_best", INF)) - 2.0:
+			u.set_meta("gw_best", dw)
+			u.set_meta("gw_stall", 0.0)
+		else:
+			var st := float(u.get_meta("gw_stall", 0.0)) + delta
+			u.set_meta("gw_stall", st)
+			if st >= float(G["stall"]) and dw < u.radius + float(G["sweep_near"]):
+				near = true
+			elif st >= float(G["stall_out"]):
+				w.set_meta("gw_skip", u.game.clock + float(G["skip"]))
+				w.remove_meta("gw_by")
+				u.order_target = null       # (sweep_tick's next pass finds it unsweepable: the next wreck, or back home)
+				return Vector2.ZERO
+	elif u.work == "sweeping":
+		near = true                         # (it started sweeping from where it stands: it finishes there)
+	if near:
 		u.work = "sweeping"
 		u.path = PackedVector2Array()
 		if w.position.distance_to(u.position) > 1.0:

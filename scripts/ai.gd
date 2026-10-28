@@ -2373,7 +2373,7 @@ func note_lost_site(c: Vector2i) -> void:
 
 ## Where the enemy is, for choosing hall ground (in tiles): its mains (known from the start), its natural expansions
 ## (where anyone expands first), the halls of its we have seen or see now, and the ground where we lost a hall lately.
-func _foe_ground() -> Array:
+func _foe_ground(lost := true) -> Array:
 	var pts: Array = []
 	var hk: String = _f()["hall"]
 	for o in game.n_players():
@@ -2387,7 +2387,7 @@ func _foe_ground() -> Array:
 			continue
 		if scout._seen_b.has(b) or game.is_visible_to(team, b.center()):
 			pts.append(b.center() / Defs.TILE)
-	for c in _lost_spots.keys():
+	for c in (_lost_spots.keys() if lost else []):
 		if float(_lost_spots[c]) > game.clock:
 			pts.append(Vector2(c) + Vector2(Defs.BUILDINGS[hk]["size"]) * 0.5)
 		else:
@@ -2421,6 +2421,7 @@ func _safe_hall_spot() -> Vector2i:
 		return Vector2i(-1, -1)
 	var home := Vector2(game.starts[team]) + Vector2(2.5, 2.0)
 	var foe := _foe_ground()
+	var foe_real := _foe_ground(false)
 	var best := Vector2i(-1, -1)
 	var bs := INF
 	for c in cands:
@@ -2443,6 +2444,13 @@ func _safe_hall_spot() -> Vector2i:
 			score += 600.0 + maxf(0.0, home_d - foe_d) * 4.0
 		if foe_d < LOST_NEAR:
 			score += 300.0
+		# nearer the enemy's own halls than ours weighs more than ground near a recent loss of ours: with more base sites
+		# (0.15.0) the losses by our own halls left a site on the enemy's half the least bad (test_clock_hall_spot)
+		var real_d := INF
+		for fp in foe_real:
+			real_d = minf(real_d, cc.distance_to(fp))
+		if real_d < own_d:
+			score += 900.0
 		for u in game.units_near(cc * Defs.TILE, 14.0 * Defs.TILE):
 			if game.hostile(u.team, team) and not u.dead and not u.is_worker() and game.is_visible_to(team, u.position):
 				score += float(u.d["supply"]) * 3.0
