@@ -117,3 +117,4 @@ Still to settle with him (see the chat, 2026-10-28): which units root and what e
   8. ROOT works like BUILD: a placement ghost on the grid to plan where it roots; it walks there and roots.
   9. Rooted, the colliders are much bigger (a building's footprint).
   10. Rooted creatures don't pulsate when idle: they animate only while producing (laying, fertilising) or being harvested.
+- (20:07) KEPT (owner): 1 egg per SACRIFICE stays. The Raptor cycle (round 2, test 6) is not a real exploit: it turns food into essence at about a third (75 food -> 27 essence), wastes time hatching and walking, and essence buys nothing without more food; once she grows, food is the limit, not eggs. Owner: "an exploit is only dangerous if you can capitalize on it". Revisit only if real games show essence or eggs piling up with nothing to stop them.
