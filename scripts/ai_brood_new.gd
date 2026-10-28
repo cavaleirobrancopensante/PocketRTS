@@ -107,7 +107,7 @@ func _nb_turtle_spot(q: Unit, me: Unit):
 		for i in 12:
 			var p: Vector2 = q.position + Vector2.from_angle(TAU * i / 12.0 + ring) * ring * Defs.TILE
 			var c := game.cell_of(p)
-			if not game._walkable(c) or game.region_of(c) != home:
+			if not _nb_on_map(p) or not game._walkable(c) or game.region_of(c) != home:
 				continue
 			var ok := true
 			for o in game.units:
@@ -147,6 +147,12 @@ func _nb_rootmaws(q: Unit) -> void:
 			m.cmd_move(goal)
 
 
+## Inside the map, a tile in from its edge (Game.cell_of clamps a point off the map to the edge cell: a spot out
+## there was taken for the edge's walkable cell, and the creature walked to the edge and stood stuck on its way).
+func _nb_on_map(p: Vector2) -> bool:
+	return Rect2(Vector2.ZERO, Vector2(Game.W, Game.H) * Defs.TILE).grow(-Defs.TILE).has_point(p)
+
+
 func _nb_spot_ok(p: Vector2, me: Unit) -> bool:
 	var r := float(Defs.PIT_CLAIM) * Defs.TILE * 2.0
 	for o in game.units:
@@ -171,7 +177,7 @@ func _nb_find_spot(q: Unit, m: Unit):
 		for i in 16:
 			var p: Vector2 = q.position + Vector2.from_angle(TAU * i / 16.0 + ring * 0.13) * ring * Defs.TILE
 			var c := game.cell_of(p)
-			if not game._walkable(c) or game.region_of(c) != home:
+			if not _nb_on_map(p) or not game._walkable(c) or game.region_of(c) != home:
 				continue
 			if not _nb_spot_ok(p, m) or not BroodNew.on_swamp(game, team, p):      # (a Rootmaw roots only on its side's swamp)
 				continue
@@ -227,7 +233,7 @@ func _nb_father(q: Unit) -> void:
 		for i in 12:
 			var p: Vector2 = q.position + Vector2.from_angle(TAU * i / 12.0) * reach * 0.75
 			var c := game.cell_of(p)
-			if game._walkable(c) and game.region_of(c) == home and (best == Vector2.INF or p.distance_to(f.position) < best.distance_to(f.position)):
+			if _nb_on_map(p) and game._walkable(c) and game.region_of(c) == home and (best == Vector2.INF or p.distance_to(f.position) < best.distance_to(f.position)):
 				best = p
 		if best != Vector2.INF:
 			f.cmd_move(best)

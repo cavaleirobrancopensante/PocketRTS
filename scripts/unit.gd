@@ -1021,6 +1021,7 @@ var _k_ride := false             # one of the kinds that ride by (Defs.RIDE_BY "
 var _k_fac := ""                 # (d["faction"]: the kind's faction)
 var _k_nb := false               # a creature of the NEW BROOD (scripts/brood_new.gd)
 var _k_still := false            # (its egg or a food pile: stands where it is, BroodNew.still_tick)
+var _k_shell := false            # (a Mound Turtle: rooted, its own side climbs over it: Game.separation)
 ## The new Brood's own state (scripts/brood_new.gd: the Mother's eggs, a Rootmaw's food and ground, an egg's kind and
 ## incubation, the father's breath); saved and streamed as it is.
 var nb := {}
@@ -1036,7 +1037,8 @@ func _kind_flags() -> void:
 			or BroodNew.ROOTERS.has(kind)
 	_k_nb = BroodNew.is_nb(kind)
 	_k_still = kind == BroodNew.EGG or kind == BroodNew.PILE
-	nb_mass = 1000.0 if _k_still else (30.0 if kind == BroodNew.QUEEN else (8.0 if kind == BroodNew.FATHER else 1.0))
+	_k_shell = kind == BroodNew.TURTLE
+	nb_mass = 1000.0 if _k_still else BroodNew.packed_mass(kind)
 	_k_cw = CwUnits.hooked(kind)
 	_k_musket = kind == "musketeer"
 	_k_pistol = (Defs.PISTOL["kinds"] as Array).has(kind)
@@ -3597,9 +3599,9 @@ func _tick_unit(delta: float) -> void:
 			_walled_check(delta)
 			if target:
 				want = _engage(target, delta, true)
-				if position.distance_to(leash_from) > 320.0:
+				if position.distance_to(leash_from) > 320.0 and not (_k_nb and tesla_mode != "packed"):
 					target = null
-					cmd_move(leash_from)
+					cmd_move(leash_from)       # (not a rooted new-Brood creature: it can't chase, and the move would uproot it)
 		"hold":
 			if scan_t <= 0.0:
 				scan_t = 0.3
@@ -4071,8 +4073,8 @@ func _move(want: Vector2, delta: float) -> void:
 	var v := want + push
 	if want == Vector2.ZERO:
 		v = push
-	if stun_t > 0.0 or braced or tongue_stage != "":
-		v = Vector2.ZERO           # (a Mist Toad aiming its tongue squats: friends flow round it)
+	if stun_t > 0.0 or braced or tongue_stage != "" or (_k_nb and tesla_mode != "packed"):
+		v = Vector2.ZERO           # (a Mist Toad aiming its tongue squats: friends flow round it; a rooted new-Brood creature is dug in: her own eggs don't shove the Mother)
 	velocity = velocity.lerp(v, clampf(delta * 12.0, 0.0, 1.0))
 	if knock.length_squared() > 25.0:
 		position = game.resolve_terrain(position + knock * delta, position, radius, team)
@@ -4124,8 +4126,42 @@ func _move(want: Vector2, delta: float) -> void:
 				target = wall
 		if stuck_t > 1.6 and path_goal != Vector2.INF and not path_pending:
 			stuck_t = 0.9
-			_request_path(path_goal)
+			if not _nb_round():
+				_request_path(path_goal)
 	last_pos = position
+
+
+## Stuck against a rooted new-Brood creature (the Brood Mother, a Rootmaw, an enemy's Mound Turtle) or the Tyrannosaur
+## standing at her eggs, where her hatchlings come out: paths go straight
+## through it, as it is not in the path grid, and a repath gave the same line, so a walker stood pressed to her side
+## for minutes. A waypoint round its flank, on the goal's side (the other side the next time).
+var _nb_side := 1.0
+
+
+func _nb_round() -> bool:
+	for o in game.units_near(position, radius + 100.0):
+		if o == self or o.dead or not o._k_nb or o._k_still or o.nb_mass < 8.0 or o.velocity.length() > 10.0:
+			continue          # (rooted, or a heavy one standing: the Mother, the Tyrannosaur at his eggs)
+		if o._k_shell and (o.team == team or game.allied(o.team, team)):
+			continue           # (its own side climbs over a turtle's shell)
+		var away: Vector2 = position - o.position
+		if away.length() - (radius + o.radius) > 14.0 or away.length() < 0.01:
+			continue
+		var side := away.orthogonal().normalized()
+		if side.dot(path_goal - position) < 0.0:
+			side = -side
+		side *= _nb_side
+		_nb_side = -_nb_side
+		var p: Vector2 = o.position + (away.normalized() * 0.4 + side).normalized() * (o.radius + radius + 16.0)
+		if not game._walkable(game.cell_of(p)):
+			p = o.position + (away.normalized() * 0.4 - side).normalized() * (o.radius + radius + 16.0)
+		if path_i >= path.size():
+			path = PackedVector2Array([p, path_goal])
+			path_i = 0
+		else:
+			path.insert(path_i, p)
+		return true
+	return false
 
 
 ## A limbered gun or wagon: only the barrel / body is the unit; the horses are art standing
@@ -4786,6 +4822,10 @@ func _leave_mine() -> void:
 	_mill_walking = false
 
 
+func _k_worker_nb() -> bool:
+	return kind == "grub" and BroodNew.on(game, team)
+
+
 ## Labourers and Winders stand at their post; grubs haul food from the pit to a Hive.
 var _barren_t := 0.0
 var _barren_seen := false
@@ -4793,6 +4833,10 @@ var _barren_site: Building = null
 
 
 func _gather(delta: float) -> Vector2:
+	if not is_instance_valid(home_mine):
+		home_mine = null          # (its Rootmaw or food pile is gone and freed; a freed one even compares equal to null)
+		if _k_worker_nb():
+			return BroodNew.grub_tick(game, self, delta)      # (the new Brood: it finds other food)
 	if home_mine is Unit:
 		return BroodNew.grub_tick(game, self, delta)      # (the new Brood: a Rootmaw or a food pile)
 	var site := home_mine as Building

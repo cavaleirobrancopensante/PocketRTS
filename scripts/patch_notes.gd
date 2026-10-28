@@ -4,11 +4,16 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
-	{"v": "0.15.11", "items": [
+	{"v": "0.15.12", "items": [
 		"THE NEW BROOD (EXPERIMENT): the Tyrannosaur ROOTS. Rooted on his nest near the Brood Mother he is the Brood's barracks: her warrior eggs go into his nest (counted over him like a training queue), he breathes on them one at a time and they hatch there. Rooted he takes less damage; uprooted he walks and fights as before. His breath is drawn in his picture now: the orange puffs are gone.",
 		"EVERY ROOTED CREATURE MOVES (a rooted creature is a building): the Tyrannosaur breathes fire on his nest, the Rootmaw breathes at each stage of its filling (the designer's drawings), and the food, the eggs and the fire glow and pulse.",
 		"THE BROOD MOTHER LAYS IN HER NEST: rooted, she rears up and lays the egg in front of her clutch, and it rolls out to the nest's rim (walking, it still drops behind her).",
 		"THE BROOD MOTHER CANNOT ATTACK WHILE ROOTED: to fight she must uproot. The computer gets her up when enemies reach her and roots her again after.",
+	]},
+	{"v": "0.15.11", "items": [
+		"THE NEW BROOD (EXPERIMENT), fixes found by playing ten games with it (docs/brood_new_play.md): a rooted Brood Mother no longer slides across the ground as her own eggs push her (in ten minutes she could drift nine tiles, her swamp with her, and leave her first Rootmaw dry), and she no longer uproots and walks off by herself after swiping at a scout.",
+		"No more creatures stuck by the Mother: eggs and food piles no longer shove anything, a creature pressed against the rooted Mother or the Tyrannosaur standing at her eggs steps round them, a walking Mound Turtle is too heavy for the grubs to wash back, and your own creatures climb over your rooted Mound Turtles as they should. A grub whose Rootmaw died no longer freezes.",
+		"The computer's new Brood no longer sends a Rootmaw, a Mound Turtle or the Tyrannosaur to a spot off the edge of the map, where it stood for good.",
 	]},
 	{"v": "0.15.10", "items": [
 		"THE NEW BROOD (EXPERIMENT): the Mound Turtle has its own pictures now (the designer's): it walks, sinks into the mud as it roots, breathes there rooted, rises and dies, and walks in every direction with the designer's drawings; its card has its own portrait.",

@@ -6190,6 +6190,10 @@ func separation(u: Unit) -> Vector2:
 					continue
 				if o.dead or o.off_field or (o._air_k and o.net_t <= 0.0) != air:      # (o.is_air())
 					continue
+				if o._k_still:
+					continue          # (a new-Brood egg or food pile lies on the ground: it shoves nobody)
+				if o._k_shell and o.team == u.team and o.tesla_mode != "packed":
+					continue          # (a rooted Mound Turtle: its own side climbs over the shell, BroodNew.push_out)
 				if o == u.steed or u == o.steed:
 					continue
 				if (u.crew_of != null and (o == u.crew_of or o.crew_of == u.crew_of)) or (o.crew_of != null and o.crew_of == u):
@@ -6216,6 +6220,10 @@ func _sep_push(u: Unit, o, p: Vector2, rr: float, air: bool, u_rail: bool, mu: f
 		return push
 	if o.dead or o.off_field or o.is_air() != air:
 		return push
+	if o._k_still:
+		return push           # (a new-Brood egg or food pile lies on the ground: it shoves nobody)
+	if o._k_shell and o.team == u.team and o.tesla_mode != "packed":
+		return push           # (a rooted Mound Turtle: its own side climbs over the shell, BroodNew.push_out)
 	if o == u.steed or u == o.steed:
 		return push           # (a man beside his own horse: he got off there, close by it)
 	if (u.crew_of != null and (o == u.crew_of or o.crew_of == u.crew_of)) or (o.crew_of != null and o.crew_of == u):

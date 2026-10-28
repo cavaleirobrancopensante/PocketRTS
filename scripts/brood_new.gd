@@ -641,8 +641,11 @@ static func tick(g: Game, u: Unit, delta: float) -> void:
 			father_tick(g, u, delta)
 
 
+## How hard a walking (uprooted) creature is to shove (Game.separation): the Mother a great deal; the Tyrannosaur and
+## the Mound Turtle, huge heavy beasts, enough that the grubs streaming to the Mother flow round them instead of washing
+## them back; the others as anyone.
 static func packed_mass(k: String) -> float:
-	return 30.0 if k == QUEEN else (8.0 if k == FATHER else 1.0)
+	return 30.0 if k == QUEEN else (8.0 if k == FATHER or k == TURTLE else 1.0)
 
 
 static func _mode_changed(g: Game, u: Unit, was: String) -> void:
