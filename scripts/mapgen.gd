@@ -1054,8 +1054,134 @@ func _by_ramp(c: Vector2i) -> bool:
 	return false
 
 
-## The edge ring of every plateau is a cliff (impassable), except across its ramps.
+## How many rows at a ramp's top are walled in on both sides (docs/ramp_funnel.md): the cliff
+## wall is drawn there, so the ground beside them is plateau rim, never walked.
+const FUNNEL := 2
+
+
+## (tools only: the old open ramp sides, for before/after pictures)
+static var no_funnel := false
+
+
+static func funnel_rows(rows: int) -> int:
+	return clampi(rows - 1, 0, FUNNEL)
+
+
+## Every ramp on the map: {"cells", "down" (the grid step downhill), "side" (the step across),
+## "rows" (top row first; each row's cells in order along `side`)}. Works before _cliffs (ramp
+## cells still on the height they were drawn on) and after (the walkable high ground beside it).
+static func ramp_parts(mg: MapGen) -> Array:
+	var g: Game = mg.g
+	var W: int = g.W
+	var H: int = g.H
+	var d4: Array = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+	var seen := PackedByteArray()
+	seen.resize(W * H)
+	var out: Array = []
+	for y in H:
+		for x in W:
+			var c0 := Vector2i(x, y)
+			if mg.ramp[g.idx(c0)] != 1 or seen[g.idx(c0)] == 1:
+				continue
+			var cells: Array = []
+			var todo: Array = [c0]
+			seen[g.idx(c0)] = 1
+			while not todo.is_empty():
+				var c: Vector2i = todo.pop_back()
+				cells.append(c)
+				for d in d4:
+					var n: Vector2i = c + d
+					if g.in_map(n) and mg.ramp[g.idx(n)] == 1 and seen[g.idx(n)] == 0:
+						seen[g.idx(n)] = 1
+						todo.append(n)
+			var hi := Vector2.ZERO
+			var lo := Vector2.ZERO
+			var hn := 0
+			var ln := 0
+			for c in cells:
+				for d in d4:
+					var n: Vector2i = c + d
+					if not g.in_map(n) or mg.ramp[g.idx(n)] == 1 or g.water[g.idx(n)] == 1:
+						continue
+					if mg.height[g.idx(n)] == 1:
+						if g.cliff[g.idx(n)] == 0:
+							hi += Vector2(n)
+							hn += 1
+					else:
+						lo += Vector2(n)
+						ln += 1
+			if hn == 0 or ln == 0:
+				continue
+			var dv := lo / ln - hi / hn
+			var vertical := absf(dv.y) >= absf(dv.x)
+			var down := Vector2i(0, 1 if dv.y > 0 else -1) if vertical else Vector2i(1 if dv.x > 0 else -1, 0)
+			var side := Vector2i(1, 0) if vertical else Vector2i(0, 1)
+			var by_row := {}
+			for c in cells:
+				var a: int = c.y if vertical else c.x
+				if not by_row.has(a):
+					by_row[a] = []
+				by_row[a].append(c)
+			var keys: Array = by_row.keys()
+			keys.sort()
+			if (down.y if vertical else down.x) < 0:
+				keys.reverse()
+			var rows: Array = []
+			for a in keys:
+				var r: Array = by_row[a]
+				r.sort_custom(func(p: Vector2i, q: Vector2i) -> bool: return (p.x < q.x) if vertical else (p.y < q.y))
+				rows.append(r)
+			out.append({"cells": cells, "down": down, "side": side, "rows": rows})
+	return out
+
+
+## The cells beside every ramp (left of each row's first cell, right of its last): the funnel
+## rows' sides are raised into the plateau (a cliff, drawn as the wall stepping down beside the
+## planks); every side cell left on the high ground is a cliff too. Returns the side cells.
+func _ramp_funnels() -> Dictionary:
+	var sides := {}
+	if no_funnel:
+		return sides
+	for r in ramp_parts(self):
+		var side: Vector2i = r["side"]
+		var rows: Array = r["rows"]
+		var funnel := funnel_rows(rows.size())
+		for j in rows.size():
+			var row: Array = rows[j]
+			for c in [row[0] - side, row[-1] + side]:
+				if not g.in_map(c) or ramp[g.idx(c)] == 1:
+					continue
+				var i := g.idx(c)
+				sides[i] = true
+				if j < funnel and g.water[i] == 0:
+					height[i] = 1
+					if ford.size() > i:
+						ford[i] = 0
+		# the landing: the high cell past each lane of the top row is open ground, not a cliff
+		# because a slanted plateau edge leaves low ground beside it (that low ground is raised)
+		var down: Vector2i = r["down"]
+		for c in rows[0]:
+			var a: Vector2i = c - down
+			if not g.in_map(a) or height[g.idx(a)] != 1 or ramp[g.idx(a)] == 1:
+				continue
+			for d in [side, -side, -down]:
+				var n: Vector2i = a + d
+				if g.in_map(n) and ramp[g.idx(n)] == 0 and height[g.idx(n)] == 0 and g.water[g.idx(n)] == 0:
+					height[g.idx(n)] = 1
+					if ford.size() > g.idx(n):
+						ford[g.idx(n)] = 0
+	return sides
+
+
+## The edge ring of every plateau is a cliff (impassable), except across its ramps; the
+## ground beside a ramp's top rows is cliff too (_ramp_funnels: the ramp is a funnel).
 func _cliffs() -> void:
+	var sides := _ramp_funnels()
+	for i in sides:
+		if height[i] == 1:
+			g.solid[i] = 1
+			g._terrain_kind.erase(i)
+			g.cliff[i] = 1
 	for y in H:
 		for x in W:
 			var i := y * W + x

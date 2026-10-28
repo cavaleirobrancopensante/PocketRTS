@@ -2940,12 +2940,14 @@ func _ramp_bands() -> Array:
 					left.erase(n)
 					todo.append(n)
 		var band := {}
+		# (the high cells touching the ramp side by side: one only diagonal to it can't step
+		# onto it, as the cells between are walled or cliff; the ramp's sides are cliff, so
+		# this is the row past its top: MapGen._ramp_funnels)
 		for rc in ramp_cells:
-			for dy in range(-1, 2):
-				for dx in range(-1, 2):
-					var c: Vector2i = rc + Vector2i(dx, dy)
-					if game.in_map(c) and game.height[game.idx(c)] == 1 and game.ramp[game.idx(c)] == 0 and game.is_free(c):
-						band[c] = true
+			for dd3 in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var c: Vector2i = rc + dd3
+				if game.in_map(c) and game.height[game.idx(c)] == 1 and game.ramp[game.idx(c)] == 0 and game.is_free(c):
+					band[c] = true
 		if band.size() < 2:
 			continue
 		var mid := Vector2.ZERO
@@ -3229,12 +3231,14 @@ func _wall_off() -> bool:
 					left.erase(n)
 					todo.append(n)
 		var band := {}
+		# (the high cells touching the ramp side by side: one only diagonal to it can't step
+		# onto it, as the cells between are walled or cliff; the ramp's sides are cliff, so
+		# this is the row past its top: MapGen._ramp_funnels)
 		for rc in ramp_cells:
-			for dy in range(-1, 2):
-				for dx in range(-1, 2):
-					var c: Vector2i = rc + Vector2i(dx, dy)
-					if game.in_map(c) and game.height[game.idx(c)] == 1 and game.ramp[game.idx(c)] == 0 and game.is_free(c):
-						band[c] = true
+			for dd3 in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var c: Vector2i = rc + dd3
+				if game.in_map(c) and game.height[game.idx(c)] == 1 and game.ramp[game.idx(c)] == 0 and game.is_free(c):
+					band[c] = true
 		if band.size() < 2:
 			continue
 		var mid := Vector2.ZERO
