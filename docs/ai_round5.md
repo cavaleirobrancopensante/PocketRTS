@@ -1,12 +1,40 @@
 # AI round 5: the Crown against the new Clockwork, the Clockwork against Horsemen
 
-Branch `ai-round5-merge`, version 0.14.100 (round 5 merged onto main 0.14.99; the games were played on 0.14.90 to 0.14.94, the raid test also on 0.14.99). If it is merged into main later, it takes the next free number then. Written to be read aloud.
+Version 0.14.100 (branch `ai-round5-merge`, merged into main). Written to be read aloud.
 
-## Status: DONE, played, NOT merged into main
+## Status: DONE. The Clockwork part is on in the game; the Crown part is off
 
-The tests pass and the raid fix works: the Clockwork's Winders now beat a Horseman raid.
-But the Crown computer did not get better against the Clockwork computer. It got a little worse.
-So, as the task said, round 5 is kept on this branch and not pushed to main.
+The owner asked for the Clockwork part: the Winders bunch up and fight Horsemen, the soldiers come as a group, a few stand on HOLD at the ramp.
+Since 0.14.96 (riders fight on the move, scripts/ride_by.gd) four Horsemen kill a whole crew of Winders, so this defence matters now.
+Part B (the Clockwork) is ON. Part A (the Crown against the Clockwork) is OFF: it did not win the Crown more games (the tables below).
+Part A stays in the code: `-- r5:crown` on the command line turns it on (`r5:crownonly` for part A alone, `r5:off` for neither).
+
+### The Clockwork part only, as shipped (0.14.99 with ride-by)
+
+Crown computer against Clockwork computer, Hard, the four maps, each side of the map once:
+
+| map | Crown on the usual side | Crown on the other side |
+|---|---|---|
+| greenhold (seed 11) | won (22:21) | won (28:39) |
+| frostmere (seed 12) | won (23:19) | won (18:45) |
+| hollowfen (seed 13) | won (26:58) | lost (17:27) |
+| kestrel_rise (seed 14) | lost (11:50) | lost (10:47) |
+
+The Crown won 5 of 8, the same as main (5 of 8 earlier, plus 1 win, 1 even and 2 losses on the other sides). So the Clockwork is not made too strong.
+In every one of the 8 games the Winders banded together against Horsemen, soldiers came as a group, and the ramp post went up.
+
+The raid test on 0.14.99 (ride-by riders):
+
+| map, riders | before: Winders lost, riders killed | after |
+|---|---|---|
+| greenhold, 3 riders | 12 of 17 lost, 0 killed | 0 lost, 3 killed, ramp post 3 |
+| greenhold, 4 riders | 16 of 17 lost, 3 killed | 4 lost, 4 killed, ramp post 4 |
+| kestrel_rise, 3 riders | 2 lost, 3 killed | 2 lost, 3 killed, ramp post 4 |
+| frostmere, 3 riders | 10 of 19 lost, 1 killed | 2 lost, 3 killed, ramp post 3 |
+| hollowfen, 4 riders | 11 of 22 lost, 4 killed | 4 lost, 4 killed, ramp post 3 |
+The AI tests pass. test_ai_rush_followup fails its two [mop] checks with round 5 on and off alike (main); its [few] check failed once and passed twice on a re-run (it does not touch round 5).
+
+## The first round of games (both parts on)
 
 ### The raid test (tools/test_ai_cw_horse_raid.gd, Winders lost to Horsemen, round 5 off then on)
 
@@ -64,7 +92,7 @@ Pictures (greenhold, seed 11, filmed with tools/shot_ai_match.gd):
 - A narrow ramp top with one spot still takes the whole post (the extra guards stand beside it).
 - The hold behind the wall is only for a wave within 12 tiles of the ramp.
 - The Labourer hold is softer: from 30 Labourers, while the army's supply is under 60% of them (24 and 80% starved the economy).
-- Study switches: `r5:off` (all off, the same as main), `r5:crown` (part A only), `r5:clock` (part B only), on the command line after `--`.
+- Study switches, on the command line after `--`: `r5:off` (all off, the same as 0.14.99), `r5:crown` (part A on as well), `r5:crownonly` (part A alone). The first round of games used an older meaning: part A was on by default then.
 
 ## Where the code is
 
@@ -115,6 +143,5 @@ The wall hold thresholds (85% in, 70% out) and the hall gate (14 supply) are fir
 
 ## What is left
 
-- Part B (the Winders against riders, the ramp post) works and could be merged on its own: `r5:clock` games against the Crown, the four maps, would show whether it makes the Clockwork too strong for the Crown computer (the owner beat it easily).
 - Part A needs a different idea. The Crown loses its expansion to the first Clockwork wave and then runs out of soil. Things to try: a later expansion against the Clockwork (with the army at home and the wall), more Labourers on the main's soil first, or Cannons at the expansion.
 - The raid test's greenhold seed 21 at 7:00 never starts a raid.

@@ -5,8 +5,7 @@ extends RefCounted
 
 const NOTES := [
 	{"v": "0.14.100", "items": [
-		"COMPUTER (branch ai-round5-merge, not on main): the Crown computer holds behind its walls against bigger waves, builds more Musketeers and fewer idle horses.",
-		"COMPUTER (branch ai-round5-merge, not on main): the Clockwork computer's Winders band together against Horsemen and it posts soldiers at its ramp.",
+		"CLOCKWORK COMPUTER against Horsemen: the Winders near a raided Cog Press, Mainspring or Clocktower band together and all hit the same rider instead of scattering (riders are faster than them: running only fed them one by one), the nearest Clock Soldiers come as one group to the Winders instead of chasing a rider, and once it has seen riders and has 10 or more Clock Soldiers at home, 3 or 4 of them stand on HOLD at the top of its ramp. Against Balloons, and armies they cannot fight, the Winders still run.",
 	]},
 	{"v": "0.14.99", "items": [
 		"BLACK POWDER SMOKE: every powder shot now leaves its smoke on the field. A Musketeer's or Guardsman's musket (a Dragoon's too, once off his horse), a Horseman's pistol, a Field Cannon (round shot and canister), a Mortar and its bursting shell, a keg or a Powder Wagon going up: each leaves grey-white puffs that drift slowly on a light wind, grow, thin and fade over 10 to 24 seconds (a cannon's last longest). A long firefight builds a haze over the firing lines that clears slowly afterwards. It is only for the look: it hides nothing and changes nothing in the fight, the units stay visible in it, and their health bars, rings and orders are drawn over it. You see it only where your side sees the ground. The Clockwork and the Brood fire no powder.",
