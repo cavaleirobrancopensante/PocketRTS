@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.15.8", "items": [
+		"BIG BATTLES RUN ABOUT TWICE AS FAST (the owner's question: 200 Raptors a side, docs/swarm_perf.md). In a melee of 400 Raptors the game's own work each tick is about half what it was, and the longest frames are a third as long. A unit looking for a target now looks only at enemies, nearest first; units pushing each other apart skip the ones too far away; the unit's tick asks less. The game plays out exactly the same as before.",
+		"Fewer stutters in a big match: the replay's pictures and the 15-second autosave (now written a little each frame) no longer land on the same frame as a game tick, and with a hundred soldiers selected the command card takes under 2 ms instead of 14 (the MOUNT and LEAD buttons asked every man for the nearest horse).",
+		"In a big battle on screen (more than about 160 units in view) the units' pictures change 10 times a second instead of 15, and a unit's sprite no longer flicks between two facings when it turns by a hair (the Labourer's rule, now for every unit). Only the drawing changes.",
+	]},
 	{"v": "0.15.7", "items": [
 		"COMPUTER EXPANSIONS (Crown and Clockwork): a computer no longer lays a Town Hall or Clocktower on the enemy's side of the map. It now measures the walk over land, cliffs included, instead of a straight line; with no free site left on its own side, it does not expand at all. It also uses the rated expansion sites, the gold-marked best ones first. On Hollowfen, Saltmarsh Isles and Cinder Steps the natural touches a ramp, so the computer could not build there and went 40 tiles out; now it builds right beside it.",
 		"CLOCKWORK COMPUTER KEEPS ATTACKING: after it pulls a wave back, the higher bar for its next wave lasts three minutes only. An army at the supply cap, or worth three times the biggest enemy army it saw lately, goes out again. A few unarmed enemies near its buildings no longer keep its whole army at home: its detachments deal with them.",

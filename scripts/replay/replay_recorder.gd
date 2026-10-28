@@ -91,8 +91,28 @@ static func lists() -> Dictionary:
 		"uf": NetSnapshot.U_FIXED, "bf": NetSnapshot.B_FIXED}
 
 
+## A picture is due (_physics_process says when): it is taken here, on a frame with no game tick in it when there
+## is one (the game runs 30 ticks a second, the screen usually 60 frames): with hundreds of units a picture takes
+## several ms, and on a tick's frame it added to the tick's (a stutter three times a second in a big battle). The
+## state doesn't change between ticks, so the picture is the same. (NetSession's own _process, the link and the
+## pings, isn't wanted: a recorder has none.)
 func _process(_delta: float) -> void:
-	pass                         # (NetSession's: the link, pings; a recorder has none)
+	var pf := Engine.get_physics_frames()
+	var ticked := pf != _pf_seen
+	_pf_seen = pf
+	if not _due or done or not written:
+		return
+	_due_frames += 1
+	if ticked and _due_frames < 3:
+		return                   # (a tick ran this frame: the next frame, unless every frame has one)
+	_due = false
+	_due_frames = 0
+	record()
+
+
+var _due := false
+var _due_frames := 0
+var _pf_seen := -1
 
 
 func _exit_tree() -> void:
@@ -157,7 +177,7 @@ func _physics_process(_delta: float) -> void:
 		return
 	if game.clock - last_clk < rec_every - 0.0005:
 		return
-	record()
+	_due = true                  # (taken in _process)
 
 
 func record(force_key := false) -> void:

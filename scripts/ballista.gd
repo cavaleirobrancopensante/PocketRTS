@@ -182,6 +182,7 @@ static func crew_tick(w: Unit, delta: float) -> void:
 	var reach := maxf(w.speed, b.speed * 1.6) * delta
 	var goal := to if far <= reach or far > 160.0 else before + step / far * reach
 	w.position = w.game.resolve_terrain(goal, before, w.radius * 0.5, w.team)
+	w.game.note_move(w)
 	w.velocity = (w.position - before) / maxf(delta, 0.001)
 	w.facing = spot_face(b, job)
 	w.target = null

@@ -58,7 +58,7 @@ func prey(t: int, e: Entity) -> bool:
 ## A unit that can hurt you back (not a worker, a Missionary, a horse, a Powder Wagon...):
 ## units on their own go for these first (find_target), then other units, then buildings.
 static func fights_back(e) -> bool:
-	return e is Unit and not e.dead and not e.is_worker() and not e.d.get("no_attack", false) and not e.d.get("medic", false)
+	return e is Unit and not e.dead and not e.is_worker() and not e._d_noatk and not e._d_medic
 
 
 ## A horse belonging to nobody (its rider fell and it bolted: Unit._rider_falls).
@@ -3333,6 +3333,7 @@ func _push_units_out(r: Rect2, keep: Array = []) -> void:
 		if not u.dead and not u.is_air() and not keep.has(u) and r.grow(u.radius).has_point(u.position) \
 				and not _clear_at(u.position, u.radius, u.team):
 			u.position = cell_center(nearest_free(cell_of(u.position), 8))
+			note_move(u)
 
 
 # ------------------------------------------------------------------ ghost sites
@@ -5904,54 +5905,159 @@ func _gate_lets(i: int, v: int, t: int) -> bool:
 
 # ------------------------------------------------------------------ spatial queries
 
-## The units by HASH-px cell, rebuilt every tick. The cells over the map are a flat list
-## (row by row, null where nobody stands) and the few off it (a unit past the edge) a
-## dictionary: a look-up by index is much cheaper than one by Vector2i key, and units_near
-## and separation look at dozens of cells for every unit. The units in a cell keep the
-## order of `units`, as before.
-var _grid: Array = []
+## The units by HASH-px cell, rebuilt every tick, packed: every unit on the map in one list sorted by cell
+## (row by row) and, inside a cell, in the order of `units`; cell i holds _gunits[_gstart[i] .. _gend[i] - 1]
+## (_gstart -1: nobody). Beside each its position, team and radius as they were at the rebuild (_gpos,
+## _gteam, _grad: packed, so a search skips the men too far away without touching them, which is most of
+## them in a crowd). The few off the map (a unit past the edge) are in a dictionary by cell (_hash).
+## Units move during the tick, after the rebuild, by a step at most (GRID_SLACK allows it; the most any
+## moved is checked at each rebuild: grid_drift): a search that skips by the packed positions finds the
+## same units, in the same order, as one that looked at every unit of the cells.
+var _gunits: Array = []
+var _gpos := PackedVector2Array()
+var _gteam := PackedInt32Array()
+var _grad := PackedFloat32Array()
+var _gstart := PackedInt32Array()
+var _gend := PackedInt32Array()
+var _gused := PackedInt32Array()          # (the cells filled at the last rebuild: cleared at the next)
+var _gkeys := PackedInt64Array()
+var _tpos := PackedVector2Array()         # (the rebuild's scratch: position, team and radius by place in `units`)
+var _tteam := PackedInt32Array()
+var _trad := PackedFloat32Array()
+var grid_jumpers: Array = []              # (the units that jumped this tick: Unit._physics_process)
 var _grid_w := 0
 var _grid_h := 0
-var _grid_used := PackedInt32Array()
+var _tsuper := PackedInt32Array()        # how many of each side (slot team + 1) stand in each block of SUPER x SUPER cells
+var _super_w := 0
+var _super_n := 0
+var _super_slots := 0
+const SUPER := 8
+## How far a unit may have moved since the units' grid was rebuilt at the start of the tick (a tick's
+## walk at the fastest, a knock-back): the searches allow this much. grid_drift_max is the most any unit
+## on the field moved between two rebuilds (Unit._grid_p); grid_drift_over counts the times it was more.
+const GRID_SLACK := 7.0
+## GRID_SLACK, or more once a unit has moved farther than that since the rebuild (a Grub snapping onto the
+## site it turns into, a man getting off his horse: Unit._physics_process): the searches allow that much
+## till the next rebuild. (An online guest's and a replay's pictures: no limit, they look at everyone.)
+var grid_slack := GRID_SLACK
+var grid_drift_max := 0.0
+var grid_drift_over := 0
 
 
 func _rebuild_hash() -> void:
 	_hash.clear()
+	grid_slack = GRID_SLACK if not puppet else INF
 	var gw := int(W * T) / HASH + 2
 	var gh := int(H * T) / HASH + 2
-	if gw != _grid_w or gh != _grid_h or _grid.size() != gw * gh:
+	if gw != _grid_w or gh != _grid_h or _gstart.size() != gw * gh:
 		_grid_w = gw
 		_grid_h = gh
-		_grid = []
-		_grid.resize(gw * gh)
-		_grid_used = PackedInt32Array()
-	for i in _grid_used:
-		_grid[i] = null
-	_grid_used.clear()
+		_gstart = PackedInt32Array()
+		_gstart.resize(gw * gh)
+		_gstart.fill(-1)
+		_gend = PackedInt32Array()
+		_gend.resize(gw * gh)
+		_gused = PackedInt32Array()
+	for i in _gused:
+		_gstart[i] = -1
+	var nt := sides.size() + 1
+	var sw := gw / SUPER + 1
+	var sh := gh / SUPER + 1
+	if _tsuper.size() != nt * sw * sh:
+		_tsuper = PackedInt32Array()
+		_tsuper.resize(nt * sw * sh)
+	_tsuper.fill(0)
+	_super_w = sw
+	_super_n = sw * sh
+	_super_slots = nt
+	var n := units.size()
+	_gkeys.resize(n)
+	_tpos.resize(n)
+	_tteam.resize(n)
+	_trad.resize(n)
+	var k := 0
+	var hi := 0
+	var slack2 := GRID_SLACK * GRID_SLACK
+	var d2max := grid_drift_max * grid_drift_max
 	for u in units:
-		var kx := int(u.position.x) / HASH
-		var ky := int(u.position.y) / HASH
+		var p: Vector2 = u.position
+		var gp: Vector2 = u._grid_p
+		if gp != p:
+			if gp.x != INF and not u.dead and not u.off_field:
+				var d2 := p.distance_squared_to(gp)
+				if d2 > d2max:
+					d2max = d2
+				if d2 > slack2 and not u._jumped:
+					grid_drift_over += 1      # (moved that far without its own tick noticing: Unit._physics_process)
+			u._grid_p = p
+		u._hash_i = hi
+		var tm: int = u.team
+		_tpos[hi] = p
+		_tteam[hi] = tm
+		_trad[hi] = u.radius
+		var kx := int(p.x) / HASH
+		var ky := int(p.y) / HASH
 		if kx >= 0 and ky >= 0 and kx < gw and ky < gh:
-			var gi := ky * gw + kx
-			var cell = _grid[gi]
-			if cell == null:
-				_grid[gi] = [u]
-				_grid_used.append(gi)
-			else:
-				cell.append(u)
-			continue
-		var k := Vector2i(kx, ky)
-		var lst = _hash.get(k)
-		if lst == null:
-			_hash[k] = [u]
+			_gkeys[k] = (ky * gw + kx) * 1048576 + hi
+			k += 1
+			_tsuper[clampi(tm + 1, 0, nt - 1) * _super_n + (ky / SUPER) * sw + kx / SUPER] += 1
 		else:
-			lst.append(u)
+			var c := Vector2i(kx, ky)
+			var lst = _hash.get(c)
+			if lst == null:
+				_hash[c] = [u]
+			else:
+				lst.append(u)
+		hi += 1
+	grid_drift_max = sqrt(d2max)
+	for u in grid_jumpers:
+		if is_instance_valid(u):
+			u._jumped = false
+	grid_jumpers.clear()
+	_gkeys.resize(k)
+	_gkeys.sort()
+	_gunits.resize(k)
+	_gpos.resize(k)
+	_gteam.resize(k)
+	_grad.resize(k)
+	_gused = PackedInt32Array()
+	var last := -1
+	for j in k:
+		var key: int = _gkeys[j]
+		var gi := key >> 20
+		var ti := key & 1048575
+		_gunits[j] = units[ti]
+		_gpos[j] = _tpos[ti]
+		_gteam[j] = _tteam[ti]
+		_grad[j] = _trad[ti]
+		if gi != last:
+			if last >= 0:
+				_gend[last] = j
+			_gstart[gi] = j
+			_gused.append(gi)
+			last = gi
+	if last >= 0:
+		_gend[last] = k
 
 
-## The units in grid cell (x, y) at the last rebuild, or null.
+## Another unit (a tongue's pull, a charge's shove, a Balloon letting men off...) moved `u` during the tick:
+## if that took it farther from its grid place than the searches allow, they allow that much more.
+func note_move(u: Unit) -> void:
+	if u._grid_p.x == INF:
+		return
+	var d2 := u.position.distance_squared_to(u._grid_p)
+	if d2 > grid_slack * grid_slack:
+		grid_slack = sqrt(d2) + 1.0
+	if d2 > GRID_SLACK * GRID_SLACK and not u._jumped:
+		u._jumped = true
+		grid_jumpers.append(u)
+
+
+## The units in grid cell (x, y) at the last rebuild (in order), or null.
 func _hash_cell(x: int, y: int):
 	if x >= 0 and y >= 0 and x < _grid_w and y < _grid_h:
-		return _grid[y * _grid_w + x]
+		var s := _gstart[y * _grid_w + x]
+		return null if s < 0 else _gunits.slice(s, _gend[y * _grid_w + x])
 	return _hash.get(Vector2i(x, y))
 
 
@@ -5960,15 +6066,19 @@ func units_near(p: Vector2, r: float) -> Array:
 	var c0 := Vector2i(int(p.x - r) / HASH, int(p.y - r) / HASH)
 	var c1 := Vector2i(int(p.x + r) / HASH, int(p.y + r) / HASH)
 	var gw := _grid_w
+	var lim := (r + grid_slack) * (r + grid_slack)
 	if _hash.is_empty():
 		# (nobody off the grid: the cells past its edges are empty, so only the ones on it are looked at)
 		for y in range(maxi(c0.y, 0), mini(c1.y, _grid_h - 1) + 1):
 			var row := y * gw
 			for x in range(maxi(c0.x, 0), mini(c1.x, gw - 1) + 1):
-				var lst = _grid[row + x]
-				if lst == null:
+				var s := _gstart[row + x]
+				if s < 0:
 					continue
-				for u in lst:
+				for j in range(s, _gend[row + x]):
+					if _gpos[j].distance_squared_to(p) > lim:
+						continue          # (too far even if it walked a step this way since the rebuild)
+					var u = _gunits[j]
 					if is_instance_valid(u) and u.position.distance_to(p) <= r:
 						out.append(u)
 		return out
@@ -5997,46 +6107,97 @@ func separation(u: Unit) -> Vector2:
 	var mu := 12.0 if u.kind == "cannon" or u.kind == "mortar" or u_rail else 1.0
 	var u_still := u.velocity.length() < 15.0
 	var u_mill: bool = u._mill_in
+	var ur: float = u.radius
 	var gw := _grid_w
-	var off := not _hash.is_empty()      # (anyone off the grid: then every cell is looked up the slow way)
-	var y0 := c0.y if off else maxi(c0.y, 0)
-	var y1 := c1.y if off else mini(c1.y, _grid_h - 1)
-	var x0 := c0.x if off else maxi(c0.x, 0)
-	var x1 := c1.x if off else mini(c1.x, gw - 1)
-	for y in range(y0, y1 + 1):
-		for x in range(x0, x1 + 1):
-			var lst = _hash_cell(x, y) if off else _grid[y * gw + x]
-			if lst == null:
+	if not _hash.is_empty():
+		# (anyone off the grid: every cell is looked up the slow way)
+		for y in range(c0.y, c1.y + 1):
+			for x in range(c0.x, c1.x + 1):
+				var lst = _hash_cell(x, y)
+				if lst == null:
+					continue
+				for o in lst:
+					push = _sep_push(u, o, p, rr, air, u_rail, mu, u_still, u_mill, push)
+		return push
+	# (a man pushes only from closer than (both radii) * 0.85, at most rr: the packed positions tell who
+	# can't be that close, even after a step since the rebuild, without looking at him)
+	var slack := grid_slack
+	var lim := rr + slack
+	var lim2 := lim * lim
+	for y in range(maxi(c0.y, 0), mini(c1.y, _grid_h - 1) + 1):
+		var row := y * gw
+		for x in range(maxi(c0.x, 0), mini(c1.x, gw - 1) + 1):
+			var s := _gstart[row + x]
+			if s < 0:
 				continue
-			for o in lst:
-				if o == u or not is_instance_valid(o) or o.position.distance_to(p) > rr:
+			for j in range(s, _gend[row + x]):
+				var d2: float = _gpos[j].distance_squared_to(p)
+				if d2 > lim2:
 					continue
-				if o.dead or o.off_field or o.is_air() != air:
+				var md: float = (ur + _grad[j]) * 0.85 + slack
+				if d2 > md * md:
 					continue
-				if o == u.steed or u == o.steed:
-					continue           # (a man beside his own horse: he got off there, close by it)
-				if (u.crew_of != null and (o == u.crew_of or o.crew_of == u.crew_of)) or (o.crew_of != null and o.crew_of == u):
-					continue           # (a Spring Ballista and its crew: they stand pressed to it, scripts/ballista.gd)
-				if u_rail and o.team == u.team and Defs.CW_RAIL.has(o.kind):
-					continue           # (rail vehicles of one side pass through each other: the sidings decide who waits)
-				if u_mill and o._mill_in and o.home_mine == u.home_mine:
-					continue           # (a Powder Mill's crew share its small yard: they pass close by each other, never shove, Unit._mill_work)
+				# (_sep_push, written out: this is the hottest loop of a big fight)
+				var o = _gunits[j]
+				if o == u or not is_instance_valid(o):
+					continue
 				var dvec: Vector2 = p - o.position
 				var dist := dvec.length()
-				var min_d: float = (u.radius + o.radius) * 0.85
-				if dist < min_d:
-					if dist < 0.01:
-						dvec = Vector2.from_angle(randf() * TAU)
-						dist = 0.01
-					var strength := (min_d - dist) / min_d
-					var k := 140.0
-					# Idle units step aside for friends on the move.
-					if o.team == u.team and o.velocity.length() > 15.0 and u_still:
-						k = 260.0
-					# MASS: a gun is not shoved by the men walking up behind it (they go round it, and
-					# anything light that bumps it gives way); equal masses push each other as before
-					var mo := 12.0 if o.kind == "cannon" or o.kind == "mortar" or (Defs.cw_roster and Defs.CW_RAIL.has(o.kind)) else 1.0
-					push += dvec / dist * strength * k * (2.0 * mo / (mu + mo))
+				var min_d: float = (ur + o.radius) * 0.85
+				if dist >= min_d or dist > rr:
+					continue
+				if o.dead or o.off_field or (o._air_k and o.net_t <= 0.0) != air:      # (o.is_air())
+					continue
+				if o == u.steed or u == o.steed:
+					continue
+				if (u.crew_of != null and (o == u.crew_of or o.crew_of == u.crew_of)) or (o.crew_of != null and o.crew_of == u):
+					continue
+				if u_rail and o.team == u.team and Defs.CW_RAIL.has(o.kind):
+					continue
+				if u_mill and o._mill_in and o.home_mine == u.home_mine:
+					continue
+				if dist < 0.01:
+					dvec = Vector2.from_angle(randf() * TAU)
+					dist = 0.01
+				var strength := (min_d - dist) / min_d
+				var k := 140.0
+				if o.team == u.team and o.velocity.length() > 15.0 and u_still:
+					k = 260.0
+				var mo := 12.0 if o.kind == "cannon" or o.kind == "mortar" or (Defs.cw_roster and Defs.CW_RAIL.has(o.kind)) else 1.0
+				push += dvec / dist * strength * k * (2.0 * mo / (mu + mo))
+	return push
+
+
+## One neighbour's shove (separation): push plus what `o` adds to it.
+func _sep_push(u: Unit, o, p: Vector2, rr: float, air: bool, u_rail: bool, mu: float, u_still: bool, u_mill: bool, push: Vector2) -> Vector2:
+	if o == u or not is_instance_valid(o) or o.position.distance_to(p) > rr:
+		return push
+	if o.dead or o.off_field or o.is_air() != air:
+		return push
+	if o == u.steed or u == o.steed:
+		return push           # (a man beside his own horse: he got off there, close by it)
+	if (u.crew_of != null and (o == u.crew_of or o.crew_of == u.crew_of)) or (o.crew_of != null and o.crew_of == u):
+		return push           # (a Spring Ballista and its crew: they stand pressed to it, scripts/ballista.gd)
+	if u_rail and o.team == u.team and Defs.CW_RAIL.has(o.kind):
+		return push           # (rail vehicles of one side pass through each other: the sidings decide who waits)
+	if u_mill and o._mill_in and o.home_mine == u.home_mine:
+		return push           # (a Powder Mill's crew share its small yard: they pass close by each other, never shove, Unit._mill_work)
+	var dvec: Vector2 = p - o.position
+	var dist := dvec.length()
+	var min_d: float = (u.radius + o.radius) * 0.85
+	if dist < min_d:
+		if dist < 0.01:
+			dvec = Vector2.from_angle(randf() * TAU)
+			dist = 0.01
+		var strength := (min_d - dist) / min_d
+		var k := 140.0
+		# Idle units step aside for friends on the move.
+		if o.team == u.team and o.velocity.length() > 15.0 and u_still:
+			k = 260.0
+		# MASS: a gun is not shoved by the men walking up behind it (they go round it, and
+		# anything light that bumps it gives way); equal masses push each other as before
+		var mo := 12.0 if o.kind == "cannon" or o.kind == "mortar" or (Defs.cw_roster and Defs.CW_RAIL.has(o.kind)) else 1.0
+		push += dvec / dist * strength * k * (2.0 * mo / (mu + mo))
 	return push
 
 
@@ -6051,7 +6212,7 @@ func _foe_table(t: int) -> PackedByteArray:
 
 
 func find_target(u: Unit, r: float) -> Entity:
-	if u.d.get("no_attack", false):
+	if u._d_noatk:
 		return null
 	# HOLD FIRE (a gun other than the cavalry's pistol): nothing to shoot at on its own; a
 	# Musketeer still takes on a man right on top of him with the bayonet
@@ -6071,30 +6232,36 @@ func find_target(u: Unit, r: float) -> Entity:
 	var picks: Array = []
 	# (who is an enemy, by team, worked out once: hostile() was asked of every unit and building)
 	var foe := _foe_table(u.team)
-	for o in units_near(u.position, r):
-		if o.team < 0 or foe[o.team] == 0 or o.dead or not u.can_hit(o) or (held and o.is_air()):
-			continue
-		if not o.is_air() and on_high(o.position) and not on_high(u.position) and not is_visible_to(u.team, o.position):
-			continue
-		# beyond its own sight a unit (the cannon) can only shoot what its side can see
-		if o.position.distance_to(u.position) > u.sight * T + 8.0 and not side_sees(u.team, o.position):
-			continue
-		var dd: float = o.position.distance_to(u.position)
-		if min_r > 0.0 and o.edge_distance(u.position) - u.radius < min_r:
-			continue
-		if o.kind == "horse":
-			dd += 150.0  # a horse only when there's nothing else (better stolen than shot)
-		elif not fights_back(o):
-			dd += 60.0   # prefer fighters (workers, Missionaries, wagons after them)
-		if careful:
-			picks.append([dd, o])
-		elif dd < bd:
-			bd = dd
-			best = o
+	if not careful and _hash.is_empty() and _super_slots > 0:
+		# (the same pick, found faster: only the enemies' cells, nearest ring first: _near_foe)
+		var nf := _near_foe(u, r, foe, held, min_r)
+		best = nf[0]
+		bd = nf[1]
+	else:
+		for o in units_near(u.position, r):
+			if o.team < 0 or foe[o.team] == 0 or o.dead or not u.can_hit(o) or (held and o.is_air()):
+				continue
+			if not o.is_air() and on_high(o.position) and not on_high(u.position) and not is_visible_to(u.team, o.position):
+				continue
+			# beyond its own sight a unit (the cannon) can only shoot what its side can see
+			if o.position.distance_to(u.position) > u.sight * T + 8.0 and not side_sees(u.team, o.position):
+				continue
+			var dd: float = o.position.distance_to(u.position)
+			if min_r > 0.0 and o.edge_distance(u.position) - u.radius < min_r:
+				continue
+			if o.kind == "horse":
+				dd += 150.0  # a horse only when there's nothing else (better stolen than shot)
+			elif not fights_back(o):
+				dd += 60.0   # prefer fighters (workers, Missionaries, wagons after them)
+			if careful:
+				picks.append([dd, o])
+			elif dd < bd:
+				bd = dd
+				best = o
 	if held:
 		return best              # (no crates or buildings: they'd be shot)
 	# a Clockwork crate on the ground: smash it (counted like a worker)
-	if not careful and not u.d.get("medic", false):
+	if not careful and not u._d_medic:
 		for c in crates:
 			if c.dead or not hostile(c.team, u.team) or not u.can_hit(c):
 				continue
@@ -6114,7 +6281,7 @@ func find_target(u: Unit, r: float) -> Entity:
 			return picks[0][1]
 	if best:
 		return best
-	if u.d.get("medic", false) or u.d.get("air_only", false):
+	if u._d_medic or u._d_aironly:
 		return null
 	for b in buildings:
 		if b.team < 0 or foe[b.team] == 0 or b.dead or b.ghost:
@@ -6137,13 +6304,142 @@ func find_target(u: Unit, r: float) -> Entity:
 		best = line_net.pipe_target(u, r)       # the Clockwork Line: the lowest priority
 	if best == null and faction_of(u.team) == "brood":
 		# nothing else in reach: a loose horse (nobody's) is cheap essence
-		for o in units_near(u.position, r):
+		for o in (_units_near_nobody(u.position, r) if _hash.is_empty() and _super_slots > 0 else units_near(u.position, r)):
 			if loose_horse(o) and not o.off_field and u.can_hit(o) and side_sees(u.team, o.position):
 				var dh: float = o.position.distance_to(u.position)
 				if dh < bd:
 					bd = dh
 					best = o
 	return best
+
+
+## find_target's search of the units, as its plain loop over units_near would find it (the same unit: the
+## nearest by its rule, and of the equally near the first in the grid's order), looking only at the
+## enemies (_gteam), ring by ring out from the unit's cell, and stopping once a ring can't hold anyone
+## nearer than the best so far. [best, its distance by the rule]
+func _near_foe(u: Unit, r: float, foe: PackedByteArray, held: bool, min_r: float) -> Array:
+	var p := u.position
+	var gw := _grid_w
+	var x0 := maxi(int(p.x - r) / HASH, 0)
+	var y0 := maxi(int(p.y - r) / HASH, 0)
+	var x1 := mini(int(p.x + r) / HASH, gw - 1)
+	var y1 := mini(int(p.y + r) / HASH, _grid_h - 1)
+	var px := int(p.x) / HASH
+	var py := int(p.y) / HASH
+	var best: Entity = null
+	var bd := INF
+	var bkey := 0
+	var any := false
+	for t in foe.size():
+		if foe[t] == 1 and _slot_in(t + 1, x0, y0, x1, y1):
+			any = true
+			break
+	if not any:
+		return [best, bd]
+	var u_high := on_high(p)
+	var sight_r := u.sight * T + 8.0
+	var kmax := maxi(maxi(px - x0, x1 - px), maxi(py - y0, y1 - py))
+	var nf := foe.size()
+	for k in kmax + 1:
+		# (anyone in ring k was at least (k - 1) cells away at the rebuild, and has moved less than
+		# GRID_SLACK since)
+		if k >= 2 and float((k - 1) * HASH) - grid_slack > bd:
+			break
+		var ring := PackedInt32Array()
+		for y in range(maxi(py - k, y0), mini(py + k, y1) + 1):
+			if y == py - k or y == py + k:
+				for x in range(maxi(px - k, x0), mini(px + k, x1) + 1):
+					ring.append(y * gw + x)
+			else:
+				if px - k >= x0:
+					ring.append(y * gw + px - k)
+				if px + k <= x1 and k > 0:
+					ring.append(y * gw + px + k)
+		for gi in ring:
+			var s := _gstart[gi]
+			if s < 0:
+				continue
+			# (nobody there can have come nearer than the best so far: its rebuild place plus a step)
+			var lim := minf(r, bd) + grid_slack
+			var lim2 := lim * lim
+			# (and a cell wholly farther than that is passed over)
+			var cx := float((gi % gw) * HASH)
+			var cy := float((gi / gw) * HASH)
+			var ex := maxf(maxf(cx - p.x, p.x - cx - HASH), 0.0)
+			var ey := maxf(maxf(cy - p.y, p.y - cy - HASH), 0.0)
+			if ex * ex + ey * ey > lim2:
+				continue
+			for j in range(s, _gend[gi]):
+				var tm: int = _gteam[j]
+				if tm < 0 or tm >= nf or foe[tm] == 0:
+					continue
+				if _gpos[j].distance_squared_to(p) > lim2:
+					continue
+				var o = _gunits[j]
+				if not is_instance_valid(o):
+					continue
+				var dd: float = o.position.distance_to(p)
+				# (the rule only adds to the distance: one farther than the best so far can't win)
+				if dd > r or dd > bd:
+					continue
+				if o.dead or not u.can_hit(o) or (held and o.is_air()):
+					continue
+				if not o.is_air() and not u_high and on_high(o.position) and not is_visible_to(u.team, o.position):
+					continue
+				if dd > sight_r and not side_sees(u.team, o.position):
+					continue
+				if min_r > 0.0 and o.edge_distance(p) - u.radius < min_r:
+					continue
+				if o.kind == "horse":
+					dd += 150.0
+				elif not fights_back(o):
+					dd += 60.0
+				var key: int = gi * 1048576 + int(o._hash_i)
+				if dd < bd or (dd == bd and key < bkey):
+					bd = dd
+					best = o
+					bkey = key
+					lim = minf(r, bd) + grid_slack
+					lim2 = lim * lim
+	return [best, bd]
+
+
+## Does anyone of slot `slot` (team + 1) stand in the cells x0..x1, y0..y1 (or near them: by blocks)?
+func _slot_in(slot: int, x0: int, y0: int, x1: int, y1: int) -> bool:
+	if slot >= _super_slots:
+		return false
+	var base := slot * _super_n
+	for sy in range(y0 / SUPER, y1 / SUPER + 1):
+		for sx in range(x0 / SUPER, x1 / SUPER + 1):
+			if _tsuper[base + sy * _super_w + sx] > 0:
+				return true
+	return false
+
+
+## The units of nobody's (team < 0: loose horses) of units_near(p, r), in the same order. (Only with nobody off the grid.)
+func _units_near_nobody(p: Vector2, r: float) -> Array:
+	var out: Array = []
+	var gw := _grid_w
+	var x0 := maxi(int(p.x - r) / HASH, 0)
+	var y0 := maxi(int(p.y - r) / HASH, 0)
+	var x1 := mini(int(p.x + r) / HASH, gw - 1)
+	var y1 := mini(int(p.y + r) / HASH, _grid_h - 1)
+	if not _slot_in(0, x0, y0, x1, y1):
+		return out
+	var lim := (r + grid_slack) * (r + grid_slack)
+	for y in range(y0, y1 + 1):
+		var row := y * gw
+		for x in range(x0, x1 + 1):
+			var s := _gstart[row + x]
+			if s < 0:
+				continue
+			for j in range(s, _gend[row + x]):
+				if _gteam[j] >= 0 or _gpos[j].distance_squared_to(p) > lim:
+					continue
+				var o = _gunits[j]
+				if is_instance_valid(o) and o.position.distance_to(p) <= r:
+					out.append(o)
+	return out
 
 
 ## Clockwork: blue energy while a Capacitor Works stands.
@@ -8890,9 +9186,15 @@ func update_view_rect() -> void:
 ## The path queue's time limit in a tick, past its first 6 paths (µs). A tool that needs a match to
 ## play out the same every time lifts it (tools/perf_bench.gd): then only the count, 24 a tick, limits it.
 var path_budget_us := 6000
+var anim_steps := 0              # (the units that stepped their pictures this tick: Unit._animate)
+var anim_crowd := false
 
 
 func _tick_game(delta: float) -> void:
+	# (a big battle on screen: the units step their pictures 10 times a second instead of 15, Unit._animate; it
+	# changes only what is drawn. On over about 160 units in view, off under about 110.)
+	anim_crowd = anim_steps > (55 if anim_crowd else 80)
+	anim_steps = 0
 	if over or edit_mode:
 		return
 	if Defs.cw_roster:
