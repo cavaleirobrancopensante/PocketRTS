@@ -1135,7 +1135,7 @@ const UNITS := {
 		"name": "Brood Mother", "hp": 2400, "armor": 1, "speed": 24, "cost": 0, "time": 0.0, "supply": 0,
 		"sight": 10, "range": 50, "damage": 40, "cooldown": 2.4, "aim": 0.5, "radius": 40, "from": "",
 		"building_bonus": 1.2, "faction": "brood", "new_brood": true,
-		"about": "The heart of the new Brood: if she dies, you lose. Only she lays eggs, walking or rooted: every unit hatches from them. Grubs bring her the food. ROOT her for armour and less damage, swamp around her and faster healing; she still swipes with her paws.",
+		"about": "The heart of the new Brood: if she dies, you lose. Only she lays eggs, walking or rooted: every unit hatches from them. Grubs bring her the food. ROOT her for armour and less damage, swamp around her and faster healing; rooted she cannot attack. GROW her (rooted) for more eggs and faster laying; fathers near her and Mound Turtles on new ground make her lay faster too.",
 	},
 	"rootmaw": {
 		"tags": ["armored"],
@@ -1163,7 +1163,7 @@ const UNITS := {
 		"name": "Mound Turtle", "hp": 600, "armor": 2, "speed": 26, "cost": 150, "time": 25.0, "supply": 0,
 		"sight": 6, "range": 22, "damage": 6, "cooldown": 1.6, "aim": 0.4, "radius": 26, "from": "brood_mother",
 		"faction": "brood", "new_brood": true,
-		"about": "A huge swamp turtle, the Brood's expansion and its tank. ROOT it: it sinks into the mud, gives 12 supply, makes the Brood Mother lay 10% faster (up to 3 turtles) and turns the ground round it to swamp (10 tiles), where Rootmaws can root, even far from home. Rooted it is very hard to hurt and wide enough to close a ramp. Uprooted it walks slowly, gives no supply and no swamp. A weak bite.",
+		"about": "A huge swamp turtle, the Brood's expansion and its tank. ROOT it: it sinks into the mud, gives 12 supply and turns the ground round it to swamp (10 tiles), where Rootmaws can root, even far from home. Rooted on NEW GROUND (15 tiles or more from the Brood Mother and from other such turtles) it makes her lay 15% faster (up to 3). Rooted it is very hard to hurt and wide enough to close a ramp; it does not attack. Uprooted it walks slowly, gives no supply and no swamp. A weak bite.",
 	},
 	"food_pile": {
 		"tags": ["light"],
@@ -1829,8 +1829,19 @@ const NB := {
 	"root_armor": 3.0, "root_taken": 0.75,       # rooted: 3 more armour, then a quarter less damage
 	"queen_switch": 4.0, "maw_switch": 2.5,      # seconds to root or uproot
 	"start_root": 1.6,                           # the match starts with the last of their rooting (a cue)
-	"eggs_max": 10, "start_eggs": 3, "egg_time": 6.0,      # the Mother's eggs (one every 6 s)
-	"egg_rate": 0.1, "egg_rate_max": 0.3,        # +10% laying per rooted Rootmaw, up to +30%
+	"start_eggs": 3, "egg_time": 6.0,            # the Mother's eggs (one every 6 s at stage 1, no lever: "stages", "father_rate", "expansion_rate")
+	# HER GROWTH STAGES (the owner, 17:39; docs/brood_new_stages.md has the math): eggs she holds, her laying rate
+	# (x), her size (sprite and body), her walk (x) and her swamp (tiles); to grow (GROW on her card, rooted, no
+	# laying meanwhile): food, essence, seconds
+	"stages": [
+		{"eggs": 10, "rate": 1.0, "scale": 1.0, "speed": 1.0, "swamp": 12.0},
+		{"eggs": 15, "rate": 1.3, "scale": 1.15, "speed": 0.92, "swamp": 13.5, "cost": 300, "cost2": 0, "time": 45.0},
+		{"eggs": 20, "rate": 1.7, "scale": 1.3, "speed": 0.84, "swamp": 15.0, "cost": 500, "cost2": 75, "time": 60.0},
+	],
+	# the levers that STACK on her stage's rate (the owner, 17:55): each father within father_r of her (his
+	# pheromones), each Mound Turtle rooted on new ground (expansion_tiles from her and from every other counted
+	# one; up to expansion_max)
+	"father_rate": 0.2, "expansion_rate": 0.15, "expansion_max": 3, "expansion_tiles": 15.0,
 	"drop": 0.35,                                # seconds an egg falls from under her
 	"father_r": 7.0,                             # tiles: the father rooted on his nest this near the Mother fertilises her warrior eggs
 	"father_switch": 2.5,                        # seconds the Tyrannosaur takes to settle on his nest or get up
@@ -1843,7 +1854,6 @@ const NB := {
 	"maw_crew": 6, "pile_crew": 4,
 	"haul_speed": 0.5,                           # HAUL: the full Rootmaw walks at half speed
 	"pile_rot": 0.6,                             # food a pile loses a second
-	"queen_swamp": 12.0,                         # tiles of swamp round the rooted Mother (her main base, as the old capital's)
 	# the fathers and the warriors they father; the others wait for their fathers (a Pterodactyl for the fliers, a
 	# Spitter father): not in the new Brood yet
 	"lines": {"tyrannosaur": ["raptor", "brute", "spore_mother", "mist_toad"]},

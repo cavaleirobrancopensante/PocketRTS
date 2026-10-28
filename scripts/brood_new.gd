@@ -187,7 +187,7 @@ static func swamp_sources(g: Game, t: int) -> Array:
 		if u.team != t or u.dead or not rooted(u):
 			continue
 		if u.kind == QUEEN:
-			out.append([u.position / Defs.TILE, float(Defs.NB["queen_swamp"])])
+			out.append([u.position / Defs.TILE, float(stage_def(u)["swamp"])])
 		elif u.kind == TURTLE:
 			out.append([u.position / Defs.TILE, float(Defs.NB["turtle_swamp"])])
 	return out
@@ -206,13 +206,127 @@ static func dropoff(g: Game, t: int) -> Unit:
 
 # ------------------------------------------------------------------ eggs
 
-## The Mother's egg rate: every rooted Mound Turtle makes her lay 10% faster (up to 30%), as the old Clutch Mounds.
-static func egg_rate(g: Game, t: int) -> float:
+## THE MOTHER'S LAYING (the owner, 17:55: she is the only producer, so three levers raise it, and they STACK; the
+## numbers: docs/brood_new_stages.md): her growth STAGE sets the base (x1, x1.3, x1.7 of one egg every 6 s), then each
+## FATHER within his reach of her adds father_rate (his pheromones), and each Mound Turtle rooted on NEW GROUND adds
+## expansion_rate (its chimneys pump the scent of new territory into the swamp water). x her stage's rate x (1 + the
+## levers).
+static func stage(q: Unit) -> int:
+	return clampi(int(q.nb.get("stage", 0)), 0, (Defs.NB["stages"] as Array).size() - 1)
+
+
+static func stage_def(q: Unit) -> Dictionary:
+	return Defs.NB["stages"][stage(q)]
+
+
+static func eggs_max(q: Unit) -> int:
+	return int(stage_def(q)["eggs"])
+
+
+## The fathers near her (any father kind, rooted or not: away from her or dead, they give nothing).
+static func fathers_near(g: Game, q: Unit) -> int:
 	var n := 0
+	var r := float(Defs.NB["father_r"]) * Defs.TILE
 	for u in g.units:
-		if u.team == t and u.kind == TURTLE and not u.dead and rooted(u):
+		if u.team == q.team and not u.dead and (Defs.NB["lines"] as Dictionary).has(u.kind) and u.position.distance_to(q.position) <= r:
 			n += 1
-	return 1.0 + minf(float(Defs.NB["egg_rate"]) * n, float(Defs.NB["egg_rate_max"]))
+	return n
+
+
+## The Mound Turtles that count as EXPANSIONS: rooted at least expansion_tiles from her and from every other one that
+## already counts (the oldest first), up to expansion_max. Turtles at home give supply and swamp, no eggs.
+static func expansions(g: Game, q: Unit) -> Array:
+	var far := float(Defs.NB["expansion_tiles"]) * Defs.TILE
+	var cands: Array = []
+	for u in g.units:
+		if u.team == q.team and u.kind == TURTLE and not u.dead and rooted(u) and u.position.distance_to(q.position) >= far:
+			cands.append(u)
+	cands.sort_custom(func(a, b) -> bool: return a.serial < b.serial)
+	var out: Array = []
+	for u in cands:
+		if out.size() >= int(Defs.NB["expansion_max"]):
+			break
+		if out.all(func(o) -> bool: return o.position.distance_to(u.position) >= far):
+			out.append(u)
+	return out
+
+
+## Her laying rate (x one egg every egg_time s), with what makes it: [rate, stage x, fathers, expansions].
+static func lay_rate(g: Game, q: Unit) -> Array:
+	var sx := float(stage_def(q)["rate"])
+	var nf := fathers_near(g, q)
+	var ne := expansions(g, q).size()
+	return [sx * (1.0 + float(Defs.NB["father_rate"]) * nf + float(Defs.NB["expansion_rate"]) * ne), sx, nf, ne]
+
+
+static func egg_rate(g: Game, t: int) -> float:
+	var q := queen(g, t)
+	return float(lay_rate(g, q)[0]) if q else 1.0
+
+
+## "Laying +X%: stage 2, Tyrannosaur near, 2 expansions" (her card).
+static func levers_text(g: Game, q: Unit) -> String:
+	var lr := lay_rate(g, q)
+	var parts: Array = []
+	if stage(q) > 0:
+		parts.append("stage %d" % (stage(q) + 1))
+	if int(lr[2]) > 0:
+		parts.append("%s near" % (Defs.UNITS[FATHER]["name"] if int(lr[2]) == 1 else "%d fathers" % int(lr[2])))
+	if int(lr[3]) > 0:
+		parts.append("%d expansion%s" % [int(lr[3]), "" if int(lr[3]) == 1 else "s"])
+	var pct := int(round((float(lr[0]) - 1.0) * 100.0))
+	return "Laying +%d%%: %s" % [pct, ", ".join(parts)] if not parts.is_empty() else "Laying: no lever yet"
+
+
+## GROW (her card): why she can't grow now ("" = she can).
+static func grow_problem(g: Game, q: Unit) -> String:
+	if q == null or q.dead:
+		return "No Brood Mother."
+	if stage(q) >= (Defs.NB["stages"] as Array).size() - 1:
+		return "She is fully grown."
+	if float(q.nb.get("grow_t", 0.0)) > 0.0:
+		return "She is growing."
+	if q.tesla_mode != "deployed":
+		return "She must be rooted to grow."
+	var nx: Dictionary = Defs.NB["stages"][stage(q) + 1]
+	var res: Array = Defs.FACTIONS["brood"]["res"]
+	if int(g.players[q.team]["gold"]) < int(nx["cost"]):
+		return "Not enough %s." % String(res[0]).to_lower()
+	if float(g.players[q.team]["res2"]) < float(nx["cost2"]):
+		return "Not enough %s." % String(res[1]).to_lower()
+	return ""
+
+
+## She grows to her next stage: paid now, grow_t s rooted, laying nothing meanwhile (as a Town Hall's upgrade).
+## Uprooting stops it and pays it all back. She never shrinks.
+static func grow(g: Game, q: Unit) -> String:
+	var why := grow_problem(g, q)
+	if why != "":
+		return why
+	var nx: Dictionary = Defs.NB["stages"][stage(q) + 1]
+	g.players[q.team]["gold"] -= int(nx["cost"])
+	g.add_res2(q.team, -float(nx["cost2"]))
+	g.stats[q.team]["spent"] += int(nx["cost"])
+	q.nb["grow_t"] = float(nx["time"])
+	if q.team == g.human:
+		Sfx.play_any(["research", "work/grub_deliver"], q.position, -6.0)
+	return ""
+
+
+static func _grow_cancel(g: Game, q: Unit) -> void:
+	if float(q.nb.get("grow_t", 0.0)) <= 0.0:
+		return
+	var nx: Dictionary = Defs.NB["stages"][stage(q) + 1]
+	g.players[q.team]["gold"] += int(nx["cost"])
+	g.add_res2(q.team, float(nx["cost2"]))
+	q.nb["grow_t"] = 0.0
+	if q.team == g.human:
+		g.tell(q.team, "The Brood Mother got up: her growing stopped (paid back).", true)
+
+
+## Her size follows her stage: her body (radius), and her sprite (_rooted_look).
+static func apply_stage(q: Unit) -> void:
+	q.radius = float(q.d["radius"]) * float(stage_def(q)["scale"])
 
 
 ## Why the Mother can't lay an egg for `k` now ("" = she can).
@@ -221,6 +335,8 @@ static func lay_problem(g: Game, q: Unit, k: String) -> String:
 		return "No Brood Mother."
 	if not hatch_list().has(k):
 		return "Not in the new Brood yet."
+	if float(q.nb.get("grow_t", 0.0)) > 0.0:
+		return "She is growing: no eggs meanwhile."
 	if int(q.nb.get("eggs", 0)) < 1:
 		return "No eggs ready."
 	var u: Dictionary = Defs.UNITS[k]
@@ -278,13 +394,14 @@ static func lay(g: Game, q: Unit, k: String) -> String:
 		# clutch flaring, the egg popping out of the clutch (CLUTCH_AT).
 		var drawn: bool = ArtData.UNITS[q.art]["frames"].has("lay_se")
 		q.nb["lay_t"] = lay_time(q)
-		var from := q.position + (LAY_EGG_AT if drawn else CLUTCH_AT) - p
+		var from := q.position + (LAY_EGG_AT if drawn else CLUTCH_AT) * float(stage_def(q)["scale"]) - p
 		e.nb["pop_x"] = from.x
 		e.nb["pop_y"] = from.y
 		e.nb["pop"] = POP_TIME
 		e.nb["drop"] = 0.0
 		if drawn:
 			e.nb["hold"] = lay_time(q)
+			e.nb["big"] = float(stage_def(q)["scale"])
 	if fa != null and p == nest_point(fa):
 		e.nb["nest"] = true
 		e.nb["drop"] = 0.0
@@ -506,7 +623,7 @@ static func devour(q: Unit, u: Unit) -> void:
 		return
 	q.nb["devour"] = 0.65
 	# each offering gives her one egg at once, on top of the essence (the owner, 17:20; none if her clutch is full)
-	if int(q.nb.get("eggs", 0)) < int(Defs.NB["eggs_max"]):
+	if int(q.nb.get("eggs", 0)) < eggs_max(q):
 		q.nb["eggs"] = int(q.nb.get("eggs", 0)) + 1
 	if u.position.distance_to(q.position) > 1.0:
 		q.facing = (u.position - q.position).normalized()
@@ -577,6 +694,8 @@ static func on_root(g: Game, u: Unit) -> String:
 
 ## UPROOT (spill = true: a Rootmaw spills its food as a pile and walks off thin) or HAUL (it keeps it, walks slow).
 static func uproot(u: Unit, spill: bool) -> void:
+	if u.kind == QUEEN:
+		_grow_cancel(u.game, u)
 	if u.kind == MAW:
 		u.nb["spill"] = spill
 	u.cmd_pack()
@@ -617,8 +736,24 @@ static func tick(g: Game, u: Unit, delta: float) -> void:
 				u.nb["devour"] = maxf(0.0, float(u.nb["devour"]) - delta)
 			if float(u.nb.get("lay_t", 0.0)) > 0.0:
 				u.nb["lay_t"] = maxf(0.0, float(u.nb["lay_t"]) - delta)
-			if int(u.nb.get("eggs", 0)) < int(Defs.NB["eggs_max"]):
-				u.nb["egg_t"] = float(u.nb.get("egg_t", 0.0)) + delta * egg_rate(g, u.team)
+			u.speed *= float(stage_def(u)["speed"])         # (bigger, a bit slower)
+			if float(u.nb.get("grow_t", 0.0)) > 0.0:
+				# GROWING: no eggs meanwhile; then her next stage
+				u.nb["grow_t"] = float(u.nb["grow_t"]) - delta
+				if float(u.nb["grow_t"]) <= 0.0:
+					u.nb["grow_t"] = 0.0
+					u.nb["stage"] = stage(u) + 1
+					apply_stage(u)
+					recount(g, u.team)
+					g.swamp_dirty = true
+					if u.team == g.human:
+						g.tell(u.team, "The Brood Mother has grown (stage %d): up to %d eggs, laying faster." % [stage(u) + 1, eggs_max(u)], true)
+			elif int(u.nb.get("eggs", 0)) < eggs_max(u):
+				u.nb["rate_t"] = float(u.nb.get("rate_t", 0.0)) - delta
+				if float(u.nb["rate_t"]) <= 0.0:
+					u.nb["rate_t"] = 0.5
+					u.nb["rate"] = float(lay_rate(g, u)[0])       # (the levers, looked at twice a second)
+				u.nb["egg_t"] = float(u.nb.get("egg_t", 0.0)) + delta * float(u.nb.get("rate", 1.0))
 				if float(u.nb["egg_t"]) >= float(Defs.NB["egg_time"]):
 					u.nb["egg_t"] = 0.0
 					u.nb["eggs"] = int(u.nb.get("eggs", 0)) + 1
@@ -955,7 +1090,7 @@ static func animate(u: Unit, n: int) -> void:
 			var k2 := pp / POP_TIME          # (1 at her clutch .. 0 on the rim)
 			s.position = Vector2(float(u.nb.get("pop_x", 0.0)), float(u.nb.get("pop_y", 0.0))) * k2 + Vector2(0.0, -POP_ARC * sin(PI * k2))
 			if u.nb.has("hold"):
-				s.scale = Vector2.ONE * lerpf(1.0, LAY_EGG_BIG, k2)       # (as big as her frame drew it, shrinking as it rolls out)
+				s.scale = Vector2.ONE * lerpf(1.0, LAY_EGG_BIG * float(u.nb.get("big", 1.0)), k2)       # (as big as her frame drew it, shrinking as it rolls out)
 		elif u.nb.has("hold"):
 			s.scale = Vector2.ONE
 		# a fertilised egg glows red-gold (code; the sheet's egg is the waiting yellow-green one)
@@ -1010,6 +1145,12 @@ static func _rooted_look(u: Unit, n: int) -> void:
 		lay = sin(PI * lp)
 		var hv := sin(TAU * lp) * (1.0 - lp)
 		s.scale = Vector2(sx * (1.0 - 0.025 * hv), 1.0 + 0.06 * hv)
+	if u.kind == QUEEN:
+		# her growth stage: the sprite that much bigger, about her feet (until her stages are drawn)
+		var k := float(stage_def(u)["scale"])
+		var hx := absf(s.scale.x) if (still or lay > 0.0) else 1.0
+		var hy := s.scale.y if (still or lay > 0.0) else 1.0
+		s.scale = Vector2(sx * k * hx, k * hy)
 	# the glow over its food, eggs or breath
 	var gk := "glow_%s_%s" % [a, u.anim_dir]
 	var glow := u.get_node_or_null("Glow") as Sprite2D
@@ -1079,7 +1220,9 @@ static func draw(u: Unit, top: float) -> void:
 	var mine := u.team == g.human or g.demo or g.spectating()
 	if u.kind == QUEEN and mine:
 		var font := ThemeDB.fallback_font
-		var txt := "%d/%d" % [int(u.nb.get("eggs", 0)), int(Defs.NB["eggs_max"])]
+		var txt := "%d/%d" % [int(u.nb.get("eggs", 0)), eggs_max(u)]
+		if float(u.nb.get("grow_t", 0.0)) > 0.0:
+			txt = "growing %ds" % int(ceil(float(u.nb["grow_t"])))
 		u.draw_string_outline(font, Vector2(-14, top - 6), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, 4, Color(0, 0, 0, 0.8))
 		u.draw_string(font, Vector2(-14, top - 6), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.85, 1.0, 0.55) if int(u.nb.get("eggs", 0)) > 0 else Color(1.0, 0.55, 0.45))
 	if u.kind == MAW and mine:
@@ -1142,7 +1285,7 @@ static func draw_key(u: Unit) -> int:
 		MAW:
 			return int(float(u.nb.get("food", 0.0)) / 6.0) + (100000 if u.nb.has("spot") else 0)
 		QUEEN:
-			return int(u.nb.get("eggs", 0))
+			return int(u.nb.get("eggs", 0)) + int(float(u.nb.get("grow_t", 0.0))) * 31
 		FATHER:
 			return int(u.game.clock * 4.0) if rooted(u) else 0       # (his nest's queue and its progress)
 	return 0
@@ -1175,6 +1318,11 @@ static func unit_load(u: Unit, d: Dictionary) -> void:
 			u.game.nb_walls.append(u)
 	if ROOTERS.has(u.kind):
 		u.nb_mass = 1000.0 if u.tesla_mode != "packed" else packed_mass(u.kind)
+	for k in ["stage"]:
+		if u.nb.has(k):
+			u.nb[k] = int(u.nb[k])
+	if u.kind == QUEEN:
+		apply_stage(u)
 
 
 static func save(g: Game) -> Dictionary:

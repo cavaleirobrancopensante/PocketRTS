@@ -39,6 +39,7 @@ func _tick_ai(delta: float) -> void:
 	if q == null:
 		return
 	_nb_mother(q)
+	_nb_grow(q)
 	_nb_rootmaws(q)
 	_nb_turtles(q)
 	_nb_father(q)
@@ -243,6 +244,19 @@ func _nb_father(q: Unit) -> void:
 
 
 # ------------------------------------------------------------------ eggs
+
+## GROW her when food piles up (more than the next stage's price and a reserve), not before about 4:30 (stage 2) and
+## 8:00 (stage 3), and not while enemies are at her.
+func _nb_grow(q: Unit) -> void:
+	if BroodNew.grow_problem(game, q) != "" or _nb_threat(q) != Vector2.INF:
+		return
+	var st := BroodNew.stage(q)
+	var nx: Dictionary = Defs.NB["stages"][st + 1]
+	if game.clock < (270.0 if st == 0 else 480.0):
+		return
+	if int(game.players[team]["gold"]) >= int(nx["cost"]) + 150:
+		BroodNew.grow(game, q)
+
 
 func _nb_lay(q: Unit) -> void:
 	var eggs := int(q.nb.get("eggs", 0))

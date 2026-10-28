@@ -352,7 +352,22 @@ func _run() -> void:
 	tu.cmd_deploy()
 	await wait(float(Defs.NB["turtle_switch"]) + 0.6)
 	check(tu.tesla_mode == "deployed" and int(p["cap"]) == cap0 + int(Defs.NB["turtle_supply"]), "10. a rooted Mound Turtle gives %d supply (%d -> %d)" % [int(Defs.NB["turtle_supply"]), cap0, int(p["cap"])])
-	check(BroodNew.egg_rate(g, 0) > rate0 + 0.05 and g.on_swamp(0, tu.position + Vector2(8.0 * Defs.TILE, 0)) or g.on_swamp(0, tu.position + Vector2(-8.0 * Defs.TILE, 0)), "    faster eggs (x%.2f) and swamp far round it" % BroodNew.egg_rate(g, 0))
+	check(absf(BroodNew.egg_rate(g, 0) - rate0) < 0.001 and (g.on_swamp(0, tu.position + Vector2(8.0 * Defs.TILE, 0)) or g.on_swamp(0, tu.position + Vector2(-8.0 * Defs.TILE, 0))), "    at home: swamp far round it, but no faster eggs (x%.2f, was x%.2f)" % [BroodNew.egg_rate(g, 0), rate0])
+	# an EXPANSION: a turtle rooted on new ground (15+ tiles from her) makes her lay faster; a second one beside it doesn't
+	var newg: Vector2 = spot_near(q.position, float(Defs.NB["expansion_tiles"]) + 2.0)
+	var nb_tx: Unit = g._add_unit(BroodNew.TURTLE, 0, newg)
+	var nb_tx2: Unit = g._add_unit(BroodNew.TURTLE, 0, spot_near(q.position, float(Defs.NB["expansion_tiles"]) + 5.0))
+	nb_tx.cmd_deploy()
+	nb_tx2.cmd_deploy()
+	await wait(float(Defs.NB["turtle_switch"]) + 0.6)
+	var nb_lr: Array = BroodNew.lay_rate(g, q)
+	check(int(nb_lr[3]) == 1 and absf(float(nb_lr[0]) - float(nb_lr[1]) * (1.0 + float(Defs.NB["father_rate"]) * int(nb_lr[2]) + float(Defs.NB["expansion_rate"]))) < 0.001,
+		"    on new ground (%.0f tiles out): 1 expansion, +%d%% (a second turtle beside it doesn't count): %s" % [newg.distance_to(q.position) / Defs.TILE, int(float(Defs.NB["expansion_rate"]) * 100.0), BroodNew.levers_text(g, q)])
+	nb_tx.take_damage(999999.0, null)
+	await wait(0.5)
+	check(BroodNew.expansions(g, q).size() == 1 and BroodNew.expansions(g, q)[0] == nb_tx2, "    it dies: the other one counts now (%d)" % BroodNew.expansions(g, q).size())
+	g.consume_unit(nb_tx2)
+	await wait(0.2)
 	tu.cmd_uproot(true)
 	await wait(float(Defs.NB["turtle_switch"]) + 0.6)
 	check(tu.tesla_mode == "packed" and int(p["cap"]) == cap0, "    uprooted: no supply (%d)" % int(p["cap"]))
@@ -366,12 +381,12 @@ func _run() -> void:
 	var ate: bool = await wait_for(func() -> bool: return float(p["res2"]) > ess0, 8.0)
 	check(ate and float(q.nb.get("devour", 0.0)) > 0.0 and BroodNew.anim(q, false) == "attack", "11. SACRIFICE at the Mother: essence %.0f -> %.0f, she devours it (a swipe)" % [ess0, float(p["res2"])])
 	check(int(q.nb.get("eggs", 0)) == eggs_s0 + 1, "    and she gets 1 egg at once (%d -> %d)" % [eggs_s0, int(q.nb.get("eggs", 0))])
-	q.nb["eggs"] = int(Defs.NB["eggs_max"])
+	q.nb["eggs"] = BroodNew.eggs_max(q)
 	var r2: Unit = g._add_unit("raptor", 0, q.position + Vector2(q.radius + 30.0, 20.0))
 	var ess1: float = float(p["res2"])
 	r2.cmd_sacrifice()
 	await wait_for(func() -> bool: return float(p["res2"]) > ess1, 8.0)
-	check(int(q.nb.get("eggs", 0)) == int(Defs.NB["eggs_max"]), "    her clutch full: no extra egg (%d)" % int(q.nb.get("eggs", 0)))
+	check(int(q.nb.get("eggs", 0)) == BroodNew.eggs_max(q), "    her clutch full: no extra egg (%d)" % int(q.nb.get("eggs", 0)))
 	q.nb["egg_t"] = 0.0
 	# 12. no rooted creature attacks (the owner, 17:14): rooted, the Mother, a Rootmaw, a turtle and the Tyrannosaur can't
 	# hit a foe beside them; uprooted, they can
@@ -391,6 +406,51 @@ func _run() -> void:
 			g.consume_unit(c)
 	g.consume_unit(foe)
 	check(rooted_hit.is_empty(), "12. no rooted creature attacks; uprooted they do (%s)" % str(rooted_hit))
+	# 14. her GROWTH STAGES: GROW costs, takes its time rooted, no laying meanwhile; then more eggs held, faster laying,
+	# a bigger body and swamp; stage 3 needs essence
+	var nb_stages: Array = Defs.NB["stages"]
+	p["gold"] = 2000
+	p["res2"] = 0.0
+	q.nb["eggs"] = 4
+	var nb_g0: int = int(p["gold"])
+	var nb_r_before: float = q.radius
+	var nb_gw: String = q.cmd_grow()
+	check(nb_gw == "" and int(p["gold"]) == nb_g0 - int(nb_stages[1]["cost"]) and float(q.nb.get("grow_t", 0.0)) > 0.0, "14. GROW: paid %d food, growing %.0f s (%s)" % [nb_g0 - int(p["gold"]), float(q.nb.get("grow_t", 0.0)), nb_gw])
+	check(BroodNew.lay_problem(g, q, "grub").begins_with("She is growing"), "    no laying while she grows: %s" % BroodNew.lay_problem(g, q, "grub"))
+	q.nb["egg_t"] = 0.0
+	await wait(float(Defs.NB["egg_time"]) + 1.0)
+	check(int(q.nb.get("eggs", 0)) == 4, "    and no new eggs grow meanwhile (%d)" % int(q.nb.get("eggs", 0)))
+	var nb_grown: bool = await wait_for(func() -> bool: return BroodNew.stage(q) == 1, float(nb_stages[1]["time"]) + 2.0)
+	check(nb_grown and BroodNew.eggs_max(q) == int(nb_stages[1]["eggs"]) and q.radius > nb_r_before * 1.1 and absf(float(BroodNew.lay_rate(g, q)[1]) - float(nb_stages[1]["rate"])) < 0.001,
+		"    stage 2 after %d s: %d eggs held, laying x%.2f, body %.0f -> %.0f px" % [int(nb_stages[1]["time"]), BroodNew.eggs_max(q), float(BroodNew.lay_rate(g, q)[1]), nb_r_before, q.radius])
+	check(BroodNew.swamp_sources(g, 0).any(func(sw) -> bool: return absf(float(sw[1]) - float(nb_stages[1]["swamp"])) < 0.01), "    her swamp %.1f tiles" % float(nb_stages[1]["swamp"]))
+	check(BroodNew.grow_problem(g, q).contains(String(Defs.FACTIONS["brood"]["res"][1]).to_lower()), "    stage 3 needs essence: %s" % BroodNew.grow_problem(g, q))
+	p["res2"] = 200.0
+	q.cmd_uproot(false)
+	await wait(0.2)
+	check(BroodNew.grow_problem(g, q) != "", "    uprooted she can't grow: %s" % BroodNew.grow_problem(g, q))
+	q.cmd_deploy()
+	await wait_for(func() -> bool: return q.tesla_mode == "deployed", float(Defs.NB["queen_switch"]) + 2.0)
+	var nb_g1: int = int(p["gold"])
+	q.cmd_grow()
+	q.cmd_uproot(false)
+	await wait(0.3)
+	check(int(p["gold"]) == nb_g1 and BroodNew.stage(q) == 1, "    uprooting while growing stops it and pays it back (%d)" % int(p["gold"]))
+	q.cmd_deploy()
+	await wait_for(func() -> bool: return q.tesla_mode == "deployed", float(Defs.NB["queen_switch"]) + 2.0)
+	q.cmd_grow()
+	var nb_grown3: bool = await wait_for(func() -> bool: return BroodNew.stage(q) == 2, float(nb_stages[2]["time"]) + 2.0)
+	check(nb_grown3 and BroodNew.eggs_max(q) == int(nb_stages[2]["eggs"]) and absf(float(BroodNew.lay_rate(g, q)[1]) - float(nb_stages[2]["rate"])) < 0.001 and BroodNew.grow_problem(g, q) == "She is fully grown.",
+		"    stage 3: %d eggs, laying x%.2f; fully grown" % [BroodNew.eggs_max(q), float(BroodNew.lay_rate(g, q)[1])])
+	# a father near her: his pheromones (+father_rate); away from her: nothing
+	var nb_fx: Unit = g._add_unit(BroodNew.FATHER, 0, q.position + Vector2(-q.radius - 60.0, 30.0))
+	await wait(0.2)
+	var nb_lr2: Array = BroodNew.lay_rate(g, q)
+	check(int(nb_lr2[2]) >= 1 and absf(float(nb_lr2[0]) - float(nb_lr2[1]) * (1.0 + float(Defs.NB["father_rate"]) * int(nb_lr2[2]) + float(Defs.NB["expansion_rate"]) * int(nb_lr2[3]))) < 0.001, "    a Tyrannosaur near her: %s" % BroodNew.levers_text(g, q))
+	nb_fx.position = spot_near(q.position, 20.0)
+	await wait(0.2)
+	check(int(BroodNew.lay_rate(g, q)[2]) == int(nb_lr2[2]) - 1, "    away from her: he gives nothing (%s)" % BroodNew.levers_text(g, q))
+	g.consume_unit(nb_fx)
 	# 8. killing the Mother loses
 	q.take_damage(999999.0, null)
 	var out: bool = await wait_for(func() -> bool: return bool(g.eliminated[0]), 3.0)

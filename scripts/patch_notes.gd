@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.15.13", "items": [
+		"THE NEW BROOD (EXPERIMENT): THE BROOD MOTHER GROWS. GROW on her card (rooted; she lays no eggs meanwhile): stage 2 for 300 food and 45 s holds 15 eggs and lays 30% faster; stage 3 for 500 food, 75 essence and 60 s holds 20 and lays 70% faster. She gets bigger and slower, with a wider swamp. Uprooting stops it and pays it back.",
+		"THREE LEVERS RAISE HER LAYING, AND THEY STACK: her stage; every father near her (+20%: his pheromones); and every Mound Turtle rooted on new ground, 15 tiles or more from her and from the other counted ones (+15%, up to 3). Turtles at home now give supply and swamp only. Her card shows what is working.",
+		"The computer grows its Mother when food piles up.",
+	]},
 	{"v": "0.15.12", "items": [
 		"THE NEW BROOD (EXPERIMENT): the Tyrannosaur ROOTS. Rooted on his nest near the Brood Mother he is the Brood's barracks: her warrior eggs go into his nest (counted over him like a training queue), he breathes on them one at a time and they hatch there. Rooted he takes less damage; uprooted he walks and fights as before. His breath is drawn in his picture now: the orange puffs are gone.",
 		"EVERY ROOTED CREATURE MOVES (a rooted creature is a building): the Tyrannosaur breathes fire on his nest, the Rootmaw breathes at each stage of its filling (the designer's drawings), and the food, the eggs and the fire glow and pulse.",
