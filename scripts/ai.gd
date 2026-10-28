@@ -64,6 +64,10 @@ const AIRound5 := preload("res://scripts/ai_round5.gd")
 var r5 = AIRound5.new(self)      # (made with the AI: tests that build one by hand get it too)
 ## Round 6 (docs/ai_round6.md) on; `-- r6:off` on the command line plays the computer as before (0.14.100), for study games.
 var r6 := not OS.get_cmdline_user_args().has("r6:off")
+## (study switches: `r6:crownonly` the Crown's part only (opening, tech spot, expansion, farmers) plus the hall-spot rules;
+## `r6:clockonly` the army part only (minor threats, pull-back expiry, the push) plus the hall-spot rules)
+var r6_cr := r6 and not OS.get_cmdline_user_args().has("r6:clockonly")
+var r6_cw := r6 and not OS.get_cmdline_user_args().has("r6:crownonly")
 
 
 func _ready() -> void:
@@ -72,7 +76,7 @@ func _ready() -> void:
 	_opened = strategy
 	if game.faction_of(team) == "crown" and (strategy == "rush" or randf() < r5.breeder_chance(0.3)):
 		opening = "breeder"
-	if r6 and opening == "breeder" and strategy != "rush" and difficulty >= 1 and _foe_is("clockwork"):
+	if r6_cr and opening == "breeder" and strategy != "rush" and difficulty >= 1 and _foe_is("clockwork"):
 		# (round 6: never against the Clockwork unless the plan is the rush: its Clock Soldiers are out at 1:50, the riders
 		# get nowhere and the Breeder starved the economy, 16 Labourers against 30 Winders at 7:00 on Kestrel Rise)
 		opening = "mill"
@@ -1705,7 +1709,7 @@ func _farm_first(u: Unit) -> Building:
 			continue
 		# (fill one farm before the next: a full crew ripens it in 40 s, the gold comes in sooner)
 		var dd: float = f.center().distance_to(u.position) - f.crew.size() * 120.0
-		if r6 and difficulty >= 1:
+		if r6_cr and difficulty >= 1:
 			dd += (1.0 - f.soil_left()) * 600.0      # (round 6: fresh soil first: a new hall's farms get their hands)
 		if dd < bd:
 			bd = dd
@@ -1820,7 +1824,7 @@ func _move_off_tired_soil(labs: Array) -> void:
 	var site_kind := "farm" if _crown() else "feeding_pit"
 	# (round 6, Crown: farmers on tired soil, under a quarter, move to a fresh farm with room too, before it is spent: a new
 	# hall's farms stood empty while the main's were nearly done, 0.14.100 Kestrel Rise 7:32)
-	var tired := TIRED_FARM if r6 and _crown() and difficulty >= 1 else 0.0
+	var tired := TIRED_FARM if r6_cr and _crown() and difficulty >= 1 else 0.0
 	var fresh := _mine(site_kind).filter(func(f: Building) -> bool: return f.built and f.soil_left() > (0.6 if tired > 0.0 else 0.0) and f.crew.size() < f.crew_max())
 	if fresh.is_empty():
 		return
@@ -2301,7 +2305,7 @@ func _hall_first() -> bool:
 	# halls with a fair share of soil left (one going up counts: it's fresh land)
 	# (round 6, Crown: a hall under 40% soil is tired already: the next one comes while the main still pays, not after it
 	# is barren; 0.14.100 Kestrel Rise went broke at 0% soil with 37 idle Labourers)
-	var fresh_at := FRESH_CROWN if r6 and _crown() and difficulty >= 1 else 0.25
+	var fresh_at := FRESH_CROWN if r6_cr and _crown() and difficulty >= 1 else 0.25
 	var fresh := _halls().filter(func(h: Building) -> bool: return not h.built or _land(h) > fresh_at).size()
 	# how many fresh halls it needs: a second once the best soil is under HALL_FIRST_SOIL; the Crown also one for every
 	# 16 Labourers (a hall's farms and mill hold about that many: with more on one hall's land they stood idle or
@@ -2335,7 +2339,7 @@ func _hall_first() -> bool:
 	if _crown():
 		# the escort walks over first; the hall goes down once it's there (or after a while)
 		var site := (Vector2(spot) + Vector2(Defs.BUILDINGS[hall]["size"]) * 0.5) * Defs.TILE
-		if r6 and difficulty >= 1 and _foe_army_near(site) > _guard_value() and _best_soil() > 0.1:
+		if r6_cr and difficulty >= 1 and _foe_army_near(site) > _guard_value() and _best_soil() > 0.1:
 			_stage_t = game.clock      # (round 6: a bigger enemy army in sight by the spot: wait, the gold kept, the guards near)
 			return true
 		var there := _guards.filter(func(u) -> bool: return is_instance_valid(u) and not u.dead and u.position.distance_to(site) < 300.0).size()
@@ -2505,8 +2509,8 @@ func _safe_hall_spot() -> Vector2i:
 		score -= _lode_value(c)
 		if r6:
 			score -= _site_bonus(c)
-			if game.base_sites.has(c):
-				score -= SITE_FIRST      # (round 6: a rated base site before any other free ground)
+			if game.base_sites.has(c) and _own_walk(c) <= SITE_REACH:
+				score -= SITE_FIRST      # (round 6: a rated base site near us before any other free ground)
 		if score < bs:
 			bs = score
 			best = c
@@ -2516,9 +2520,13 @@ func _safe_hall_spot() -> Vector2i:
 ## Round 6 (the owner, 2026-10-28: "make sure the Crown and Clockwork try to use the expansion sites to their advantage"):
 ## a base site rated for our side by scripts/expansion_spots.gd (rate_all: the room for an economy on the hall's level,
 ## the ways in, the walk from the main and how much nearer us than the enemy) counts as nearer by the rating's quality
-## (its score without its own walk term, half of it) and the gold-marked best two by RANK_BONUS more. Any other free
-## ground (find_spot round a hall) gets nothing and SITE_FIRST less than a site: it is taken only with no site left.
+## (its score without its own walk term, a quarter of it) and the gold-marked best two by RANK_BONUS more. A site within
+## SITE_REACH steps of our main or a hall of ours also beats any other free ground (find_spot round a hall) by SITE_FIRST:
+## that ground is taken only with no near site left. A far site gets no SITE_FIRST (round 6's first games: the Crown's
+## third hall went to a site 41-47 tiles off on Frostmere instead of ground 20 tiles from its main, and fell).
 const SITE_FIRST := 200.0
+const SITE_REACH := 32.0        # steps by land from our main or nearest hall: a site farther than this gets no SITE_FIRST
+const SITE_Q := 0.25            # the share of a site's rated quality that counts (tiles)
 const RANK_BONUS := [0.0, 12.0, 6.0]
 var _site_q := {}               # cell -> bonus (tiles), our side's rated sites (worked out once)
 
@@ -2529,8 +2537,17 @@ func _site_bonus(c: Vector2i) -> float:
 		if game.exp_spots != null:
 			for s in game.exp_spots.all:
 				if int(s["team"]) == team:
-					_site_q[s["c"]] = 0.5 * (float(s["score"]) + float(s["home"])) + float(RANK_BONUS[clampi(int(s["rank"]), 0, 2)])
+					_site_q[s["c"]] = SITE_Q * (float(s["score"]) + float(s["home"])) + float(RANK_BONUS[clampi(int(s["rank"]), 0, 2)])
 	return float(_site_q.get(c, 0.0))
+
+
+## Steps by land from our main or nearest finished hall to a hall spot.
+func _own_walk(c: Vector2i) -> float:
+	var d := _walk_d(game.starts[team], c)
+	for h in _halls():
+		if h.built:
+			d = minf(d, _walk_d(h.cell, c))
+	return d
 
 
 ## Round 6 (docs/ai_round6.md): is this hall spot on the enemy's side? It is when, walking by land (cliffs count: a
@@ -3596,7 +3613,7 @@ const KEY_TECH := ["armoury", "foundry"]
 
 
 func _keep_tech() -> void:
-	if not r6 or not _crown() or difficulty < 1 or _mine("barracks").is_empty():
+	if not r6_cr or not _crown() or difficulty < 1 or _mine("barracks").is_empty():
 		return
 	if not game.ai_keep.has(team):
 		game.ai_keep[team] = {}
@@ -4120,7 +4137,7 @@ func _army() -> void:
 			return              # (round 5: a bigger wave at the gate: the army holds on the high ground behind the wall)
 		_defend(army, threat, tspots)
 		# (workers: _worker_safety, from the economy think, pulls them out of reach or sends the hands)
-		if not r6 or not _threat_minor(army, tspots):
+		if not r6_cw or not _threat_minor(army, tspots):
 			return
 		# (round 6: a small threat, the detachments deal with it; the rest of the army carries on with its waves. Any enemy
 		# unit near any building of ours held the whole army at home: 136 Clock Soldiers sat out 8 minutes, Kestrel Rise)
@@ -4159,15 +4176,15 @@ func _army() -> void:
 		return
 	# (riders still on foot, their horses on the way, don't count yet: they follow mounted)
 	var ready := army.filter(func(u: Unit) -> bool: return not _horse_coming(u))
-	if r6 and _pull_until > 0.0 and game.clock >= _pull_until:
+	if r6_cw and _pull_until > 0.0 and game.clock >= _pull_until:
 		_pull_until = 0.0
 		_attack_at = mini(_attack_at, _pull_at0)     # (round 6: a pull-back's higher bar lasts PULL_FOR s, no longer)
-	var push := r6 and not _attacking and not peaceful and _push_anyway(ready)
+	var push := r6_cw and not _attacking and not peaceful and _push_anyway(ready)
 	if push and _army_supply(ready) < _attack_at:
 		_attack_at = _army_supply(ready)
 		if game.mlog:
 			game.mlog.add("%s's army is at the supply cap or far ahead (%d supply): it goes out again" % [game.mlog.who(team), _army_supply(ready)])
-	if not _attacking and _army_supply(ready) >= _attack_at and not regrouping and _timing_ok(ready) and _kit_ready(ready) and r5.attack_ok(ready):
+	if not _attacking and _army_supply(ready) >= _attack_at and not regrouping and _timing_ok(ready) and _kit_ready(ready) and r5.attack_ok(ready) and _wave_worth(ready):
 		_attacking = true
 		_wave_target = _enemy_base()
 		_attack_at = mini(_attack_at + int(_s("step")), 70)
@@ -4702,6 +4719,26 @@ const TRADE_RATIO := 2.2
 const TRADE_AVOID := 150.0
 var _trade: Array = []          # [clock, value we killed, value we lost] samples while a wave is out
 var _bad_spots := {}            # Vector2 -> clock until which waves leave the spot be
+
+
+## Round 6 (Crown against the Clockwork, Normal and up): a wave goes out only worth WAVE_EDGE times the biggest enemy
+## army seen lately, or at WAVE_ANYWAY supply (its first waves of 16 supply walked into Clockwork armies three times as
+## big, Greenhold and Frostmere, round 6's first games).
+const WAVE_EDGE := 1.2
+const WAVE_ANYWAY := 60
+var r6_wave := OS.get_cmdline_user_args().has("r6:wave")
+
+
+func _wave_worth(ready: Array) -> bool:
+	if not (r6_cr and r6_wave) or not _crown() or difficulty < 1 or not _foe_is("clockwork") or strategy == "rush":
+		return true
+	if _army_supply(ready) >= WAVE_ANYWAY:
+		return true
+	_horse_watch()
+	var mine := 0.0
+	for u in ready:
+		mine += float(u.d["cost"]) / maxf(1.0, float(u.d.get("spawn", 1)))
+	return mine >= _horse_seen_value() * WAVE_EDGE
 
 
 ## Round 6: a pull-back (_losing_trade) raises the bar for the next wave for PULL_FOR s only, and an army at the supply

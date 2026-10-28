@@ -40,6 +40,8 @@ func _case(kind: String, on: bool) -> bool:
 		else:
 			cw = a
 	cw.r6 = on
+	cw.r6_cw = on
+	cw.r6_cr = on
 	while g.clock < 3.0:
 		await physics_frame
 	var hall: Building = g.halls_of(1)[0]
