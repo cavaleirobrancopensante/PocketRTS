@@ -896,6 +896,19 @@ func _build_card() -> Array:
 					toast("Gates face %s off the palisade; this one follows its line." % way), true, "", ""])
 		list.append(["cancel", "CANCEL", func() -> void: controls.cancel_mode(), true, "", ""])
 		return list
+	if controls.mode == "nb_root":
+		# THE NEW BROOD: ROOT like BUILD (scripts/brood_root.gd): PLACE sends the grub (it turns into it there) or the
+		# creature (it walks there and roots)
+		var nk := controls.place_kind
+		var na: Unit = controls.nb_actor()
+		var nwhy := BroodRoot.place_problem(game, game.human, nk, BroodRoot.feet_at(nk, controls.ghost_cell, controls.nb_sc), na, false, controls.nb_sc)
+		if nwhy == "" and controls.nb_morph:
+			nwhy = BroodRoot.morph_problem(game, game.human, nk)
+		if nwhy == "" and na == null:
+			nwhy = "No grub selected." if controls.nb_morph else "None of them can root now."
+		list.append(["build", "PLACE", func() -> void: confirm_nb_root(), nwhy == "", nwhy, ""])
+		list.append(["cancel", "CANCEL", func() -> void: controls.cancel_mode(), true, "", ""])
+		return list
 	if controls.mode == "lay_line" and controls.line_tool != null:
 		var lt := controls.line_tool
 		list.append(["build", "LAY", func() -> void: lt.confirm(), lt.can_confirm(), lt.why_not(), lt.cost_text()])
@@ -911,6 +924,13 @@ func _build_card() -> Array:
 		return list
 	if not units.is_empty():
 		var has_lab := units.any(func(u: Unit) -> bool: return u.is_worker() or u.kind == "work_car")
+		if BroodNew.on(game, game.human):
+			if page in ["build", "advanced"]:
+				page = ""          # (the new Brood builds nothing: its grubs' card has the creatures they turn into, _nb_buttons)
+			if units.all(func(u: Unit) -> bool: return BroodRoot.fixed(u)):
+				# ROOTED = A BUILDING (the owner, 19:19): no MOVE, ATTACK, STOP, HOLD, PATROL; only its own commands
+				_nb_buttons(list, units)
+				return list
 		if page in ["build", "advanced"] and has_lab:
 			# every building on one card (more pages if they don't fit)
 			var all: Array = Defs.build_list(game.faction_of(game.human))
@@ -1428,28 +1448,71 @@ func _nb_buttons(list: Array, units: Array) -> void:
 		_tip_for[lev.to_upper()] = ["Her laying", "%s. Three things make the Brood Mother lay faster, and they add up: her growth STAGE; every FATHER near her (as in some real lizards, the males' presence speeds the female's eggs: +%d%% each); every Mound Turtle rooted on NEW GROUND, %d tiles or more from her and from the other counted ones (their chimneys pump scent into the swamp water: she tastes new territory and lays more: +%d%% each, up to %d). Turtles at home give supply and swamp only." % [
 			lev, int(float(Defs.NB["father_rate"]) * 100.0), int(Defs.NB["expansion_tiles"]), int(float(Defs.NB["expansion_rate"]) * 100.0), int(Defs.NB["expansion_max"])]]
 		list.append(["brood_mother", lev.to_upper(), func() -> void: pass, false, lev, ""])
-	var rooters := units.filter(func(u: Unit) -> bool: return BroodNew.ROOTERS.has(u.kind) and u.team == game.human)
-	if rooters.is_empty():
-		return
-	var packed := rooters.any(func(u: Unit) -> bool: return u.tesla_mode == "packed")
-	if packed:
-		_tip_for["ROOT"] = ["Root", "Dig in here: armour and a quarter less damage, swamp around it. A Rootmaw drinks its ground (5-tile circle, may not overlap another's); a Mound Turtle sinks into the mud and gives 12 supply and faster eggs; the Tyrannosaur settles on his nest (near the Mother, her warrior eggs are fertilised and hatch in it). They always root facing south-east. The Brood Mother cannot attack while rooted."]
-		list.insert(3, ["ab_nb_root", "ROOT", func() -> void:
-			for u in game.selected_units():
-				if BroodNew.ROOTERS.has(u.kind) and u.tesla_mode == "packed":
-					u.cmd_deploy(), true, "", ""])
-	else:
-		_tip_for["UPROOT"] = ["Uproot", "Pull up the roots and walk. A Rootmaw spills its food as a pile on the ground (grubs still collect it; it rots slowly) and walks off thin and quick."]
-		list.insert(3, ["ab_uproot", "UPROOT", func() -> void:
-			for u in game.selected_units():
-				if BroodNew.ROOTERS.has(u.kind) and u.tesla_mode == "deployed":
-					u.cmd_uproot(true), true, "", ""])
-		if rooters.any(func(u: Unit) -> bool: return u.kind == BroodNew.MAW and u.tesla_mode == "deployed"):
-			_tip_for["HAUL"] = ["Haul", "Uproot the Rootmaw full: it walks at half speed carrying its food and keeps it when it roots again. Killed while hauling, all of it bursts out as a pile."]
-			list.insert(4, ["ab_haul", "HAUL", func() -> void:
+	# GRUBS turn into the structure-units (the owner, 19:19, DECIDED; like the old Brood's grub buildings): the ROOT ghost,
+	# the grub walks there, pays and morphs (scripts/brood_root.gd). No old Brood buildings on their card.
+	if BroodNew.on(game, game.human) and units.any(func(u: Unit) -> bool: return u.kind == "grub" and u.team == game.human):
+		for k in BroodRoot.morph_list():
+			var mk: String = k
+			var mwhy := BroodRoot.morph_problem(game, game.human, mk)
+			var mlab := String(Defs.UNITS[mk]["name"]).to_upper()
+			_tip_for[mlab] = ["Turn a grub into a %s" % Defs.UNITS[mk]["name"], String(Defs.UNITS[mk].get("about", "")) + " Pick where it roots: a grub walks there, pays and morphs in its cocoon (%d s), then it is rooted." % int(BroodNew.egg_time(mk)),
+				"%s  ·  %d s" % [_cost_text(int(game.unit_price(game.human, mk)[0]), int(game.unit_price(game.human, mk)[1])), int(BroodNew.egg_time(mk))]]
+			list.append([mk, mlab, func() -> void:
+				controls.begin_nb_root(mk, true)
+				toast("Pick where it roots: a grub walks there and turns into it."), mwhy == "", mwhy, _price_chip(game.unit_price(game.human, mk), false)])
+	# EGGS: what it will hatch, and how (point 6)
+	var eggs := units.filter(func(u: Unit) -> bool: return u.kind == BroodNew.EGG and u.team == game.human)
+	if not eggs.is_empty():
+		var e0: Unit = eggs[0]
+		var ek := String(e0.nb.get("k", "grub"))
+		var st2 := ""
+		var tip := ""
+		if int(e0.nb.get("fert", 0)) == 1:
+			var left := maxf(0.0, float(Defs.NB["fert_wait"]) - float(e0.nb.get("wait", 0.0)))
+			st2 = "WAITING FOR THE FATHER %ds" % int(ceil(left))
+			tip = "Not fertilised yet: the %s must breathe on it (rooted within %d tiles of the Mother). In %d s it hatches as a grub (the difference paid back)." % [Defs.UNITS[BroodNew.FATHER]["name"], int(Defs.NB["father_r"]), int(ceil(left))]
+		else:
+			var tl := maxf(0.0, BroodNew.egg_time(ek) - float(e0.nb.get("t", 0.0)))
+			st2 = ("FERTILISED %ds" if int(e0.nb.get("fert", 0)) == 2 else "%ds") % int(ceil(tl))
+			tip = "It hatches in %d s%s." % [int(ceil(tl)), " (fertilised by the father)" if int(e0.nb.get("fert", 0)) == 2 else ""]
+		var elab := "%s%s · %s" % [String(Defs.UNITS[ek]["name"]).to_upper(), (" x%d" % eggs.size()) if eggs.size() > 1 else "", st2]
+		_tip_for[elab] = ["Egg: %s" % Defs.train_name(ek), tip + " Right-click (or RALLY) sets where the hatchling goes."]
+		list.append([ek, elab, func() -> void: pass, false, tip, ""])
+	# COCOONS: a grub morphing
+	var cocs := units.filter(func(u: Unit) -> bool: return u.team == game.human and BroodRoot.in_cocoon(u))
+	if not cocs.is_empty():
+		var c0: Unit = cocs[0]
+		var cl := maxf(0.0, BroodRoot.cocoon_time(c0) - float(c0.nb.get("coc", 0.0)))
+		var clab := "MORPHING %ds" % int(ceil(cl))
+		list.append([c0.kind, clab, func() -> void: pass, false, "A grub is turning into a %s: it comes out rooted in %d s." % [c0.d["name"], int(ceil(cl))], ""])
+	var rooters := units.filter(func(u: Unit) -> bool: return BroodNew.ROOTERS.has(u.kind) and u.team == game.human and not BroodRoot.in_cocoon(u))
+	if not rooters.is_empty():
+		var packed := rooters.filter(func(u: Unit) -> bool: return u.tesla_mode == "packed")
+		if not packed.is_empty():
+			# ROOT like BUILD (point 8): the ghost of its rooted footprint; it walks there and roots on that spot
+			var rk: String = packed[0].kind
+			_tip_for["ROOT"] = ["Root", "Pick where it roots (a ghost on the grid, as a building's): it walks there and roots on that spot. Rooted it is a building: armour and a quarter less damage, its footprint blocks the way, it takes no move orders (UPROOT gets it up). A Rootmaw roots only on your swamp, its 5-tile circle clear of another's; a Mound Turtle gives 12 supply and swamp and can close a ramp; the Tyrannosaur nests within %d tiles of the Mother. No rooted creature attacks." % int(Defs.NB["father_r"])]
+			list.insert(mini(3, list.size()), ["ab_nb_root", "ROOT", func() -> void:
+				controls.begin_nb_root(rk, false)
+				toast("Pick where it roots."), true, "", ""])
+		if rooters.any(func(u: Unit) -> bool: return u.tesla_mode == "deployed"):
+			_tip_for["UPROOT"] = ["Uproot", "Pull up the roots and walk: a unit again (its footprint freed). A Rootmaw spills its food as a pile on the ground (grubs still collect it; it rots slowly) and walks off thin and quick."]
+			list.insert(mini(3, list.size()), ["ab_uproot", "UPROOT", func() -> void:
 				for u in game.selected_units():
-					if u.kind == BroodNew.MAW and u.tesla_mode == "deployed":
-						u.cmd_uproot(false), true, "", ""])
+					if BroodNew.ROOTERS.has(u.kind) and u.tesla_mode == "deployed":
+						u.cmd_uproot(true), true, "", ""])
+			if rooters.any(func(u: Unit) -> bool: return u.kind == BroodNew.MAW and u.tesla_mode == "deployed"):
+				_tip_for["HAUL"] = ["Haul", "Uproot the Rootmaw full: it walks at half speed carrying its food and keeps it when it roots again. Killed while hauling, all of it bursts out as a pile."]
+				list.insert(mini(4, list.size()), ["ab_haul", "HAUL", func() -> void:
+					for u in game.selected_units():
+						if u.kind == BroodNew.MAW and u.tesla_mode == "deployed":
+							u.cmd_uproot(false), true, "", ""])
+	# RALLY (point 7): rooted creatures and eggs; a right-click on the ground does the same (and never uproots)
+	if units.any(func(u: Unit) -> bool: return BroodRoot.fixed(u) and u.team == game.human):
+		_tip_for["RALLY"] = ["Rally point", "Where what comes out goes: the Mother's eggs (and their hatchlings), the warriors hatching in the Tyrannosaur's nest, an egg's own hatchling. Right-click the ground does the same; it never uproots."]
+		list.append(["rally", "RALLY", func() -> void:
+			controls.mode = "nb_rally"
+			toast("Tap where the hatchlings go."), true, "", ""])
 
 
 func _ability_buttons(list: Array, units: Array) -> void:
@@ -1873,6 +1936,32 @@ func _log_refused(k: String, why: String) -> void:
 
 ## queued (Shift on a computer): the site goes in the builders' order queue, after what
 ## they already have to do (several Shift-placed buildings are built one after another).
+## THE NEW BROOD's ROOT ghost placed (scripts/brood_root.gd): a grub goes to turn into the creature there, or the
+## creature goes to root there. Shift (a computer): after its orders, and the ghost stays for the next one.
+func confirm_nb_root(queued := false) -> void:
+	queued = queued and Settings.pc()
+	var k := controls.place_kind
+	var a: Unit = controls.nb_actor()
+	var p := BroodRoot.feet_at(k, controls.ghost_cell, controls.nb_sc)
+	var why := BroodRoot.place_problem(game, game.human, k, p, a, false, controls.nb_sc)
+	if why == "" and controls.nb_morph:
+		why = BroodRoot.morph_problem(game, game.human, k)
+	if why == "" and a == null:
+		why = "No grub selected." if controls.nb_morph else "None of them can root now."
+	if why != "":
+		toast(why)
+		Sfx.announce(game.faction_of(game.human), "bad_place", 4.0)
+		return
+	if controls.nb_morph:
+		a.give({"o": "nb_morph", "k": k, "p": p}, queued)
+	else:
+		a.give({"o": "nb_root", "p": p}, queued)
+	game._ping(p, Color(0.5, 1.0, 0.4))
+	Sfx.play_any(["ui/click", "click"])
+	if not queued:
+		controls.cancel_mode()
+
+
 func confirm_place(queued := false) -> void:
 	queued = queued and Settings.pc()
 	var k := controls.place_kind

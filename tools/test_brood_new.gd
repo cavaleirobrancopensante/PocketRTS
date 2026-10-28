@@ -13,6 +13,11 @@ extends SceneTree
 ##  6. UPROOT spills its food as a pile (grubs take from it; it rots); HAUL carries it, slower; killed hauling it bursts
 ##  7. grubs carry food from the Rootmaw to the Mother (biomass comes in)
 ##  8. killing the Mother loses the game
+##  15. ROOTED = A BUILDING (the owner's playtest of 0.15.13, scripts/brood_root.gd): the Mother can't lay the
+##     structure-units, a grub turns into one (walks, pays, cocoon, rooted), one Tyrannosaur counts the morphing grub;
+##     a footprint on the grid that blocks paths and pushes units out; the building layer; a right-click sets the
+##     rally (never uproots), given to her eggs and their hatchlings; ROOT like BUILD (walks to the spot, roots on it);
+##     the building card; idle stillness; the computer's Mother doesn't flip-flop under fire from range
 ## Prints PASS / FAIL lines and "brood_new: N failures".
 var main: Node
 var t := 0.0
@@ -78,9 +83,27 @@ func spot_near(p: Vector2, tiles: float) -> Vector2:
 	for i in 32:
 		var q: Vector2 = p + Vector2.from_angle(TAU * i / 32.0) * tiles * Defs.TILE
 		var c: Vector2i = g.cell_of(q)
-		if g._walkable(c) and int(g.height[g.idx(c)]) == h and g.region_of(c) == g.region_of(g.cell_of(p)):
+		if g._walkable(c) and int(g.height[g.idx(c)]) == h and g.region_of(c) == BroodRoot.home_region(g, p):
 			return q
 	return p
+
+
+## A spot `tiles` (or about) from p where a `k` may root (BroodRoot.place_problem); swamp: the Rootmaw's swamp rule.
+func free_spot(k: String, p: Vector2, tiles: float, me = null, swamp := true) -> Vector2:
+	for r in [tiles, tiles + 1.0, tiles - 1.0, tiles + 2.0, tiles - 2.0, tiles + 3.0, tiles + 4.0]:
+		for i in 32:
+			var s: Vector2 = BroodRoot.snap(k, p + Vector2.from_angle(TAU * i / 32.0) * maxf(r, 0.0) * Defs.TILE)
+			if g.region_of(g.cell_of(s)) == BroodRoot.home_region(g, p) and BroodRoot.place_problem(g, 0, k, s, me, false, 1.0, swamp) == "":
+				return s
+	return p
+
+
+func card_labels() -> Array:
+	var out: Array = []
+	if g.hud:
+		for it in g.hud._build_card():
+			out.append(String(it[1]))
+	return out
 
 
 func _run() -> void:
@@ -113,9 +136,7 @@ func _run() -> void:
 	q.cmd_uproot(true)
 	var packed: bool = await wait_for(func() -> bool: return q.tesla_mode == "packed", 8.0)
 	check(packed, "2. the Mother uproots (%.1f s)" % float(Defs.NB["queen_switch"]))
-	var walk_to: Vector2 = q.position + (maw.position - q.position).normalized() * 3.0 * Defs.TILE     # (toward her Rootmaw: it stays on her swamp)
-	if not g._walkable(g.cell_of(walk_to)):
-		walk_to = spot_near(q.position, 3.0)
+	var walk_to: Vector2 = free_spot(BroodNew.QUEEN, q.position, 3.0, q)      # (where she may root again: her footprint clear)
 	q.cmd_move(walk_to)
 	await wait(1.5)
 	var moving: bool = q.velocity.length() > 5.0
@@ -148,13 +169,18 @@ func _run() -> void:
 	var f: Unit = g._add_unit(BroodNew.FATHER, 0, far)
 	await wait(0.3)
 	check(not BroodNew.father_near(g, 0) and BroodNew.lay_problem(g, q, "raptor") != "", "   the father far from her: still refused")
-	f.position = q.position + Vector2(-q.radius - 140.0, 40.0)
+	f.position = free_spot(BroodNew.FATHER, q.position, 5.0, f)
 	f.cmd_stop()
 	await wait(0.3)
 	check(not BroodNew.father_near(g, 0) and BroodNew.lay_problem(g, q, "raptor").contains("rooted"), "   the father beside her but standing: still refused (%s)" % BroodNew.lay_problem(g, q, "raptor"))
+	var fwhy := BroodNew.root_problem(g, f)
 	f.cmd_deploy()
 	var on_nest: bool = await wait_for(func() -> bool: return f.tesla_mode == "deployed", float(Defs.NB["father_switch"]) + 2.0)
-	check(on_nest and BroodNew.father_near(g, 0) and BroodNew.lay_problem(g, q, "raptor") == "", "   ROOTED on his nest beside her: allowed")
+	check(on_nest and BroodNew.father_near(g, 0) and BroodNew.lay_problem(g, q, "raptor") == "", "   ROOTED on his nest beside her: allowed (%s)" % fwhy)
+	if not on_nest:
+		print("brood_new: %d failures (stopped: the father did not root)" % fails)
+		quit(1)
+		return
 	check(BroodNew.incoming(f, 20.0) < 20.0, "   rooted, he takes less damage (20 -> %.1f)" % BroodNew.incoming(f, 20.0))
 	var r0: int = mine("raptor").size()
 	q.cmd_lay("raptor")
@@ -191,14 +217,18 @@ func _run() -> void:
 	var turned: bool = await wait_for(func() -> bool: return String(lone.nb.get("k", "")) == "grub", float(Defs.NB["fert_wait"]) + 2.0)
 	check(turned and int(lone.nb["fert"]) == 0, "   not fertilised in %d s: it hatches as a grub" % int(Defs.NB["fert_wait"]))
 	check(int(p["gold"]) - gold_a == int(Defs.UNITS["raptor"]["cost"]) - int(Defs.UNITS["grub"]["cost"]), "   the difference paid back (+%d)" % (int(p["gold"]) - gold_a))
-	# 4. one father at a time
-	check(BroodNew.lay_problem(g, q, BroodNew.FATHER).begins_with("Only one"), "4. one Tyrannosaur at a time: %s" % BroodNew.lay_problem(g, q, BroodNew.FATHER))
+	# 4. one father at a time (a grub turns into him now: the Mother lays none)
+	check(BroodNew.lay_problem(g, q, BroodNew.FATHER).begins_with("A grub turns into it"), "4. the Mother lays no Tyrannosaur: %s" % BroodNew.lay_problem(g, q, BroodNew.FATHER))
+	check(BroodRoot.morph_problem(g, 0, BroodNew.FATHER).begins_with("Only one"), "   one Tyrannosaur at a time: %s" % BroodRoot.morph_problem(g, 0, BroodNew.FATHER))
 	f.die()
 	await wait(0.2)
-	check(BroodNew.lay_problem(g, q, BroodNew.FATHER) == "", "   it died: another can be grown from an egg")
-	q.cmd_lay(BroodNew.FATHER)
+	check(BroodRoot.morph_problem(g, 0, BroodNew.FATHER) == "", "   it died: a grub can turn into another")
+	var fg: Unit = mine("grub")[0]
+	fg.give({"o": "nb_morph", "k": BroodNew.FATHER, "p": free_spot(BroodNew.FATHER, q.position, 5.0)})
 	await wait(0.05)
-	check(BroodNew.lay_problem(g, q, BroodNew.FATHER).begins_with("Only one"), "   an egg for one counts")
+	check(BroodRoot.morph_problem(g, 0, BroodNew.FATHER).begins_with("Only one"), "   a grub on its way to turn into one counts")
+	fg.cmd_stop()
+	fg.nb.erase("mk")
 	# 5. the Rootmaw drinks its ground; circles may not overlap
 	for gr in mine("grub"):
 		gr.cmd_stop()
@@ -244,7 +274,7 @@ func _run() -> void:
 	var burst: Array = g.units.filter(func(u) -> bool: return u.kind == BroodNew.PILE and not u.dead and u.position.distance_to(at) < 60.0)
 	check(not burst.is_empty() and float(burst[0].nb["food"]) >= 140.0, "   killed hauling: it bursts, all of it a pile (%.0f)" % (float(burst[0].nb["food"]) if not burst.is_empty() else 0.0))
 	# 7. grubs carry food to the Mother
-	var m2: Unit = g._add_unit(BroodNew.MAW, 0, spot_near(q.position, 7.0))
+	var m2: Unit = g._add_unit(BroodNew.MAW, 0, free_spot(BroodNew.MAW, q.position, 9.0))
 	m2.cmd_deploy()
 	await wait_for(func() -> bool: return m2.tesla_mode == "deployed", 6.0)
 	m2.nb["food"] = 200.0
@@ -256,13 +286,13 @@ func _run() -> void:
 	check(paid, "7. grubs carry food from the Rootmaw to the Mother (%d biomass)" % int(p["gold"]))
 	check(mine("grub").any(func(gr) -> bool: return gr.anim == "harvest" or gr.work == "feeding" or gr.carrying > 0), "   harvesting at its flank")
 	# 12. the turtle is the expansion: a Rootmaw roots only on its side's swamp (any: it need not join the Mother's)
-	var far2 := spot_near(q.position, 21.0)
+	var far2 := free_spot(BroodNew.MAW, q.position, 21.0, null, false)
 	var dir2: Vector2 = (far2 - q.position).normalized()
 	var mx: Unit = g._add_unit(BroodNew.MAW, 0, far2)
 	mx.cmd_deploy()
 	await wait(0.3)
 	check(mx.tesla_mode == "packed", "12. a Rootmaw 21 tiles out (off her swamp) may not root")
-	var tx: Unit = g._add_unit(BroodNew.TURTLE, 0, q.position + dir2 * 14.0 * Defs.TILE)
+	var tx: Unit = g._add_unit(BroodNew.TURTLE, 0, free_spot(BroodNew.TURTLE, q.position + dir2 * 14.0 * Defs.TILE, 0.0))
 	tx.cmd_deploy()
 	await wait(float(Defs.NB["turtle_switch"]) + 1.2)
 	check(BroodNew.on_swamp(g, 0, far2), "    a Mound Turtle rooted 14 tiles out spreads swamp there")
@@ -312,7 +342,7 @@ func _run() -> void:
 	var span: int = (hi.x - lo.x + 1) if hx else (hi.y - lo.y + 1)
 	var wide: int = (hi.y - lo.y + 1) if hx else (hi.x - lo.x + 1)
 	var half_len: float = (float(span) * 0.5 + 4.0) * Defs.TILE
-	var wall: Unit = g._add_unit(BroodNew.TURTLE, 0, mid)
+	var wall: Unit = g._add_unit(BroodNew.TURTLE, 0, BroodRoot.feet_at(BroodNew.TURTLE, BroodRoot.cell_centred(BroodNew.TURTLE, mid)))
 	wall.cmd_deploy()
 	await wait(float(Defs.NB["turtle_switch"]) + 0.5)
 	var runners: Array = []
@@ -321,8 +351,8 @@ func _run() -> void:
 		runners.append(r)
 		r.cmd_move(mid + along * half_len)
 	await wait(25.0)
-	var through: int = runners.filter(func(r) -> bool: return is_instance_valid(r) and not r.dead and (r.position - mid).dot(along) > float(Defs.NB["turtle_rooted_r"]) + 10.0).size()
-	check(through == 0, "13. a rooted Mound Turtle closes a ramp %d tiles wide (%d long): %d of 8 Raptors got past in 25 s" % [wide, span, through])
+	var through: int = runners.filter(func(r) -> bool: return is_instance_valid(r) and not r.dead and (r.position - mid).dot(along) > BroodRoot.rect_for(BroodNew.TURTLE, BroodRoot.snap(BroodNew.TURTLE, mid)).size.x * 0.5 + 26.0).size()
+	check(through == 0, "13. a rooted Mound Turtle closes a ramp %d tiles wide (%d long): %d of 8 Raptors got past in 25 s (ramp cells %s..%s, turtle %s, %s)" % [wide, span, through, str(lo), str(hi), str(wall.rect()), wall.tesla_mode])
 	wall.cmd_uproot(true)
 	await wait(float(Defs.NB["turtle_switch"]) + 0.3)
 	wall.cmd_move(mid + along.orthogonal() * 6.0 * Defs.TILE)
@@ -335,7 +365,7 @@ func _run() -> void:
 		runners.append(r2)
 		r2.cmd_move(mid + along * half_len)
 	await wait(12.0)
-	through = runners.filter(func(r) -> bool: return is_instance_valid(r) and not r.dead and (r.position - mid).dot(along) > float(Defs.NB["turtle_rooted_r"]) + 10.0).size()
+	through = runners.filter(func(r) -> bool: return is_instance_valid(r) and not r.dead and (r.position - mid).dot(along) > BroodRoot.rect_for(BroodNew.TURTLE, BroodRoot.snap(BroodNew.TURTLE, mid)).size.x * 0.5 + 26.0).size()
 	check(through >= 6, "    uprooted and moved off: the ramp is open again (%d of 8 through)" % through)
 	for r in runners:
 		if is_instance_valid(r) and not r.dead:
@@ -348,16 +378,16 @@ func _run() -> void:
 	# 10. the Mound Turtle (the old Clutch Mound): rooted, supply, faster eggs and swamp; uprooted, none
 	var cap0: int = int(p["cap"])
 	var rate0: float = BroodNew.egg_rate(g, 0)
-	var tu: Unit = g._add_unit(BroodNew.TURTLE, 0, spot_near(q.position, 9.0))
+	var tu: Unit = g._add_unit(BroodNew.TURTLE, 0, free_spot(BroodNew.TURTLE, q.position, 9.0))
 	tu.cmd_deploy()
 	await wait(float(Defs.NB["turtle_switch"]) + 0.6)
 	check(tu.tesla_mode == "deployed" and int(p["cap"]) == cap0 + int(Defs.NB["turtle_supply"]), "10. a rooted Mound Turtle gives %d supply (%d -> %d)" % [int(Defs.NB["turtle_supply"]), cap0, int(p["cap"])])
 	check(absf(BroodNew.egg_rate(g, 0) - rate0) < 0.001 and (g.on_swamp(0, tu.position + Vector2(8.0 * Defs.TILE, 0)) or g.on_swamp(0, tu.position + Vector2(-8.0 * Defs.TILE, 0))), "    at home: swamp far round it, but no faster eggs (x%.2f, was x%.2f)" % [BroodNew.egg_rate(g, 0), rate0])
 	# an EXPANSION: a turtle rooted on new ground (15+ tiles from her) makes her lay faster; a second one beside it doesn't
-	var newg: Vector2 = spot_near(q.position, float(Defs.NB["expansion_tiles"]) + 2.0)
+	var newg: Vector2 = free_spot(BroodNew.TURTLE, q.position, float(Defs.NB["expansion_tiles"]) + 2.0)
 	var nb_tx: Unit = g._add_unit(BroodNew.TURTLE, 0, newg)
-	var nb_tx2: Unit = g._add_unit(BroodNew.TURTLE, 0, spot_near(q.position, float(Defs.NB["expansion_tiles"]) + 5.0))
 	nb_tx.cmd_deploy()
+	var nb_tx2: Unit = g._add_unit(BroodNew.TURTLE, 0, free_spot(BroodNew.TURTLE, newg + (newg - q.position).normalized() * 4.5 * Defs.TILE, 0.0))
 	nb_tx2.cmd_deploy()
 	await wait(float(Defs.NB["turtle_switch"]) + 0.6)
 	var nb_lr: Array = BroodNew.lay_rate(g, q)
@@ -451,6 +481,7 @@ func _run() -> void:
 	await wait(0.2)
 	check(int(BroodNew.lay_rate(g, q)[2]) == int(nb_lr2[2]) - 1, "    away from her: he gives nothing (%s)" % BroodNew.levers_text(g, q))
 	g.consume_unit(nb_fx)
+	await _rooted_is_a_building(q, p)
 	# 8. killing the Mother loses
 	q.take_damage(999999.0, null)
 	var out: bool = await wait_for(func() -> bool: return bool(g.eliminated[0]), 3.0)
@@ -476,3 +507,175 @@ func _run() -> void:
 		check(g.buildings.filter(func(b) -> bool: return b.team == 0).is_empty() and not bool(g.eliminated[0]), "   no buildings, and not out")
 	print("brood_new: %d failures" % fails)
 	quit(1 if fails > 0 else 0)
+
+
+## 15. ROOTED = A BUILDING (the owner's playtest of 0.15.13; scripts/brood_root.gd).
+func _rooted_is_a_building(q: Unit, p: Dictionary) -> void:
+	var T := Defs.TILE
+	p["gold"] = 5000
+	for gr in mine("grub"):
+		gr.auto_work = false
+		gr.cmd_stop()
+	# the Mother lays only units
+	check(BroodNew.lay_problem(g, q, BroodNew.MAW).begins_with("A grub turns into it") and not BroodNew.hatch_list().has(BroodNew.TURTLE) \
+		and not BroodNew.hatch_list().has(BroodNew.FATHER), "15. the Mother lays no structure-units: %s" % BroodNew.lay_problem(g, q, BroodNew.MAW))
+	# her footprint: the cells under her are solid, paths go round
+	var qr: Rect2 = q.rect()
+	var solid_ok := true
+	for y in int(qr.size.y / T):
+		for x in int(qr.size.x / T):
+			var c: Vector2i = g.cell_of(qr.position + Vector2(x + 0.5, y + 0.5) * T)
+			if g.solid[g.idx(c)] == 0:
+				solid_ok = false
+	check(BroodRoot.has_fp(q) and solid_ok and qr.size.x >= 9.0 * T, "    rooted, the Mother takes a building's footprint (%dx%d tiles, solid)" % [int(qr.size.x / T), int(qr.size.y / T)])
+	var pa := Vector2(qr.position.x - 40.0, qr.get_center().y)
+	var pb := Vector2(qr.end.x + 40.0, qr.get_center().y)
+	if g._walkable(g.cell_of(pa)) and g._walkable(g.cell_of(pb)):
+		var path: PackedVector2Array = g.find_path(pa, pb)
+		var inside := false
+		var cur := pa
+		for pt in path:
+			for s in 20:
+				if qr.grow(-6.0).has_point(cur.lerp(pt, s / 20.0)):
+					inside = true
+			cur = pt
+		check(not inside and path.size() >= 2, "    a path from one side of her to the other goes round her footprint (%d points)" % path.size())
+	else:
+		check(true, "    (her sides are not both open ground here: the path check is skipped)")
+	# a creature rooting pushes out a unit standing there
+	var ms := free_spot(BroodNew.MAW, q.position, 13.0)
+	var mr: Unit = g._add_unit(BroodNew.MAW, 0, ms)
+	var rx: Unit = g._add_unit("raptor", 0, BroodRoot.rect_for(BroodNew.MAW, ms).get_center())
+	mr.cmd_deploy()
+	await wait(0.2)
+	check(BroodRoot.has_fp(mr) and not mr.rect().grow(-2.0).has_point(rx.position), "    rooting pushes a unit standing on its footprint out (%s)" % str(rx.position - mr.position))
+	g.consume_unit(rx)
+	await wait_for(func() -> bool: return mr.tesla_mode == "deployed", 5.0)
+	await wait(0.5)
+	check(mr.get_node_or_null(BroodRoot.SORT) != null and mr.y_sort_enabled and mr.sprite.get_parent().name == BroodRoot.SORT,
+		"    rooted, it is drawn in the building layer (sorted at its footprint's top, %.0f px above its feet)" % -BroodRoot.sort_dy(mr))
+	# a right-click on the ground sets its rally, it never uproots; a move order doesn't walk it off either
+	var rp: Vector2 = spot_near(mr.position, 7.0)
+	g.smart_command([mr], rp)
+	await wait(1.0)
+	check(mr.tesla_mode == "deployed" and BroodRoot.rally_of(mr).distance_to(rp) < 1.0, "    a right-click on the ground sets its rally point; it stays rooted (%s)" % mr.tesla_mode)
+	var at0 := mr.position
+	mr.cmd_move(rp)
+	await wait(1.0)
+	check(mr.tesla_mode == "deployed" and mr.position == at0, "    a move order (a hotkey) doesn't get it up either")
+	# its card is a building's
+	g.set_selection([mr])
+	var labs := card_labels()
+	check(not labs.has("MOVE") and not labs.has("ATTACK") and not labs.has("STOP") and not labs.has("HOLD") and not labs.has("PATROL") \
+		and labs.has("UPROOT") and labs.has("HAUL") and labs.has("RALLY"), "    its card is a building's: %s" % str(labs))
+	# UPROOT: its ground free again, a unit again
+	var old_cells: Array = (mr.nb.get("fpc", []) as Array).duplicate()
+	mr.cmd_uproot(true)
+	await wait_for(func() -> bool: return mr.tesla_mode == "packed", 5.0)
+	await wait(0.4)
+	var freed := old_cells.all(func(i) -> bool: return g.solid[int(i)] == 0)
+	check(not BroodRoot.has_fp(mr) and freed and mr.get_node_or_null(BroodRoot.SORT) == null and not mr.y_sort_enabled, "    UPROOT: its ground free again and drawn as a unit")
+	labs = card_labels()
+	check(labs.has("MOVE") and labs.has("ROOT"), "    uprooted: the unit card (%s)" % str(labs))
+	# ROOT like BUILD: told to root at a spot, it walks there and roots on that exact spot
+	var target := ms
+	for i in 32:
+		# (a spot well away from where it stood, round her)
+		var cand: Vector2 = BroodRoot.snap(BroodNew.MAW, q.position + Vector2.from_angle(TAU * i / 32.0) * 11.0 * T)
+		if cand.distance_to(ms) > 8.0 * T and BroodRoot.home_region(g, cand) == BroodRoot.home_region(g, q.position) and BroodRoot.place_problem(g, 0, BroodNew.MAW, cand, mr) == "":
+			target = cand
+			break
+	mr.give({"o": "nb_root", "p": target})
+	var there: bool = await wait_for(func() -> bool: return mr.tesla_mode != "packed", 40.0)
+	check(there and mr.position.distance_to(target) < 1.0, "    ROOT like BUILD: it walks %.0f tiles to the spot and roots exactly there (%s, off by %.0f px, %s)" % [ms.distance_to(target) / T, mr.tesla_mode, mr.position.distance_to(target), mr.order])
+	var red := BroodRoot.place_problem(g, 0, BroodNew.MAW, mr.position + Vector2(2.0 * T, 0), null)
+	check(red != "", "    the ghost beside it is red: %s" % red)
+	var red2 := ""
+	for i in 32:
+		red2 = BroodRoot.place_problem(g, 0, BroodNew.FATHER, BroodRoot.snap(BroodNew.FATHER, q.position + Vector2.from_angle(TAU * i / 32.0) * 12.0 * T), null)
+		if red2.begins_with("Out of range"):
+			break
+	check(red2.begins_with("Out of range"), "    the Tyrannosaur's ghost out of the father range: %s" % red2)
+	g.consume_unit(mr)
+	# the Mother's rally goes to her eggs, an egg takes its own by right-click, the hatchling walks there
+	var qrally: Vector2 = spot_near(q.position, 10.0)
+	g.smart_command([q], qrally)
+	q.nb["eggs"] = 3
+	var e0: Array = mine(BroodNew.EGG)
+	var lwhy: String = q.cmd_lay("grub")
+	await wait(0.1)
+	var ge_l: Array = mine(BroodNew.EGG).filter(func(e) -> bool: return not e0.has(e))
+	var ge: Unit = ge_l[0] if not ge_l.is_empty() else null
+	check(ge != null and BroodRoot.rally_of(ge).distance_to(qrally) < 1.0, "    the Mother's rally goes to the egg she lays (%s)" % lwhy)
+	if ge != null:
+		var own_r: Vector2 = spot_near(q.position, 12.0)
+		g.smart_command([ge], own_r)
+		check(BroodRoot.rally_of(ge).distance_to(own_r) < 1.0 and ge.nb.has("ro"), "    a right-click gives the egg its own rally")
+		g.set_selection([ge])
+		labs = card_labels()
+		check(labs.any(func(l) -> bool: return String(l).begins_with("GRUB · ")) and labs.has("RALLY") and not labs.has("MOVE"), "    the egg's card says what it hatches: %s" % str(labs))
+		var grubs0: Array = mine("grub")
+		var gid := ge.get_instance_id()
+		await wait_for(func() -> bool: return not is_instance_id_valid(gid) or (instance_from_id(gid) as Unit).dead, float(Defs.UNITS["grub"]["time"]) + 3.0)
+		await wait(0.2)
+		var hatched: Array = mine("grub").filter(func(x) -> bool: return not grubs0.has(x))
+		check(not hatched.is_empty() and hatched[0].order == "move" and hatched[0].order_point.distance_to(own_r) < 20.0, "    the hatchling walks to the egg's rally")
+	BroodRoot.set_rally(q, Vector2.INF)
+	# a grub turns into a structure-unit: walks to the spot, pays, a cocoon (its footprint), then rooted there
+	var tspot := free_spot(BroodNew.TURTLE, q.position, 13.0)
+	var mg: Unit = mine("grub")[0]
+	var gold0: int = int(p["gold"])
+	g.set_selection([mg])
+	labs = card_labels()
+	check(labs.has("ROOTMAW") and labs.has("MOUND TURTLE") and labs.has("TYRANNOSAUR") and not labs.has("CLUTCH MOUND") and not labs.has("BUILD"),
+		"    a grub's card has the creatures it turns into, no old Brood buildings: %s" % str(labs))
+	mg.give({"o": "nb_morph", "k": BroodNew.TURTLE, "p": tspot})
+	var morphed: bool = await wait_for(func() -> bool: return mine(BroodNew.TURTLE).any(func(u) -> bool: return u.position.distance_to(tspot) < 1.0), 40.0)
+	var coc: Array = mine(BroodNew.TURTLE).filter(func(u) -> bool: return u.position.distance_to(tspot) < 1.0)
+	check(morphed and int(p["gold"]) == gold0 - int(Defs.UNITS[BroodNew.TURTLE]["cost"]) and (not is_instance_valid(mg) or mg.dead),
+		"    a grub walks to the spot, pays %d and turns into a Mound Turtle's cocoon" % (gold0 - int(p["gold"])))
+	if not coc.is_empty():
+		var tu: Unit = coc[0]
+		check(BroodRoot.in_cocoon(tu) and BroodRoot.has_fp(tu) and not BroodNew.rooted(tu), "    the cocoon takes its footprint; not working yet")
+		var cap0: int = int(p["cap"])
+		var opened: bool = await wait_for(func() -> bool: return not BroodRoot.in_cocoon(tu), BroodNew.egg_time(BroodNew.TURTLE) + 2.0)
+		await wait(0.3)
+		check(opened and BroodNew.rooted(tu) and tu.position == tspot and int(p["cap"]) == cap0 + int(Defs.NB["turtle_supply"]),
+			"    out of the cocoon (%d s): rooted on that spot, its supply counts" % int(BroodNew.egg_time(BroodNew.TURTLE)))
+		await wait(1.0)
+		check(not BroodNew.producing(g, tu) and tu.sprite.frame == 0, "    idle (a turtle never produces), it holds its first frame")
+		g.consume_unit(tu)
+	# the player's Mother never roots or uproots by herself; the computer's doesn't flip-flop under fire from range
+	var foe: Unit = g._add_unit("musketeer", 1, spot_near(q.position, 9.0))
+	foe.max_hp = 1000000.0
+	foe.hp = foe.max_hp
+	foe.cmd_attack(q)
+	await wait(6.0)
+	check(q.tesla_mode == "deployed", "    the player's rooted Mother under fire stays rooted (no automatic uproot)")
+	var guard := {}
+	var roots := 0
+	var ups := 0
+	var was: String = q.tesla_mode
+	var tg := 0.0
+	while tg < 60.0:
+		BroodNew.mother_guard(g, q, guard, 0.5)
+		await wait(0.5)
+		tg += 0.5
+		if q.tesla_mode != was:
+			if q.tesla_mode == "deploying":
+				roots += 1
+			if q.tesla_mode == "packing":
+				ups += 1
+			was = q.tesla_mode
+		if foe.target != q and foe.order != "attack":
+			foe.cmd_attack(q)
+	check(ups == 1 and roots == 0, "    the computer's Mother shot at from range: up once, and she stays up while it lasts (%d up, %d root in 60 s)" % [ups, roots])
+	g.consume_unit(foe)
+	var t_calm: float = g.clock
+	var back := false
+	while g.clock - t_calm < 60.0 and not back:
+		BroodNew.mother_guard(g, q, guard, 0.5)
+		await wait(0.5)
+		back = q.tesla_mode == "deploying" or q.tesla_mode == "deployed"
+	check(back and g.clock - t_calm >= BroodNew.MOTHER_CALM, "    no enemy left: she roots again after a real calm (%.0f s)" % (g.clock - t_calm))
+	await wait_for(func() -> bool: return q.tesla_mode == "deployed", 30.0)

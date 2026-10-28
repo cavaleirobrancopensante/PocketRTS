@@ -1789,6 +1789,8 @@ func _ready() -> void:
 
 
 func rect() -> Rect2:
+	if _k_nb and nb.has("fpx"):
+		return BroodRoot.rect_of(self)      # (a rooted new-Brood creature: its footprint, as a building's)
 	return Rect2(global_position - Vector2(radius, radius), Vector2(radius, radius) * 2.0)
 
 
@@ -1923,9 +1925,17 @@ func cmd_grow() -> String:
 ## THE NEW BROOD: UPROOT (spill: a Rootmaw spills its food) or HAUL (it keeps it).
 func cmd_uproot(spill: bool) -> void:
 	if game.net_forward(self, "cmd_uproot", [spill]): return
-	if tesla_mode != "deployed":
+	if tesla_mode != "deployed" or nb.has("coc"):
 		return
 	BroodNew.uproot(self, spill)
+
+
+## THE NEW BROOD: a rooted creature's (or an egg's) RALLY POINT (scripts/brood_root.gd); Vector2.INF clears it.
+func cmd_nb_rally(p: Vector2) -> void:
+	if game.net_forward(self, "cmd_nb_rally", [p]): return
+	if BroodRoot.fixed(self):
+		BroodRoot.set_rally(self, p)
+		queue_redraw()
 
 
 ## Go to a spot and cast a spell there (Stormcaller: storm; Spore Mother: miasma).
@@ -2630,7 +2640,7 @@ func cmd_build(site: Building) -> void:
 ## The orders that end by themselves: Shift-queued orders wait behind them. Behind anything
 ## else (idle, hold, working at a post...) a queued order starts at once.
 ## (BOMBARD never ends by itself: with orders queued behind it, it hands over after Defs.BOMBARD.queued shots.)
-const QUEUE_BUSY := ["move", "amove", "attack", "build", "repair", "d_amove", "d_attack", "lead", "mount", "dismount", "bombard"]
+const QUEUE_BUSY := ["move", "amove", "attack", "build", "repair", "d_amove", "d_attack", "lead", "mount", "dismount", "bombard", "nb_root", "nb_morph"]
 
 
 ## Give an order ({"o": move/amove/attack/build/repair/gather/wall, "p", "e", "pieces"}): a
@@ -2747,6 +2757,16 @@ func _start(o: Dictionary) -> bool:
 			cmd_gather(e)
 		"hold":
 			cmd_hold()
+		"nb_root":
+			# the new Brood: walk to the spot and root there (BroodRoot); only a creature that is up
+			if not BroodNew.ROOTERS.has(kind) or tesla_mode != "packed":
+				return false
+			BroodRoot.start_root(self, o["p"])
+		"nb_morph":
+			# the new Brood: a grub walks to the spot, pays and turns into the creature there (BroodRoot)
+			if kind != "grub":
+				return false
+			BroodRoot.start_morph(self, String(o["k"]), o["p"])
 		"act":
 			# an instant command card button queued with Shift (release horse, harness...)
 			(o["fn"] as Callable).call(self)
@@ -3686,6 +3706,10 @@ func _tick_unit(delta: float) -> void:
 			want = _revive(delta)
 		"build":
 			want = _build(delta)
+		"nb_root":
+			want = BroodRoot.root_tick(game, self, delta)
+		"nb_morph":
+			want = BroodRoot.morph_tick(game, self, delta)
 		"lay":
 			want = LineWork.tick(self, delta)
 		"cast":
@@ -3800,6 +3824,11 @@ func _tesla(want: Vector2, delta: float) -> Vector2:
 					game.swamp_dirty = true
 			return Vector2.ZERO
 		"deployed":
+			if _k_nb:
+				# a rooted new-Brood creature is a building: no order walks it off (only UPROOT does, the owner 19:19)
+				if order in ["move", "amove", "patrol", "attack"]:
+					cmd_stop()
+				return Vector2.ZERO
 			if want.length() > 5.0 and order in ["move", "amove", "gather", "build", "cast"]:
 				tesla_mode = "packing"
 				tesla_t = switch_time()
@@ -4066,8 +4095,8 @@ func _arrived() -> bool:
 
 
 func _move(want: Vector2, delta: float) -> void:
-	if work == "feeding" or work == "morphing":
-		velocity = Vector2.ZERO
+	if work == "feeding" or work == "morphing" or (_k_nb and tesla_mode != "packed"):
+		velocity = Vector2.ZERO      # (a new-Brood creature rooting or rooted stands in its own footprint: it never slides)
 		return
 	# neighbours only nudge each other: a unit on the move works it out every other tick, one
 	# standing still every third
@@ -4082,7 +4111,7 @@ func _move(want: Vector2, delta: float) -> void:
 	if stun_t > 0.0 or braced or tongue_stage != "" or (_k_nb and tesla_mode != "packed"):
 		v = Vector2.ZERO           # (a Mist Toad aiming its tongue squats: friends flow round it; a rooted new-Brood creature is dug in: her own eggs don't shove the Mother)
 	velocity = velocity.lerp(v, clampf(delta * 12.0, 0.0, 1.0))
-	if knock.length_squared() > 25.0:
+	if knock.length_squared() > 25.0 and not (_k_nb and tesla_mode != "packed"):
 		position = game.resolve_terrain(position + knock * delta, position, radius, team)
 		knock *= exp(-7.0 * delta)
 	if velocity.length() > speed * 1.3:
@@ -7390,11 +7419,14 @@ func _draw_unit() -> void:
 	var shade := 1.0 - clampf(lifted / 160.0, 0.0, 0.3)
 	# (getting on: he is drawn where the horse stands, his ring goes there too)
 	var ring_at := sprite.position if sprite and anim == "mount" and work == "mounting" else Vector2.ZERO
-	draw_set_transform(ring_at, 0.0, Vector2(1.0, 0.45))
-	draw_circle(Vector2.ZERO, (radius + 2.0) * shade, Color(0, 0, 0, 0.25 + 0.3 * clampf(lifted / 30.0, 0.0, 1.0)))
-	if selected:
-		draw_arc(Vector2.ZERO, radius + 5.0, 0, TAU, 24, Color(0.4, 1.0, 0.4, 0.9), 2.0)
-	draw_set_transform(Vector2.ZERO)
+	if not (_k_nb and nb.has("fpx")):
+		# (a rooted new-Brood creature is drawn in the building layer, under this: no shadow on its body; selected, its
+		# footprint is outlined: BroodNew.draw)
+		draw_set_transform(ring_at, 0.0, Vector2(1.0, 0.45))
+		draw_circle(Vector2.ZERO, (radius + 2.0) * shade, Color(0, 0, 0, 0.25 + 0.3 * clampf(lifted / 30.0, 0.0, 1.0)))
+		if selected:
+			draw_arc(Vector2.ZERO, radius + 5.0, 0, TAU, 24, Color(0.4, 1.0, 0.4, 0.9), 2.0)
+		draw_set_transform(Vector2.ZERO)
 	if haul_t >= 0.0 and kind == "balloon" and _haul_node == null:
 		_draw_haul(self)
 	var top := -float(ArtData.UNITS[art]["anchor"].y) * float(d.get("art_scale", 1.0)) - 4.0 - lifted

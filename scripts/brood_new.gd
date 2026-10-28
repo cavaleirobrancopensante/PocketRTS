@@ -38,9 +38,11 @@ static func is_nb(k: String) -> bool:
 	return KINDS.has(k)
 
 
-## What the Mother's card offers, in order (the warriors need the father beside her).
+## What the Mother's card offers, in order (the warriors need the father beside her). She lays only UNITS: grubs and
+## warriors. The structure-units (the Rootmaw, the Mound Turtle, the fathers) come from grubs (the owner, 19:19:
+## BroodRoot.morph_list).
 static func hatch_list() -> Array:
-	return ["grub", MAW, TURTLE, FATHER] + (Defs.NB["lines"][FATHER] as Array)
+	return ["grub"] + (Defs.NB["lines"][FATHER] as Array)
 
 
 ## The father a warrior needs ("" for none: grubs, Rootmaws, the Tyrannosaur itself).
@@ -65,8 +67,9 @@ static func queen(g: Game, t: int) -> Unit:
 	return null
 
 
+## Rooted and working (a cocoon is rooted but not open yet: BroodRoot).
 static func rooted(u: Unit) -> bool:
-	return u.tesla_mode == "deployed"
+	return u.tesla_mode == "deployed" and not u.nb.has("coc")
 
 
 static func father(g: Game, t: int) -> Unit:
@@ -83,10 +86,14 @@ static func father_near(g: Game, t: int) -> bool:
 	return f != null and q != null and rooted(f) and f.position.distance_to(q.position) <= float(Defs.NB["father_r"]) * Defs.TILE
 
 
-static func count_of(g: Game, t: int, k: String) -> int:
+## How many `k` a side has: alive, in an egg, in a cocoon, or a grub on its way to turn into one (not `skip`).
+static func count_of(g: Game, t: int, k: String, skip: Unit = null) -> int:
 	var n := 0
 	for u in g.units:
-		if u.team == t and not u.dead and (u.kind == k or (u.kind == EGG and String(u.nb.get("k", "")) == k)):
+		if u == skip or u.team != t or u.dead:
+			continue
+		if u.kind == k or (u.kind == EGG and String(u.nb.get("k", "")) == k) \
+				or (u.kind == "grub" and u.order == "nb_morph" and String(u.nb.get("mk", "")) == k):
 			n += 1
 	return n
 
@@ -97,30 +104,36 @@ static func count_of(g: Game, t: int, k: String) -> int:
 ## Both play the end of their rooting (a cue that they are dug in).
 static func start(g: Game, t: int, cell: Vector2i) -> void:
 	var size: Vector2i = Defs.BUILDINGS["hive"]["size"]
-	var c := (Vector2(cell) + Vector2(size) * 0.5) * Defs.TILE
+	var c := BroodRoot.snap(QUEEN, (Vector2(cell) + Vector2(size) * 0.5) * Defs.TILE)
 	var q := g._add_unit(QUEEN, t, c)
 	q.facing = SE
 	q.nb["eggs"] = int(Defs.NB["start_eggs"])
-	_start_rooting(q)
-	var spot := _maw_start_spot(g, c)
+	var spot := BroodRoot.snap(MAW, _maw_start_spot(g, c))      # (before her footprint is taken: her cell's region is looked at)
+	_start_rooting(g, q)
 	var m := g._add_unit(MAW, t, spot)
 	m.facing = SE
 	m.nb["food"] = float(Defs.NB["start_food"])       # (the first loads are ready: the grubs start at once)
 	_claim(g, m)
-	_start_rooting(m)
-	var away := 80.0 if c.y < Game.H * Defs.TILE * 0.5 else -80.0
+	_start_rooting(g, m)
+	# the grubs just outside her nest's ground, on the side away from the map's edge
+	var qr := BroodRoot.rect_of(q)
+	var gy := qr.end.y + 22.0 if c.y < Game.H * Defs.TILE * 0.5 else qr.position.y - 22.0
 	for i in int(Defs.FACTIONS["brood"]["start_workers"]):
-		var gr := g._add_unit("grub", t, c + Vector2(-60 + i * 30, away))
+		var gp := Vector2(c.x - 60.0 + i * 30.0, gy)
+		if not g._clear_at(gp, 8.0, t):
+			gp = g.cell_center(g.nearest_free(g.cell_of(gp), 6))
+		var gr := g._add_unit("grub", t, gp)
 		gr.cmd_gather(m)
 	g.players[t]["gold"] = Defs.START_GOLD
 	recount(g, t)
 	g.swamp_dirty = true
 
 
-static func _start_rooting(u: Unit) -> void:
+static func _start_rooting(g: Game, u: Unit) -> void:
 	u.tesla_mode = "deploying"
 	u.tesla_t = float(Defs.NB["start_root"])
 	u.nb["m"] = "deploying"
+	BroodRoot.footprint_on(g, u)
 
 
 ## Fresh ground beside the Mother (clear of her great body: about 8 to 10 tiles out), walkable round it, on her level,
@@ -130,7 +143,7 @@ static func _maw_start_spot(g: Game, c: Vector2) -> Vector2:
 	var away := (c - mid).normalized() if c.distance_to(mid) > 1.0 else Vector2.DOWN
 	var h := int(g.height[g.idx(g.cell_of(c))])
 	var home := g.region_of(g.cell_of(c))
-	var best := c + away * 64.0
+	var best := c + away * 10.0 * Defs.TILE      # (none found: out past her nest)
 	var bs := -INF
 	for r in [8.5, 9.5, 7.5, 10.5, 6.5]:
 		for i in 24:
@@ -146,8 +159,9 @@ static func _maw_start_spot(g: Game, c: Vector2) -> Vector2:
 					var c2 := cc + Vector2i(dx, dy)
 					if g.in_map(c2) and g._walkable(c2) and int(g.height[g.idx(c2)]) == h:
 						room += 1
-			if room < 22:
-				continue
+			if room < 22 or BroodRoot.place_problem(g, -1, MAW, p, null, false, 1.0, false) != "" \
+					or BroodRoot.rect_for(QUEEN, c).grow(Defs.TILE).intersects(BroodRoot.rect_for(MAW, p)):
+				continue          # (its whole footprint must fit)
 			var s: float = dir.dot(away) * 0.5 + room * 0.05 - absf(r - 8.5) * 0.3
 			if s > bs:
 				bs = s
@@ -228,7 +242,7 @@ static func fathers_near(g: Game, q: Unit) -> int:
 	var n := 0
 	var r := float(Defs.NB["father_r"]) * Defs.TILE
 	for u in g.units:
-		if u.team == q.team and not u.dead and (Defs.NB["lines"] as Dictionary).has(u.kind) and u.position.distance_to(q.position) <= r:
+		if u.team == q.team and not u.dead and (Defs.NB["lines"] as Dictionary).has(u.kind) and not u.nb.has("coc") and u.position.distance_to(q.position) <= r:
 			n += 1
 	return n
 
@@ -334,6 +348,8 @@ static func lay_problem(g: Game, q: Unit, k: String) -> String:
 	if q == null or q.dead:
 		return "No Brood Mother."
 	if not hatch_list().has(k):
+		if BroodRoot.morph_list().has(k):
+			return "A grub turns into it now: pick it on a grub's card."
 		return "Not in the new Brood yet."
 	if float(q.nb.get("grow_t", 0.0)) > 0.0:
 		return "She is growing: no eggs meanwhile."
@@ -406,6 +422,7 @@ static func lay(g: Game, q: Unit, k: String) -> String:
 		e.nb["nest"] = true
 		e.nb["drop"] = 0.0
 	e.facing = Vector2.DOWN
+	BroodRoot.set_rally(e, BroodRoot.rally_of(q), false)       # (her rally goes to each egg she lays)
 	if q.team == g.human:
 		Sfx.play_any(["work/grub_deliver", "hatch"], p, -8.0)
 	recount(g, q.team)
@@ -455,6 +472,12 @@ static func _hatch(g: Game, e: Unit) -> void:
 	e.selected = false
 	g.selection.erase(e)
 	var n := int(Defs.UNITS[k].get("spawn", 1))
+	var rp := BroodRoot.hatch_rally(g, e)
+	# hatched inside a rooted creature's footprint (the father's nest): out at its rim, toward the rally
+	for o in g.nb_fp:
+		if is_instance_valid(o) and not o.dead and BroodRoot.has_fp(o) and BroodRoot.rect_of(o).grow(4.0).has_point(at):
+			at = BroodRoot.out_of(g, BroodRoot.rect_of(o), at, rp)
+			break
 	g.stats[t]["trained"] += n
 	if g.mlog and not g._first_of.has("%d:%s" % [t, k]):
 		g._first_of["%d:%s" % [t, k]] = true
@@ -466,6 +489,8 @@ static func _hatch(g: Game, e: Unit) -> void:
 		var off := Vector2.from_angle(TAU * i / maxf(1.0, n) + float(e.serial)) * (6.0 if n > 1 else 0.0)
 		var u := g._add_unit(k, t, at + off)
 		u.facing = Vector2.DOWN
+		if BroodRoot.send(g, u, rp, i):
+			continue          # (to the rally: the Mother's, the egg's own, or the father's for his nest)
 		if k == "grub":
 			var src := free_source(g, t, u.position)
 			if src:
@@ -576,11 +601,16 @@ static func father_tick(g: Game, f: Unit, delta: float) -> void:
 
 ## The computer's Mother (and the defence test's): rooted at home. No rooted creature attacks (the owner, 15:58, 17:14):
 ## when enemies reach her (strike at her, or come within MOTHER_FIGHT tiles of her body) she uproots and fights, on a
-## leash (MOTHER_LEASH tiles from her nest); once nothing has been at her for MOTHER_CALM s, she goes back and roots.
-## st: the caller's own state (her nest, the calm time); dt: the time since the last call.
+## leash (MOTHER_LEASH tiles from her nest). She STAYS UP while any enemy is near (MOTHER_NEAR tiles of her body, or one
+## aiming at her from farther), and roots again only after MOTHER_CALM s of real calm, counted only once she is fully
+## up (round 2 of the coached games, docs/brood_new_play_2.md: a shooter aiming at her from range woke her, her calm
+## time kept counting while she got up, and she rooted again at once: five times in 90 s, her swamp, Rootmaws and GROW
+## lost each time). Only the computer calls this, for its own Mother: the player's Mother never roots or uproots by
+## herself. st: the caller's own state (her nest, the calm time); dt: the time since the last call.
 const MOTHER_FIGHT := 3.0
 const MOTHER_LEASH := 7.0
-const MOTHER_CALM := 4.0
+const MOTHER_CALM := 9.0
+const MOTHER_NEAR := 10.0
 
 
 static func mother_guard(g: Game, q: Unit, st: Dictionary, dt: float) -> void:
@@ -588,17 +618,24 @@ static func mother_guard(g: Game, q: Unit, st: Dictionary, dt: float) -> void:
 		st["home"] = q.position
 		st["calm"] = 0.0
 	var home: Vector2 = st["home"]
-	var foe: Unit = null
+	var foe: Unit = null           # (one at her: she gets up for it and fights it)
 	var fd := INF
-	for u in g.units_near(q.position, (MOTHER_FIGHT + 6.0) * Defs.TILE):
+	var near := false              # (any enemy about: she stays up)
+	for u in g.units_near(q.position, (MOTHER_NEAR + 5.0) * Defs.TILE):
 		if not g.hostile(u.team, q.team) or u.dead or u.off_field or u.is_air():
 			continue
-		var at_her: bool = u.target == q or q.edge_distance(u.position) < MOTHER_FIGHT * Defs.TILE
+		var ed := q.edge_distance(u.position)
+		if u.target == q or ed < MOTHER_NEAR * Defs.TILE:
+			near = true
+		var at_her: bool = u.target == q or ed < MOTHER_FIGHT * Defs.TILE
 		var dd: float = u.position.distance_to(q.position)
 		if at_her and dd < fd:
 			fd = dd
 			foe = u
-	st["calm"] = 0.0 if foe != null else float(st["calm"]) + dt
+	if foe != null or near or q.tesla_mode != "packed":
+		st["calm"] = 0.0          # (the calm counts only while she is fully up and nobody is about)
+	else:
+		st["calm"] = float(st["calm"]) + dt
 	match q.tesla_mode:
 		"deployed":
 			if foe != null:
@@ -638,17 +675,10 @@ static func fertilising(u: Unit) -> bool:
 
 # ------------------------------------------------------------------ ground (the Rootmaws' circles)
 
-## Why a Rootmaw can't root here ("" = it can): its circle may not overlap another rooted Rootmaw's.
+## Why it can't root where it stands ("" = it can): the ROOT placement rules (BroodRoot.place_problem: its footprint on
+## the grid, a Rootmaw on swamp with its circle clear, the Tyrannosaur in the father's range).
 static func root_problem(g: Game, u: Unit) -> String:
-	if u.kind != MAW:
-		return ""
-	if not on_swamp(g, u.team, u.position):
-		return "A Rootmaw roots only on your swamp: root a Mound Turtle (or the Brood Mother) to spread it."
-	var r := float(Defs.PIT_CLAIM) * Defs.TILE * 2.0
-	for o in g.units:
-		if o != u and o.kind == MAW and not o.dead and o.tesla_mode != "packed" and o.position.distance_to(u.position) < r:
-			return "Too close to another Rootmaw's ground: their circles may not overlap."
-	return ""
+	return BroodRoot.place_problem(g, u.team, u.kind, u.position, u, false, BroodRoot.scale_of(u))
 
 
 ## The Rootmaw takes its circle of ground: fresh (Defs.PIT_GROUND), or what is left of old ground it overlaps (the
@@ -685,8 +715,20 @@ static func ground_left(g: Game, u: Unit) -> float:
 static func on_root(g: Game, u: Unit) -> String:
 	var why := root_problem(g, u)
 	if why != "":
+		# (rooted where it stands: a tile to one side may be clear, as its feet are seldom on the grid's line)
+		var sc := BroodRoot.scale_of(u)
+		for off in [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1), Vector2(1, 1), Vector2(-1, 1), Vector2(1, -1), Vector2(-1, -1)]:
+			var p2: Vector2 = u.position + off * Defs.TILE
+			if g._walkable(g.cell_of(p2)) and BroodRoot.place_problem(g, u.team, u.kind, p2, u, false, sc) == "":
+				u.position = BroodRoot.snap(u.kind, p2, sc)
+				why = ""
+				break
+	if why != "":
 		return why
 	u.facing = SE
+	u.position = BroodRoot.snap(u.kind, u.position, BroodRoot.scale_of(u))     # (on the grid: its footprint, as a building's)
+	g.note_move(u)
+	BroodRoot.footprint_on(g, u)
 	if u.kind == MAW:
 		_claim(g, u)
 	return ""
@@ -722,6 +764,9 @@ static func spill(g: Game, u: Unit) -> void:
 
 ## Each tick of a new-Brood creature (from Unit._tick_unit, after its speed is set).
 static func tick(g: Game, u: Unit, delta: float) -> void:
+	if u.nb.has("coc"):
+		BroodRoot.cocoon_tick(g, u, delta)      # (a grub's cocoon: nothing else until it opens)
+		return
 	var m := String(u.nb.get("m", "packed"))
 	if m != u.tesla_mode:
 		_mode_changed(g, u, m)
@@ -744,6 +789,8 @@ static func tick(g: Game, u: Unit, delta: float) -> void:
 					u.nb["grow_t"] = 0.0
 					u.nb["stage"] = stage(u) + 1
 					apply_stage(u)
+					if BroodRoot.has_fp(u):
+						BroodRoot.footprint_on(g, u)      # (bigger: her nest's ground grows)
 					recount(g, u.team)
 					g.swamp_dirty = true
 					if u.team == g.human:
@@ -804,16 +851,12 @@ static func _mode_changed(g: Game, u: Unit, was: String) -> void:
 			recount(g, u.team)
 			g.swamp_dirty = true
 		"deploying":
-			if u.kind == TURTLE:
-				u.radius = float(Defs.NB["turtle_rooted_r"])       # (sunk into the mud, wide: it closes a ramp)
-				if not g.nb_walls.has(u):
-					g.nb_walls.append(u)
+			if not BroodRoot.has_fp(u):
+				BroodRoot.footprint_on(g, u)      # (rooted by any way other than the button: still takes its ground)
 			if was == "packed" and u.kind == MAW and not u.nb.has("spot"):
-				_claim(g, u)      # (rooted by any way other than the button: still takes its ground)
+				_claim(g, u)
 		"packed":
-			if u.kind == TURTLE:
-				u.radius = float(u.d["radius"])
-				g.nb_walls.erase(u)
+			BroodRoot.footprint_off(g, u)        # (up: a unit again, its ground free)
 			recount(g, u.team)
 
 
@@ -870,6 +913,8 @@ static func on_death(g: Game, u: Unit) -> void:
 	if u.kind == EGG:
 		g.corpses.erase(u)
 	g.nb_walls.erase(u)
+	if BroodRoot.has_fp(u):
+		BroodRoot.footprint_off(g, u)
 	if u.team >= 0:
 		recount(g, u.team)
 		g.swamp_dirty = true
@@ -936,6 +981,9 @@ static func load_value(g: Game, src: Unit, t: int) -> float:
 static func flank_point(g: Game, src: Unit, gr: Unit) -> Vector2:
 	var i := (gr.serial % 7) - 3
 	var base := src.position + Vector2(-src.radius - 6.0, -2.0) if src.kind == MAW else src.position
+	if src.kind == MAW and BroodRoot.has_fp(src):
+		var r := BroodRoot.rect_of(src)
+		base = Vector2(r.position.x - 7.0, r.get_center().y + 6.0)       # (rooted: just outside its footprint, at its flank)
 	return base + Vector2(float(i) * 2.0, float(i) * 5.0)
 
 
@@ -956,6 +1004,7 @@ static func grub_tick(g: Game, gr: Unit, delta: float) -> Vector2:
 	match gr.work:
 		"feeding":
 			gr.facing = (src.position - gr.position).normalized()
+			src.nb["hv"] = g.clock          # (being harvested: it moves, BroodNew.producing)
 			gr.work_t -= delta
 			if gr.work_t <= 0.0:
 				var v := load_value(g, src, gr.team)
@@ -1015,6 +1064,8 @@ static func anim(u: Unit, moving: bool) -> String:
 			return "idle"
 		QUEEN, MAW, TURTLE, FATHER:
 			var fr: Dictionary = ArtData.UNITS[u.art]["frames"]
+			if u.nb.has("coc"):
+				return "fill1" if fr.has("fill1_se") else "rooted"        # (in its cocoon: BroodRoot.cocoon_look)
 			if u.kind == QUEEN and float(u.nb.get("devour", 0.0)) > 0.0:
 				return "attack"         # (SACRIFICE: she devours the creature offered up)
 			if u.tesla_mode == "deploying":
@@ -1045,6 +1096,8 @@ static func death_anim(u: Unit) -> String:
 ## After Unit._animate picked the strip and stepped the frame: frames that follow the state, not the clock.
 static func animate(u: Unit, n: int) -> void:
 	var s := u.sprite
+	if ROOTERS.has(u.kind):
+		BroodRoot.layer(u)        # (rooted: the building layer; up, or dead: a unit again)
 	if u.dead:
 		return
 	match u.anim:
@@ -1108,6 +1161,23 @@ static func animate(u: Unit, n: int) -> void:
 		s.scale = Vector2(signf(s.scale.x) if s.scale.x != 0.0 else 1.0, 1.0)
 	if ROOTERS.has(u.kind):
 		_rooted_look(u, n)
+		BroodRoot.cocoon_look(u)
+
+
+## Rooted, is it working (the owner, 19:19: a rooted creature animates only while producing or being harvested; else
+## it holds its loop's first frame)? The Mother laying, growing, or her laying timer running with room in the clutch;
+## the Tyrannosaur fertilising; a Rootmaw drinking its ground or being harvested at its flank; the turtle never.
+static func producing(g: Game, u: Unit) -> bool:
+	match u.kind:
+		QUEEN:
+			return float(u.nb.get("lay_t", 0.0)) > 0.0 or float(u.nb.get("grow_t", 0.0)) > 0.0 or int(u.nb.get("eggs", 0)) < eggs_max(u)
+		FATHER:
+			return fertilising(u)
+		MAW:
+			if g.clock - float(u.nb.get("hv", -99.0)) < 1.5:
+				return true
+			return rooted(u) and not bool(u.nb.get("dry", false)) and ground_left(g, u) >= 1.0 and float(u.nb.get("food", 0.0)) < float(Defs.NB["maw_cap"]) - 0.5
+	return false
 
 
 ## A Rootmaw's food level, 1 (thin) to 6 (full): the frame of its fill strip, or its breathing strip fill1..fill6.
@@ -1133,9 +1203,14 @@ static func _rooted_look(u: Unit, n: int) -> void:
 	var a := u.anim
 	var still := (a == "rooted" or a == "fill") and n <= 1 or a == "fill"
 	var sx := signf(s.scale.x) if s.scale.x != 0.0 else 1.0
+	# IDLE STILLNESS (the owner, 19:19): rooted and not producing (BroodNew.producing), it holds its loop's first frame:
+	# no breathing, no pulse
+	var idle: bool = (u.tesla_mode == "deployed" and (a == "rooted" or a.begins_with("fill")) and (u.nb.has("coc") or not producing(u.game, u)))
 	if a.begins_with("fill") and a != "fill" and n > 1:
-		s.frame = int(clk * 2.5) % n         # (a Rootmaw's drawn breathing at its food stage: a slow loop)
-	if still:
+		s.frame = 0 if idle else int(clk * 2.5) % n         # (a Rootmaw's drawn breathing at its food stage: a slow loop)
+	elif idle and a == "rooted":
+		s.frame = 0
+	if still and not idle:
 		var b := sin(clk * TAU / float(BREATH["period"]))
 		s.scale = Vector2(sx * (1.0 - float(BREATH["rise"]) * 0.3 * b), 1.0 + float(BREATH["rise"]) * b)
 	var lay := 0.0
@@ -1153,7 +1228,7 @@ static func _rooted_look(u: Unit, n: int) -> void:
 		s.scale = Vector2(sx * k * hx, k * hy)
 	# the glow over its food, eggs or breath
 	var gk := "glow_%s_%s" % [a, u.anim_dir]
-	var glow := u.get_node_or_null("Glow") as Sprite2D
+	var glow := BroodRoot.pic_parent(u).get_node_or_null("Glow") as Sprite2D
 	var has_glow: bool = ArtData.UNITS[u.art]["frames"].has(gk) and u.tesla_mode != "packed"
 	if has_glow:
 		if glow == null:
@@ -1163,7 +1238,7 @@ static func _rooted_look(u: Unit, n: int) -> void:
 			var cm := CanvasItemMaterial.new()
 			cm.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 			glow.material = cm
-			u.add_child(glow)
+			BroodRoot.pic_parent(u).add_child(glow)
 		var tx := Game.tex("res://assets/units/%s/%s.png" % [u.art, gk])
 		if glow.texture != tx:
 			glow.texture = tx
@@ -1172,11 +1247,12 @@ static func _rooted_look(u: Unit, n: int) -> void:
 		glow.scale = s.scale
 		glow.position = s.position
 		glow.frame = clampi(s.frame, 0, glow.hframes - 1)
-		var pulse := 0.5 + 0.5 * sin(clk * TAU / 2.2)
+		var pulse := 0.0 if idle else 0.5 + 0.5 * sin(clk * TAU / 2.2)
 		var lo := 0.18
 		var hi := 0.42
 		if u.kind == FATHER:
-			pulse = clampf(pulse * 0.75 + 0.25 * absf(sin(clk * 11.0 + sin(clk * 3.7) * 2.0)), 0.0, 1.0)     # (fire flickers)
+			if not idle:
+				pulse = clampf(pulse * 0.75 + 0.25 * absf(sin(clk * 11.0 + sin(clk * 3.7) * 2.0)), 0.0, 1.0)     # (fire flickers)
 			lo = 0.1          # (light: his fertilising loop is drawn, its six frames hardly differ)
 			hi = 0.3
 		elif a == "lay":
@@ -1187,7 +1263,7 @@ static func _rooted_look(u: Unit, n: int) -> void:
 	elif glow != null:
 		glow.visible = false
 	# standing to rooted (and back) without rooting frames: the two pictures cross-faded
-	var xf := u.get_node_or_null("Xf") as Sprite2D
+	var xf := BroodRoot.pic_parent(u).get_node_or_null("Xf") as Sprite2D
 	var fading := a == "rooted" and (u.tesla_mode == "deploying" or u.tesla_mode == "packing")
 	if fading:
 		var p := clampf(1.0 - u.tesla_t / maxf(u.switch_time(), 0.01), 0.0, 1.0)
@@ -1201,8 +1277,8 @@ static func _rooted_look(u: Unit, n: int) -> void:
 			xf.texture = stx
 			var cell: Vector2i = ArtData.UNITS[u.art]["cell"]
 			xf.offset = -Vector2(ArtData.UNITS[u.art]["anchor"]) - Vector2(0, stx.get_height() - cell.y)
-			u.add_child(xf)
-			u.move_child(xf, s.get_index() + 1)
+			BroodRoot.pic_parent(u).add_child(xf)
+			BroodRoot.pic_parent(u).move_child(xf, s.get_index() + 1)
 		xf.visible = true
 		xf.self_modulate.a = 1.0 - shown
 		s.self_modulate.a = shown
@@ -1240,13 +1316,30 @@ static func draw(u: Unit, top: float) -> void:
 			u.draw_rect(Rect2(-bw * 0.5, y + 4.5, bw, 2).grow(0.5), Color(0, 0, 0, 0.6))
 			u.draw_rect(Rect2(-bw * 0.5, y + 4.5, bw * gl, 2), Color(0.55, 0.4, 0.25))
 	if u.selected and u.kind == MAW and u.team == g.human:
-		u.draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.6))
 		u.draw_arc(Vector2.ZERO, float(Defs.PIT_CLAIM) * Defs.TILE, 0, TAU, 48, Color(0.75, 0.9, 0.3, 0.45), 1.5)
-		u.draw_set_transform(Vector2.ZERO)
-	if u.selected and (u.kind == FATHER or u.kind == QUEEN) and u.team == g.human:
-		u.draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.6))
-		u.draw_arc(Vector2.ZERO, float(Defs.NB["father_r"]) * Defs.TILE, 0, TAU, 56, Color(1.0, 0.55, 0.3, 0.45), 1.5)
-		u.draw_set_transform(Vector2.ZERO)
+	# (the father's range round the Mother: the game's overlay draws it, BroodRoot.draw_overlay)
+	if u.selected and BroodRoot.has_fp(u) and ROOTERS.has(u.kind):
+		# rooted = a building: its footprint outlined, as a selected building's
+		var fr := BroodRoot.rect_of(u)
+		u.draw_rect(Rect2(fr.position - u.position, fr.size), Color(0.4, 1.0, 0.4, 0.75), false, 2.0)
+	if u.selected and mine and (BroodRoot.fixed(u)):
+		var rp := BroodRoot.rally_of(u)
+		if u.kind == EGG and bool(u.nb.get("nest", false)) and not u.nb.has("ro"):
+			rp = BroodRoot.hatch_rally(g, u)
+		if rp != Vector2.INF:
+			# its RALLY POINT (as a building's: a dashed line and a dot)
+			u.draw_dashed_line(Vector2(0, -12), rp - u.position, Color(0.4, 1, 0.4, 0.65), 2.0, 8.0)
+			u.draw_circle(rp - u.position, 4.5, Color(0.4, 1, 0.4, 0.95))
+			u.draw_line(rp - u.position, rp - u.position + Vector2(0, -18), Color(0.4, 1, 0.4, 0.95), 2.0)
+			u.draw_colored_polygon(PackedVector2Array([rp - u.position + Vector2(0, -18), rp - u.position + Vector2(11, -14), rp - u.position + Vector2(0, -10)]), Color(0.4, 1, 0.4, 0.95))
+	if u.nb.has("coc") and mine:
+		# the cocoon's morph, as a building going up
+		var cp := clampf(float(u.nb["coc"]) / maxf(BroodRoot.cocoon_time(u), 0.1), 0.0, 1.0)
+		var cr := BroodRoot.rect_of(u)
+		var by := cr.end.y - u.position.y + 6.0
+		var cw := cr.size.x * 0.7
+		u.draw_rect(Rect2(-cw * 0.5 + cr.get_center().x - u.position.x, by, cw, 4).grow(0.5), Color(0, 0, 0, 0.6))
+		u.draw_rect(Rect2(-cw * 0.5 + cr.get_center().x - u.position.x, by, cw * cp, 4), Color(0.85, 0.75, 0.35))
 	if u.kind == FATHER and mine and rooted(u):
 		# his nest's queue, as a Barracks': the eggs in it, the first one's breath or incubation
 		var eggs := nest_eggs(g, u)
@@ -1279,6 +1372,15 @@ static func draw(u: Unit, top: float) -> void:
 
 ## The key the egg's picture changes on (Unit._draw_key): progress and state.
 static func draw_key(u: Unit) -> int:
+	var x := 0
+	if u.nb.has("rx"):
+		x += (int(float(u.nb["rx"])) * 7 + int(float(u.nb["ry"])) * 13) % 997 + 1      # (its rally moved)
+	if u.nb.has("coc"):
+		x += (int(float(u.nb["coc"]) * 2.0) % 200) * 1009          # (the cocoon's bar)
+	return x + _draw_key2(u)
+
+
+static func _draw_key2(u: Unit) -> int:
 	match u.kind:
 		EGG:
 			return int(u.nb.get("fert", 0)) * 1000 + int(float(u.nb.get("t", 0.0)) * 4.0) + int(float(u.nb.get("wait", 0.0)) * 4.0) * 7
@@ -1312,10 +1414,11 @@ static func unit_load(u: Unit, d: Dictionary) -> void:
 	u.nb["m"] = u.tesla_mode
 	u.nb.erase("tinted")          # (a fresh sprite: the egg's red is put on again)
 	u.nb.erase("redden")
-	if u.kind == TURTLE and u.tesla_mode != "packed":
-		u.radius = float(Defs.NB["turtle_rooted_r"])
-		if not u.game.nb_walls.has(u):
-			u.game.nb_walls.append(u)
+	for k in ["fpx", "fpy"]:
+		if u.nb.has(k):
+			u.nb[k] = int(u.nb[k])
+	if ROOTERS.has(u.kind) and u.tesla_mode != "packed":
+		BroodRoot.footprint_on(u.game, u, false)      # (its ground on the grid again; an older save's rooted creature takes it now)
 	if ROOTERS.has(u.kind):
 		u.nb_mass = 1000.0 if u.tesla_mode != "packed" else packed_mass(u.kind)
 	for k in ["stage"]:

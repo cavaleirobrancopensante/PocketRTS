@@ -1857,6 +1857,12 @@ const NB := {
 	# the fathers and the warriors they father; the others wait for their fathers (a Pterodactyl for the fliers, a
 	# Spitter father): not in the new Brood yet
 	"lines": {"tyrannosaur": ["raptor", "brute", "spore_mother", "mist_toad"]},
+	# ROOTED = A BUILDING (the owner's playtest of 0.15.13, 19:19; scripts/brood_root.gd): the footprint each creature
+	# takes on the grid while rooted (tiles wide, tiles deep) and where its middle lies from the creature's feet (px).
+	# The owner's sizes: the Rootmaw a bit bigger than a Cottage (2x2), the Mother about the Clocktower's gear ring (her
+	# nest's ground; it grows with her stages), the Tyrannosaur a Barracks (4x3), the turtle about a Clutch Mound but
+	# wide enough to close a 3-wide ramp either way.
+	"fp": {"brood_mother": [9, 4, 0, -40], "rootmaw": [3, 2, 0, -24], "tyrannosaur": [4, 3, 8, -16], "mound_turtle": [3, 3, 0, -24]},
 	"later": {"spitter": "the Spitter father", "bloater": "the Pterodactyl", "skywing": "the Pterodactyl"},
 }
 

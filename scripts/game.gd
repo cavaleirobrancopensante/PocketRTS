@@ -32,7 +32,8 @@ var nb_teams: Array = []
 var nb_queen := {}
 var nb_spots := {}
 var nb_spot_next := 0
-var nb_walls: Array = []       # the new Brood's ROOTED Mound Turtles: a body nothing of another side walks through (BroodNew.push_out)
+var nb_walls: Array = []       # (no longer filled: a rooted creature's footprint on the grid does it, nb_fp; BroodNew.push_out kept for old saves)
+var nb_fp: Array = []          # the new Brood's ROOTED creatures (and cocoons): each takes its footprint on the grid as a building (scripts/brood_root.gd)
 var eliminated: Array = []
 
 
@@ -6571,6 +6572,11 @@ func entity_at(p: Vector2, _any := true) -> Entity:
 			best = rider if rider != null else u    # (a horse a man is getting on: the strip there is him)
 	if best:
 		return best
+	for u in nb_fp:
+		# a rooted new-Brood creature: picked anywhere on its footprint or its body, as a building
+		if is_instance_valid(u) and not u.dead and shown_to_commander(u) and (u.rect().grow(6).has_point(p + Vector2(0, 10)) \
+				or Rect2(u.rect().position + Vector2(0, -u.rect().size.y * 0.8), u.rect().size * Vector2(1.0, 1.0)).has_point(p)):
+			return u
 	for b in buildings:
 		if hidden_ghost(b, who) or not shown_to_commander(b):
 			continue                  # (both tests below need it on show to whoever gave the order)
@@ -9666,6 +9672,17 @@ func smart_command(list: Array, p: Vector2, force_move := false, queued := false
 	if net_forward(self, "smart_command", [list, p, force_move, queued]): return
 	# (a horse takes no orders: only a leash or a rider moves it)
 	var us: Array = list.filter(func(e: Entity) -> bool: return e is Unit and not e.dead and e.kind != "horse")
+	# THE NEW BROOD: a rooted creature is a building and an egg stands where it lies: a right-click sets their RALLY POINT
+	# (it never uproots: only the UPROOT button does, the owner 19:19; scripts/brood_root.gd)
+	var fixed: Array = us.filter(func(u: Unit) -> bool: return BroodRoot.fixed(u))
+	if not fixed.is_empty():
+		for u in fixed:
+			BroodRoot.set_rally(u, p)
+			u.queue_redraw()
+		us = us.filter(func(u: Unit) -> bool: return not BroodRoot.fixed(u))
+		if us.is_empty():
+			_ping(p, Color(0.4, 1.0, 0.4))
+			return
 	if not us.is_empty() and us[0].team == human:
 		var tgt := entity_at(p)
 		var atk: bool = tgt != null and hostile(tgt.team, human) and not force_move
@@ -10454,6 +10471,8 @@ func _overlay_moving() -> bool:
 	_hover_was = hover_target != null
 	if not m and controls and (controls.line.size() >= 2 or controls.mode == "place" or controls.mode == "patrol" or (controls.mode == "cast" and controls.cast_spell == "jump")):
 		m = true
+	if not m and not nb_teams.is_empty() and BroodRoot.overlay_wanted(self):
+		m = true          # (the new Brood: a ROOT ghost, the father's range)
 	if not m:
 		for e in selection:
 			if e is Unit and is_instance_valid(e) and (not (e as Unit).queue.is_empty() or not (e as Unit).line_rest.is_empty() or (e as Unit).patrol_a != Vector2.INF):
@@ -10468,6 +10487,8 @@ func _draw_overlay() -> void:
 	var pt := Time.get_ticks_usec()
 	var had := not _ghosts.is_empty()
 	_ghosts.clear()
+	if not nb_teams.is_empty():
+		BroodRoot.draw_overlay(self, overlay)       # (the new Brood: the father's range, a ROOT ghost)
 	_draw_overlay_all()
 	if had or not _ghosts.is_empty():
 		ghost_layer.queue_redraw()

@@ -143,6 +143,45 @@ func begin_line() -> void:
 	game.notify("LINE: tap the start, then the end of the run.", true)
 
 
+## THE NEW BROOD: ROOT works like BUILD (scripts/brood_root.gd). mode "nb_root": the ghost of `kind`'s rooted footprint
+## follows the pointer; PLACE (or a second tap on the same spot) sends a creature there. morph: a grub turns into it
+## there (the grub card), else a selected creature that is up walks there and roots (its ROOT button).
+var nb_morph := false
+var nb_sc := 1.0                   # (the Mother's stage: her footprint's scale)
+
+
+func begin_nb_root(kind: String, morph: bool) -> void:
+	cancel_mode()
+	mode = "nb_root"
+	place_kind = kind
+	nb_morph = morph
+	var a := nb_actor()
+	nb_sc = BroodRoot.scale_of(a) if a != null and not morph else 1.0
+	var p := game.camera.get_screen_center_position()
+	if a != null and not morph:
+		p = a.position
+	ghost_cell = BroodRoot.cell_for(kind, p, nb_sc)
+
+
+## Who would go: the selected grub (morph) or creature of that kind that is up, nearest the ghost; null if none.
+func nb_actor() -> Unit:
+	var at := BroodRoot.feet_at(place_kind, ghost_cell, nb_sc) if ghost_cell.x >= 0 else game.camera.get_screen_center_position()
+	var best: Unit = null
+	for u in game.selected_units():
+		if u.team != game.human or u.dead:
+			continue
+		var ok: bool = (u.kind == "grub" and u.order != "nb_morph") if nb_morph else (u.kind == place_kind and u.tesla_mode == "packed" and u.order != "nb_root")
+		if ok and (best == null or u.position.distance_squared_to(at) < best.position.distance_squared_to(at)):
+			best = u
+	if best == null:
+		# (Shift-queued: every one has a plan already: the nearest of them takes another)
+		for u in game.selected_units():
+			var ok2: bool = u.kind == "grub" if nb_morph else (u.kind == place_kind and u.tesla_mode == "packed")
+			if ok2 and u.team == game.human and (best == null or u.position.distance_squared_to(at) < best.position.distance_squared_to(at)):
+				best = u
+	return best
+
+
 func begin_place(kind: String) -> void:
 	mode = "place"
 	place_kind = kind
@@ -229,7 +268,7 @@ func _on_input(event: InputEvent) -> void:
 		elif Settings.pc():
 			if _line_btn != "":
 				_line_add(mm.position)
-			if mode == "place":
+			if mode == "place" or mode == "nb_root":
 				_move_ghost(mm.position)
 			if mode == "lay_line" and line_tool != null:
 				line_tool.hover(mm.position)
@@ -245,7 +284,7 @@ func _on_input(event: InputEvent) -> void:
 		hud.hotkey((event as InputEventKey).keycode, true)
 	elif event is InputEventKey and not event.pressed and (event as InputEventKey).keycode == KEY_SHIFT:
 		# Shift let go: a mode kept open for queueing closes (the next click would replace the queue)
-		if _shift_kept and mode in ["move", "attack", "repair", "place", "bombard", "patrol"]:
+		if _shift_kept and mode in ["move", "attack", "repair", "place", "bombard", "patrol", "nb_root"]:
 			cancel_mode()
 		_shift_kept = false
 
@@ -315,18 +354,18 @@ func _drag(e: InputEventScreenDrag) -> void:
 			line_ground = mode == "bombard"
 			_line_btn = "touch"
 			_line_add(info["pos"])
-		elif mode == "place" or mode == "lay_line" or Settings.drag_mode == "pan":
+		elif mode == "place" or mode == "nb_root" or mode == "lay_line" or Settings.drag_mode == "pan":
 			pass
 		else:
 			_box_from = info["pos"]
 	if _line_btn == "touch":
 		_line_add(e.position)
 		return
-	if Settings.drag_mode == "pan" and mode != "place" and info["moved"]:
+	if Settings.drag_mode == "pan" and mode != "place" and mode != "nb_root" and info["moved"]:
 		game.camera.position -= e.relative / game.camera.zoom
 		_user_cam()
 		return
-	if mode == "place" and info["moved"]:
+	if (mode == "place" or mode == "nb_root") and info["moved"]:
 		_move_ghost(e.position)
 	if _box_from != Vector2.INF:
 		_box_to = e.position
@@ -412,6 +451,17 @@ func _left_pc(e: InputEventMouseButton) -> void:
 			"lay_line":
 				if line_tool != null:
 					line_tool.press(e.position, e.shift_pressed)
+				return
+			"nb_root":
+				# (the new Brood's ROOT ghost: Shift keeps placing, for the next grub or creature)
+				_move_ghost(e.position)
+				if hud:
+					hud.confirm_nb_root(e.shift_pressed)
+				if e.shift_pressed and mode == "nb_root":
+					_keep_for_shift()
+				return
+			"nb_rally":
+				_tap(e.position, false, e.shift_pressed)
 				return
 			"move", "attack", "bombard":
 				# (ATTACK GROUND: a held drag is a line shared out among them; a short one is a click: _tap)
@@ -517,18 +567,18 @@ func _key(e: InputEventKey) -> void:
 			else:
 				game.set_selection([])
 		KEY_A:
-			if not units.is_empty():
-				mode = "attack"
+			if units.any(func(u: Unit) -> bool: return not BroodRoot.fixed(u)):
+				mode = "attack"      # (a rooted new-Brood creature is a building: no move, attack, stop or hold)
 		KEY_M:
-			if not units.is_empty():
+			if units.any(func(u: Unit) -> bool: return not BroodRoot.fixed(u)):
 				mode = "move"
 		KEY_P:
-			if not units.is_empty():
+			if units.any(func(u: Unit) -> bool: return not BroodRoot.fixed(u)):
 				mode = "patrol"
 		KEY_S:
-			game.command_all(units, "stop")
+			game.command_all(units.filter(func(u: Unit) -> bool: return not BroodRoot.fixed(u)), "stop")
 		KEY_H:
-			game.command_all(units, "hold")
+			game.command_all(units.filter(func(u: Unit) -> bool: return not BroodRoot.fixed(u)), "hold")
 		KEY_QUOTELEFT:
 			if Defs.gear_mode:
 				game.toggle_gear_view()       # (THE GEAR VIEW: the whole gear network, scripts/gear.gd)
@@ -598,6 +648,9 @@ func _clamp_camera() -> void:
 
 
 func _move_ghost(screen: Vector2) -> void:
+	if mode == "nb_root":
+		ghost_cell = BroodRoot.cell_centred(place_kind, to_world(screen), nb_sc)
+		return
 	var size: Vector2i = Defs.BUILDINGS[place_kind]["size"]
 	var p := to_world(screen) - Vector2(size) * Defs.TILE * 0.5 + Vector2(Defs.TILE, Defs.TILE) * 0.5
 	ghost_cell = game.cell_of(p)
@@ -608,6 +661,8 @@ func _tap(screen: Vector2, is_mouse: bool, shift := false) -> void:
 	var raw := to_world(screen)
 	var p := game.on_map(raw)       # (the view may reach past the map edge: orders stay on it)
 	var units := game.selected_units()
+	if mode == "move" or mode == "attack" or mode == "patrol":
+		units = units.filter(func(u: Unit) -> bool: return not BroodRoot.fixed(u))     # (rooted = a building: it stays)
 	var queued := _queued(shift) and (mode == "move" or mode == "attack" or mode == "repair" or mode == "bombard" or mode == "patrol")
 	match mode:
 		"lay_line":
@@ -619,6 +674,22 @@ func _tap(screen: Vector2, is_mouse: bool, shift := false) -> void:
 			_move_ghost(screen)
 			if before == ghost_cell and hud:
 				hud.confirm_place()
+			return
+		"nb_root":
+			# (the new Brood's ROOT ghost: a click places it; a tap moves it, a second tap on the same spot places it)
+			var before2 := ghost_cell
+			_move_ghost(screen)
+			if (is_mouse and Settings.pc()) or before2 == ghost_cell:
+				if hud:
+					hud.confirm_nb_root(shift)
+			return
+		"nb_rally":
+			# a rooted creature's (or an egg's) RALLY point
+			for u in units:
+				if BroodRoot.fixed(u):
+					u.cmd_nb_rally(p)
+			game._ping(p, Color(0.4, 1.0, 0.4))
+			cancel_mode()
 			return
 		"move", "attack":
 			if mode == "attack":
