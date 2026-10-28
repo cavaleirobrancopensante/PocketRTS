@@ -4,7 +4,7 @@ The owner's idea, 2026-10-28: "What about real movement? If a unit steps on a ge
 
 It is built as an experiment. It is on by default for now, so the owner can play it.
 
-The owner was away while it was built. He left corrections on the branch after the job started (OWNER_NOTE_gear_turn.md, now folded in here and deleted). Every other choice below is Claude's, and says so.
+The owner was away while it was built. He left corrections on the branch after the job started (OWNER_NOTE_gear_turn.md, now folded in here and deleted): walkers drift the full amount, and idle units stay and ride. Those replace two softer ideas from the first brief. Every other choice below is Claude's, and says so.
 
 ## What it does
 
@@ -19,6 +19,10 @@ If it stays on the band, it keeps going round and round.
 Rings that mesh turn opposite ways, like real gears. Where two rings meet, both carry the same way, because their teeth move together there.
 
 A unit walking across a band drifts too. It drifts by the full, correct amount for the time it spends on the band. This was the owner's correction: no softening for walkers. Its path finding steers it back, so it still gets where it was sent.
+
+A unit sent to a spot on a band counts as there once it is within half a tile of it. Without that, the band would keep it hovering a few pixels off its spot for ever. Then it is idle, and rides.
+
+One rescue, Claude's choice. A walker can be pinned. Between two buildings' corners, the ring can push it back into the corner as fast as it walks round. So once a second its progress to its next waypoint is checked. If it made less than a quarter of its speed, it grips the floor for one and a half seconds. It is not carried meanwhile, it walks out of the squeeze, and it finds a new path. In a nine minute computer match this happened 27 times, each time a short moment.
 
 Idle units stay where they are. They keep riding round until the player moves them off. This was the owner's correction too: no automatic step off.
 
@@ -108,10 +112,20 @@ scripts/gear.gd keeps the bands: the inner and outer radius of each connected ri
 
 Everything runs in the simulation, with no randomness. So it is deterministic.
 
+## Is it deterministic?
+
+Yes, as far as it goes. It uses no clock and no random numbers, and goes through its lists in a fixed order. The same scene played twice gives the same hash (tools/test_gear_turn.gd).
+
+A whole computer match is not the same twice, but that was so before this change too (docs/pathfinding_audit.md). With the path queue's time limit lifted (test_determinism.gd's new "budget" option), Clockwork against Crown: with turning gears on, two runs agreed for 30 seconds; with them off, two runs already differed at 10 seconds. So the gears are not what breaks it.
+
+test_determinism.gd also takes gearturn:0 or gearturn:1 now.
+
+Online, the host plays the match and the guest is shown it, so they always agree. A replay records positions, so it always agrees with what was played (tools/test_replay.gd, run with the Clockwork too).
+
 ## Tests
 
 - tools/test_gear_turn.gd: a unit on HOLD rides round, the right way, at the teeth's speed; the plate and the ground off the band carry nothing; Winders going to a press or a repair are never carried and get there; the player's idle unit stays and rides; a walker drifts and still arrives; the computer walks its units off; big machines and flyers stay put; meshed rings turn opposite ways at the same rim speed; the setting off stops it; the same scene twice gives the same hash.
-- tools/test_gear_turn_match.gd: a Hard Clockwork computer against a Hard Crown computer, nine minutes. No computer unit rides round for long unless it is fighting. A HASH line every minute: run it twice and compare.
+- tools/test_gear_turn_match.gd: a Hard Clockwork computer against a Hard Crown computer, nine minutes. No computer unit rides round for more than 20 seconds unless it is fighting. In the last run: 57 units rode a band at some point, the longest ride was 9 seconds, the computer walked units off 29 times. A HASH line every minute.
 - tools/test_gear_rules.gd: its turret volley switches the experiment off, because the target on HOLD would ride out of the turret's reach.
 
 ## Pictures
@@ -120,7 +134,8 @@ docs/shots/gear_turn/, made by tools/shot_gear_turn.gd and tools/gear_turn_gif.p
 
 - hold.gif: six enemy Musketeers on HOLD on a Clocktower's band, carried round while they shoot.
 - winder.gif: a Winder walks in across the band to repair the Clocktower, not carried. A Clock Soldier left idle on the band rides round beside him. The gear view's chevrons show the way each band turns.
-- raid.gif: a Crown raid on a Clockwork base whose Clock Soldiers hold on the ring.
+- raid.gif: a Crown raid (Musketeers and Cuirassiers) on a Clockwork base whose Clock Soldiers hold on the ring.
+- hold_start.jpg, hold_end.jpg, winder_end.jpg, winder_view.jpg, raid_end.jpg: stills.
 
 ## Open questions for the owner
 

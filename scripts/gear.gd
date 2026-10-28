@@ -884,7 +884,7 @@ func _draw_turning() -> void:
 			var pts := PackedVector2Array([pc - tg * 3.0 + nr * 7.0, tip, pc - tg * 3.0 - nr * 7.0])
 			for q in pts.size():
 				pts[q] = Vector2(pts[q].x, pts[q].y * FY)
-			draw_polyline(pts, Color(0.05, 0.04, 0.02, 0.55), 4.5, true)
+			draw_polyline(pts, Color(0.05, 0.04, 0.02, 0.8), 5.0, true)
 			draw_polyline(pts, Color(1.0, 0.86, 0.45, 0.85), 2.2, true)
 
 
