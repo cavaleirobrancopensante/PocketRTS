@@ -32,7 +32,8 @@ Where the plateau beside the ramp reached as far down as the ramp's top, that le
    - The rail is an edge between two cells, not a blocked cell. The ground beside the ramp stays normal ground: it is just the foot of the cliff. Units can walk and stand there, and build there.
    - The pathfinder keeps to it. The cells across a rail from the ramp are shut in its grids (Game.rail_side). A path that starts or ends on one of them starts or ends at the nearest open cell, and walks the last step (Game.path_cell).
    - Movement keeps to it. Every step a unit takes goes through Game.rail_fix: a unit can't cross a rail, and its middle keeps at least its own half-width from it. That covers walking, separation, pushing, knockback, gear rides and limbered guns. Diagonal steps can't cut round a rail's end.
-   - The path smoothing keeps to it (line_clear), and so do the group walk fills (Game._walk_fill, Game.rail_cut).
+   - The path smoothing keeps to it (line_clear). A straight stretch of path keeps a few pixels more from a rail than the unit itself does, so a unit never presses on a rail. Without that, a unit at the bottom row could slide up the inside of a rail and stay there: test_pathing caught it.
+   - The group walk fills keep to it too (Game._walk_fill, Game.rail_cut).
    - A unit that an old save or replay has standing on a rail is pushed off, on the side its middle is on, as soon as it moves.
    - This works on every map: built-in, generated, custom and the map editor. The rails are worked out whenever the walk grid is built (Game._setup_astar).
 3. **The invisible block of 0.15.3 is gone.** Nothing beside a ramp is blocked any more.
