@@ -37,6 +37,11 @@ func _run() -> void:
 		if g.hud:
 			g.hud.countdown = 0.0
 		paused = false
+		# (the ramps are found before anything is built on them: AI._ramp_bands skips built cells, and with round 5's Crown
+		# part off by default nothing asks for them early in a game; on the 0.15 maps the wall stood first and the spots
+		# came out empty)
+		for a in g.ais:
+			a.r5._bands()
 		while g.clock < at and not g.over:
 			await physics_frame
 		for a in g.ais:
