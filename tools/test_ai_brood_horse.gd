@@ -90,6 +90,12 @@ func _run() -> void:
 			break
 	if stray != null:
 		stray.position = stray.position + toward * 450.0
+		# (brood-econ: the computer now plants more pits and mounds forward, so "far from home" is measured from its
+		# nearest building: push the stray past the leash, HORSE_LEASH + 120 px, the distance the rule looks for)
+		var steps := 0
+		while ai._home_dist(stray.position) < AI.HORSE_LEASH + 220.0 and steps < 12:
+			stray.position = stray.position + toward * 60.0
+			steps += 1
 		stray.cmd_stop()
 		stray_far0 = ai._home_dist(stray.position)
 	var attack_t := -1.0

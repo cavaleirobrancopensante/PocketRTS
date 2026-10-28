@@ -1,6 +1,8 @@
 # Brood economy (branch brood-econ)
 
-A proposal for the owner. It is on its own branch and not on main. Balance changes wait for your word.
+A proposal for the owner. It is on its own branch and not on main (version 0.15.9, merged with main 0.15.8). Balance changes wait for your word.
+
+You decided on 28 October to redesign the Brood without buildings. This is about the Brood as it is now: it is cheap to take or to drop, and the measuring tool and the Feeding Pit numbers can serve the redesign too.
 
 ## The question
 
@@ -121,7 +123,20 @@ Where the Brood's biomass went by 10:00, all 32 real games together:
 
 The timelines of the Brood computer's openings (tools/measure_ai_timelines.gd, Ashford Crossing and Frostmere, against a Crown that defends): on main the Extreme rush is broken (Spawning Den at 3:02 and 3:41, it never attacks), the Rush has its Den at 3:14 to 3:34 and attacks at 4:59 to 5:25, and Balanced has its Den at 4:06 to 4:28. With the proposal: Extreme rush Den 0:36, first Raptors 1:02 to 1:06, attack 1:19 to 1:25 (docs/ai_build_timelines.md says 0:36, 1:18, 1:41); Rush Den 0:51, Raptors 1:14, attack 1:27 to 1:33 (written: 0:51, 1:25, 1:47); Balanced Den 1:30, first unit 1:53.
 
-The tests. On main, five of the Brood computer tests fail, 13 checks in all: test_ai_xrush (no Raptors by 1:30), test_ai_brood_army (no army by 3:00), test_ai_brood_horse (the Horsemen not seen, no answer), test_ai_brood_judgement (no Pen by 5:30, no essence creature by 7:00) and test_ai_rush_followup. On the branch all eleven Brood and rush tests pass: the judgement, army, Horsemen, capital, pit ground, hall, extreme rush, rush, wall against rush, plateau swamp and rush follow-up tests. Two checks were changed to fit the new behaviour. The Horsemen test looks at how close a stray Raptor came home while the alert lasted, not at the end of the run, because the alert now ends. The harvest check counts the essence earned, not the essence in the bank, because a Brood with a Pen now spends it at once.
+The tests. On main, five of the Brood computer tests fail, 13 checks in all: test_ai_xrush (no Raptors by 1:30), test_ai_brood_army (no army by 3:00), test_ai_brood_horse (the Horsemen not seen, no answer), test_ai_brood_judgement (no Pen by 5:30, no essence creature by 7:00) and test_ai_rush_followup. On the branch all eleven Brood and rush tests pass: the judgement, army, Horsemen, capital, pit ground, hall, extreme rush, rush, wall against rush, plateau swamp and rush follow-up tests. After merging main 0.15.8 the same tests were run again: all pass except two checks of test_ai_rush_followup, the Crown's Horseman mop-up ("even two fresh Horsemen wait for the group", "the mop-up force goes out as one group"), which fail the same way on main 0.15.8: they are about the Crown computer. One run of test_ai_rush failed once on a Crown Farm placed off its main and passed when run again. Two checks were changed to fit the new behaviour. The Horsemen test looks at how close a stray Raptor came home while the alert lasted, not at the end of the run, because the alert now ends; and it puts the stray past the leash from the nearest Brood building (the computer now plants more pits and mounds forward, so a Raptor moved 450 pixels out was often still inside the leash, where the rule rightly leaves it alone). The harvest check counts the essence earned, not the essence in the bank, because a Brood with a Pen now spends it at once.
+
+### After merging main 0.15.8
+
+Main moved on while this ran (the Crown and Clockwork computers of AI round 6, faster big battles). After merging it, 8 more games on each side of the change, a third seed, the Brood on the first side of each map, 16 minutes:
+
+| | main 0.15.8 | branch 0.15.9 |
+|---|---|---|
+| against the Crown: Brood wins (ahead at 16:00), losses | 0 (1), 3 | 2 (2), 0 |
+| against the Crown: income at 5:00 and 10:00 | 455 and 664 v 855 and 1,615 | 854 and 1,202 v 570 and 950 |
+| against the Clockwork: Brood wins (ahead), losses (behind) | 0 (0), 4 (0) | 0 (0), 2 (2) |
+| against the Clockwork: income at 5:00 and 10:00 | 467 and 407 v 1,039 and 1,870 | 763 and 1,579 v 864 and 1,760 |
+
+The same picture as before the merge.
 
 ### Crown against Clockwork
 
