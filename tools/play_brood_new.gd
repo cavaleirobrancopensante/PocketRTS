@@ -12,6 +12,7 @@ extends "res://tools/shot_ai_match.gd"
 
 var plan := "standard"
 var sb := "balanced"             # the computer's strategy
+var no_grow := false             # nogrow:1 never grows the Mother (the games before her stages)
 var ai_plays := false            # ai:1 the computer plays the new Brood (side 0) too: only filmed
 var _ct := 0.0
 var _next_line := 30.0
@@ -56,6 +57,7 @@ func _initialize() -> void:
 			"plan": plan = kv[1]
 			"sb": sb = kv[1]
 			"ai": ai_plays = kv[1] == "1"
+			"nogrow": no_grow = kv[1] == "1"
 	if not Array(OS.get_cmdline_user_args()).any(func(x: String) -> bool: return x.begins_with("end:")):
 		end_t = 900.0
 
@@ -203,6 +205,7 @@ func _coach(delta: float) -> void:
 		"best": _plan_best(q)
 		"graze": _plan_graze(q)
 	_mother(q)
+	_grow(q)
 	_rootmaws(q)
 	_turtles(q)
 	_father(q)
@@ -228,6 +231,20 @@ func _mother(q: Unit) -> void:
 		return
 	if q.tesla_mode == "packed" and q.order == "idle" and q.target == null:
 		q.cmd_deploy()
+
+
+## GROW her (her growth stages, 0.15.13) when the food for it is there with a reserve: stage 2 from about 4:30, stage 3
+## from about 8:00 (nogrow:1 leaves her at stage 1, as before).
+func _grow(q: Unit) -> void:
+	if no_grow or BroodNew.grow_problem(g, q) != "":
+		return
+	var st := BroodNew.stage(q)
+	if g.clock < (270.0 if st == 0 else 480.0):
+		return
+	if int(g.players[0]["gold"]) >= int(Defs.NB["stages"][st + 1]["cost"]) + 100:
+		var w := q.cmd_grow()
+		if w == "":
+			say("the Mother grows to stage %d" % (st + 2))
 
 
 ## A spot for a Rootmaw on the swamp round `c` (in its region, not overlapping another's ground, not spent).
@@ -416,21 +433,31 @@ func _turtles(q: Unit) -> void:
 			shot("ramp_wall", _ramp_turtle, 1.1, 0.0)
 
 
+## The father: beside the Mother (clear of her nest, well inside his reach) and ROOTED on his nest (since 0.15.12 he
+## fertilises only rooted); rooted too far from her, he gets up and follows.
 func _father(q: Unit) -> void:
 	var f := BroodNew.father(g, 0)
 	if f == null or _wave.has(f):
 		return
 	var d := f.position.distance_to(q.position)
+	var reach := float(Defs.NB["father_r"]) * Defs.TILE
+	if f.tesla_mode == "deployed":
+		if d > reach:
+			f.cmd_uproot(false)
+		return
+	if f.tesla_mode != "packed" or f.target != null:
+		return
+	if d <= reach * 0.9 and d >= q.radius + f.radius and (f.order == "idle" or f.order == "hold"):
+		f.cmd_deploy()
+		return
 	if d > 14.0 * Defs.TILE and f.order != "move":
 		f.cmd_move(q.position)
 		return
-	if f.target != null:
-		return
-	if d > float(Defs.NB["father_r"]) * Defs.TILE * 0.6 and (f.order == "idle" or f.order == "hold"):
+	if f.order == "idle" or f.order == "hold":
 		var home := g.region_of(g.cell_of(q.position))
 		var best := Vector2.INF
 		for i in 12:
-			var p: Vector2 = q.position + Vector2.from_angle(TAU * i / 12.0) * (q.radius + f.radius + 24.0)
+			var p: Vector2 = q.position + Vector2.from_angle(TAU * i / 12.0) * reach * 0.75
 			var c := g.cell_of(p)
 			if on_map(p) and g._walkable(c) and g.region_of(c) == home and (best == Vector2.INF or p.distance_to(f.position) < best.distance_to(f.position)):
 				best = p
@@ -1014,10 +1041,11 @@ func _line() -> void:
 			foe[u.kind] = int(foe.get(u.kind, 0)) + 1
 	var st: Dictionary = g.stats[0]
 	var fs: Dictionary = g.stats[_foe]
-	coach.append("%s mother at %s | food %d (earned %d) essence %d supply %d/%d | mother %s %d hp eggs %d | maws food/ground %s | %s | killed %d lost %d (value killed %d) | wasted eggs %d | lay %s | father %s | FOE %s killed %d lost %d" % [_mmss(g.clock), str((q.position / Defs.TILE).round()) if q else "-",
+	coach.append("%s mother at %s | food %d (earned %d) essence %d supply %d/%d | mother %s %d hp eggs %d | maws food/ground %s | %s | killed %d lost %d (value killed %d) | wasted eggs %d | lay %s | father %s | FOE %s killed %d lost %d | laid %d stage %d grow %s" % [_mmss(g.clock), str((q.position / Defs.TILE).round()) if q else "-",
 		int(g.players[0]["gold"]), int(st.get("gold", 0)), int(g.players[0]["res2"]), g.supply_used(0), int(g.players[0]["cap"]),
 		(q.tesla_mode if q else "dead"), int(q.hp) if q else 0, int(q.nb.get("eggs", 0)) if q else 0, str(grounds), str(kinds),
-		int(st["killed"]), int(st["lost"]), int(st["value_killed"]), wasted, _why_k, _fstate(q), str(foe), int(fs["killed"]), int(fs["lost"])])
+		int(st["killed"]), int(st["lost"]), int(st["value_killed"]), wasted, _why_k, _fstate(q), str(foe), int(fs["killed"]), int(fs["lost"]),
+		int(q.nb.get("laid", 0)) if q else 0, int(q.nb.get("stage", 0)) if q else 0, ("%.0f" % float(q.nb.get("grow_t", 0.0))) if q else "-"])
 	print("CO " + coach[-1].left(400))
 
 

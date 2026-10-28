@@ -1914,6 +1914,12 @@ func cmd_lay(k: String) -> String:
 	return BroodNew.lay(game, self, k)
 
 
+## THE NEW BROOD: the Brood Mother grows to her next stage (scripts/brood_new.gd); "" or why not.
+func cmd_grow() -> String:
+	if game.net_forward(self, "cmd_grow", []): return ""
+	return BroodNew.grow(game, self)
+
+
 ## THE NEW BROOD: UPROOT (spill: a Rootmaw spills its food) or HAUL (it keeps it).
 func cmd_uproot(spill: bool) -> void:
 	if game.net_forward(self, "cmd_uproot", [spill]): return

@@ -1409,6 +1409,25 @@ func _nb_buttons(list: Array, units: Array) -> void:
 						w = u.cmd_lay(kk)
 				if w != "":
 					toast(w), why == "", why, _price_chip(game.unit_price(game.human, kk), false)])
+		# GROW (her next stage) and what raises her laying (the levers: her stage, fathers near her, expansions)
+		var st := BroodNew.stage(q)
+		var stages: Array = Defs.NB["stages"]
+		if st < stages.size() - 1:
+			var nx: Dictionary = stages[st + 1]
+			var gwhy := BroodNew.grow_problem(game, q)
+			_tip_for["GROW"] = ["Grow (stage %d)" % (st + 2), "She grows bigger: up to %d eggs, laying %d%% faster (stage x%.1f), but a bigger, slower target with a wider swamp. Rooted only; %d s, and she lays no eggs meanwhile (uprooting stops it and pays it back). %s" % [
+				int(nx["eggs"]), int(round((float(nx["rate"]) / float(stages[st]["rate"]) - 1.0) * 100.0)), float(nx["rate"]), int(nx["time"]),
+				"Unlocks the second father, when one exists: nothing yet." if st == 0 else "Unlocks the third father, when one exists: nothing yet."]]
+			list.append(["broodmound", "GROW", func() -> void:
+				for u in game.selected_units():
+					if u.kind == BroodNew.QUEEN and u.team == game.human:
+						var w2: String = u.cmd_grow()
+						if w2 != "":
+							toast(w2), gwhy == "", gwhy, _price_chip([int(nx["cost"]), int(nx["cost2"])], int(nx["cost2"]) > 0)])
+		var lev := BroodNew.levers_text(game, q)
+		_tip_for[lev.to_upper()] = ["Her laying", "%s. Three things make the Brood Mother lay faster, and they add up: her growth STAGE; every FATHER near her (as in some real lizards, the males' presence speeds the female's eggs: +%d%% each); every Mound Turtle rooted on NEW GROUND, %d tiles or more from her and from the other counted ones (their chimneys pump scent into the swamp water: she tastes new territory and lays more: +%d%% each, up to %d). Turtles at home give supply and swamp only." % [
+			lev, int(float(Defs.NB["father_rate"]) * 100.0), int(Defs.NB["expansion_tiles"]), int(float(Defs.NB["expansion_rate"]) * 100.0), int(Defs.NB["expansion_max"])]]
+		list.append(["brood_mother", lev.to_upper(), func() -> void: pass, false, lev, ""])
 	var rooters := units.filter(func(u: Unit) -> bool: return BroodNew.ROOTERS.has(u.kind) and u.team == game.human)
 	if rooters.is_empty():
 		return
