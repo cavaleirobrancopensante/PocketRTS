@@ -1,4 +1,4 @@
-# Black powder smoke (0.14.94, branch powder-smoke)
+# Black powder smoke (0.14.96, branch powder-smoke)
 
 The owner asked, on 2026-10-27: "Can we have more smoke in the game? Black powder smoke: a bit more from every shot,
 and it stays on the battlefield a bit, vanishing slowly. No mechanical consequences, but aesthetically pleasing."

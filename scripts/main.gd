@@ -727,6 +727,9 @@ func show_settings() -> void:
 	pb.custom_minimum_size = Vector2(190, 50)
 	ph.add_child(pb)
 	v.add_child(ph)
+	v.add_child(_toggle_row("SHOW EXPANSION SPOTS", func() -> bool: return Settings.expansion_spots, func() -> void:
+		Settings.expansion_spots = not Settings.expansion_spots
+		Settings.save_all()))
 	if not Settings.pc():
 		v.add_child(_toggle_row("ONE-FINGER DRAG", func() -> bool: return Settings.drag_mode == "box", func() -> void:
 			Settings.drag_mode = "pan" if Settings.drag_mode == "box" else "box"

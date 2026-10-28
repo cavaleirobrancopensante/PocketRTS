@@ -1785,6 +1785,7 @@ const T := {
 	"Not enough cogs to mend.": "Engrenagens insuficientes para consertar.",
 	"Your Great Winder's hopper is full of parts.": "A tremonha do seu Grande Enrolador está cheia de peças.",
 	"+%d parts": "+%d peças",
+	"SHOW EXPANSION SPOTS": "MOSTRAR LOCAIS DE EXPANSÃO",
 	"POWDER SMOKE": "FUMAÇA DE PÓLVORA",
 	"FULL": "COMPLETA",
 	"WHERE ARE YOU PLAYING?": "ONDE VOCÊ ESTÁ JOGANDO?",

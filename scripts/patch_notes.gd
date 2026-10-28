@@ -4,9 +4,16 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
-	{"v": "0.14.94", "items": [
+	{"v": "0.14.96", "items": [
 		"BLACK POWDER SMOKE: every powder shot now leaves its smoke on the field. A Musketeer's or Guardsman's musket (a Dragoon's too, once off his horse), a Horseman's pistol, a Field Cannon (round shot and canister), a Mortar and its bursting shell, a keg or a Powder Wagon going up: each leaves grey-white puffs that drift slowly on a light wind, grow, thin and fade over 10 to 24 seconds (a cannon's last longest). A long firefight builds a haze over the firing lines that clears slowly afterwards. It is only for the look: it hides nothing and changes nothing in the fight, the units stay visible in it, and their health bars, rings and orders are drawn over it. You see it only where your side sees the ground. The Clockwork and the Brood fire no powder.",
 		"POWDER SMOKE in Settings: OFF, LIGHT or FULL. It starts FULL on a computer and LIGHT on a phone or in the browser (fewer puffs, shorter lives). It applies from the next match.",
+	]},
+	{"v": "0.14.95", "items": [
+		"EXPANSION SPOTS: the best places to expand are now marked on every map, as a few ground tiles in warm gold where a new Town Hall or Clocktower fits. Each side gets its best spot (a little brighter) and the next one, picked for the room to build round it, few ways in, a short walk from home and distance from the enemy. Both sides of a map get the same. They show for the Crown and the Clockwork (not for the Brood, which rarely moves its capital) and when watching, as small gold squares on the minimap too, and a touch brighter while you place a hall. A spot hides once a building you know of stands on it. Settings: SHOW EXPANSION SPOTS turns them off.",
+		"FIX: on the classic river maps (Twin Fords, Mirewood, Border March) the fords were a few cells wider on one side than the other. Now both sides match.",
+	]},
+	{"v": "0.14.94", "items": [
+		"Officers, Horsemen and Cuirassiers wear white coats and team-colour breeches, with a team-colour saddle cloth: easy to tell from Musketeers.",
 	]},
 	{"v": "0.14.93", "items": [
 		"Getting on a horse and leading it now sound different: the horse whinnies when a man gets on it, and only snorts softly when a man takes it by the reins. The message from 0.14.92 is gone (it got old fast).",

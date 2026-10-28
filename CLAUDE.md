@@ -25,7 +25,7 @@
 
 ## Current work
 
-- Expansion spots (owner, 2026-10-27 23:23; cloud job on branch `expansion-spots`): show the best expansion places on each map as a few ground tiles in a different colour (the hall footprint tinted, brighter for the best), for the Crown and the Clockwork only. NOT for the Brood: "it rarely makes sense to change the capital" (no Brood capital/Pit marks). Keep it simple: tinted tiles first; the minimap marks, ghost snap and hover line are extras.
+- Expansion spots (owner, 2026-10-27): DONE in 0.14.95 (branch expansion-spots): the two best free hall spots of each side tinted gold on the ground (best brighter), for Crown and Clockwork players and spectators, not the Brood; minimap squares, brighter while placing a hall; Settings SHOW EXPANSION SPOTS. scripts/expansion_spots.gd (rating: room on the hall's level, ways in, walk, safety), docs/expansion_spots.md (each map's spots, weak sites: Thornwood Maze, Redrock third, 4-player classic naturals), tools/test_expansion_spots.gd, pictures in docs/shots/expansion_spots/. Also fixed the classic river maps' fords (not the same on both sides).
 
 - Animation packs are done (Barracks drills, Breeder coats, Armoury experiments in game); the Queen is a still sprite at the Brood capital. Status table: `docs/animation_packs.md`.
 - Animation audits (cloud jobs, 2026-10-27): every animation of each faction measured and looked at, safe fixes made, ChatGPT redraw prompts written: branches anim-audit-crown, anim-audit-brood, anim-audit-clockwork (docs/animation_audit_<faction>.md).
