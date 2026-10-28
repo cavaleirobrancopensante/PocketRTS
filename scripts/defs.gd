@@ -1142,7 +1142,7 @@ const UNITS := {
 		"name": "Rootmaw", "hp": 450, "armor": 0, "speed": 80, "cost": 75, "time": 18.0, "supply": 0,
 		"sight": 6, "range": 30, "damage": 14, "cooldown": 1.3, "aim": 0.3, "radius": 22, "from": "brood_mother",
 		"faction": "brood", "new_brood": true,
-		"about": "A swamp lizard that feeds the Brood. ROOT it on fresh ground (3,000 food in a 5-tile circle; rooted circles may not overlap): it drinks the ground and swells, and grubs carry the food from its flank to the Brood Mother (farther pays more). Rooted it has more armour. UPROOT spills its food as a pile (grubs still collect it; it rots); HAUL walks off with it, slow and fat (killed hauling, it bursts). It bites.",
+		"about": "A swamp lizard that feeds the Brood. ROOT it on fresh ground on your swamp (3,000 food in a 5-tile circle; rooted circles may not overlap): it drinks the ground and swells, and grubs carry the food from its flank to the Brood Mother (farther pays more). Rooted it has more armour. UPROOT spills its food as a pile (grubs still collect it; it rots); HAUL walks off with it, slow and fat (killed hauling, it bursts). It bites.",
 	},
 	"tyrannosaur": {
 		"tags": ["armored"],
@@ -1163,7 +1163,7 @@ const UNITS := {
 		"name": "Mound Turtle", "hp": 600, "armor": 2, "speed": 26, "cost": 150, "time": 25.0, "supply": 0,
 		"sight": 6, "range": 22, "damage": 6, "cooldown": 1.6, "aim": 0.4, "radius": 26, "from": "brood_mother",
 		"faction": "brood", "new_brood": true,
-		"about": "A huge swamp turtle, the Brood's expansion and its tank. ROOT it: it sinks into the mud, gives 12 supply, makes the Brood Mother lay 10% faster (up to 3 turtles) and turns the ground round it to swamp (10 tiles): Rootmaws can root on swamp joined to the Mother's. Rooted it is very hard to hurt and wide enough to close a ramp. Uprooted it walks slowly, gives no supply and no swamp. A weak bite.",
+		"about": "A huge swamp turtle, the Brood's expansion and its tank. ROOT it: it sinks into the mud, gives 12 supply, makes the Brood Mother lay 10% faster (up to 3 turtles) and turns the ground round it to swamp (10 tiles), where Rootmaws can root, even far from home. Rooted it is very hard to hurt and wide enough to close a ramp. Uprooted it walks slowly, gives no supply and no swamp. A weak bite.",
 	},
 	"food_pile": {
 		"tags": ["light"],
