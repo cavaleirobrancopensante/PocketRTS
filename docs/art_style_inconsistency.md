@@ -431,7 +431,7 @@ The owner, after playing: the legs looked silly. The painted legs are gone from 
   the Labourer's hoe/pick frame 3 (arm out), the Musketeer's reload frame 0 (hand raised), the Winder's repair frame 0
   (hands out); the Officer and a Messenger simply stand (idle). Wanted: a painted "take the reins" strip per facing for
   each leader (hand out to the bridle, 3-4 frames), and a led-horse head toss.
-## Turning gears (code, 0.14.102; docs/gear_turn.md)
+## Turning gears (code, 0.14.103; docs/gear_turn.md)
 - The DUST at a carried unit's feet (GearNet._draw_turning): three small brown-grey circles trailing behind it against the
   way the band moves, growing and fading in a loop. Wanted: a painted dust-puff strip (4-6 frames) to scatter there.
 - The CHEVRONS on a turning band (under the mouse, or every band in the GEAR VIEW): gold "V" polylines with a dark outline,

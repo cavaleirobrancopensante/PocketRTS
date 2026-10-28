@@ -31,7 +31,7 @@ const TRACKS := {
 	"clock_battle_3": "Gearstorm",
 	"clock_battle_4": "The Iron Tide",
 	"clock_battle_5": "Calibrated Fury",
-	"menu": "Holdfast Overture",
+	"menu": "Grand Overture",
 	"menu_2": "The Banners Rise",
 	"menu_3": "Before the Long Night",
 	"menu_4": "Over the High Passes",

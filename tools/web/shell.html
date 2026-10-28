@@ -27,7 +27,7 @@ body { color: #f2ead8; background-color: #15120e; overflow: hidden; touch-action
 	font-family: "Alegreya Sans", "Trebuchet MS", Arial, sans-serif;
 }
 #status-icon { width: 128px; height: 128px; image-rendering: pixelated; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6); }
-#status-title { font-family: "Cinzel", Georgia, serif; font-size: 52px; letter-spacing: 6px; color: #c9a24a;
+#status-title { font-family: "Cinzel", Georgia, serif; font-size: 52px; letter-spacing: 6px; color: #c9a24a; text-transform: uppercase; text-align: center;
 	text-shadow: 0 4px 0 rgba(0, 0, 0, 0.6); margin: 0; }
 #status-bar { width: min(520px, 86vw); height: 14px; border: 2px solid #c9a24a; background: #1b1712; box-sizing: border-box; }
 #status-fill { height: 100%; width: 0%; background: linear-gradient(#e2c06a, #a8822f); transition: width 0.2s; }
@@ -44,7 +44,7 @@ $GODOT_HEAD_INCLUDE
 <noscript>Your browser does not support JavaScript.</noscript>
 <div id="status">
 	<img id="status-icon" src="index.icon.png" alt="">
-	<h1 id="status-title">HOLDFAST</h1>
+	<h1 id="status-title">$GODOT_PROJECT_NAME</h1>
 	<div id="status-bar" class="busy"><div id="status-fill"></div></div>
 	<div id="status-text">Loading…</div>
 	<div id="status-notice"></div>
@@ -220,7 +220,7 @@ const engine = new Engine(GODOT_CONFIG);
 
 	const missing = Engine.getMissingFeatures({ threads: GODOT_THREADS_ENABLED });
 	if (missing.length !== 0) {
-		fail('The following features required to run Holdfast in a browser are missing:\n' + missing.join('\n'));
+		fail('The following features required to run $GODOT_PROJECT_NAME in a browser are missing:\n' + missing.join('\n'));
 		return;
 	}
 	const exe = GODOT_CONFIG.executable;
