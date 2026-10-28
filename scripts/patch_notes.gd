@@ -4,6 +4,13 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.15.12", "items": [
+		"THE NEW BROOD (EXPERIMENT): the Tyrannosaur ROOTS. Rooted on his nest near the Brood Mother he is the Brood's barracks: her warrior eggs go into his nest (counted over him like a training queue), he breathes on them one at a time and they hatch there. Rooted he takes less damage; uprooted he walks and fights as before. His breath is drawn in his picture now: the orange puffs are gone.",
+		"EVERY ROOTED CREATURE MOVES (a rooted creature is a building): the Tyrannosaur breathes fire on his nest, the Rootmaw breathes at each stage of its filling (the designer's drawings), and the food, the eggs and the fire glow and pulse.",
+		"THE BROOD MOTHER LAYS IN HER NEST: rooted, she rears up and lays the egg in front of her clutch, and it rolls out to the nest's rim (walking, it still drops behind her).",
+		"NO ROOTED CREATURE ATTACKS: rooted means building, for the Brood Mother, the Rootmaw, the Mound Turtle and the Tyrannosaur alike; to fight they must uproot. A rooted turtle on a ramp still closes it. The computer gets the Tyrannosaur up to fight off an attack at the Mother, and the Mother herself when enemies reach her, and roots them again after.",
+		"SACRIFICE gives the Brood Mother 1 egg at once, on top of the essence (none if her clutch is full).",
+	]},
 	{"v": "0.15.11", "items": [
 		"THE NEW BROOD (EXPERIMENT), fixes found by playing ten games with it (docs/brood_new_play.md): a rooted Brood Mother no longer slides across the ground as her own eggs push her (in ten minutes she could drift nine tiles, her swamp with her, and leave her first Rootmaw dry), and she no longer uproots and walks off by herself after swiping at a scout.",
 		"No more creatures stuck by the Mother: eggs and food piles no longer shove anything, a creature pressed against the rooted Mother or the Tyrannosaur standing at her eggs steps round them, a walking Mound Turtle is too heavy for the grubs to wash back, and your own creatures climb over your rooted Mound Turtles as they should. A grub whose Rootmaw died no longer freezes.",

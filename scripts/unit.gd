@@ -1038,7 +1038,7 @@ func _kind_flags() -> void:
 	_k_nb = BroodNew.is_nb(kind)
 	_k_still = kind == BroodNew.EGG or kind == BroodNew.PILE
 	_k_shell = kind == BroodNew.TURTLE
-	nb_mass = 1000.0 if _k_still else (30.0 if kind == BroodNew.QUEEN else (8.0 if kind == BroodNew.FATHER else 1.0))
+	nb_mass = 1000.0 if _k_still else BroodNew.packed_mass(kind)
 	_k_cw = CwUnits.hooked(kind)
 	_k_musket = kind == "musketeer"
 	_k_pistol = (Defs.PISTOL["kinds"] as Array).has(kind)
@@ -1067,6 +1067,8 @@ func can_hit(e: Entity) -> bool:
 		return false
 	if _d_medic or _d_noatk or e.untouchable():
 		return false
+	if _k_nb and tesla_mode != "packed" and BroodNew.ROOTERS.has(kind):
+		return false            # (the new Brood: no rooted creature attacks, rooted is a building; to fight it uproots)
 	if deflate != "" or (kind == "skywing" and sky != "air" and sky != "ground"):
 		return false            # a deflated Bloater, a Skywing landing or taking off
 	if owl_t >= 0.0:
@@ -1883,6 +1885,8 @@ func switch_time() -> float:
 			return float(Defs.NB["maw_switch"])
 		BroodNew.TURTLE:
 			return float(Defs.NB["turtle_switch"])
+		BroodNew.FATHER:
+			return float(Defs.NB["father_switch"])
 	return Defs.TESLA_SWITCH
 
 
@@ -2235,7 +2239,7 @@ func _bombard(delta: float) -> Vector2:
 	var min_r := 0.0 if mode == "canister" else float(d.get("min_range", 0.0))
 	if phase != "" or (dist <= rng and dist >= min_r):
 		path = PackedVector2Array()
-		if deploys() and tesla_mode != "deployed":
+		if deploys() and not _k_nb and tesla_mode != "deployed":
 			if tesla_mode == "packed":
 				tesla_mode = "deploying"
 				tesla_t = switch_time()
@@ -3404,8 +3408,6 @@ func _tick_unit(delta: float) -> void:
 		_bloater_gas(delta)
 	if _k_nb:
 		BroodNew.tick(game, self, delta)      # (the new Brood: eggs, food, fertilising, HAUL's pace)
-		if _k_shell and tesla_mode == "packed":
-			nb_mass = 8.0       # (a walking Mound Turtle is a huge, heavy beast: the grubs streaming to the Mother flow round it, as round the Tyrannosaur, instead of washing it back)
 	if not game.zones.is_empty() or sight != int(d["sight"]):
 		# a fog bank: inside it you see only a couple of tiles
 		sight = int(Defs.FOG["sight"]) if game.in_fog(position) else int(d["sight"])
@@ -4460,7 +4462,8 @@ func _engage(e: Entity, delta: float, may_move: bool) -> Vector2:
 	var dist := e.edge_distance(position) - radius
 	var rng := _range()
 	var min_r := 0.0 if mode == "canister" else float(d.get("min_range", 0.0))
-	if deploys() and tesla_mode != "deployed":
+	if deploys() and not _k_nb and tesla_mode != "deployed":
+		# (a gun sets up to shoot; the new Brood's rooters fight uprooted: rooted they don't attack at all)
 		if tesla_mode == "packed" and dist <= rng and dist >= min_r and game.target_seen(team, e, position):
 			tesla_mode = "deploying"
 			tesla_t = switch_time()

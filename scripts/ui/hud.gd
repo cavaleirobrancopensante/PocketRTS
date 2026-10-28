@@ -1414,7 +1414,7 @@ func _nb_buttons(list: Array, units: Array) -> void:
 		return
 	var packed := rooters.any(func(u: Unit) -> bool: return u.tesla_mode == "packed")
 	if packed:
-		_tip_for["ROOT"] = ["Root", "Dig in here: armour and a quarter less damage, swamp around it. A Rootmaw drinks its ground (5-tile circle, may not overlap another's); a Mound Turtle sinks into the mud and gives 12 supply and faster eggs. They always root facing south-east."]
+		_tip_for["ROOT"] = ["Root", "Dig in here: armour and a quarter less damage, swamp around it. A Rootmaw drinks its ground (5-tile circle, may not overlap another's); a Mound Turtle sinks into the mud and gives 12 supply and faster eggs; the Tyrannosaur settles on his nest (near the Mother, her warrior eggs are fertilised and hatch in it). They always root facing south-east. The Brood Mother cannot attack while rooted."]
 		list.insert(3, ["ab_nb_root", "ROOT", func() -> void:
 			for u in game.selected_units():
 				if BroodNew.ROOTERS.has(u.kind) and u.tesla_mode == "packed":

@@ -54,9 +54,13 @@ func _nb_mine(k: String) -> Array:
 	return game.units.filter(func(u: Unit) -> bool: return u.team == team and not u.dead and u.kind == k)
 
 
+## The Mother: rooted at home; she CANNOT ATTACK while rooted, so when enemies reach her she uproots and fights, and
+## roots again once it is calm (BroodNew.mother_guard).
+var _q_guard := {}
+
+
 func _nb_mother(q: Unit) -> void:
-	if q.tesla_mode == "packed" and q.order == "idle" and q.target == null:
-		q.cmd_deploy()
+	BroodNew.mother_guard(game, q, _q_guard, [1.6, 1.0, 0.6, 0.4][clampi(difficulty, 0, 3)])
 
 
 # ------------------------------------------------------------------ the economy
@@ -200,23 +204,37 @@ func _nb_nearest_foe_pos(p: Vector2) -> Vector2:
 
 # ------------------------------------------------------------------ the father
 
+## The father: walked to a spot beside the Mother (clear of her nest's great body, well inside his reach) and ROOTED
+## there on his nest (he is the Brood's barracks: her warrior eggs are fertilised and hatch in it). Rooted too far
+## from her (she moved), he gets up and follows.
 func _nb_father(q: Unit) -> void:
 	var f := BroodNew.father(game, team)
 	if f == null or f in _wave:
 		return
 	var d := f.position.distance_to(q.position)
-	# on a leash: he fights by her, never chases off after a scout (away from her, no warriors are fathered)
+	var reach := float(Defs.NB["father_r"]) * Defs.TILE
+	var threat := _nb_threat(q) != Vector2.INF
+	if f.tesla_mode == "deployed":
+		if d > reach or threat:
+			f.cmd_uproot(false)       # (no rooted creature attacks: to fight off an attack at the Mother he gets up)
+		return
+	if threat:
+		return          # (uprooted, he fights with the others: _nb_army; he roots again when it is calm)
+	if f.tesla_mode != "packed" or f.target != null:
+		return
+	if d <= reach * 0.9 and d >= q.radius + f.radius and (f.order == "idle" or f.order == "hold"):
+		f.cmd_deploy()
+		return
+	# on a leash: he fights by her, never chases off after a scout
 	if d > 14.0 * Defs.TILE and not f.order == "move":
 		f.cmd_move(q.position)
 		return
-	if f.target != null:
-		return
-	if d > float(Defs.NB["father_r"]) * Defs.TILE * 0.6 and (f.order == "idle" or f.order == "hold"):
+	if f.order == "idle" or f.order == "hold":
 		# a walkable spot beside her (she may sit by the map's edge or a cliff), the one nearest him
 		var home := game.region_of(game.cell_of(q.position))
 		var best := Vector2.INF
 		for i in 12:
-			var p: Vector2 = q.position + Vector2.from_angle(TAU * i / 12.0) * (q.radius + f.radius + 24.0)
+			var p: Vector2 = q.position + Vector2.from_angle(TAU * i / 12.0) * reach * 0.75
 			var c := game.cell_of(p)
 			if _nb_on_map(p) and game._walkable(c) and game.region_of(c) == home and (best == Vector2.INF or p.distance_to(f.position) < best.distance_to(f.position)):
 				best = p
@@ -266,19 +284,24 @@ func _nb_army_units() -> Array:
 		and not BroodNew.is_nb(u.kind) and u.kind != "horse")
 
 
-func _nb_army(q: Unit) -> void:
-	var army := _nb_army_units()
-	# defence: anything at the Mother is fought by everything (the father too)
-	var threat := Vector2.INF
+## An enemy near the Mother (13 tiles), or Vector2.INF.
+func _nb_threat(q: Unit) -> Vector2:
 	for u in game.units_near(q.position, 13.0 * Defs.TILE):
 		if game.hostile(u.team, team) and not u.dead and not u.off_field:
-			threat = u.position
-			break
+			return u.position
+	return Vector2.INF
+
+
+func _nb_army(q: Unit) -> void:
+	var army := _nb_army_units()
+	# defence: anything at the Mother is fought by every creature that walks, and by the father, who gets up from his
+	# nest for it (rooted creatures don't attack: the Rootmaws and turtles stay rooted, the Mother: BroodNew.mother_guard)
+	var threat := _nb_threat(q)
 	if threat != Vector2.INF:
 		var f := BroodNew.father(game, team)
 		var defenders := army.duplicate()
-		if f:
-			defenders.append(f)
+		if f and f.tesla_mode == "packed":
+			defenders.append(f)      # (rooted on his nest he stays: it is the barracks, and he bites from it)
 		for u in defenders:
 			if u.target == null and (u.order == "idle" or u in _wave):
 				u.cmd_move(threat, true)

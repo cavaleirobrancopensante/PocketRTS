@@ -1838,7 +1838,7 @@ const T := {
 	"Haul": "Acarrear",
 	"No Brood Mother.": "Sin Madre de la Camada.",
 	"Not in the new Brood yet.": "Aún no está en la nueva Nidada.",
-	"Needs the %s beside the Brood Mother.": "Necesita al %s junto a la Madre de la Camada.",
+	"Needs the %s rooted beside the Brood Mother.": "Necesita al %s arraigado junto a la Madre de la Camada.",
 	"Only one %s at a time.": "Solo un %s a la vez.",
 	"Need more supply: root more Mound Turtles.": "Necesitas más suministro: enraíza más Tortugas Montículo.",
 	"Mound Turtle": "Tortuga Montículo",

@@ -1832,7 +1832,8 @@ const NB := {
 	"eggs_max": 10, "start_eggs": 3, "egg_time": 6.0,      # the Mother's eggs (one every 6 s)
 	"egg_rate": 0.1, "egg_rate_max": 0.3,        # +10% laying per rooted Rootmaw, up to +30%
 	"drop": 0.35,                                # seconds an egg falls from under her
-	"father_r": 7.0,                             # tiles: the father near the Mother, and the eggs near him
+	"father_r": 7.0,                             # tiles: the father rooted on his nest this near the Mother fertilises her warrior eggs
+	"father_switch": 2.5,                        # seconds the Tyrannosaur takes to settle on his nest or get up
 	"fert_time": 1.5, "fert_wait": 25.0,         # breath per egg; an egg not fertilised in this time hatches as a grub
 	"queen_supply": 16, "turtle_supply": 12,     # supply: the Mother (the old Burrow's), every ROOTED Mound Turtle (the old Clutch Mound's)
 	"turtle_switch": 2.5, "turtle_swamp": 10.0,  # the Mound Turtle: seconds to root or uproot, tiles of swamp round it rooted

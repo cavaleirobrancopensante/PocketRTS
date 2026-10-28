@@ -54,9 +54,9 @@ es Sin Madre de la Camada.
 pt Ainda não está na nova Ninhada.
 es Aún no está en la nueva Nidada.
 
-> Needs the %s beside the Brood Mother.
-pt Precisa do %s ao lado da Mãe da Ninhada.
-es Necesita al %s junto a la Madre de la Camada.
+> Needs the %s rooted beside the Brood Mother.
+pt Precisa do %s enraizado ao lado da Mãe da Ninhada.
+es Necesita al %s arraigado junto a la Madre de la Camada.
 
 > Only one %s at a time.
 pt Só um %s por vez.

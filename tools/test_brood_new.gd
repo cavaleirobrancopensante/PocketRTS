@@ -4,8 +4,10 @@ extends SceneTree
 ##  0. the start: no buildings, the Brood Mother, a Rootmaw and 5 grubs; both finish rooting in a moment; supply 40 + 20
 ##  1. rooted: armour and less damage (the same blow on a rooted and an uprooted Rootmaw)
 ##  2. the Mother lays an egg while she walks (it drops behind her)
-##  3. warriors' eggs are fertilised only near the Mother (refused without the father beside her; fertilised by his
-##     breath; hatch as 3 Raptors); an egg the father doesn't reach in time hatches as a grub (the difference paid back)
+##  3. warriors' eggs are fertilised only by the father ROOTED on his nest near the Mother (refused without him, far
+##     off or standing; rooted he takes less damage; her eggs go into his nest, 2 queued; fertilised by his breath;
+##     they hatch there as 3 Raptors); when he gets up the egg lies on the ground and, never fertilised, hatches as a
+##     grub (the difference paid back)
 ##  4. one Tyrannosaur at a time (an egg for one counts)
 ##  5. a Rootmaw drinks its ground into its body; rooted circles may not overlap
 ##  6. UPROOT spills its food as a pile (grubs take from it; it rots); HAUL carries it, slower; killed hauling it bursts
@@ -146,23 +148,43 @@ func _run() -> void:
 	var f: Unit = g._add_unit(BroodNew.FATHER, 0, far)
 	await wait(0.3)
 	check(not BroodNew.father_near(g, 0) and BroodNew.lay_problem(g, q, "raptor") != "", "   the father far from her: still refused")
-	f.position = q.position + Vector2(-q.radius - 40.0, 10.0)
+	f.position = q.position + Vector2(-q.radius - 140.0, 40.0)
 	f.cmd_stop()
 	await wait(0.3)
-	check(BroodNew.father_near(g, 0) and BroodNew.lay_problem(g, q, "raptor") == "", "   the father beside her: allowed")
+	check(not BroodNew.father_near(g, 0) and BroodNew.lay_problem(g, q, "raptor").contains("rooted"), "   the father beside her but standing: still refused (%s)" % BroodNew.lay_problem(g, q, "raptor"))
+	f.cmd_deploy()
+	var on_nest: bool = await wait_for(func() -> bool: return f.tesla_mode == "deployed", float(Defs.NB["father_switch"]) + 2.0)
+	check(on_nest and BroodNew.father_near(g, 0) and BroodNew.lay_problem(g, q, "raptor") == "", "   ROOTED on his nest beside her: allowed")
+	check(BroodNew.incoming(f, 20.0) < 20.0, "   rooted, he takes less damage (20 -> %.1f)" % BroodNew.incoming(f, 20.0))
 	var r0: int = mine("raptor").size()
 	q.cmd_lay("raptor")
 	await wait(0.1)
 	var re: Unit = mine(BroodNew.EGG).back()
-	check(re != null and int(re.nb["fert"]) == 1, "   the Raptor egg waits for the father's breath")
-	var fert: bool = await wait_for(func() -> bool: return int(re.nb["fert"]) == 2, 6.0)
-	check(fert, "   the father breathes on it: fertilised (red)")
-	var got3: bool = await wait_for(func() -> bool: return mine("raptor").size() >= r0 + 3, Defs.UNITS["raptor"]["time"] + 3.0)
-	check(got3, "   it hatches as 3 Raptors (%d)" % (mine("raptor").size() - r0))
-	# an egg the father never reaches: a grub, the difference paid back
+	check(re != null and int(re.nb["fert"]) == 1 and bool(re.nb.get("nest", false)) and re.position.distance_to(BroodNew.nest_point(f)) < 2.0, "   the Raptor egg goes into his nest")
 	q.cmd_lay("raptor")
+	await wait(0.1)
+	check(BroodNew.nest_eggs(g, f).size() == 2, "   a second one: 2 eggs in the nest (%d)" % BroodNew.nest_eggs(g, f).size())
+	var fert: bool = await wait_for(func() -> bool: return int(re.nb["fert"]) == 2, 6.0)
+	check(fert, "   he breathes on it: fertilised (red)")
+	var got3: bool = await wait_for(func() -> bool: return mine("raptor").size() >= r0 + 3, Defs.UNITS["raptor"]["time"] + 3.0)
+	var at_nest := 0
+	for rp in mine("raptor"):
+		if rp.position.distance_to(BroodNew.nest_point(f)) < 60.0:
+			at_nest += 1
+	check(got3 and at_nest >= 3, "   it hatches as 3 Raptors, in the nest (%d, %d by it)" % [mine("raptor").size() - r0, at_nest])
+	await wait_for(func() -> bool: return BroodNew.nest_eggs(g, f).is_empty(), Defs.UNITS["raptor"]["time"] + 5.0)
+	# an egg the father never breathes on: he gets up, it lies on the ground, a grub after all, the difference paid back
+	for rp in mine("raptor"):
+		g.consume_unit(rp)          # (room in the supply for one more egg)
+	var old_eggs: Array = mine(BroodNew.EGG)
+	var lwhy: String = q.cmd_lay("raptor")
+	check(lwhy == "", "   one more Raptor egg (%s)" % lwhy)
 	await wait(0.05)
-	var lone: Unit = mine(BroodNew.EGG).back()
+	var lone: Unit = mine(BroodNew.EGG).filter(func(e) -> bool: return not old_eggs.has(e)).back()
+	f.cmd_uproot(false)
+	await wait(0.2)
+	check(not bool(lone.nb.get("nest", false)), "   he gets up: the egg in his nest lies on the ground")
+	await wait_for(func() -> bool: return f.tesla_mode == "packed", float(Defs.NB["father_switch"]) + 2.0)
 	f.position = far
 	f.cmd_stop()
 	var gold_a: int = int(p["gold"])
@@ -337,9 +359,38 @@ func _run() -> void:
 	# 11. SACRIFICE at the Mother: she devours it
 	var r1: Unit = g._add_unit("raptor", 0, q.position + Vector2(q.radius + 30.0, 20.0))
 	var ess0: float = float(p["res2"])
+	q.nb["eggs"] = 2
+	q.nb["egg_t"] = -1000.0        # (no egg grows meanwhile: the count is the offering's)
+	var eggs_s0: int = 2
 	r1.cmd_sacrifice()
 	var ate: bool = await wait_for(func() -> bool: return float(p["res2"]) > ess0, 8.0)
 	check(ate and float(q.nb.get("devour", 0.0)) > 0.0 and BroodNew.anim(q, false) == "attack", "11. SACRIFICE at the Mother: essence %.0f -> %.0f, she devours it (a swipe)" % [ess0, float(p["res2"])])
+	check(int(q.nb.get("eggs", 0)) == eggs_s0 + 1, "    and she gets 1 egg at once (%d -> %d)" % [eggs_s0, int(q.nb.get("eggs", 0))])
+	q.nb["eggs"] = int(Defs.NB["eggs_max"])
+	var r2: Unit = g._add_unit("raptor", 0, q.position + Vector2(q.radius + 30.0, 20.0))
+	var ess1: float = float(p["res2"])
+	r2.cmd_sacrifice()
+	await wait_for(func() -> bool: return float(p["res2"]) > ess1, 8.0)
+	check(int(q.nb.get("eggs", 0)) == int(Defs.NB["eggs_max"]), "    her clutch full: no extra egg (%d)" % int(q.nb.get("eggs", 0)))
+	q.nb["egg_t"] = 0.0
+	# 12. no rooted creature attacks (the owner, 17:14): rooted, the Mother, a Rootmaw, a turtle and the Tyrannosaur can't
+	# hit a foe beside them; uprooted, they can
+	var foe: Unit = g._add_unit("musketeer", 1, q.position + Vector2(0, 400))
+	var rooted_hit := []
+	for k in [BroodNew.QUEEN, BroodNew.MAW, BroodNew.TURTLE, BroodNew.FATHER]:
+		var c: Unit = q if k == BroodNew.QUEEN else g._add_unit(k, 0, q.position + Vector2(0, 360))
+		var was: String = c.tesla_mode
+		c.tesla_mode = "deployed"
+		if c.can_hit(foe):
+			rooted_hit.append(k)
+		c.tesla_mode = "packed"
+		if not c.can_hit(foe):
+			rooted_hit.append(k + " (not even uprooted)")
+		c.tesla_mode = was
+		if c != q:
+			g.consume_unit(c)
+	g.consume_unit(foe)
+	check(rooted_hit.is_empty(), "12. no rooted creature attacks; uprooted they do (%s)" % str(rooted_hit))
 	# 8. killing the Mother loses
 	q.take_damage(999999.0, null)
 	var out: bool = await wait_for(func() -> bool: return bool(g.eliminated[0]), 3.0)

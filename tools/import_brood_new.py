@@ -114,6 +114,29 @@ PORTRAIT = {"brood_mother": "brood_mother_portrait_chatgpt.png", "rootmaw": "roo
 HAUL_UP = 1.3
 OPTIONAL = {"rootmaw": [("rootmaw_lizard_haul_%s_chatgpt.png" % d, [("haul", d)], (0, 0), HAUL_UP)
                         for d in ["se", "s", "e", "ne", "n"]]}
+# THE ROOTED TYRANNOSAUR (the owner, 15:45: rooted he becomes the Brood's barracks): the FERTILISING figure of his
+# concept sheet (its right half: head lowered, breathing fire-gold onto a nest of red eggs), nest and sparks included,
+# cut out as his one rooted frame. NEST_BOX: the figure's box on the concept sheet (x0, y0, x1, y1; the label under it
+# left out); STAND_BOX: the STANDING figure beside it, which sets the scale (as wide as his east walk in game).
+CONCEPT_T = "tyrannosaur_concept_chatgpt.png"
+NEST_BOX = (790, 40, 1536, 598)
+STAND_BOX = (0, 30, 790, 600)
+# Sheets the owner asked ChatGPT for (imported when they land; until then the code animates the still frames):
+#  - the rooted Tyrannosaur: rows rooting 5, fertilising loop 6, uprooting 5 (scaled so his standing first frame is as
+#    tall as his south-east walk, lined up on his feet);
+#  - the Rootmaw rooted and breathing, one sheet per food stage, 3 frames each (MAW_STAGES; the owner's numbers in the
+#    names are guesses): each sheet is given to the stage of the original filling row it matches best (shape and share
+#    of glowing food), scaled to that stage's width: strips fill1_se .. fill6_se; a stage no sheet matches keeps its
+#    still frame (breathing in code). (The first try, rootmaw_rooted_breath_se_chatgpt.png, is replaced: its stages 1-5
+#    stayed thin.) MAW_DROP: frames left out (stage 1's middle frame grows a big glowing ball a thin stage can't have).
+# (the Mother cannot attack while rooted (owner, 15:58): her rooted-swipe sheet, brood_mother_rooted_attack_se_REJECTED.png,
+# is not used.)
+NEST_SHEET = "tyrannosaur_nest_se_chatgpt.png"
+MAW_STAGES = ["rootmaw_breath_stage1_chatgpt.png", "rootmaw_breath_stage2_chatgpt.png", "rootmaw_breath_stage3_chatgpt.png",
+              "rootmaw_breath_stage4or5_chatgpt.png", "rootmaw_breath_stage6_chatgpt.png"]
+MAW_DROP = {"rootmaw_breath_stage1_chatgpt.png": [1]}
+# the Mother laying in her nest (one row of 6; until it comes the game heaves her rooted frame in code)
+MOTHER_LAY = "brood_mother_rooted_lay_se_chatgpt.png"
 ICONS = "icons_brood_root_uproot_haul_chatgpt.png"
 GRUB_SHEET = "grub_harvest_chatgpt.png"         # rows S, SE, E, (a second E: not used), N
 GRUB_SHEET_NE = "grub_harvest_ne_chatgpt.png"   # one row: NE
@@ -362,6 +385,12 @@ def import_kind(kind, data, contact_dir):
     for d in ["s", "se", "e", "ne", "n"]:
         if ("walk", d) in small:
             small[("idle", d)] = small[("walk", d)][:1]
+    rooted_extras(kind, small)
+    # the glow the game pulses over a rooted creature's food, eggs and breath (glow_<strip>: the same frames, only the
+    # glowing pixels; drawn added on, Unit sprite "Glow")
+    for key in [("rooted", "se"), ("fill", "se"), ("lay", "se")] + [("fill%d" % i, "se") for i in range(1, 7)]:
+        if key in small:
+            small[("glow_" + key[0], key[1])] = [glow_of(kind, im) for im in small[key]]
     assemble(kind, small, data)
     if contact_dir:
         contact(contact_dir, kind, small)
@@ -372,7 +401,10 @@ def assemble(name, small, data):
     L = R_ = U = D = 0
     for key, lst in small.items():
         for k, im in enumerate(lst):
-            ax, ay = anchor_of(im)
+            # (a glow strip sits exactly on its strip's frames)
+            bk = (key[0][len("glow_"):], key[1]) if key[0].startswith("glow_") else key
+            base = small.get(bk) if key[0].startswith("glow_") else None
+            ax, ay = FEET.get((bk, k)) or anchor_of(base[k] if base else im)
             feet[(key, k)] = (ax, ay)
             L = max(L, ax); R_ = max(R_, im.shape[1] - ax); U = max(U, ay); D = max(D, im.shape[0] - ay)
     half = int(np.ceil(max(L, R_))) + 1
@@ -401,6 +433,236 @@ def assemble(name, small, data):
         counts[f"{anim}_{d}"] = len(lst)
     data[name] = {"cell": (W, Hh), "anchor": (half, top), "frames": counts}
     print(f"  {name}: cell {W}x{Hh}, " + ", ".join(f"{k} {v}" for k, v in sorted(counts.items())))
+
+
+def _snap_body(im, keep_box):
+    """Team colour on the body's red spikes but not inside keep_box (fractions x0, y0, x1, y1 of the frame): the red
+    eggs and the fire stay as drawn."""
+    snapped = ia.snap_team(im.copy())
+    h, w = im.shape[:2]
+    for x0, y0, x1, y1 in keep_box:
+        a, b, c, d = int(w * x0), int(h * y0), int(w * x1), int(h * y1)
+        snapped[b:d, a:c] = im[b:d, a:c]
+    return snapped
+
+
+# the parts of the rooted Tyrannosaur's frame left as drawn (the breath under his jaws, the nest of red eggs)
+NEST_KEEP = [(0.50, 0.53, 0.82, 0.80), (0.30, 0.68, 1.0, 1.0)]
+# (the nest sheet's frames: the nest fills their lower 40% from a fifth of the way in; the breath runs from his jaws)
+NEST_KEEP_SHEET = [(0.2, 0.6, 1.0, 1.0), (0.55, 0.45, 0.95, 0.6)]
+
+
+FEET = {}      # ((anim, dir), frame) -> (x, y) anchor: frames lined up on the creature's feet (assemble)
+
+
+def claw_feet(im):
+    """Where a Tyrannosaur frame stands: the middle of his green body (columns) and its lowest rows (his feet), so
+    frames line up on him, not on his nest (the last uprooting frame stands beside the empty mud ring). The brown mud,
+    the red eggs and the yellow fire are not counted."""
+    rgb = im[..., :3].astype(int)
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    body = (im[..., 3] > 0) & (g >= r * 0.85) & (g > b * 1.4) & (g > 40)
+    ys, xs = np.nonzero(body)
+    if len(xs) < 50:
+        return anchor_of(im)
+    return float(xs.mean()), float(np.percentile(ys, 99.5))
+
+
+def rooted_extras(kind, small):
+    """The rooted frames that don't come from the creature's own sheets: the Tyrannosaur's nest (the owner's nest sheet,
+    else his concept's FERTILISING figure) and the Rootmaw's breathing food levels (the owner's sheet's rows, each used
+    only for a level it matches: MAW_MATCH)."""
+    if kind == "tyrannosaur":
+        if os.path.exists(R + NEST_SHEET):
+            # rooting 5, fertilising 6, uprooting 5; scaled so his standing first frame is as tall as his south-east
+            # walk's (the same body size), lined up on his feet
+            npx, rows = sheet_rows(NEST_SHEET)
+            print(f"  {kind}: nest sheet rows {[len(r) for r in rows]}")
+            ref = ia.cutout(npx, rows[0][0])
+            want = small[("walk", "se")][0].shape[0]
+            sc = want / float(ref.shape[0])
+            for name, row in zip(["root", "rooted", "uproot"], rows[:3]):
+                fr = [_snap_body(ia.shrink(ia.cutout(npx, sp), sc), NEST_KEEP_SHEET) for sp in row]
+                small[(name, "se")] = fr
+                for k, im in enumerate(fr):
+                    FEET[((name, "se"), k)] = claw_feet(im)
+            lo = small[("rooted", "se")][0]
+            fx, fy = FEET[(("rooted", "se"), 0)]
+            # the nest's eggs: the middle of the red-orange pixels in the lower right, from his feet (BroodNew.NEST_AT)
+            rgb = lo[..., :3].astype(int)
+            hh, ww = rgb.shape[:2]
+            yy, xx = np.mgrid[0:hh, 0:ww]
+            egg = (lo[..., 3] > 0) & (rgb[..., 0] > 150) & (rgb[..., 1] < 140) & (yy > hh * 0.6) & (xx > ww * 0.3)
+            ys, xs = np.nonzero(egg)
+            print(f"  {kind}: scale {sc:.3f}; rooted {ww}x{hh}; the nest's eggs at ({xs.mean() - fx:.0f}, {ys.mean() - fy:.0f}) from his feet")
+        else:
+            px = ia.load(R + CONCEPT_T)
+            fg = key_mask(px)
+            def biggest(box):
+                x0, y0, x1, y1 = box
+                m = np.zeros_like(fg)
+                m[y0:y1, x0:x1] = fg[y0:y1, x0:x1]
+                sp = ia.components(m, 4, min_big=20000, attach_dist=30)
+                return max(sp, key=lambda o: o["area"])
+            stand = biggest(STAND_BOX)
+            nest = biggest(NEST_BOX)
+            e_w = small[("walk", "e")][0].shape[1] if ("walk", "e") in small else TARGET_W[kind]
+            sc = e_w / float(stand["x1"] - stand["x0"])
+            frame = ia.shrink(ia.cutout(px, nest), sc)
+            small[("rooted", "se")] = [_snap_body(frame, NEST_KEEP)]
+            print(f"  {kind}: rooted (concept) {frame.shape[1]}x{frame.shape[0]} (scale {sc:.3f})")
+    if kind == "rootmaw" and ("fill", "se") in small:
+        maw_stages(small)
+    if kind == "brood_mother" and os.path.exists(R + MOTHER_LAY) and ("rooted", "se") in small:
+        mother_lay(small)
+
+
+def nest_box(im):
+    """A rooted frame's nest: the columns of its lowest 25% (the mud ring): (middle column, width, lowest row)."""
+    a = im[..., 3] > 0
+    ys, xs = np.nonzero(a)
+    y1 = ys.max()
+    band = a[int(y1 - (y1 - ys.min()) * 0.25):y1 + 1]
+    bx = np.nonzero(band.any(0))[0]
+    return (bx.min() + bx.max()) / 2.0, float(bx.max() - bx.min() + 1), float(y1)
+
+
+def mother_lay(small):
+    """Her laying in the nest (MOTHER_LAY, one row of 6): scaled so its resting first frame covers as much as her rooted
+    loop's (the same body size), and lined up on the nest (the nest never shifts against the rooted loop); prints where frame 6 draws the new egg (BroodNew
+    LAY_EGG_AT: the game's egg takes over there)."""
+    npx, rows = sheet_rows(MOTHER_LAY)
+    if not rows:
+        return
+    cut = [ia.cutout(npx, sp) for sp in rows[0]]
+    rf = small[("rooted", "se")][0]
+    rcx, rw, ry = nest_box(rf)
+    rax, ray = anchor_of(rf)
+    sc = float(np.median([rw / nest_box(c)[1] for c in cut]))
+    # (her body drawn bigger against the nest than in the rooted loop: the rest frame's area matched to the loop's,
+    # so she does not swell when she starts to lay)
+    a0 = float((ia.shrink(cut[0], sc)[..., 3] > 0).sum())
+    sc *= float(np.sqrt((rf[..., 3] > 0).sum() / a0))
+    fr = [ia.snap_team(ia.shrink(c, sc)) for c in cut]
+    small[("lay", "se")] = fr
+    for k, im in enumerate(fr):
+        cx, w, y1 = nest_box(im)
+        # the same place for the nest as in the rooted frame: its anchor that far from the nest's middle and bottom
+        FEET[(("lay", "se"), k)] = (cx + (rax - rcx), y1 + (ray - ry))
+    # the new egg in frame 6: the biggest bright yellow-green blob that frame 1 hasn't got
+    def bright(im):
+        rgb = im[..., :3].astype(int)
+        return (im[..., 3] > 0) & (rgb[..., 1] > 170) & (rgb[..., 0] > 120) & (rgb[..., 2] < 140)
+    def placed(k):
+        # (the frame as assemble lays it on the cell: its anchor at a common point)
+        ax, ay = FEET[(("lay", "se"), k)]
+        return fr[k], ax, ay
+    f6, ax6, ay6 = placed(len(fr) - 1)
+    f1, ax1, ay1 = placed(0)
+    big = np.zeros((f6.shape[0] + f1.shape[0] + 400, f6.shape[1] + f1.shape[1] + 400), bool)
+    def stamp(m, ax, ay):
+        out = np.zeros_like(big)
+        oy, ox = int(round(big.shape[0] / 2 - ay)), int(round(big.shape[1] / 2 - ax))
+        out[oy:oy + m.shape[0], ox:ox + m.shape[1]] = m
+        return out
+    new = stamp(bright(f6), ax6, ay6) & ~ndimage.binary_dilation(stamp(bright(f1), ax1, ay1), iterations=1)
+    lab, n = ndimage.label(ndimage.binary_closing(new, iterations=2))
+    if n:
+        sz = ndimage.sum(new, lab, range(1, n + 1))
+        ys, xs = np.nonzero(lab == int(np.argmax(sz)) + 1)
+        print("  brood_mother: laying in the nest, %d frames (scale %.3f); the new egg in frame 6: middle (%.0f, %.0f), bottom %.0f from her anchor" % (
+            len(fr), sc, xs.mean() - big.shape[1] / 2, ys.mean() - big.shape[0] / 2, np.percentile(ys, 97) - big.shape[0] / 2))
+
+
+def _frames3(path):
+    """A breathing sheet's frames: its three biggest pieces, left to right (a black bar some screenshots have along the
+    edge is left out: pieces touching the sheet's edge)."""
+    npx, rows = sheet_rows(path)
+    hh, ww = npx.shape[:2]
+    pieces = [sp for r in rows for sp in r if sp["x0"] > 2 and sp["y0"] > 2 and sp["x1"] < ww - 2 and sp["y1"] < hh - 2]
+    pieces = sorted(sorted(pieces, key=lambda sp: -sp["area"])[:3], key=lambda sp: sp["cx"])
+    return [ia.cutout(npx, sp) for sp in pieces]
+
+
+def maw_stages(small):
+    levels = small[("fill", "se")]
+    want = []
+    for lv in levels:
+        w, h = _box(lv)
+        want.append((h / float(w), food_share(lv), w))
+    have = []
+    for f in MAW_STAGES:
+        if not os.path.exists(R + f):
+            continue
+        fr = _frames3(f)
+        fr = [im for k, im in enumerate(fr) if k not in MAW_DROP.get(f, [])]
+        w, h = _box(fr[0])
+        probe = ia.shrink(fr[0], 90.0 / w)
+        have.append((f, fr, h / float(w), food_share(probe)))
+    if not have:
+        return
+    # the assignment with the least total mismatch (aspect and food share), each sheet to its own stage
+    import itertools
+    def cost(hv, st):
+        return abs(hv[2] - want[st][0]) * 4.0 + abs(hv[3] - want[st][1]) * 8.0
+    best = None
+    for perm in itertools.permutations(range(len(levels)), len(have)):
+        c = sum(cost(have[i], st) for i, st in enumerate(perm))
+        if best is None or c < best[0]:
+            best = (c, perm)
+    notes = []
+    for i, st in enumerate(best[1]):
+        f, fr, a, fs = have[i]
+        sc = want[st][2] / float(_box(fr[0])[0])
+        small[("fill%d" % (st + 1), "se")] = [ia.snap_team(ia.shrink(im, sc)) for im in fr]
+        notes.append("%s -> stage %d (%d frames; its aspect %.2f, food %.3f; the stage's %.2f, %.3f)" % (
+            f.replace("rootmaw_breath_", "").replace("_chatgpt.png", ""), st + 1, len(fr), a, fs, want[st][0], want[st][1]))
+    missing = [st + 1 for st in range(len(levels)) if st not in best[1]]
+    print("  rootmaw: breathing: " + "; ".join(notes) + "; still frame (code breathing): stage %s" % missing)
+
+
+# a breathing row is used for a Rootmaw food level only when, scaled to the level's width, its height is within 5% and
+# its share of glowing food within 2 points of the level's own frame
+MAW_MATCH = {"height": 0.05, "food": 0.02}
+
+
+def _box(im):
+    ys, xs = np.nonzero(im[..., 3] > 0)
+    return xs.max() - xs.min() + 1, ys.max() - ys.min() + 1
+
+
+def food_share(im):
+    rgb = im[..., :3].astype(int)
+    a = im[..., 3] > 0
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    m = a & (g > 140) & (r > 100) & (b < 120) & (g >= r * 0.85)
+    return m.sum() / max(1, a.sum())
+
+
+def glow_of(kind, im):
+    """Only the glowing pixels of a rooted frame (the Mother's and the Rootmaw's yellow-green food and eggs, the
+    Tyrannosaur's fire and red eggs), a pixel's halo round them; the game adds it over the frame with a slow pulse."""
+    rgb = im[..., :3].astype(int)
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    a = im[..., 3] > 0
+    key = ((r == 255) & (g == 0) & (b == 0)) | ((r == 150) & (g == 0) & (b == 0))
+    if kind == "tyrannosaur":
+        h, w = r.shape
+        yy, xx = np.mgrid[0:h, 0:w]
+        zone = (yy > h * 0.45) & (xx > w * 0.3)
+        m = a & ~key & zone & (r > 170) & (g > 40) & (b < 140)
+    else:
+        m = a & ~key & (g > 140) & (r > 100) & (b < 120) & (g >= r * 0.85)
+    soft = ndimage.gaussian_filter(m.astype(float), 0.8)
+    out = np.zeros_like(im)
+    col = np.where(m[..., None], rgb, 0)
+    # (the colour spread into the halo: the mean colour of the glowing pixels round each)
+    for c in range(3):
+        num = ndimage.gaussian_filter(col[..., c].astype(float), 0.8)
+        out[..., c] = np.clip(num / np.maximum(soft, 1e-3), 0, 255).astype(np.uint8)
+    out[..., 3] = np.clip(soft * 255 * 1.4, 0, 255).astype(np.uint8)
+    out[out[..., 3] < 8] = 0
+    return out
 
 
 def write_entry(name, e):
