@@ -480,13 +480,30 @@ func _father(q: Unit) -> void:
 	if d > float(Defs.NB["father_r"]) * Defs.TILE * 0.6 and (f.order == "idle" or f.order == "hold"):
 		var home := g.region_of(g.cell_of(q.position))
 		var best := Vector2.INF
+		var bs := -INF
+		# (his nest away from the rim where her eggs roll out and her creatures hatch, south-east of her: a nest there
+		# walled the hatchlings in, round 2's first try)
+		var rim: Vector2 = q.position + BroodNew.SE * q.radius * 1.6
 		for i in 12:
 			var p: Vector2 = q.position + Vector2.from_angle(TAU * i / 12.0) * (q.radius + f.radius + 24.0)
 			var c := g.cell_of(p)
-			if on_map(p) and g._walkable(c) and g.region_of(c) == home and (best == Vector2.INF or p.distance_to(f.position) < best.distance_to(f.position)):
+			if not on_map(p) or not g._walkable(c) or g.region_of(c) != home or near_ramp(p, 2):
+				continue
+			var room := 0
+			for dy in range(-1, 2):
+				for dx in range(-1, 2):
+					if g._walkable(c + Vector2i(dx, dy)):
+						room += 1
+			var sc := p.distance_to(rim) - p.distance_to(f.position) * 0.2 + room * 6.0
+			if sc > bs:
+				bs = sc
 				best = p
 		if best != Vector2.INF:
 			f.cmd_move(best)
+		return
+	# (0.15.12: he fertilises only ROOTED on his nest beside her)
+	if f.tesla_mode == "packed" and f.order == "idle" and f.target == null and d <= float(Defs.NB["father_r"]) * Defs.TILE * 0.8 and "tyrannosaur" in BroodNew.ROOTERS:
+		f.cmd_deploy()
 
 
 func _short() -> bool:
@@ -542,8 +559,8 @@ func _lay(q: Unit) -> void:
 		k = BroodNew.TURTLE
 	elif _want_ninja() and _ninja != null and _ninja_maws.size() + _pending_ninja_maw < 2 and BroodNew.rooted(_ninja):
 		k = BroodNew.MAW
-	elif sac_mode == "cycle" and g.clock >= 360.0 and g.clock < 540.0:
-		k = "grub"            # (the grub cycle: lay a grub, offer it back for an egg and essence, lay again)
+	elif sac_mode == "cycle" and g.clock >= 360.0 and g.clock < 540.0 and BroodNew.father_near(g, 0):
+		k = "raptor"          # (the cycle: grubs can't be offered (they're the workforce), so: lay Raptors, offer them back, lay again)
 	elif turtle_mode == "far2" and _far_turtles.size() < 2 and g.clock > 150.0 and _supply_turtles_walking() == 0:
 		k = BroodNew.TURTLE
 	elif _want_tank() and turtles <= _turtle_jobs() and BroodNew.count_of(g, 0, BroodNew.EGG) < 3 and gold >= 150:
@@ -774,6 +791,9 @@ var _mfight := false
 
 func _mother_defends(q: Unit) -> void:
 	_stage_watch(q)
+	if mdef == "guard" and _camp != "walking":
+		BroodNew.mother_guard(g, q, _guard_st, 0.5)      # (as the computer: up to fight when they reach her, back after)
+		return
 	if mdef != "uproot" or _camp == "walking":
 		return
 	var foes := foe_army_near(q.position, 6.0 * Defs.TILE)
@@ -792,6 +812,7 @@ func _mother_defends(q: Unit) -> void:
 
 
 var _mhome := Vector2.ZERO
+var _guard_st := {}
 
 
 ## SACRIFICE (each one gives the Mother 1 egg and essence): sac:late offers spare grubs after 10:00, sac:cycle runs the
@@ -816,11 +837,23 @@ func _sacrifice(q: Unit) -> void:
 		if gr.order != "sacrifice" and gr.carrying == 0 and gr.can_sacrifice():
 			gr.cmd_sacrifice()
 			going += 1
+	if late:
+		# grubs can't be offered (Unit.can_sacrifice: the workforce): late, Raptors idle at home beyond 12 are recycled
+		# into eggs and essence (Brutes need 20)
+		var home: Array = army().filter(func(r) -> bool: return r.kind == "raptor" and not _wave.has(r) and r.order != "sacrifice")
+		var offer := home.size() - 12
+		if offer > 0 and (g.supply_used(0) >= int(g.players[0]["cap"]) - 6 or float(g.players[0]["res2"]) < 20.0):
+			for r in home:
+				if offer <= 0:
+					break
+				if r.can_sacrifice():
+					r.cmd_sacrifice()
+					offer -= 1
 	if cyc:
-		# idle grubs that hatched from the cycle go straight back
-		for gr in grubs:
-			if gr.order == "idle" and gr.can_sacrifice():
-				gr.cmd_sacrifice()
+		# the cycle: every Raptor at home (not in a wave) goes straight back to her
+		for r in army():
+			if r.kind == "raptor" and not _wave.has(r) and r.order != "sacrifice" and r.can_sacrifice():
+				r.cmd_sacrifice()
 
 
 var min_hp := 99999.0
