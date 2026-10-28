@@ -27,6 +27,7 @@ const CHECK := 0.5                     # seconds between looks for a taken spot
 var game: Game
 ## [{c: hall cell, team, rank (1 best, 2 next), score, room (0..1), ways, home, foe}]
 var spots: Array = []
+var all: Array = []                    # every free base site rated (rate_all), for the computer
 var shown: Array = []                  # the spots drawn now (tests)
 var _t := 0.0
 var _placing := false
@@ -129,6 +130,12 @@ func draw_on_minimap(ci: CanvasItem, m: Rect2) -> void:
 
 ## Rate every free base site from the bare map (call before any building stands) and keep each side's best.
 static func rate(g: Game) -> Array:
+	return rate_all(g).filter(func(s: Dictionary) -> bool: return int(s["rank"]) > 0)
+
+
+## Every free base site rated, each side's best PICKS ranked 1, 2 (the rest rank 0): the computer's hall choice uses all of
+## them (AI._site_bonus, docs/ai_round6.md).
+static func rate_all(g: Game) -> Array:
 	var out: Array = []
 	var n := g.n_players()
 	if n < 1 or g.starts.size() < n:
@@ -171,9 +178,9 @@ static func rate(g: Game) -> Array:
 			if absf(float(a["score"]) - float(b["score"])) > 0.001:
 				return float(a["score"]) > float(b["score"])
 			return float(a["home"]) < float(b["home"]))
-		for i in mini(PICKS, list.size()):
+		for i in list.size():
 			var s: Dictionary = list[i]
-			s["rank"] = i + 1
+			s["rank"] = i + 1 if i < PICKS else 0
 			out.append(s)
 	return out
 

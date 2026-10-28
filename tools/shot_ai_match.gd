@@ -228,6 +228,9 @@ func _ai_line(c: float, tm: int) -> void:
 	ai_lines.append("%s cogs %d tension %d | works %d (springers at %d%s) q %s springs %d escapement %s | army %s | nets %d jumps %d | attacking %s siege %s reserve %d" % [_mmss(c),
 		int(g.players[tm]["gold"]), int(g.tension(tm)), works, springer_works, (": " + why_not.left(30)) if why_not != "" else "", str(queues), springs, esc, str(army), nets, jumps,
 		str(ai._attacking) if ai else "-", ("on" if ai and not ai._siege.is_empty() else "-"), ai._reserve if ai else 0])
+	if ai:
+		# (why a wave does not go out: the supply it waits for, the army's supply, a threat at home, detachments out)
+		ai_lines[-1] += " | attack_at %d army sup %d threat %s det %d" % [ai._attack_at, ai._army_supply(g.army(tm)), str(ai._threat()), ai._det.size()]
 
 
 ## What each soldier in a fight shot is doing (written to <out>/why.txt): its order, what it is after, whether it can

@@ -301,7 +301,8 @@ func _ready() -> void:
 		# the best free hall spots of each side, tinted on the ground (scripts/expansion_spots.gd; rated on the bare map)
 		exp_spots = ExpansionSpots.new()
 		exp_spots.game = self
-		exp_spots.spots = ExpansionSpots.rate(self)
+		exp_spots.all = ExpansionSpots.rate_all(self)
+		exp_spots.spots = exp_spots.all.filter(func(s: Dictionary) -> bool: return int(s["rank"]) > 0)
 		exp_spots.z_index = -18
 		add_child(exp_spots)
 	if edit_mode:
