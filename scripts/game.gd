@@ -10413,7 +10413,7 @@ func _draw_hover() -> void:
 	if e.team >= 0:
 		col = Color(1.0, 0.3, 0.25) if hostile(human, e.team) else Color(0.4, 1.0, 0.4)
 	var pulse := 0.75 + 0.25 * sin(clock * 8.0)
-	if e is Unit:
+	if e is Unit and not ((e as Unit)._k_nb and (e as Unit).nb.has("fpx")):      # (a rooted new-Brood creature: a building's frame)
 		var r: float = (e as Unit).radius
 		overlay.draw_set_transform(e.position, 0.0, Vector2(1.0, 0.45))
 		overlay.draw_circle(Vector2.ZERO, r + 9.0, Color(col, 0.18 * pulse))
@@ -10425,8 +10425,8 @@ func _draw_hover() -> void:
 		top.y -= 4.0 + 3.0 * sin(clock * 8.0)       # (the marker bobs)
 		overlay.draw_colored_polygon(PackedVector2Array([top, top + Vector2(-8, -13), top + Vector2(8, -13)]), Color(0, 0, 0, 0.8))
 		overlay.draw_colored_polygon(PackedVector2Array([top + Vector2(0, -2.5), top + Vector2(-5.2, -11), top + Vector2(5.2, -11)]), Color(col, 1.0))
-	elif e is Building:
-		var rc: Rect2 = (e as Building).rect().grow(4)
+	elif e is Building or e is Unit:
+		var rc: Rect2 = e.rect().grow(4)
 		var L := 12.0
 		for c in [[rc.position, Vector2(1, 0), Vector2(0, 1)], [rc.position + Vector2(rc.size.x, 0), Vector2(-1, 0), Vector2(0, 1)],
 				[rc.position + Vector2(0, rc.size.y), Vector2(1, 0), Vector2(0, -1)], [rc.end, Vector2(-1, 0), Vector2(0, -1)]]:

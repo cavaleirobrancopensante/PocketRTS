@@ -1477,14 +1477,15 @@ func _nb_buttons(list: Array, units: Array) -> void:
 			tip = "It hatches in %d s%s." % [int(ceil(tl)), " (fertilised by the father)" if int(e0.nb.get("fert", 0)) == 2 else ""]
 		var elab := "%s%s · %s" % [String(Defs.UNITS[ek]["name"]).to_upper(), (" x%d" % eggs.size()) if eggs.size() > 1 else "", st2]
 		_tip_for[elab] = ["Egg: %s" % Defs.train_name(ek), tip + " Right-click (or RALLY) sets where the hatchling goes."]
-		list.append([ek, elab, func() -> void: pass, false, tip, ""])
+		list.append([ek, elab, func() -> void: toast(tip), true, "", ""])      # (an info button: lit, a tap tells more)
 	# COCOONS: a grub morphing
 	var cocs := units.filter(func(u: Unit) -> bool: return u.team == game.human and BroodRoot.in_cocoon(u))
 	if not cocs.is_empty():
 		var c0: Unit = cocs[0]
 		var cl := maxf(0.0, BroodRoot.cocoon_time(c0) - float(c0.nb.get("coc", 0.0)))
 		var clab := "MORPHING %ds" % int(ceil(cl))
-		list.append([c0.kind, clab, func() -> void: pass, false, "A grub is turning into a %s: it comes out rooted in %d s." % [c0.d["name"], int(ceil(cl))], ""])
+		var ctip := "A grub is turning into a %s: it comes out rooted in %d s." % [c0.d["name"], int(ceil(cl))]
+		list.append([c0.kind, clab, func() -> void: toast(ctip), true, "", ""])
 	var rooters := units.filter(func(u: Unit) -> bool: return BroodNew.ROOTERS.has(u.kind) and u.team == game.human and not BroodRoot.in_cocoon(u))
 	if not rooters.is_empty():
 		var packed := rooters.filter(func(u: Unit) -> bool: return u.tesla_mode == "packed")

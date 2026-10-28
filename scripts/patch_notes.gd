@@ -4,6 +4,13 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.15.14", "items": [
+		"THE NEW BROOD (EXPERIMENT): A ROOTED CREATURE IS A BUILDING. Rooted, the Brood Mother, a Rootmaw, a Mound Turtle and the Tyrannosaur take a building's footprint on the ground (paths go round it, units standing there are pushed out), are drawn under the units round them, and have a building's card: no move, attack, stop or hold, only their own commands and RALLY. A right-click on the ground sets their rally point and never gets them up: only UPROOT does. Idle, they hold still; they move only while they work.",
+		"GRUBS TURN INTO THE ROOTMAW, THE MOUND TURTLE AND THE TYRANNOSAUR: pick one on a grub's card (no old Brood buildings there any more) and place it like a building. The grub walks there, pays and morphs in a cocoon that opens rooted. The Brood Mother lays only grubs and warriors now.",
+		"ROOT WORKS LIKE BUILD: a ghost on the grid shows where it will root, green or red with the reason (no swamp, another Rootmaw's ground, a cliff, out of the father range...); the creature walks there and roots on that spot. While a Tyrannosaur is picked or placed, and while the Mother is picked, a ring round her shows the father range.",
+		"EGGS: a picked egg's card shows what it will hatch and when (or that it waits for the father). Her eggs take the Mother's rally point, a right-click gives an egg its own, and the warriors hatching in the Tyrannosaur's nest go to his.",
+		"The computer's Brood Mother no longer gets up and roots again over and over when shot at from range: she stays up while enemies are near and roots only after a real calm.",
+	]},
 	{"v": "0.15.13", "items": [
 		"THE NEW BROOD (EXPERIMENT): THE BROOD MOTHER GROWS. GROW on her card (rooted; she lays no eggs meanwhile): stage 2 for 300 food and 45 s holds 15 eggs and lays 30% faster; stage 3 for 500 food, 75 essence and 60 s holds 20 and lays 70% faster. She gets bigger and slower, with a wider swamp. Uprooting stops it and pays it back.",
 		"THREE LEVERS RAISE HER LAYING, AND THEY STACK: her stage; every father near her (+20%: his pheromones); and every Mound Turtle rooted on new ground, 15 tiles or more from her and from the other counted ones (+15%, up to 3). Turtles at home now give supply and swamp only. Her card shows what is working.",
