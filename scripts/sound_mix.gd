@@ -268,6 +268,8 @@ const GAIN := {
 	"res://assets/audio/work/clock_build_2.wav": -0.1,
 	"res://assets/audio/work/crown_build.wav": -1.9,
 	"res://assets/audio/work/crown_build_1.wav": -2.4,
+	"res://assets/audio/work/cog_press_stamp_1.wav": 0.6,
+	"res://assets/audio/work/cog_press_stamp_2.wav": 3.9,
 	"res://assets/audio/work/crusher.wav": 1.3,
 	"res://assets/audio/work/farm_harvest.wav": 4.2,
 	"res://assets/audio/work/grub_deliver.wav": -2.6,

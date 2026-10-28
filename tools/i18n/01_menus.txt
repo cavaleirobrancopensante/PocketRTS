@@ -635,9 +635,9 @@ es %s (tu mapa, %s, %dx%d)
 pt Vire o celular de lado
 es Gira el móvil en horizontal
 
-> Holdfast plays in landscape.
-pt O Holdfast joga-se na horizontal.
-es Holdfast se juega en horizontal.
+> This game plays in landscape.
+pt Este jogo é jogado na horizontal.
+es Este juego se juega en horizontal.
 
 > Press F11 to go full screen, and F11 again to leave it
 pt Pressione F11 para tela cheia, e F11 de novo para sair

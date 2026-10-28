@@ -181,7 +181,7 @@ func show_device() -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 14)
 	p.add_child(v)
-	v.add_child(UiStyle.heading("HOLDFAST", 54, UiStyle.TRIM))
+	v.add_child(UiStyle.heading(GameName.heading(), GameName.heading_size(54), UiStyle.TRIM))
 	v.add_child(UiStyle.text("Where are you playing?", 26, UiStyle.TEXT))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 18)
@@ -281,7 +281,7 @@ func _crash_report() -> String:
 	if not logs.is_empty():
 		var lines := FileAccess.get_file_as_string("user://logs/" + String(logs[-1])).strip_edges().split("\n")
 		tail = "\n".join(lines.slice(maxi(0, lines.size() - 60)))
-	return "Holdfast crash report (v%s, %s)\nDevice: %s, %s\nThe last session was doing: %s\n--- end of its engine log ---\n%s" % [
+	return GameName.title() + " crash report (v%s, %s)\nDevice: %s, %s\nThe last session was doing: %s\n--- end of its engine log ---\n%s" % [
 		version, Time.get_datetime_string_from_system(), OS.get_name(), OS.get_model_name(), what, tail]
 
 
@@ -339,7 +339,7 @@ func show_menu() -> void:
 	v.offset_bottom = -16
 	v.add_theme_constant_override("separation", 10)
 	root.add_child(v)
-	var title := UiStyle.heading("HOLDFAST", 72, UiStyle.TRIM)
+	var title := UiStyle.heading(GameName.heading(), GameName.heading_size(72), UiStyle.TRIM)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_constant_override("outline_size", 12)
 	title.add_theme_color_override("font_outline_color", Color(0.05, 0.04, 0.03, 0.85))
@@ -731,6 +731,9 @@ func show_settings() -> void:
 	pb.custom_minimum_size = Vector2(260, 50)
 	ph.add_child(pb)
 	v.add_child(ph)
+	v.add_child(_toggle_row("TURNING GEARS (experiment)", func() -> bool: return Settings.gear_turn, func() -> void:
+		Settings.gear_turn = not Settings.gear_turn       # (from the next match: a match keeps the rule it started with)
+		Settings.save_all()))
 	v.add_child(_toggle_row("SHOW EXPANSION SPOTS", func() -> bool: return Settings.expansion_spots, func() -> void:
 		Settings.expansion_spots = not Settings.expansion_spots
 		Settings.save_all()))
@@ -1927,7 +1930,7 @@ func _make_rotate_overlay() -> void:
 	l.custom_minimum_size = Vector2(600, 0)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_rotate.add_child(l)
-	var l2 := _label("Holdfast plays in landscape.", 40, Color(1, 1, 1, 0.6))
+	var l2 := _label("This game plays in landscape.", 40, Color(1, 1, 1, 0.6))
 	l2.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	l2.position = Vector2(-300, 250)
 	l2.custom_minimum_size = Vector2(600, 0)
@@ -2071,6 +2074,11 @@ func start(cfg: Dictionary = {}) -> void:
 		cfg["seed"] = randi()
 	cfg = cfg.duplicate(true)
 	Defs.cw_roster = (bool(cfg.get("lab", false)) or Settings.cw_lab) if not watching else bool(_replay_data["header"].get("cw_roster", false))      # (the Clockwork roster prototype: off in normal games)
+	# TURNING GEARS (the experiment): the match's own rule, from the setting when it starts, kept in its setup (a continued
+	# match, an online guest and a replay take it from there; a setup from before it existed: off)
+	if not cfg.has("gear_turn") and not watching and not cfg.has("resume"):
+		cfg["gear_turn"] = Settings.gear_turn
+	Defs.gear_turn = bool(cfg.get("gear_turn", false))
 	# a random map is picked here (among the pool's maps that hold everyone), so colours can
 	# be chosen to suit its ground
 	var pool := String(cfg.get("map", "random"))

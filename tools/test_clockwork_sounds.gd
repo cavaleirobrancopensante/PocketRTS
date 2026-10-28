@@ -238,13 +238,14 @@ func _run() -> void:
 	patient.hp = patient.max_hp * 0.3
 	_free_sfx()
 	await run(5.0)
+	var swept0: int = g.bodies_swept
 	var wreck: Unit = g._add_unit("clock_soldier", 0, gwu.position + Vector2(-60, 40))
 	wreck.hp = 0.0
 	wreck.die()
 	wreck._rest_in_peace()
 	_free_sfx()
 	await run(6.0)
-	check(gwu.parts > 0, "the Great Winder swept a wreck (%d parts)" % gwu.parts)
+	check(g.bodies_swept > swept0, "the Great Winder swept a wreck (into %d cogs)" % int(gwu.get_meta("gw_cogs", 0)))
 	# ---- deaths, one kind at a time (near the camera: a sound far off screen is not played)
 	g.camera.position = at
 	g.camera.force_update_scroll()

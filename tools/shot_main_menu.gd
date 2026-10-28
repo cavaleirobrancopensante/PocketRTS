@@ -7,6 +7,8 @@ func _initialize() -> void:
 	var a := OS.get_cmdline_user_args()
 	if not a.is_empty():
 		out = a[0]
+	# a shot or test that quit mid-session leaves the "running" marker: without this the crash page shows
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://running.txt"))
 	Settings.load_all()
 	Settings.device = "pc"
 	Settings.apply()

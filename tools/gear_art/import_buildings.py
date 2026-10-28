@@ -1,4 +1,4 @@
-"""Import the painted Cog Press, Mainspring, Movement Works (the Light Works), Regulator, Escapement, Cuckoo House and Heavy
+"""Import the painted Mainspring, Movement Works (the Light Works), Regulator, Escapement, Cuckoo House and Heavy
 Works frames (the Heavy Works' canvases: tools/press_anim/heavy_works_key.py) (art/clockwork/gear/<kind>_*.png, drawn at 3x on one canvas per kind,
 the building's base bottom-centre on the canvas's bottom-centre) into the game's building sprites:
   assets/buildings/<kind>_{built,construction,damaged,destroyed}.png and <kind>_work_0..7.png (the Cuckoo House: 0..3, the
@@ -18,7 +18,8 @@ SCALE = 1.0 / 3.0
 SCALES = {'regulator': 1.0 / 3.5, 'cuckoo_house': 1.0 / 3.3}
 # working-loop frames (8 unless said; the Escapement's tick-tock: tools/press_anim/escapement_work.py)
 WORK = {'cuckoo_house': 4, 'escapement': 24}
-KINDS = ('cog_press', 'mainspring', 'movement_works', 'regulator', 'escapement', 'cuckoo_house', 'heavy_works')
+# (the Cog Press: tools/import_cog_press.py since 2026-10-28, the owner's ChatGPT gantry press, 12 work frames)
+KINDS = ('mainspring', 'movement_works', 'regulator', 'escapement', 'cuckoo_house', 'heavy_works')
 ONLY = [k for k in sys.argv[1:] if k in KINDS]
 # Painted reds the team shader would take for its key reds (within 0.08 of 255,0,0 or 150,0,0: scripts/../shaders/team.gdshader)
 # and recolour as specks of the side's colour: nudged just off the key (a little green). Only for these kinds (the older

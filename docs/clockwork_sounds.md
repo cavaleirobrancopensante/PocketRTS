@@ -101,6 +101,7 @@ The sounds could not be listened to. They were chosen by measuring them: loudnes
 | `clock/ready` | A Clockwork unit is ready. A ratchet turn and the carriage bell. | crank loop 3.25 to 3.55 + typewriter 30.33 to 30.83 |
 | `ratchet` (2 takes) | A Winder picks up, sets down or unfolds a building crate. A ratchet. | crank loop 1.78 to 2.08 higher / crank loop 5.02 to 5.32 higher |
 | `work/winder_crank` (3 takes) | A Winder cranks a Cog Press, about every 2 seconds. One turn of the crank. | crank loop 0.10 to 1.70 / crank loop 1.76 to 3.21 / crank loop 3.23 to 4.83 |
+| `work/cog_press_stamp` (2 takes, 0.14.101) | The Cog Press's head hits the cog (frame 4 of its 12-frame loop), on every other stroke, only where the player can see the press; quiet (-9 dB, mix offset -3 dB), GAP 700 ms so a row of presses does not drum. | stamp 6.91 to 7.21 pitched to 0.72 + clang group 4.53 to 4.83 at 0.42 / office stamp 3.14 to 3.38 pitched to 0.7 + clang group 0.91 to 1.19 at 0.45 (the owner's two stamp recordings, sent 2026-10-28) |
 | `work/clock_build` (3 takes) | A Winder builds or repairs, about every 2 seconds. A click and a clang. | crank loop 0.12 to 0.32 + clang group 11.64 to 11.94 lower / crank loop 3.25 to 3.45 + clang group 8.28 to 8.58 lower / crank loop 5.02 to 5.22 + clang group 0.07 to 0.37 lower |
 
 ## The code that changed
