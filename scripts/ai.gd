@@ -4747,7 +4747,7 @@ var _bad_spots := {}            # Vector2 -> clock until which waves leave the s
 ## big, Greenhold and Frostmere, round 6's first games).
 const WAVE_EDGE := 1.2
 const WAVE_ANYWAY := 60
-var r6_wave := OS.get_cmdline_user_args().has("r6:wave")
+var r6_wave := not OS.get_cmdline_user_args().has("r6:nowave")
 
 
 func _wave_worth(ready: Array) -> bool:
