@@ -298,6 +298,12 @@ var pistol_t := 0.0             # (an Officer) how far through reloading it, in 
 var led: Array = []              # (a man) the horses he leads by the reins, in their string
 var leader: Unit = null          # (a horse) who leads it
 var claimed: Unit = null         # (a horse) the man walking over to mount or lead it
+## Taking the reins (LEAD, playtest 0.14.97: "the act itself more readable"): he stops at the horse's head this long
+## (work "reins"), reaching for the bridle in REINS_POSE (a strip of his and the frame held), and the horse stops
+## and turns to him; then both walk off. Never a mount strip.
+const REINS_T := 0.5
+const REINS_POSE := {"labourer": ["mine", 3], "musketeer": ["reload", 0], "dismounted": ["idle", 0],
+	"winder": ["repair", 0], "messenger": ["idle", 0]}
 var into: Entity = null          # (a horse) the building it is taken to (training) or the gun it goes to
 var _into_t := 0.0
 var hitch_p := Vector2.INF       # (a horse) its spot beside that building, where it stands hitched for its recruit or gun (INF: not hitched)
@@ -6117,6 +6123,8 @@ func _anim_name() -> String:
 		return _death_anim()
 	if (work == "mounting" or work == "dismounting") and mount_strip_art() != "":
 		return "mount"
+	if work == "reins" and REINS_POSE.has(kind):
+		return _anim_or(String(REINS_POSE[kind][0]), "idle")      # (reaching for the bridle: a held frame, in _animate)
 	var moving := velocity.length() > 10.0
 	if crew_of != null:
 		return Ballista.crew_anim(self)        # (a Spring Ballista's crewman: push, crank, idle)
@@ -6594,6 +6602,9 @@ func _animate(delta: float) -> void:
 			frame_i += 1
 	frame_i = posmod(frame_i, n) if loop else mini(frame_i, n - 1)
 	var shown := frame_i
+	if work == "reins" and REINS_POSE.has(kind) and anim == String(REINS_POSE[kind][0]):
+		frame_i = mini(int(REINS_POSE[kind][1]), n - 1)       # (the reach, held still)
+		shown = frame_i
 	if anim == "deploy" and tesla_mode == "packing":
 		shown = n - 1 - frame_i         # packing plays the deploy frames backwards
 	if anim == "brace" and not braced:
@@ -7333,6 +7344,17 @@ func cmd_lead(h) -> bool:
 
 func _lead_run(delta: float) -> Vector2:
 	var h := order_target as Unit
+	if work == "reins":
+		# he has it by the reins: a moment at its head, then on (the next horse, or he stands)
+		if h != null and is_instance_valid(h) and not h.dead and h.leader == self:
+			_face_reins(h, delta)
+			work_t -= delta
+			if work_t > 0.0:
+				return Vector2.ZERO
+		work = ""
+		if not _next_order():
+			cmd_stop()
+		return Vector2.ZERO
 	if not horse_free_for(h, self) or led.size() >= int(Defs.HORSES["lead_max"]):
 		if not _next_order():
 			cmd_stop()
@@ -7340,10 +7362,29 @@ func _lead_run(delta: float) -> Vector2:
 	if position.distance_to(h.position) < radius + h.radius + 14.0:
 		h.claimed = null
 		take_reins(h)
-		if not _next_order():
-			cmd_stop()
+		work = "reins"
+		work_t = REINS_T
+		path = PackedVector2Array()
+		_face_reins(h, 1.0)
 		return Vector2.ZERO
 	return _walk_to(h.position, delta)
+
+
+## Taking the reins: he turns to the horse's head, the horse turns its head to him.
+func _face_reins(h: Unit, delta: float) -> void:
+	var k := clampf(delta * 10.0, 0.0, 1.0)
+	var to_him := position - h.position
+	if to_him.length() > 1.0:
+		h.facing = h.facing.lerp(to_him.normalized(), k).normalized() if h.facing != Vector2.ZERO else to_him.normalized()
+	var head := h.position + h.facing * 14.0 - position
+	if head.length() > 1.0:
+		facing = facing.lerp(head.normalized(), k).normalized() if facing != Vector2.ZERO else head.normalized()
+	h.velocity = Vector2.ZERO
+
+
+## (a man) taking a horse by the reins just now (the pause of _lead_run).
+func taking_reins() -> bool:
+	return work == "reins" and order == "lead" and not dead
 
 
 ## A horse sound for getting on (whinny) or taking the reins (a soft neigh), so the two
@@ -7803,6 +7844,8 @@ func _horse_tick(delta: float, want: Vector2) -> Vector2:
 
 ## Led: the first horse walks at the man's side, the others in a string behind it.
 func _follow_leader(delta: float) -> Vector2:
+	if leader.taking_reins() and leader.order_target == self:
+		return Vector2.ZERO          # (it stands and turns its head to him: _face_reins)
 	var i := leader.led.find(self)
 	var goal: Vector2
 	var lf: Vector2 = leader.facing if leader.facing != Vector2.ZERO else Vector2.DOWN
@@ -8251,8 +8294,17 @@ func _wait_horse() -> void:
 const BRIDLE := {"e": Vector2(19, -36), "se": Vector2(8, -37), "s": Vector2(0, -36), "ne": Vector2(5, -44), "n": Vector2(0, -44)}
 
 
+const REIN_COL := Color(0.66, 0.45, 0.24, 0.95)       # (a led horse's rein: tan leather...)
+const REIN_EDGE := Color(0.18, 0.10, 0.05, 0.85)      # (...with a dark edge)
+
+
+## (a horse) is a rein drawn from it to its leader now?
+func rein_shown() -> bool:
+	return leader != null and is_instance_valid(leader) and not dead and visible and _rein != null and _rein.visible
+
+
 func _draw_rein() -> void:
-	if leader == null or not is_instance_valid(leader) or dead or not visible:
+	if not rein_shown():
 		return
 	var b: Vector2 = view_entry(BRIDLE, Vector2(10, -27))
 	if anim_flip or view_mirror(BRIDLE):
@@ -8262,14 +8314,24 @@ func _draw_rein() -> void:
 	if i <= 0:
 		var up := -34.0 if leader.is_mounted() else -15.0
 		hand = leader.position + Vector2(5.0 if leader.facing.x >= 0.0 else -5.0, up) - position
+		if leader.taking_reins():
+			# reaching for the bridle: his hand held out to the horse's head
+			var to_h := (position + b) - (leader.position + Vector2(0, up))
+			hand = leader.position + Vector2(0, up - 2.0) + to_h.limit_length(9.0) - position
 	else:
 		var ahead: Unit = leader.led[i - 1]
 		hand = ahead.position + Vector2(0, -18) - position      # tied to the saddle of the one ahead
 	if b.distance_to(hand) > 70.0:
 		hand = b + (hand - b).normalized() * 70.0      # (the rope has a length: never a huge line across the map)
-	var mid := (b + hand) * 0.5 + Vector2(0, minf(6.0, b.distance_to(hand) * 0.12))
-	var col := Color(0.42, 0.27, 0.13, 0.95)
-	_rein.draw_polyline(PackedVector2Array([b, mid, hand]), col, 1.0)
+	# a leather rein with a little sag (a curve of a few points, anti-aliased), from his hand into its bridle; it runs
+	# from head height down to his hand, under the health bars (they sit above the pictures)
+	var sag := minf(6.0, b.distance_to(hand) * 0.12)
+	var pts := PackedVector2Array()
+	for k in 7:
+		var f := k / 6.0
+		pts.append(b.lerp(hand, f) + Vector2(0, sag * 4.0 * f * (1.0 - f)))
+	_rein.draw_polyline(pts, REIN_EDGE, 2.6, true)     # (a dark edge, so it reads on a dark horse and on grass)
+	_rein.draw_polyline(pts, REIN_COL, 1.3, true)
 
 
 ## A stand-in sprite's tint (Defs.TEMP_ART "tint", for a unit borrowing another's sprites).

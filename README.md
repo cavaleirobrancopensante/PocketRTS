@@ -1,6 +1,6 @@
 # Holdfast
 
-**Play in your browser (version 0.14.97): https://holdfastrts.github.io/Holdfast/**
+**Play in your browser (version 0.14.98): https://holdfastrts.github.io/Holdfast/**
 
 **Android app: https://holdfastrts.github.io/Holdfast/Holdfast.apk** (rebuilt on every push; allow installs from your browser, then install over the old one to update)
 

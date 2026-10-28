@@ -417,3 +417,11 @@ The owner, after playing: the legs looked silly. The painted legs are gone from 
 - THE TURRET CIRCLES (GearNet._draw_turret_circles): flat code-drawn circles on the ground, like the Brood's pit circles.
 - The GEAR VIEW button's icon (CwArt._ability_glyph "ab_gear_view": two meshing gears, the big one green, the small one
   gold) is drawn in code until assets/icons/clockwork/ab_gear_view.png is painted (the HUD takes the file first).
+## Taking a horse by the reins (code, 0.14.98; docs/lead_anim.md)
+- The REIN from a man's hand to a led horse's bridle (and from the saddle of one led horse to the next in a string) is a
+  line drawn IN CODE (Unit._draw_rein): leather brown, 1.4 px, anti-aliased, with a little sag in the middle, under the
+  health bars. While he takes the reins his hand end is held out towards the horse's head.
+- THE REACH while he takes the reins (0.5 s, Unit.REINS_POSE) is a HELD FRAME of an existing strip, not a drawn pose:
+  the Labourer's hoe/pick frame 3 (arm out), the Musketeer's reload frame 0 (hand raised), the Winder's repair frame 0
+  (hands out); the Officer and a Messenger simply stand (idle). Wanted: a painted "take the reins" strip per facing for
+  each leader (hand out to the bridle, 3-4 frames), and a led-horse head toss.

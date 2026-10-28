@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.98", "items": [
+		"TAKING THE REINS has its own moment now: a man told to LEAD a horse stops at its head for half a second and reaches for the bridle, the horse stops and turns its head to him, the rein appears, and then they walk off together (a pause at each horse when he fetches several). The rein is easier to see: tan leather with a dark edge. Mounting is unchanged: a soldier right-clicked on a horse still gets on it; LEAD (Q) is how a soldier leads one. Labourers lead on a right-click.",
+	]},
 	{"v": "0.14.97", "items": [
 		"CLOCKWORK GEAR RULES (the owner's, from the gear study): each RATCHET TURRET now claims a circle of ground 4 tiles round it, and two turrets' circles may not overlap: a turret's spring draws all the force from the gears under it, so turrets stand at least 8 tiles apart. While you place one, the circles are drawn and the ghost says TOO NEAR A TURRET. Old saves keep the turrets they have.",
 		"NEW CLOCKWORK BUILDING, the HEAVY WORKS (175 cogs, 45 s, needs a working Escapement): a gantry crane yard where the PENDULUM, the SPRING BALLISTA and the GREAT WINDER are now made, and you can watch each machine rise in its bay as it trains. It sits on its BIG gear only and uses Tension, so its ring must mesh with a Mainspring's (else NEEDS MAINSPRING).",
