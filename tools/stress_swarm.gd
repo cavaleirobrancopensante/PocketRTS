@@ -60,6 +60,8 @@ var _fight := PackedFloat32Array()  # the frames while both sides still have a t
 var _in_fight := false
 var linger := 0.0                # (seconds to keep running after the report: tools/gd_script_profiler.py gets its totals late)
 var _done := false
+var _zmax := {}                  # the most each part took in one frame
+var spikes := false              # ("spikes": every frame over 50 ms printed, with what it spent its time on)
 
 const ZONES := ["units", "buildings", "game", "game/unit grid", "game/paths", "game/pathfinder", "game/path smoothing", "game/fog",
 	"effects", "projectiles", "unit draw", "building draw", "overlay draw", "hud", "hud draw", "hud/minimap", "hud/selection", "ai", "smoke"]
@@ -85,6 +87,8 @@ func _initialize() -> void:
 			device = "mobile"
 		elif a == "sound":
 			sound = true
+		elif a == "spikes":
+			spikes = true
 		elif a.begins_with("trace:"):
 			_trace = FileAccess.open(a.substr(6), FileAccess.WRITE)
 		elif a.begins_with("out:"):
@@ -113,6 +117,16 @@ func _process(delta: float) -> bool:
 			main.start({"map": map, "seed": 4242, "slots": [
 				{"who": "you", "faction": fac, "colour": 0, "side": 0},
 				{"who": "easy", "faction": fac, "colour": 1, "side": 1}]})
+			# (at once, as perf_bench does: the computers off, no music, no time limit on the path queue,
+			# so nothing goes by the wall clock and every run plays out the same)
+			var g0: Game = main.game
+			if g0:
+				for ai in g0.ais:
+					ai.process_mode = Node.PROCESS_MODE_DISABLED
+				if not sound:
+					g0.path_budget_us = 1 << 40
+					if Music.me:
+						Music.me._faction = ""
 		return false
 	if main.game == null:
 		return false
@@ -155,6 +169,11 @@ func _process(delta: float) -> bool:
 	_take_frame()
 	if _frame.has("units"):
 		_ticks += 1
+	for z in _frame:
+		if int(_frame[z]) > int(_zmax.get(z, 0)):
+			_zmax[z] = int(_frame[z])
+	if ms > 50.0 and spikes:
+		print("SWARM spike %.0f ms at %.2f s: %s" % [ms, g.clock, _zones_text(_frame)])
 	if ms > _worst_ms:
 		_worst_ms = ms
 		_worst_zones = _zones_text(_frame)
@@ -423,7 +442,7 @@ func _report() -> void:
 	var per_tick := PackedStringArray()
 	var all_z: Array = ZONES.duplicate()
 	for z in _acc:
-		if not all_z.has(z) and String(z).begins_with("u/"):
+		if not all_z.has(z) and (String(z).begins_with("u/") or String(z).begins_with("z/")):
 			all_z.append(z)
 	for z in all_z:
 		var v := float(_acc.get(z, 0)) / 1000.0
@@ -445,7 +464,21 @@ func _report() -> void:
 	if g.get("grid_drift_max") != null:
 		row["grid_drift_max"] = g.get("grid_drift_max")
 		row["grid_drift_over"] = g.get("grid_drift_over")
-		print("SWARM grid drift: the most a unit moved in a tick %.1f px (allowed %.0f), over it %d times" % [g.get("grid_drift_max"), g.get("grid_slack") if g.get("grid_slack") != null else 0.0, g.get("grid_drift_over")])
+		print("SWARM grid drift: the most a unit moved in a tick %.1f px; moved more than the grid allows without noticing: %d times" % [g.get("grid_drift_max"), g.get("grid_drift_over")])
+	if g.get("sc_n") != null:
+		print("SWARM SEPCOUNT calls %d cells-entries %d prefilter-pass %d pushes %d" % [g.get("sc_n"), g.get("sc_a"), g.get("sc_b"), g.get("sc_c")])
+	var zm: Array = []
+	for z in _zmax:
+		if int(_zmax[z]) >= 2000 and not String(z).contains("/") or String(z) in ["hud/card build", "hud/look", "game/fog", "game/paths"]:
+			zm.append([int(_zmax[z]) / 1000.0, z])
+	zm.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0])
+	print("SWARM the most in one frame (ms): ", ", ".join(zm.map(func(x: Array) -> String: return "%s %.1f" % [x[1], x[0]])))
+	row["frame_max"] = {}
+	for x in zm:
+		row["frame_max"][x[1]] = x[0]
+	var cb_n := int(Prof.calls.get("hud/card build", 0))
+	if cb_n > 0:
+		print("SWARM command card: built %d times, %.2f ms each on average" % [cb_n, float(Prof.us.get("hud/card build", 0)) / 1000.0 / cb_n])
 	print("SWARM ms a frame: ", ", ".join(zs))
 	print("SWARM ms a tick:  ", ", ".join(per_tick))
 	if out_path != "":

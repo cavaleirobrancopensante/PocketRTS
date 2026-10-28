@@ -18,8 +18,19 @@ const COIL_TOP := {"s": Vector2(0, -53), "se": Vector2(1, -54), "e": Vector2(3, 
 var d: Dictionary:
 	set(v):
 		d = v
-		_air_k = bool(v.get("air", false))      # (is_air is asked thousands of times a tick: separation, targets)
+		# (asked thousands of times a tick: separation, targets. Nothing changes these keys in place.)
+		_air_k = bool(v.get("air", false))
+		_d_medic = bool(v.get("medic", false))
+		_d_noatk = bool(v.get("no_attack", false))
+		_d_ground = bool(v.get("ground_only", false))
+		_d_aironly = bool(v.get("air_only", false))
+		_d_aa = bool(v.get("anti_air", false))
 var _air_k := false
+var _d_medic := false            # d.get("medic")
+var _d_noatk := false            # d.get("no_attack")
+var _d_ground := false           # d.get("ground_only")
+var _d_aironly := false          # d.get("air_only")
+var _d_aa := false               # d.get("anti_air")
 var order := "idle"            # idle, move, amove, attack, hold, gather, build
 var order_point := Vector2.ZERO
 var target: Entity = null      # who we're fighting
@@ -1003,6 +1014,10 @@ var _k_worker := false
 var _k_mounted := false
 var _k_harness := false
 var _k_deploys := false
+var _k_cw := false               # CwUnits.hooked(kind)
+var _k_musket := false           # foot_musket()
+var _k_pistol := false           # has_pistol()
+var _k_ride := false             # one of the kinds that ride by (Defs.RIDE_BY "kinds")
 var _k_fac := ""                 # (d["faction"]: the kind's faction)
 
 
@@ -1012,6 +1027,10 @@ func _kind_flags() -> void:
 	_k_mounted = Defs.FOOT.has(kind)
 	_k_harness = Defs.HARNESSED.has(kind)
 	_k_deploys = kind == "tesla_cart" or kind == "cannon" or kind == "spore_mother" or kind == "mortar"
+	_k_cw = CwUnits.hooked(kind)
+	_k_musket = kind == "musketeer"
+	_k_pistol = (Defs.PISTOL["kinds"] as Array).has(kind)
+	_k_ride = (Defs.RIDE_BY["kinds"] as Array).has(kind)
 
 
 ## A worker that can hurt (Labourer, Grub) fights when told to ATTACK: an attack-move engages
@@ -1034,7 +1053,7 @@ func is_air() -> bool:
 func can_hit(e: Entity) -> bool:
 	if Defs.cw_roster and CwUnits.on(kind) and not CwUnits.can_fire(self):
 		return false
-	if d.get("medic", false) or d.get("no_attack", false) or e.untouchable():
+	if _d_medic or _d_noatk or e.untouchable():
 		return false
 	if deflate != "" or (kind == "skywing" and sky != "air" and sky != "ground"):
 		return false            # a deflated Bloater, a Skywing landing or taking off
@@ -1043,15 +1062,15 @@ func can_hit(e: Entity) -> bool:
 	if kind == Defs.NETTER and (not (e is Unit) or ((e as Unit).net_t > 0.0 and not (order == "attack" and e == order_target))):
 		return false            # (its net is for units, and one caught already only when it is told to)
 	var ea := e.is_air()        # (asked once: this runs for every target looked at)
-	if ea and d.get("ground_only", false):
+	if ea and _d_ground:
 		return false
-	if not ea and d.get("air_only", false):
+	if not ea and _d_aironly:
 		return false            # (buildings too)
 	if ea:
 		# the cannon's canister is the Crown's answer to massed flyers; round shot can't
 		if kind == "cannon":
 			return mode == "canister"
-		if not d.get("anti_air", false) or mode == "bayonet":
+		if not _d_aa or mode == "bayonet":
 			return false
 	return true
 
@@ -1774,7 +1793,7 @@ func center() -> Vector2:
 # ------------------------------------------------------------------ orders
 
 func cmd_move(p: Vector2, attack_move := false) -> void:
-	if Defs.cw_roster and CwUnits.hooked(kind):
+	if Defs.cw_roster and _k_cw:
 		if CwUnits.order_follow(self, p, attack_move):
 			return
 		p = CwUnits.order_point(self, p)
@@ -2033,6 +2052,7 @@ func _tongue_tick(delta: float) -> void:
 				dir = facing
 			var feet := position + dir * (radius + e.radius + 4.0)
 			e.position = game.resolve_terrain(_pull_from.lerp(feet, f), e.position, e.radius, e.team)
+			game.note_move(e)
 			e.velocity = Vector2.ZERO
 			if tongue_t <= 0.0:
 				_end_tongue()
@@ -2919,6 +2939,7 @@ func drop_passengers(at: Vector2, fall := false) -> void:
 		u.off_field = false
 		u.visible = game.sees_all() or game.allied(u.team, game.fog_team())
 		u.position = spots[i] + Vector2(randf_range(-5, 5), randf_range(-5, 5))
+		game.note_move(u)
 		u.last_pos = u.position
 		u.velocity = Vector2.ZERO
 		u.facing = Vector2.DOWN
@@ -3225,15 +3246,22 @@ func _physics_process(delta: float) -> void:
 		return NetPuppet.tick_unit(self, delta)      # (online guest: shown from snapshots, not simulated)
 	var _p0 := Time.get_ticks_usec()
 	_tick_unit(delta)
-	if _grid_p.x != INF and position.distance_squared_to(_grid_p) > Game.GRID_SLACK * Game.GRID_SLACK:
-		_jumped = true
-		game.grid_loose = true        # (it jumped: the searches stop trusting the grid's places this tick)
+	if _grid_p.x != INF:
+		var moved := position.distance_squared_to(_grid_p)
+		if moved > Game.GRID_SLACK * Game.GRID_SLACK:
+			if not _jumped:
+				_jumped = true         # (it jumped: the searches allow that much more till the next rebuild)
+				game.grid_jumpers.append(self)
+			game.grid_slack = maxf(game.grid_slack, sqrt(moved) + 1.0)
 	Prof.unit_us += Time.get_ticks_usec() - _p0
 	Prof.unit_n += 1
 
 
 func _tick_unit(delta: float) -> void:
-	_process_flash(delta)
+	# (the tick runs for every unit 30 times a second: what most units skip is asked as a plain
+	# field first, without a call; the _k_ flags are worked out once from the kind: _kind_flags)
+	if flash > 0.0:
+		_process_flash(delta)
 	if off_field:
 		return
 	if not dead and work != "":
@@ -3247,7 +3275,8 @@ func _tick_unit(delta: float) -> void:
 		if corpse_t > 1.5:
 			_rest_in_peace()
 		return
-	_process_acid(delta)
+	if acid_t > 0.0:
+		_process_acid(delta)
 	if dead:
 		return
 	if kind == Defs.BALLISTA_KIND:
@@ -3281,7 +3310,7 @@ func _tick_unit(delta: float) -> void:
 		speed *= Ballista.rate(self)        # (each crewman pushing: +10%)
 	elif kind == Defs.GREAT_WINDER_KIND:
 		GreatWinder.tick(self, delta)       # (its winding area: scripts/great_winder.gd)
-	if kind == "horse" or horse_working():
+	if kind == "horse" or _k_mounted or (harnessed and _k_harness):     # (horse_working())
 		_horse_upkeep(delta)
 	if not team_horses.is_empty():
 		speed *= 1.0 + float(Defs.HORSES["team_speed"]) * team_horses.size()     # a bigger team pulls faster
@@ -3293,7 +3322,7 @@ func _tick_unit(delta: float) -> void:
 	if slow_t > 0.0:
 		slow_t -= delta
 		speed *= float(Defs.BLOAT["slow"])
-	if Defs.cw_roster and CwUnits.hooked(kind):
+	if Defs.cw_roster and _k_cw:
 		CwUnits.pre_tick(self, delta)
 	if shield_up or shield_t > 0.0:
 		ShieldWall.tick(self, delta)        # (a Clock Soldier's SHIELD FORWARD: the switch, the slower pace)
@@ -3420,9 +3449,9 @@ func _tick_unit(delta: float) -> void:
 		_move(_sky_switch(delta), delta)
 		_animate(delta)
 		return
-	if foot_musket():
+	if _k_musket:              # (foot_musket())
 		_pick_weapon(delta)
-	elif has_pistol():
+	elif _k_pistol:            # (has_pistol())
 		_pistol_reload(delta)
 		_pick_pistol()
 	if target and not _valid_target(target):
@@ -3437,14 +3466,14 @@ func _tick_unit(delta: float) -> void:
 	if crew_of != null and order != "crew":
 		Ballista.leave(self)          # (a Ballista's crewman given another order: he steps off and does it)
 	# a Horseman or Cuirassier in the saddle, under way on an order: he fights on the move (scripts/ride_by.gd)
-	_rides_by = RideBy.rides(self)
+	_rides_by = _k_ride and RideBy.rides(self)
 	if _rides_by:
 		RideBy.blows(self, delta)
 	elif rb_state != "":
 		rb_state = ""
 	match order:
 		"idle":
-			if d.get("medic", false) and scan_t <= 0.0:
+			if _d_medic and scan_t <= 0.0:
 				# the fallen first (a soldier back), then the wounded: Defs.CARE
 				scan_t = float(Defs.CARE["rescan"])
 				var body := game.find_body(self, float(Defs.REVIVE["scan"]) * Defs.TILE)
@@ -3630,13 +3659,13 @@ func _tick_unit(delta: float) -> void:
 		_shield_t = maxf(_shield_t - delta, 0.0)
 		if braced:
 			want = Vector2.ZERO    # the shield is planted
-	if Defs.cw_roster and CwUnits.hooked(kind):
+	if Defs.cw_roster and _k_cw:
 		want = CwUnits.steer(self, want, delta)
 	if Defs.gear_turn and Defs.gear_mode:
 		want = GearTurn.tick(self, want, delta)      # (TURNING GEARS: a ring's band carries it round; idle, it steps off)
 	if crew_of == null:
 		_move(want, delta)
-	if Defs.cw_roster and CwUnits.hooked(kind):
+	if Defs.cw_roster and _k_cw:
 		CwUnits.post_move(self)
 	_animate(delta)
 	if kind == "winder" and (crate_site or _crate_spr):
@@ -4609,6 +4638,7 @@ func _strike(e: Entity) -> void:
 			if kind == "brute" and e is Unit and not e.dead:
 				var push: Vector2 = (e.position - position).normalized() * 26.0
 				e.position = game.resolve_terrain(e.position + push, e.position, e.radius, e.team)
+				game.note_move(e)
 
 
 # ------------------------------------------------------------------ workers
@@ -5841,6 +5871,7 @@ func _release_patient() -> void:
 		_patient.off_field = false
 		if not _patient.visible:
 			_patient.position = position + Vector2(14, 4)
+			game.note_move(_patient)
 		_patient.visible = true
 	_patient = null
 	if work == "bandaging":

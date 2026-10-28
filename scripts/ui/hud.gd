@@ -3285,7 +3285,7 @@ func _shift_queueable(list: Array) -> void:
 func _horse_buttons(list: Array, units: Array) -> void:
 	var leaders := units.filter(func(u: Unit) -> bool: return u.can_lead())
 	if not leaders.is_empty():
-		var near := leaders.any(func(u: Unit) -> bool: return u.lead_count() < int(Defs.HORSES["lead_max"]) and u.nearest_free_horse(float(Defs.HORSES["fetch"]), u.led) != null)
+		var near := _free_horse_near(leaders.filter(func(u: Unit) -> bool: return u.lead_count() < int(Defs.HORSES["lead_max"])), true)
 		list.append(["horse_lead", "LEAD", func() -> void:
 			var n := game.lead_order(game.selected_units())
 			toast("Fetching %d horse%s by the reins." % [n, "" if n == 1 else "s"] if n > 0 else "No free horse nearby."), near, "No free horse of yours within %d tiles." % int(Defs.HORSES["fetch"]), ""])
@@ -3299,7 +3299,7 @@ func _horse_buttons(list: Array, units: Array) -> void:
 				toast("Released: the horses graze where they stand."), true, "", str(held)])
 	var riders := units.filter(func(u: Unit) -> bool: return u.can_mount())
 	if not riders.is_empty():
-		var any := riders.any(func(u: Unit) -> bool: return u.nearest_free_horse(float(Defs.HORSES["fetch"])) != null)
+		var any := _free_horse_near(riders, false)
 		list.append(["horse_mount", "MOUNT", func() -> void:
 			var n := game.mount_order(game.selected_units())
 			if n == 0:
@@ -3327,6 +3327,26 @@ func _horse_buttons(list: Array, units: Array) -> void:
 				var n := game.harness_order(game.selected_units())
 				if n == 0:
 					toast("No free horse nearby."), free, "No free horse of yours within %d tiles." % int(Defs.HORSES["fetch"]), ""])
+## Has any of these men a free horse within Defs.HORSES "fetch" tiles (Unit.nearest_free_horse, his own led
+## ones left out when `skip_led`)? Asked of the horses on the map, not of everyone near each man: with a
+## hundred Musketeers selected that took 14 ms, four times a second.
+func _free_horse_near(us: Array, skip_led: bool) -> bool:
+	if us.is_empty():
+		return false
+	var horses: Array = []
+	for o in game.units:
+		if o.kind == "horse" and not o.dead:
+			horses.append(o)
+	if horses.is_empty():
+		return false
+	var r := float(Defs.HORSES["fetch"]) * Defs.TILE
+	for u in us:
+		for o in horses:
+			if o.position.distance_to(u.position) < r and not (skip_led and u.led.has(o)) and Unit.horse_free_for(o, u) and (o.leader == null or o.leader == u):
+				return true
+	return false
+
+
 var _queue_rects: Array = []        # the production line's pictures in the card: click = cancel that one
 
 

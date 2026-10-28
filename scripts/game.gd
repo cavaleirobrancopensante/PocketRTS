@@ -58,7 +58,7 @@ func prey(t: int, e: Entity) -> bool:
 ## A unit that can hurt you back (not a worker, a Missionary, a horse, a Powder Wagon...):
 ## units on their own go for these first (find_target), then other units, then buildings.
 static func fights_back(e) -> bool:
-	return e is Unit and not e.dead and not e.is_worker() and not e.d.get("no_attack", false) and not e.d.get("medic", false)
+	return e is Unit and not e.dead and not e.is_worker() and not e._d_noatk and not e._d_medic
 
 
 ## A horse belonging to nobody (its rider fell and it bolted: Unit._rider_falls).
@@ -3091,6 +3091,7 @@ func _push_units_out(r: Rect2, keep: Array = []) -> void:
 		if not u.dead and not u.is_air() and not keep.has(u) and r.grow(u.radius).has_point(u.position) \
 				and not _clear_at(u.position, u.radius, u.team):
 			u.position = cell_center(nearest_free(cell_of(u.position), 8))
+			note_move(u)
 
 
 # ------------------------------------------------------------------ ghost sites
@@ -5660,6 +5661,10 @@ var _gstart := PackedInt32Array()
 var _gend := PackedInt32Array()
 var _gused := PackedInt32Array()          # (the cells filled at the last rebuild: cleared at the next)
 var _gkeys := PackedInt64Array()
+var _tpos := PackedVector2Array()         # (the rebuild's scratch: position, team and radius by place in `units`)
+var _tteam := PackedInt32Array()
+var _trad := PackedFloat32Array()
+var grid_jumpers: Array = []              # (the units that jumped this tick: Unit._physics_process)
 var _grid_w := 0
 var _grid_h := 0
 var _tsuper := PackedInt32Array()        # how many of each side (slot team + 1) stand in each block of SUPER x SUPER cells
@@ -5670,19 +5675,18 @@ const SUPER := 8
 ## How far a unit may have moved since the units' grid was rebuilt at the start of the tick (a tick's
 ## walk at the fastest, a knock-back): the searches allow this much. grid_drift_max is the most any unit
 ## on the field moved between two rebuilds (Unit._grid_p); grid_drift_over counts the times it was more.
-const GRID_SLACK := 12.0
-var grid_slack := GRID_SLACK            # (the same, for tools)
-## Set when a unit has moved more than GRID_SLACK since the rebuild (a Grub snapping onto the site it turns
-## into, a man getting off his horse): the searches look at everyone again until the next rebuild.
-## (An online guest's and a replay's pictures: always.)
-var grid_loose := false
+const GRID_SLACK := 7.0
+## GRID_SLACK, or more once a unit has moved farther than that since the rebuild (a Grub snapping onto the
+## site it turns into, a man getting off his horse: Unit._physics_process): the searches allow that much
+## till the next rebuild. (An online guest's and a replay's pictures: no limit, they look at everyone.)
+var grid_slack := GRID_SLACK
 var grid_drift_max := 0.0
 var grid_drift_over := 0
 
 
 func _rebuild_hash() -> void:
 	_hash.clear()
-	grid_loose = puppet
+	grid_slack = GRID_SLACK if not puppet else INF
 	var gw := int(W * T) / HASH + 2
 	var gh := int(H * T) / HASH + 2
 	if gw != _grid_w or gh != _grid_h or _gstart.size() != gw * gh:
@@ -5708,25 +5712,35 @@ func _rebuild_hash() -> void:
 	_super_slots = nt
 	var n := units.size()
 	_gkeys.resize(n)
+	_tpos.resize(n)
+	_tteam.resize(n)
+	_trad.resize(n)
 	var k := 0
 	var hi := 0
+	var slack2 := GRID_SLACK * GRID_SLACK
+	var d2max := grid_drift_max * grid_drift_max
 	for u in units:
 		var p: Vector2 = u.position
-		if not u.dead and not u.off_field and u._grid_p.x != INF:
-			var dr: float = p.distance_to(u._grid_p)
-			if dr > grid_drift_max:
-				grid_drift_max = dr
-			if dr > GRID_SLACK and not u._jumped:
-				grid_drift_over += 1      # (moved that far without its own tick noticing: Unit._physics_process)
-		u._jumped = false
-		u._grid_p = p
+		var gp: Vector2 = u._grid_p
+		if gp != p:
+			if gp.x != INF and not u.dead and not u.off_field:
+				var d2 := p.distance_squared_to(gp)
+				if d2 > d2max:
+					d2max = d2
+				if d2 > slack2 and not u._jumped:
+					grid_drift_over += 1      # (moved that far without its own tick noticing: Unit._physics_process)
+			u._grid_p = p
 		u._hash_i = hi
+		var tm: int = u.team
+		_tpos[hi] = p
+		_tteam[hi] = tm
+		_trad[hi] = u.radius
 		var kx := int(p.x) / HASH
 		var ky := int(p.y) / HASH
 		if kx >= 0 and ky >= 0 and kx < gw and ky < gh:
 			_gkeys[k] = (ky * gw + kx) * 1048576 + hi
 			k += 1
-			_tsuper[clampi(u.team + 1, 0, nt - 1) * _super_n + (ky / SUPER) * sw + kx / SUPER] += 1
+			_tsuper[clampi(tm + 1, 0, nt - 1) * _super_n + (ky / SUPER) * sw + kx / SUPER] += 1
 		else:
 			var c := Vector2i(kx, ky)
 			var lst = _hash.get(c)
@@ -5735,6 +5749,11 @@ func _rebuild_hash() -> void:
 			else:
 				lst.append(u)
 		hi += 1
+	grid_drift_max = sqrt(d2max)
+	for u in grid_jumpers:
+		if is_instance_valid(u):
+			u._jumped = false
+	grid_jumpers.clear()
 	_gkeys.resize(k)
 	_gkeys.sort()
 	_gunits.resize(k)
@@ -5746,11 +5765,11 @@ func _rebuild_hash() -> void:
 	for j in k:
 		var key: int = _gkeys[j]
 		var gi := key >> 20
-		var u: Unit = units[key & 1048575]
-		_gunits[j] = u
-		_gpos[j] = u._grid_p
-		_gteam[j] = u.team
-		_grad[j] = u.radius
+		var ti := key & 1048575
+		_gunits[j] = units[ti]
+		_gpos[j] = _tpos[ti]
+		_gteam[j] = _tteam[ti]
+		_grad[j] = _trad[ti]
 		if gi != last:
 			if last >= 0:
 				_gend[last] = j
@@ -5759,6 +5778,19 @@ func _rebuild_hash() -> void:
 			last = gi
 	if last >= 0:
 		_gend[last] = k
+
+
+## Another unit (a tongue's pull, a charge's shove, a Balloon letting men off...) moved `u` during the tick:
+## if that took it farther from its grid place than the searches allow, they allow that much more.
+func note_move(u: Unit) -> void:
+	if u._grid_p.x == INF:
+		return
+	var d2 := u.position.distance_squared_to(u._grid_p)
+	if d2 > grid_slack * grid_slack:
+		grid_slack = sqrt(d2) + 1.0
+	if d2 > GRID_SLACK * GRID_SLACK and not u._jumped:
+		u._jumped = true
+		grid_jumpers.append(u)
 
 
 ## The units in grid cell (x, y) at the last rebuild (in order), or null.
@@ -5774,7 +5806,7 @@ func units_near(p: Vector2, r: float) -> Array:
 	var c0 := Vector2i(int(p.x - r) / HASH, int(p.y - r) / HASH)
 	var c1 := Vector2i(int(p.x + r) / HASH, int(p.y + r) / HASH)
 	var gw := _grid_w
-	var lim := (r + GRID_SLACK) * (r + GRID_SLACK) if not grid_loose else INF
+	var lim := (r + grid_slack) * (r + grid_slack)
 	if _hash.is_empty():
 		# (nobody off the grid: the cells past its edges are empty, so only the ones on it are looked at)
 		for y in range(maxi(c0.y, 0), mini(c1.y, _grid_h - 1) + 1):
@@ -5829,9 +5861,9 @@ func separation(u: Unit) -> Vector2:
 		return push
 	# (a man pushes only from closer than (both radii) * 0.85, at most rr: the packed positions tell who
 	# can't be that close, even after a step since the rebuild, without looking at him)
-	var lim := rr + GRID_SLACK
-	var lim2 := lim * lim if not grid_loose else INF
-	var slack := GRID_SLACK if not grid_loose else INF
+	var slack := grid_slack
+	var lim := rr + slack
+	var lim2 := lim * lim
 	for y in range(maxi(c0.y, 0), mini(c1.y, _grid_h - 1) + 1):
 		var row := y * gw
 		for x in range(maxi(c0.x, 0), mini(c1.x, gw - 1) + 1):
@@ -5851,10 +5883,10 @@ func separation(u: Unit) -> Vector2:
 					continue
 				var dvec: Vector2 = p - o.position
 				var dist := dvec.length()
-				if dist > rr or o.dead or o.off_field or o.is_air() != air:
-					continue
 				var min_d: float = (ur + o.radius) * 0.85
-				if dist >= min_d:
+				if dist >= min_d or dist > rr:
+					continue
+				if o.dead or o.off_field or (o._air_k and o.net_t <= 0.0) != air:      # (o.is_air())
 					continue
 				if o == u.steed or u == o.steed:
 					continue
@@ -5920,7 +5952,7 @@ func _foe_table(t: int) -> PackedByteArray:
 
 
 func find_target(u: Unit, r: float) -> Entity:
-	if u.d.get("no_attack", false):
+	if u._d_noatk:
 		return null
 	# HOLD FIRE (a gun other than the cavalry's pistol): nothing to shoot at on its own; a
 	# Musketeer still takes on a man right on top of him with the bayonet
@@ -5940,7 +5972,7 @@ func find_target(u: Unit, r: float) -> Entity:
 	var picks: Array = []
 	# (who is an enemy, by team, worked out once: hostile() was asked of every unit and building)
 	var foe := _foe_table(u.team)
-	if not careful and _hash.is_empty() and _super_slots > 0 and not grid_loose:
+	if not careful and _hash.is_empty() and _super_slots > 0:
 		# (the same pick, found faster: only the enemies' cells, nearest ring first: _near_foe)
 		var nf := _near_foe(u, r, foe, held, min_r)
 		best = nf[0]
@@ -5969,7 +6001,7 @@ func find_target(u: Unit, r: float) -> Entity:
 	if held:
 		return best              # (no crates or buildings: they'd be shot)
 	# a Clockwork crate on the ground: smash it (counted like a worker)
-	if not careful and not u.d.get("medic", false):
+	if not careful and not u._d_medic:
 		for c in crates:
 			if c.dead or not hostile(c.team, u.team) or not u.can_hit(c):
 				continue
@@ -5989,7 +6021,7 @@ func find_target(u: Unit, r: float) -> Entity:
 			return picks[0][1]
 	if best:
 		return best
-	if u.d.get("medic", false) or u.d.get("air_only", false):
+	if u._d_medic or u._d_aironly:
 		return null
 	for b in buildings:
 		if b.team < 0 or foe[b.team] == 0 or b.dead or b.ghost:
@@ -6012,7 +6044,7 @@ func find_target(u: Unit, r: float) -> Entity:
 		best = line_net.pipe_target(u, r)       # the Clockwork Line: the lowest priority
 	if best == null and faction_of(u.team) == "brood":
 		# nothing else in reach: a loose horse (nobody's) is cheap essence
-		for o in (_units_near_nobody(u.position, r) if _hash.is_empty() and _super_slots > 0 and not grid_loose else units_near(u.position, r)):
+		for o in (_units_near_nobody(u.position, r) if _hash.is_empty() and _super_slots > 0 else units_near(u.position, r)):
 			if loose_horse(o) and not o.off_field and u.can_hit(o) and side_sees(u.team, o.position):
 				var dh: float = o.position.distance_to(u.position)
 				if dh < bd:
@@ -6051,7 +6083,7 @@ func _near_foe(u: Unit, r: float, foe: PackedByteArray, held: bool, min_r: float
 	for k in kmax + 1:
 		# (anyone in ring k was at least (k - 1) cells away at the rebuild, and has moved less than
 		# GRID_SLACK since)
-		if k >= 2 and float((k - 1) * HASH) - GRID_SLACK > bd:
+		if k >= 2 and float((k - 1) * HASH) - grid_slack > bd:
 			break
 		var ring := PackedInt32Array()
 		for y in range(maxi(py - k, y0), mini(py + k, y1) + 1):
@@ -6068,7 +6100,7 @@ func _near_foe(u: Unit, r: float, foe: PackedByteArray, held: bool, min_r: float
 			if s < 0:
 				continue
 			# (nobody there can have come nearer than the best so far: its rebuild place plus a step)
-			var lim := minf(r, bd) + GRID_SLACK
+			var lim := minf(r, bd) + grid_slack
 			var lim2 := lim * lim
 			for j in range(s, _gend[gi]):
 				var tm: int = _gteam[j]
@@ -6100,7 +6132,7 @@ func _near_foe(u: Unit, r: float, foe: PackedByteArray, held: bool, min_r: float
 					bd = dd
 					best = o
 					bkey = key
-					lim = minf(r, bd) + GRID_SLACK
+					lim = minf(r, bd) + grid_slack
 					lim2 = lim * lim
 	return [best, bd]
 
@@ -6127,7 +6159,7 @@ func _units_near_nobody(p: Vector2, r: float) -> Array:
 	var y1 := mini(int(p.y + r) / HASH, _grid_h - 1)
 	if not _slot_in(0, x0, y0, x1, y1):
 		return out
-	var lim := (r + GRID_SLACK) * (r + GRID_SLACK)
+	var lim := (r + grid_slack) * (r + grid_slack)
 	for y in range(y0, y1 + 1):
 		var row := y * gw
 		for x in range(x0, x1 + 1):
