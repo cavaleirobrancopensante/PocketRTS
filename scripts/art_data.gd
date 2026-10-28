@@ -351,6 +351,11 @@ const BASE_UNITS := {
 		"wrap_ne": 5,
 		"wrap_s": 5,
 		"wrap_se": 5,
+		"harvest_e": 5,
+		"harvest_n": 5,
+		"harvest_ne": 5,
+		"harvest_s": 5,
+		"harvest_se": 5,
 	}},
 	"raptor": {"cell": Vector2i(58, 30), "anchor": Vector2(29, 28), "frames": {
 		"walk_n": 6,
@@ -1072,6 +1077,11 @@ const BASE_UNITS := {
 		"death_full_se": 5,
 		"death_se": 5,
 		"fill_se": 6,
+		"haul_e": 4,
+		"haul_n": 4,
+		"haul_ne": 4,
+		"haul_s": 4,
+		"haul_se": 4,
 		"idle_e": 1,
 		"idle_n": 1,
 		"idle_ne": 1,
@@ -1103,6 +1113,15 @@ const BASE_UNITS := {
 		"walk_ne": 4,
 		"walk_s": 4,
 		"walk_se": 4,
+	}},
+	"brood_egg": {"cell": Vector2i(22, 24), "anchor": Vector2(11, 22), "frames": {
+		"death_s": 3,
+		"fert_s": 2,
+		"idle_s": 1,
+	}},
+	"food_pile": {"cell": Vector2i(46, 26), "anchor": Vector2(23, 23), "frames": {
+		"death_s": 1,
+		"idle_s": 4,
 	}},
 }
 

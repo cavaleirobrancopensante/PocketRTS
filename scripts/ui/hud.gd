@@ -956,7 +956,7 @@ func _build_card() -> Array:
 			# ATTACK GROUND (Ctrl+A): attack a spot, or a dragged line, until another order (Defs.BOMBARD, Defs.GROUND)
 			_tip_for["ATTACK GROUND"] = ["Attack ground", CMD_TIPS["ATTACK GROUND"]]
 			list.append(["ab_bombard", "ATTACK GROUND", func() -> void: controls.begin_bombard(), true, "", ""])
-		if has_lab:
+		if has_lab and not BroodNew.on(game, game.human):      # (the new Brood builds nothing)
 			# workers don't need HOLD: two build pages instead, basic and advanced
 			list.append(["build", "BUILD", func() -> void:
 				page = "build"
@@ -1017,7 +1017,7 @@ func _build_card() -> Array:
 		# Brood: offer the selected creatures up at the nearest Brood Pen for essence
 		var offer := units.filter(func(u: Unit) -> bool: return u.can_sacrifice())
 		if not offer.is_empty():
-			var has_pen := game.nearest_of(offer[0].position, game.human, "brood_pen") != null
+			var has_pen := game.offer_place(offer[0].position, game.human) != null
 			var ess := 0
 			for u in offer:
 				ess += Game.sacrifice_value(u.kind)
@@ -1027,7 +1027,8 @@ func _build_card() -> Array:
 					if u.can_sacrifice():
 						u.cmd_sacrifice()
 						n += 1
-				toast("%d offered up: they go to the nearest Brood Pen (+%d essence)." % [n, ess]), has_pen, "Needs a Brood Pen.", "+%d" % ess])
+				toast("%d offered up: they go to the nearest Brood Pen (+%d essence)." % [n, ess]), has_pen, "Needs a Brood Pen." if not BroodNew.on(game, game.human) else "Needs the Brood Mother.", "+%d" % ess])
+		_nb_buttons(list, units)          # (the new Brood: the Mother's eggs, ROOT / UPROOT / HAUL)
 		for dk in ["cannon", "mortar", "tesla_cart", "spore_mother"]:
 			var kk: String = dk
 			if units.any(func(u: Unit) -> bool: return u.kind == kk):
@@ -1390,6 +1391,48 @@ func _pass_icon_x(r: Rect2, n: int, i: int) -> float:
 
 
 ## Crown abilities for the selected soldiers. Each button switches all of that kind.
+## THE NEW BROOD (scripts/brood_new.gd): the Mother lays an egg for each creature (the warriors need the father near
+## her); she and the Rootmaws ROOT and UPROOT; a Rootmaw HAULs its food.
+func _nb_buttons(list: Array, units: Array) -> void:
+	var q: Unit = null
+	for u in units:
+		if u.kind == BroodNew.QUEEN and u.team == game.human:
+			q = u
+	if q != null:
+		for k in BroodNew.hatch_list():
+			var kk: String = k
+			var why := BroodNew.lay_problem(game, q, kk)
+			list.append([kk, Defs.train_name(kk).to_upper(), func() -> void:
+				var w := ""
+				for u in game.selected_units():
+					if u.kind == BroodNew.QUEEN and u.team == game.human:
+						w = u.cmd_lay(kk)
+				if w != "":
+					toast(w), why == "", why, _price_chip(game.unit_price(game.human, kk), false)])
+	var rooters := units.filter(func(u: Unit) -> bool: return (u.kind == BroodNew.QUEEN or u.kind == BroodNew.MAW) and u.team == game.human)
+	if rooters.is_empty():
+		return
+	var packed := rooters.any(func(u: Unit) -> bool: return u.tesla_mode == "packed")
+	if packed:
+		_tip_for["ROOT"] = ["Root", "Dig in here: armour and a quarter less damage, swamp around it; a Rootmaw drinks its ground (5-tile circle, may not overlap another's) and gives 20 supply. The Brood Mother and the Rootmaw always root facing south-east."]
+		list.insert(3, ["ab_nb_root", "ROOT", func() -> void:
+			for u in game.selected_units():
+				if (u.kind == BroodNew.QUEEN or u.kind == BroodNew.MAW) and u.tesla_mode == "packed":
+					u.cmd_deploy(), true, "", ""])
+	else:
+		_tip_for["UPROOT"] = ["Uproot", "Pull up the roots and walk. A Rootmaw spills its food as a pile on the ground (grubs still collect it; it rots slowly) and walks off thin and quick."]
+		list.insert(3, ["ab_uproot", "UPROOT", func() -> void:
+			for u in game.selected_units():
+				if (u.kind == BroodNew.QUEEN or u.kind == BroodNew.MAW) and u.tesla_mode == "deployed":
+					u.cmd_uproot(true), true, "", ""])
+		if rooters.any(func(u: Unit) -> bool: return u.kind == BroodNew.MAW and u.tesla_mode == "deployed"):
+			_tip_for["HAUL"] = ["Haul", "Uproot the Rootmaw full: it walks at half speed carrying its food and keeps it when it roots again. Killed while hauling, all of it bursts out as a pile."]
+			list.insert(4, ["ab_haul", "HAUL", func() -> void:
+				for u in game.selected_units():
+					if u.kind == BroodNew.MAW and u.tesla_mode == "deployed":
+						u.cmd_uproot(false), true, "", ""])
+
+
 func _ability_buttons(list: Array, units: Array) -> void:
 	_balloon_buttons(list, units)
 	_ballista_buttons(list, units)

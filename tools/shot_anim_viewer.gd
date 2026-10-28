@@ -19,7 +19,7 @@ func _run() -> void:
 	await process_frame
 	av.select_art(a[1] if a.size() > 1 else "musketeer")
 	av.select_anim(a[2] if a.size() > 2 else "walk")
-	av.select_dir("e")
+	av.select_dir(a[3] if a.size() > 3 else "e")      # (a strip drawn only facing south-east: -- path unit anim se)
 	await create_timer(0.5).timeout
 	av.step(1)
 	av.flag_frame()

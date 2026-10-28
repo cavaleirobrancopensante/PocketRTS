@@ -1,0 +1,99 @@
+# THE NEW BROOD (experiment; docs/brood_new.md): the creatures' names (the owner's: Brood Mother = Mãe da Ninhada /
+# Madre de la Camada, Rootmaw = Bocarraiz / Bocarraíz, Tyrannosaur = Tiranossauro / Tiranosaurio), the buttons, the
+# faction choice and the messages.
+
+> Brood Mother
+pt Mãe da Ninhada
+es Madre de la Camada
+
+> Rootmaw
+pt Bocarraiz
+es Bocarraíz
+
+> Tyrannosaur
+pt Tiranossauro
+es Tiranosaurio
+
+> Egg
+pt Ovo
+es Huevo
+
+> Food Pile
+pt Monte de Comida
+es Montón de Comida
+
+> THE BROOD (NEW, EXPERIMENT)
+pt A NINHADA (NOVA, EXPERIMENTO)
+es LA NIDADA (NUEVA, EXPERIMENTO)
+
+> The Brood (new, experiment)
+pt A Ninhada (nova, experimento)
+es La Nidada (nueva, experimento)
+
+> ROOT
+pt ENRAIZAR
+es ENRAIZAR
+
+> UPROOT
+pt DESENRAIZAR
+es DESENRAIZAR
+
+> HAUL
+pt CARREGAR
+es ACARREAR
+
+> Root
+pt Enraizar
+es Enraizar
+
+> Uproot
+pt Desenraizar
+es Desenraizar
+
+> Haul
+pt Carregar
+es Acarrear
+
+> No Brood Mother.
+pt Sem Mãe da Ninhada.
+es Sin Madre de la Camada.
+
+> Not in the new Brood yet.
+pt Ainda não está na nova Ninhada.
+es Aún no está en la nueva Nidada.
+
+> No eggs ready.
+pt Nenhum ovo pronto.
+es Ningún huevo listo.
+
+> Needs the %s beside the Brood Mother.
+pt Precisa do %s ao lado da Mãe da Ninhada.
+es Necesita al %s junto a la Madre de la Camada.
+
+> Only one %s at a time.
+pt Só um %s por vez.
+es Solo un %s a la vez.
+
+> Need more supply: root more Rootmaws.
+pt Precisa de mais suprimento: enraíze mais Bocarraízes.
+es Necesitas más suministro: enraíza más Bocarraíces.
+
+> Needs the Brood Mother.
+pt Precisa da Mãe da Ninhada.
+es Necesita a la Madre de la Camada.
+
+> Too close to another Rootmaw's ground: their circles may not overlap.
+pt Perto demais do chão de outro Bocarraiz: os círculos não podem se sobrepor.
+es Demasiado cerca del suelo de otro Bocarraíz: sus círculos no pueden solaparse.
+
+> That Rootmaw must be rooted to be fed from.
+pt Esse Bocarraiz precisa estar enraizado para se tirar comida dele.
+es Ese Bocarraíz debe estar enraizado para sacar comida de él.
+
+> No room there.
+pt Não há lugar ali.
+es No hay sitio allí.
+
+> An egg wasn't fertilised in time: it hatches as a grub (paid back the difference).
+pt Um ovo não foi fertilizado a tempo: ele choca como larva (a diferença foi devolvida).
+es Un huevo no fue fecundado a tiempo: eclosiona como larva (se devolvió la diferencia).

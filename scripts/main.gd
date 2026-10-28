@@ -23,7 +23,7 @@ var lobby := {
 const WHO := ["you", "easy", "normal", "hard", "brutal"]
 const MAX_SLOTS := 8          # players in a skirmish (the 4v4 maps)
 const WHO_LABEL := {"you": "YOU", "easy": "EASY AI", "normal": "NORMAL AI", "hard": "HARD AI", "brutal": "BRUTAL AI"}
-const FACS := ["crown", "brood", "clockwork", "random"]
+const FACS := ["crown", "brood", "clockwork", "random", Defs.BROOD_NEW]      # (the last: the new Brood, an experiment)
 
 const HELP := {
 	"BASICS": """Destroy every enemy building to win.
@@ -354,7 +354,7 @@ func show_menu() -> void:
 	if not save.is_empty() and save.get("version", "") == version:
 		var facs: Array = []
 		for sl in save["cfg"]["slots"]:
-			facs.append(Loc.t(String(sl["faction"]).capitalize()))
+			facs.append(Loc.t(Defs.base_faction(String(sl["faction"])).capitalize()))
 		var secs := int(save["clock"])
 		var cont := _button(Loc.t("CONTINUE  (%s, %d:%02d)") % [Loc.t(" vs ").join(facs), secs / 60, secs % 60], func() -> void:
 			var cfg: Dictionary = save["cfg"].duplicate(true)
@@ -1259,13 +1259,13 @@ func _slot_row(i: int) -> Control:
 	var f: String = sl["faction"]
 	var fac_opts: Array = []
 	for ff in FACS:
-		fac_opts.append(["RANDOM" if ff == "random" else String(Defs.FACTIONS[ff]["name"]).to_upper(), ff, false])
-	var fb := _dropdown("RANDOM" if f == "random" else Defs.FACTIONS[f]["name"].to_upper(), 190, fac_opts, func(v) -> void: sl["faction"] = v)
+		fac_opts.append([Defs.faction_label(ff).to_upper(), ff, false])
+	var fb := _dropdown(Defs.faction_label(f).to_upper(), 190, fac_opts, func(v) -> void: sl["faction"] = v)
 	if f != "random":
-		fb.icon = _faction_icon(f)
+		fb.icon = _faction_icon(Defs.base_faction(f))
 		fb.expand_icon = false
 		fb.add_theme_constant_override("icon_max_width", 30)
-		fb.add_theme_color_override("font_color", UiStyle.accent(f).lightened(0.4))
+		fb.add_theme_color_override("font_color", UiStyle.accent(Defs.base_faction(f)).lightened(0.4))
 	h.add_child(fb)
 	# colour
 	var col_opts: Array = []
@@ -2126,6 +2126,7 @@ func start(cfg: Dictionary = {}) -> void:
 	last_cfg.erase("replay")
 	var slots: Array = cfg["slots"]
 	var facs: Array = []
+	var nbs: Array = []          # (the new Brood, an experiment: it plays as the Brood, scripts/brood_new.gd)
 	var cols: Array = []
 	var sides: Array = []
 	var mult: Array = []
@@ -2134,8 +2135,10 @@ func start(cfg: Dictionary = {}) -> void:
 	for i in slots.size():
 		var sl: Dictionary = slots[i]
 		var f: String = sl["faction"]
-		facs.append(["crown", "brood", "clockwork"][randi() % 3] if f == "random" else f)
-		last_cfg["slots"][i]["faction"] = facs[i]     # a continued match keeps the same factions
+		var picked: String = ["crown", "brood", "clockwork"][randi() % 3] if f == "random" else f
+		last_cfg["slots"][i]["faction"] = picked     # a continued match keeps the same factions
+		facs.append(Defs.base_faction(picked))
+		nbs.append(picked == Defs.BROOD_NEW)
 		cols.append(int(sl["colour"]))
 		sides.append(int(sl["side"]))
 		var lvl := LEVELS.find(sl["who"])
@@ -2150,6 +2153,7 @@ func start(cfg: Dictionary = {}) -> void:
 	game.human = maxi(human, 0) if not watching else maxi(int(_replay_data["header"].get("me", 0)), 0)
 	game.difficulty = top
 	game.factions = facs
+	game.nb_teams = nbs
 	game.colours = cols
 	game.sides = sides
 	game.income_mult = mult
@@ -2168,7 +2172,7 @@ func start(cfg: Dictionary = {}) -> void:
 	for t in slots.size():
 		if t == human or game.puppet or slots[t]["who"] == "remote":
 			continue         # (a friend online plays that side; a guest's game runs no computers)
-		var ai := AI.new()
+		var ai: AI = AIBroodNew.new() if bool(nbs[t]) else AI.new()      # (the new Brood's own simple plan)
 		ai.game = game
 		ai.team = t
 		ai.difficulty = maxi(0, LEVELS.find(slots[t]["who"]))

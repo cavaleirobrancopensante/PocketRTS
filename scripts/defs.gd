@@ -1129,6 +1129,42 @@ const UNITS := {
 		"air": true, "anti_air": true, "air_only": true, "requires": "roost", "faction": "brood",
 		"about": "Flying, it hunts other flyers with volleys of spines (it can't touch the ground). LAND it (1.2 s) to fight on the ground with its bite: then it walks, can't cross cliffs, and anything can hit it. Costs essence.",
 	},
+	# ---- THE NEW BROOD (experiment, scripts/brood_new.gd, docs/brood_new.md): creatures only, no buildings
+	"brood_mother": {
+		"tags": ["armored"],
+		"name": "Brood Mother", "hp": 2400, "armor": 1, "speed": 24, "cost": 0, "time": 0.0, "supply": 0,
+		"sight": 10, "range": 50, "damage": 40, "cooldown": 2.4, "aim": 0.5, "radius": 40, "from": "",
+		"building_bonus": 1.2, "faction": "brood", "new_brood": true,
+		"about": "The heart of the new Brood: if she dies, you lose. Only she lays eggs, walking or rooted: every unit hatches from them. Grubs bring her the food. ROOT her for armour and less damage, swamp around her and faster healing; she still swipes with her paws.",
+	},
+	"rootmaw": {
+		"tags": ["armored"],
+		"name": "Rootmaw", "hp": 450, "armor": 0, "speed": 80, "cost": 75, "time": 18.0, "supply": 0,
+		"sight": 6, "range": 30, "damage": 14, "cooldown": 1.3, "aim": 0.3, "radius": 22, "from": "brood_mother",
+		"faction": "brood", "new_brood": true,
+		"about": "A swamp lizard that feeds the Brood. ROOT it on fresh ground (3,000 food in a 5-tile circle; rooted circles may not overlap): it drinks the ground and swells, and grubs carry the food from its flank to the Brood Mother (farther pays more). Rooted it gives 20 supply and armour. UPROOT spills its food as a pile (grubs still collect it; it rots); HAUL walks off with it, slow and fat (killed hauling, it bursts). It bites.",
+	},
+	"tyrannosaur": {
+		"tags": ["armored"],
+		"name": "Tyrannosaur", "hp": 1000, "armor": 2, "speed": 64, "cost": 200, "time": 35.0, "supply": 4,
+		"sight": 9, "range": 40, "damage": 42, "cooldown": 1.9, "aim": 0.35, "radius": 30, "from": "brood_mother",
+		"building_bonus": 1.4, "faction": "brood", "new_brood": true, "father": true,
+		"about": "A FATHER: standing still near the Brood Mother, it breathes on her warrior eggs (Raptors, Brutes, Spore Mothers, Mist Toads) to fertilise them; an egg it doesn't reach in time hatches as a grub. Only one at a time. A terrible biter, but away from her no warriors are fathered.",
+	},
+	"brood_egg": {
+		"tags": ["light"],
+		"name": "Egg", "hp": 80, "armor": 1, "speed": 0, "cost": 0, "time": 0.0, "supply": 0,
+		"sight": 3, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 9, "from": "",
+		"no_attack": true, "faction": "brood", "new_brood": true,
+		"about": "One of the Brood Mother's eggs. A warrior's egg waits for the father's breath (it turns red), then hatches.",
+	},
+	"food_pile": {
+		"tags": ["light"],
+		"name": "Food Pile", "hp": 100, "armor": 0, "speed": 0, "cost": 0, "time": 0.0, "supply": 0,
+		"sight": 1, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 14, "from": "",
+		"no_attack": true, "faction": "brood", "new_brood": true,
+		"about": "Food spilled by a Rootmaw. Grubs carry it to the Brood Mother; it rots slowly.",
+	},
 	"mist_toad": {
 		"tags": ["light"],
 		"name": "Mist Toad", "hp": 90, "armor": 0, "speed": 42, "cost": 100, "cost2": 25, "time": 22.0, "supply": 3,
@@ -1779,6 +1815,46 @@ const ROT := {"base": 0.2696, "double": 60.0}
 ## otherwise the ground. Units reaching under `ranged` px strike as melee. It goes on until another order.
 const GROUND := {"click": 1.5, "lane": 0.5, "near": 0.5, "ranged": 60.0, "scan": 0.5,
 	"not": ["netter", "bloater"]}
+## THE NEW BROOD (experiment; scripts/brood_new.gd, docs/brood_new.md). The slot's faction value picks it; the side
+## plays as "brood" (its creatures, grubs, essence, swamp and sounds), with Game.nb_teams[t] on.
+const BROOD_NEW := "brood_new"
+const NB := {
+	"root_armor": 3.0, "root_taken": 0.75,       # rooted: 3 more armour, then a quarter less damage
+	"queen_switch": 4.0, "maw_switch": 2.5,      # seconds to root or uproot
+	"start_root": 1.6,                           # the match starts with the last of their rooting (a cue)
+	"eggs_max": 10, "start_eggs": 3, "egg_time": 6.0,      # the Mother's eggs (one every 6 s)
+	"egg_rate": 0.1, "egg_rate_max": 0.3,        # +10% laying per rooted Rootmaw, up to +30%
+	"drop": 0.35,                                # seconds an egg falls from under her
+	"father_r": 7.0,                             # tiles: the father near the Mother, and the eggs near him
+	"fert_time": 1.5, "fert_wait": 25.0,         # breath per egg; an egg not fertilised in this time hatches as a grub
+	"queen_supply": 40, "maw_supply": 20,        # supply: the Mother, every ROOTED Rootmaw
+	"queen_regen": 4.0,                          # hp/s healed while rooted
+	"maw_fill": 4.0, "maw_cap": 300.0, "start_food": 120.0,           # food/s a rooted Rootmaw draws from its ground, what it holds
+	"maw_crew": 6, "pile_crew": 4,
+	"haul_speed": 0.5,                           # HAUL: the full Rootmaw walks at half speed
+	"pile_rot": 0.6,                             # food a pile loses a second
+	"queen_swamp": 9.0, "maw_swamp": 4.0,        # tiles of swamp round the rooted Mother and Rootmaws
+	# the fathers and the warriors they father; the others wait for their fathers (a Pterodactyl for the fliers, a
+	# Spitter father): not in the new Brood yet
+	"lines": {"tyrannosaur": ["raptor", "brute", "spore_mother", "mist_toad"]},
+	"later": {"spitter": "the Spitter father", "bloater": "the Pterodactyl", "skywing": "the Pterodactyl"},
+}
+
+
+## A slot's faction as the game plays it (the experiment plays as the Brood).
+static func base_faction(f: String) -> String:
+	return "brood" if f == BROOD_NEW else f
+
+
+## A slot's faction as the menus name it.
+static func faction_label(f: String) -> String:
+	if f == BROOD_NEW:
+		return "The Brood (new, experiment)"
+	if f == "random":
+		return "Random"
+	return String(FACTIONS[f]["name"]) if FACTIONS.has(f) else f
+
+
 const ROOT_SWITCH := 2.5
 const ROOT_SWAMP := 4.0          # tiles
 const MIASMA := {"cost2": 30, "cooldown": 18.0, "range": 220.0, "radius": 96.0, "time": 8.0, "hps": 7.0, "cap": 0.3, "cast": 0.7}

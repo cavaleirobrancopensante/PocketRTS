@@ -448,3 +448,10 @@ scripts/ramp_rails.gd draws a low stone kerb down both sides of every ramp, from
 ## East and west cliff walls (code, 0.15.5; docs/cliff_sides.md)
 
 scripts/cliff_art.gd (_side_wall) draws a side wall 10 px wide along every east- or west-facing edge of high ground, inside the solid cliff cell: the biome's south-wall picture (itself made in code from the face tile's colours) turned on its side and pressed into 10 columns (lip, crease, rock, dark foot), the rock darkened to 0.7 on east-facing walls and 0.9 on west-facing ones; where it comes down onto a south wall it covers that wall's top lip for 5 rows. East of a cliff the soft shadow on the low ground is a little deeper and wider (13 px). Wanted: ChatGPT cliff side pieces per biome (a straight east and west face, and the corners where they meet a south face and a north rim), drawn to match the south walls.
+
+## The new Brood (code, brood-redesign; docs/brood_new.md)
+
+- The EGG (assets/units/brood_egg, tools/import_brood_new.py still_art): a shaded oval drawn in code, yellow-green like the Brood Mother's glowing clutch; red-gold once fertilised (two frames, a soft pulse); a burst shell (three frames) when killed. Its fall from under the Mother is the sprite moved down in code (BroodNew.animate). Wanted: a painted egg strip (laid, fertilised, cracking and hatching).
+- The FOOD PILE (assets/units/food_pile): a heap of shaded yellow-green sacs on a wet dark patch, four sizes, drawn in code. Wanted: a painted pile of spilled food in four sizes, rotting.
+- The FATHER'S BREATH: the Tyrannosaur's breath frames are painted, the red-gold mist is the game's smoke puff tinted orange-gold (BroodNew.father_tick). Wanted: a painted red-gold breath mist strip.
+- The Mother's eggs count over her and the Rootmaw's food and ground bars are drawn in code (BroodNew.draw), like the old Burrow's eggs count.

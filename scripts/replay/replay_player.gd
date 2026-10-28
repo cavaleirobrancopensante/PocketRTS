@@ -60,7 +60,7 @@ static func load_file(path: String) -> Dictionary:
 	elif MapGen.old_layout(mid, String((d["header"] as Dictionary).get("game_version", ""))):
 		d["error"] = Loc.t("Its map (%s) was made bigger in v%s: this replay was played on the old one.") % [MapGen.display_name(mid), MapGen.RESIZED]
 	for f in cfg.get("slots", []):
-		if not Defs.FACTIONS.has(String(f.get("faction", ""))):
+		if not Defs.FACTIONS.has(Defs.base_faction(String(f.get("faction", "")))):
 			d["error"] = "A faction in it is not in this version of the game."
 	return d
 

@@ -86,12 +86,13 @@ SHEETS = {
 }
 PORTRAIT = {"brood_mother": "brood_mother_portrait_chatgpt.png", "rootmaw": "rootmaw_lizard_portrait_chatgpt.png",
             "tyrannosaur": "tyrannosaur_portrait_chatgpt.png"}
-# HAUL and the grub's harvest: the owner's sheets, when they arrive (until then the game uses stand-ins)
-OPTIONAL = {"rootmaw": [("rootmaw_lizard_haul_se_chatgpt.png", [("haul", "se")], (0, 0), 1.25),
-                        ("rootmaw_lizard_haul_s_chatgpt.png", [("haul", "s")], (0, 0), 1.25),
-                        ("rootmaw_lizard_haul_e_chatgpt.png", [("haul", "e")], (0, 0), 1.25),
-                        ("rootmaw_lizard_haul_ne_chatgpt.png", [("haul", "ne")], (0, 0), 1.25),
-                        ("rootmaw_lizard_haul_n_chatgpt.png", [("haul", "n")], (0, 0), 1.25)]}
+# HAUL (the Rootmaw walking full; its swollen body stands about HAUL_UP times as tall as the thin walk)
+HAUL_UP = 1.3
+OPTIONAL = {"rootmaw": [("rootmaw_lizard_haul_%s_chatgpt.png" % d, [("haul", d)], (0, 0), HAUL_UP)
+                        for d in ["se", "s", "e", "ne", "n"]]}
+ICONS = "icons_brood_root_uproot_haul_chatgpt.png"
+GRUB_SHEET = "grub_harvest_chatgpt.png"         # rows S, SE, E, (a second E: not used), N
+GRUB_SHEET_NE = "grub_harvest_ne_chatgpt.png"   # one row: NE
 
 
 def key_mask(px):
@@ -123,6 +124,19 @@ def sheet_rows(path):
     sprites = ia.components(fg, 4, min_big=big, attach_dist=40)
     if not sprites:
         return px, []
+    # a piece much smaller than the frames (a food blob held out, a splash): it goes with the nearest frame
+    top = max(s["area"] for s in sprites)
+    big_ones = [s for s in sprites if s["area"] >= top * 0.3]
+    for s in sprites:
+        if s["area"] >= top * 0.3:
+            continue
+        def gap(o):
+            dy = max(o["y0"] - s["y1"], 0, s["y0"] - o["y1"])
+            dx = max(o["x0"] - s["x1"], 0, s["x0"] - o["x1"])
+            return dx * dx + dy * dy
+        i = min(range(len(big_ones)), key=lambda j: gap(big_ones[j]))
+        big_ones[i] = _piece(big_ones[i]["mask"] | s["mask"])
+    sprites = big_ones
     groups = ia.cluster_1d(np.array([s["y1"] for s in sprites]), 80)
     rows = [sorted([sprites[i] for i in g], key=lambda s: s["cx"]) for g in groups]
     rows = [split_wide(r) for r in rows]
@@ -288,31 +302,162 @@ def portrait(kind):
     ia.save(ia.unteam(icon), f"{ia.OUT}/icons/{kind}.png")
 
 
-def placeholder_icons():
-    """UPROOT and HAUL until the owner's icons arrive: drawn from the Brood's own icons (ab_root, brood/move)."""
-    root = np.array(Image.open(f"{ia.OUT}/icons/ab_root.png").convert("RGBA")).astype(np.uint8)
-    up = root.copy()
-    inner = np.flipud(root[4:-4, 4:-4])          # the roots turned up out of the ground
-    up[4:-4, 4:-4] = inner
-    _arrow(up, (230, 200, 60))
-    ia.save(up, f"{ia.OUT}/icons/brood/ab_uproot.png")
-    mv = np.array(Image.open(f"{ia.OUT}/icons/brood/move.png").convert("RGBA")).astype(np.uint8)
-    haul = mv.copy()
-    yy, xx = np.mgrid[0:64, 0:64]
-    blob = ((xx - 22) / 13.0) ** 2 + ((yy - 40) / 10.0) ** 2 <= 1.0       # a swollen yellow-green food sac
-    haul[blob, :3] = (196, 214, 52)
-    rim = (((xx - 22) / 14.5) ** 2 + ((yy - 40) / 11.5) ** 2 <= 1.0) & ~blob
-    haul[rim, :3] = (70, 84, 20)
-    shine = ((xx - 18) / 4.0) ** 2 + ((yy - 36) / 3.0) ** 2 <= 1.0
-    haul[shine, :3] = (240, 250, 170)
-    ia.save(haul, f"{ia.OUT}/icons/brood/ab_haul.png")
+def command_icons():
+    """ROOT, UPROOT and HAUL: the owner's three framed icons (ICONS, left to right), cut on their frames and shrunk to
+    the 64 px button. Named ab_nb_root / ab_uproot / ab_haul so the old Brood's Spore Mother keeps its own ROOT icon."""
+    px = ia.load(R + ICONS)
+    fg = key_mask(px)
+    sprites = ia.components(fg, 3, min_big=20000, attach_dist=0)
+    sprites = sorted([s for s in sprites if s["area"] > 20000], key=lambda s: s["cx"])[:3]
+    for s, name in zip(sprites, ["ab_nb_root", "ab_uproot", "ab_haul"]):
+        crop = px[s["y0"]:s["y1"], s["x0"]:s["x1"]].astype(np.uint8)
+        img = Image.fromarray(crop).convert("RGB").resize((64, 64), Image.BOX)
+        out = np.zeros((64, 64, 4), np.uint8)
+        out[..., :3] = np.array(img)
+        out[..., 3] = 255
+        ia.save(ia.unteam(out), f"{ia.OUT}/icons/brood/{name}.png")
+    print(f"  icons: {len(sprites)} cut (ab_nb_root, ab_uproot, ab_haul)")
 
 
-def _arrow(img, col):
-    for y in range(12, 30):
-        w = max(0, (y - 12) // 2)
-        img[y, 50 - w:51 + w, :3] = col
-    img[30:46, 47:54, :3] = col
+def _grub_frames(px, row, scale):
+    return [ia.snap_team(ia.shrink(ia.cutout(px, s), scale)) for s in row]
+
+
+def grub_harvest():
+    """The grub taking food from a Rootmaw's flank (GRUB_SHEET: rows S, SE, E, a second E not used, N; GRUB_SHEET_NE:
+    NE; 5 frames: mouth open, at the flank, the food coming out, held, held). Each row is scaled so its first frame is as
+    tall as the grub's own idle in that view (the NE grub stands up a little: its row is scaled by its body's width
+    instead), set on the grub's cell with the feet on its anchor, and written as harvest_<dir> strips (west mirrored by
+    the game); the grub's entry in art_data gets the strips."""
+    px, rows = sheet_rows(GRUB_SHEET)
+    pxn, rows_ne = sheet_rows(GRUB_SHEET_NE)
+    print(f"  {GRUB_SHEET}: rows {[len(r) for r in rows]}, {GRUB_SHEET_NE}: rows {[len(r) for r in rows_ne]}")
+    if len(rows) < 5 or not rows_ne:
+        print("  ! grub harvest: rows missing")
+        return
+    src = open("scripts/art_data.gd").read()
+    m = re.search(r'\t"grub": \{"cell": Vector2i\((\d+), (\d+)\), "anchor": Vector2\(([\d.]+), ([\d.]+)\)', src)
+    cw, ch, axx, ayy = int(m.group(1)), int(m.group(2)), float(m.group(3)), float(m.group(4))
+
+    def size_of(strip):
+        im = np.array(Image.open(f"{ia.OUT}/units/grub/{strip}.png").convert("RGBA"))
+        n = im.shape[1] // cw
+        ws = []
+        hs = []
+        for k in range(n):
+            ys, xs = np.nonzero(im[:, k * cw:(k + 1) * cw, 3] > 0)
+            hs.append(ys.max() - ys.min() + 1)
+            ws.append(xs.max() - xs.min() + 1)
+        return float(np.median(hs)), float(np.median(ws))
+
+    # one scale for the whole five-row sheet (from its front view against the grub's idle_s); the NE sheet by the
+    # width of the grub's own north-east walk
+    s_ref = ia.cutout(px, rows[0][0])
+    main_scale = size_of("idle_s")[0] / s_ref.shape[0]
+    ne_ref = ia.cutout(pxn, rows_ne[0][0])
+    ne_scale = size_of("walk_ne")[1] / ne_ref.shape[1]
+    sets = {"s": (px, rows[0]), "se": (px, rows[1]), "e": (px, rows[2]), "n": (px, rows[4]), "ne": (pxn, rows_ne[0])}
+    counts = {}
+    for d, (p, row) in sets.items():
+        scale = ne_scale if d == "ne" else main_scale
+        frames = _grub_frames(p, row, scale)
+        strip = np.zeros((ch, cw * len(frames), 4), np.uint8)
+        for k, im in enumerate(frames):
+            yy, xx = np.nonzero(im[..., 3] > 0)
+            low = yy >= yy.max() - 3
+            ax = float(np.median(xx[low])) if low.any() else float(xx.mean())
+            ox, oy = int(round(axx - ax)), int(round(ayy - yy.max()))
+            h, w = im.shape[:2]
+            ys0, xs0 = max(0, oy), max(0, ox)
+            ys1, xs1 = min(ch, oy + h), min(cw, ox + w)
+            sub = im[ys0 - oy:ys1 - oy, xs0 - ox:xs1 - ox]
+            mm = sub[..., 3] > 0
+            cell = strip[:, k * cw:(k + 1) * cw]
+            cell[ys0:ys1, xs0:xs1][mm] = sub[mm]
+        ia.save(strip, f"{ia.OUT}/units/grub/harvest_{d}.png")
+        counts[f"harvest_{d}"] = len(frames)
+    a = src.index('\t"grub": {')
+    b = src.index("\n\t}},\n", a)
+    body = re.sub(r'\n\t\t"harvest_\w+": \d+,', "", src[a:b])
+    for k in sorted(counts):
+        body += f'\n\t\t"{k}": {counts[k]},'
+    open("scripts/art_data.gd", "w").write(src[:a] + body + src[b:])
+    print("  grub: " + ", ".join(f"{k} {v}" for k, v in sorted(counts.items())))
+
+
+def _blob(img, cx, cy, rx, ry, base, light, dark):
+    """A shaded leathery sac: lit from the top left, a dark rim, a small shine."""
+    h, w = img.shape[:2]
+    yy, xx = np.mgrid[0:h, 0:w]
+    nx, ny = (xx + 0.5 - cx) / rx, (yy + 0.5 - cy) / ry
+    r2 = nx * nx + ny * ny
+    inside = r2 <= 1.0
+    lit = np.clip(0.55 - 0.45 * nx - 0.55 * ny, 0.0, 1.0)
+    col = np.array(base, float)[None, None, :] * (1 - lit[..., None]) + np.array(light, float)[None, None, :] * lit[..., None]
+    rim = inside & (r2 > 0.72)
+    col[rim] = col[rim] * 0.55 + np.array(dark, float) * 0.45
+    shine = ((xx + 0.5 - (cx - rx * 0.35)) / max(1.0, rx * 0.25)) ** 2 + ((yy + 0.5 - (cy - ry * 0.4)) / max(1.0, ry * 0.18)) ** 2 <= 1.0
+    col[shine & inside] = (245, 252, 200)
+    img[inside, :3] = col[inside].clip(0, 255).astype(np.uint8)
+    img[inside, 3] = 255
+
+
+def still_art():
+    """The egg and the food pile, drawn in code (docs/art_style_inconsistency.md): an egg like the Mother's glowing
+    clutch (yellow-green; red-gold once the father has breathed on it; a burst shell when it is killed) and a heap of
+    food sacs in four sizes (the pile shrinks as it is taken or rots)."""
+    data = {}
+    W, H = 22, 24
+    green = ((150, 170, 30), (236, 246, 120), (60, 70, 10))
+    red = ((176, 58, 26), (250, 178, 84), (80, 20, 8))
+    strips = {}
+    e = np.zeros((H, W, 4), np.uint8)
+    _blob(e, 11, 14, 6.5, 8.5, *green)
+    strips["idle_s"] = [e]
+    f1 = np.zeros((H, W, 4), np.uint8)
+    _blob(f1, 11, 14, 6.5, 8.5, *red)
+    f2 = np.zeros((H, W, 4), np.uint8)
+    _blob(f2, 11, 14, 6.8, 8.8, (196, 76, 34), (255, 206, 110), (90, 28, 10))
+    strips["fert_s"] = [f1, f2]
+    deaths = []
+    for k in range(3):
+        d = np.zeros((H, W, 4), np.uint8)
+        _blob(d, 11, 18 + k, 6.5, 5.0 - k, *green)
+        d[: 14 + k * 2, :, 3] = 0
+        d[d[..., 3] == 0] = 0
+        for j in range(4 + k * 2):          # shell bits and splash
+            x = (3 + j * 5 + k * 3) % W
+            y = 21 - (j % 3) - k
+            d[y, x] = (200, 220, 90, 255)
+        deaths.append(d)
+    strips["death_s"] = deaths
+    _write_still("brood_egg", (W, H), (11, 22), strips, data)
+    PW, PH = 46, 26
+    piles = []
+    spots = [(23, 17, 7, 5), (14, 18, 6, 4), (31, 19, 6, 4), (19, 12, 5, 4), (28, 13, 5, 4), (9, 21, 4, 3),
+             (37, 21, 4, 3), (23, 9, 4, 3), (16, 22, 4, 3), (30, 23, 4, 3), (12, 14, 3, 3), (34, 15, 3, 3), (24, 22, 4, 3)]
+    for n in (3, 6, 9, 13):
+        im = np.zeros((PH, PW, 4), np.uint8)
+        yy, xx = np.mgrid[0:PH, 0:PW]
+        wet = (((xx + 0.5 - 23) / (8 + n * 1.2)) ** 2 + ((yy + 0.5 - 21) / (3 + n * 0.25)) ** 2) <= 1.0
+        im[wet] = (52, 58, 20, 255)
+        for (cx, cy, rx, ry) in sorted(spots[:n], key=lambda s: s[1]):
+            _blob(im, cx, cy, rx, ry, *green)
+        piles.append(im)
+    _write_still("food_pile", (PW, PH), (23, 23), {"idle_s": piles, "death_s": piles[:1]}, data)
+    for k, v in data.items():
+        write_entry(k, v)
+    print("  brood_egg, food_pile drawn")
+
+
+def _write_still(name, cell, anchor, strips, data):
+    os.makedirs(f"{ia.OUT}/units/{name}", exist_ok=True)
+    counts = {}
+    for key, frames in strips.items():
+        strip = np.concatenate([ia.unteam(f.copy()) for f in frames], axis=1)
+        ia.save(strip, f"{ia.OUT}/units/{name}/{key}.png")
+        counts[key] = len(frames)
+    data[name] = {"cell": cell, "anchor": anchor, "frames": counts}
 
 
 def contact(out_dir, kind, small):
@@ -353,7 +498,10 @@ def main():
         import_kind(kind, data, contact_dir)
         write_entry(kind, data[kind])
         portrait(kind)
-    placeholder_icons()
+    if not only:
+        command_icons()
+        grub_harvest()
+        still_art()
 
 
 if __name__ == "__main__":

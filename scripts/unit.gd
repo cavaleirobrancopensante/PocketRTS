@@ -1019,6 +1019,12 @@ var _k_musket := false           # foot_musket()
 var _k_pistol := false           # has_pistol()
 var _k_ride := false             # one of the kinds that ride by (Defs.RIDE_BY "kinds")
 var _k_fac := ""                 # (d["faction"]: the kind's faction)
+var _k_nb := false               # a creature of the NEW BROOD (scripts/brood_new.gd)
+var _k_still := false            # (its egg or a food pile: stands where it is, BroodNew.still_tick)
+## The new Brood's own state (scripts/brood_new.gd: the Mother's eggs, a Rootmaw's food and ground, an egg's kind and
+## incubation, the father's breath); saved and streamed as it is.
+var nb := {}
+var nb_mass := 1.0               # (Game.separation: how hard it is to shove; rooted and still things are not shoved)
 
 
 func _kind_flags() -> void:
@@ -1026,7 +1032,11 @@ func _kind_flags() -> void:
 	_k_fac = String(Defs.UNITS[kind]["faction"]) if Defs.UNITS.has(kind) else ""
 	_k_mounted = Defs.FOOT.has(kind)
 	_k_harness = Defs.HARNESSED.has(kind)
-	_k_deploys = kind == "tesla_cart" or kind == "cannon" or kind == "spore_mother" or kind == "mortar"
+	_k_deploys = kind == "tesla_cart" or kind == "cannon" or kind == "spore_mother" or kind == "mortar" \
+			or kind == BroodNew.QUEEN or kind == BroodNew.MAW
+	_k_nb = BroodNew.is_nb(kind)
+	_k_still = kind == BroodNew.EGG or kind == BroodNew.PILE
+	nb_mass = 1000.0 if _k_still else (30.0 if kind == BroodNew.QUEEN else (8.0 if kind == BroodNew.FATHER else 1.0))
 	_k_cw = CwUnits.hooked(kind)
 	_k_musket = kind == "musketeer"
 	_k_pistol = (Defs.PISTOL["kinds"] as Array).has(kind)
@@ -1295,6 +1305,8 @@ func take_damage(amount: float, from: Entity, blow := "") -> void:
 		amount = CwUnits.incoming(self, amount, from, blow)
 	if work == "feeding":
 		amount *= 0.5      # burrowed grubs are hard to hit
+	if _k_nb:
+		amount = BroodNew.incoming(self, amount)      # (rooted: dug in)
 	if not team_horses.is_empty() and amount > 0.0 and not dead:
 		# the extra horses of a gun's team take a share of the blow, the front one first
 		var share := amount * float(Defs.HORSES["team_hit"])
@@ -1863,6 +1875,10 @@ func switch_time() -> float:
 			return Defs.MORTAR_SWITCH
 		"spore_mother":
 			return Defs.ROOT_SWITCH
+		BroodNew.QUEEN:
+			return float(Defs.NB["queen_switch"])
+		BroodNew.MAW:
+			return float(Defs.NB["maw_switch"])
 	return Defs.TESLA_SWITCH
 
 
@@ -1873,10 +1889,29 @@ func cmd_deploy() -> void:
 	if not deploys() or tesla_mode != "packed":
 		return
 	cmd_stop()
+	if _k_nb:
+		var nwhy := BroodNew.on_root(game, self)     # (the new Brood: facing south-east, a Rootmaw's ground)
+		if nwhy != "":
+			game.tell(team, nwhy)
+			return
 	tesla_mode = "deploying"
 	tesla_t = switch_time()
 	if kind == "tesla_cart":
 		Sfx.play("combat/tesla_deploy", position)
+
+
+## THE NEW BROOD: the Brood Mother lays an egg for `k` (scripts/brood_new.gd); "" or why not.
+func cmd_lay(k: String) -> String:
+	if game.net_forward(self, "cmd_lay", [k]): return ""
+	return BroodNew.lay(game, self, k)
+
+
+## THE NEW BROOD: UPROOT (spill: a Rootmaw spills its food) or HAUL (it keeps it).
+func cmd_uproot(spill: bool) -> void:
+	if game.net_forward(self, "cmd_uproot", [spill]): return
+	if tesla_mode != "deployed":
+		return
+	BroodNew.uproot(self, spill)
 
 
 ## Go to a spot and cast a spell there (Stormcaller: storm; Spore Mother: miasma).
@@ -2478,6 +2513,24 @@ func cmd_gather(site: Entity) -> void:
 	if game.net_forward(self, "cmd_gather", [site]): return
 	if aboard:
 		return      # riding in a balloon
+	if kind == "grub" and BroodNew.is_source(site) and not site.dead:
+		# the new Brood: a Rootmaw (its own side's, rooted) or a food pile
+		var src := site as Unit
+		if (src.kind == BroodNew.MAW and (src.team != team or not BroodNew.rooted(src))) \
+				or (BroodNew.crew(game, src) >= BroodNew.crew_max(game, src) and src != home_mine):
+			var alt := BroodNew.free_source(game, team, src.position)
+			if alt == null:
+				game.tell(team, "That Rootmaw must be rooted to be fed from." if src.kind == BroodNew.MAW and not BroodNew.rooted(src) else "No room there.")
+				cmd_move(src.position)
+				return
+			src = alt
+		_reset_work()
+		order = "gather"
+		home_mine = src
+		order_target = src
+		work = "to_hall" if carrying > 0 else "to_site"
+		target = null
+		return
 	if not can_gather() or not (site is Building):
 		cmd_move(site.center())
 		return
@@ -3280,6 +3333,18 @@ func _tick_unit(delta: float) -> void:
 		_process_acid(delta)
 	if dead:
 		return
+	if _k_still:
+		# the new Brood's eggs and food piles: no orders, no walking (scripts/brood_new.gd)
+		BroodNew.still_tick(game, self, delta)
+		if dead or not is_inside_tree():
+			return
+		_animate(delta)
+		if visible and game.view_rect.has_point(position):
+			var sk := BroodNew.draw_key(self) + int(hp) * 7919 + int(selected) * 3
+			if sk != _draw_key.x:
+				_draw_key = Vector4i(sk, 0, 0, 0)
+				queue_redraw()
+		return
 	if kind == Defs.BALLISTA_KIND:
 		Ballista.wind(self, delta)                 # (its spring is wound only while it stands, faster with crew)
 	elif kind != "dragoon":
@@ -3333,6 +3398,8 @@ func _tick_unit(delta: float) -> void:
 			hp = minf(max_hp, hp + 2.0 * delta)
 	if kind == "bloater":
 		_bloater_gas(delta)
+	if _k_nb:
+		BroodNew.tick(game, self, delta)      # (the new Brood: eggs, food, fertilising, HAUL's pace)
 	if not game.zones.is_empty() or sight != int(d["sight"]):
 		# a fog bank: inside it you see only a couple of tiles
 		sight = int(Defs.FOG["sight"]) if game.in_fog(position) else int(d["sight"])
@@ -3508,7 +3575,7 @@ func _tick_unit(delta: float) -> void:
 			# WORK is on by default: an idle worker goes back to its post by itself
 			if is_worker() and auto_work and not war and order == "idle" and scan_t <= 0.0:
 				scan_t = 1.5
-				var post := game.free_site(team, position)
+				var post: Entity = BroodNew.free_source(game, team, position) if BroodNew.on(game, team) else game.free_site(team, position)
 				if post:
 					cmd_gather(post)
 			# COURIER: an idle Ornithopter fetches batteries and winds up constructs
@@ -3683,6 +3750,8 @@ func _tick_unit(delta: float) -> void:
 			extra += int(overclock_t * 8.0) * 1000000
 		if kind == "balloon":
 			extra += passengers.size() * 100000 + (int(haul_t * 30.0) + 1) * 1000
+		if _k_nb:
+			extra += BroodNew.draw_key(self) * 1000
 		var key := Vector4i(int(selected) + (2 if carrying > 0 else 0) + (4 if cross_t > 0.0 else 0) + (8 if work == "feeding" else 0) + (16 if carry_empty else 0) + (32 if cocoon > 0 else 0) + kills * 64,
 			int(hp) + int(gas) * 10000, int(wind * 40.0) + (int(carry_t * 4.0) * 100 if carrying > 0 else 0) if _k_fac == "clockwork" else int(powder * 2.0) + (1000 if supplying else 0),
 			int(max_hp) + extra + (int(reload_frac() * 16.0) + 17 * int(tesla_t * 4.0) + 850 * TESLA_MODES.find(tesla_mode)) * 10000 if has_attack() else int(max_hp) + extra)
@@ -4716,6 +4785,8 @@ var _barren_site: Building = null
 
 
 func _gather(delta: float) -> Vector2:
+	if home_mine is Unit:
+		return BroodNew.grub_tick(game, self, delta)      # (the new Brood: a Rootmaw or a food pile)
 	var site := home_mine as Building
 	if site == null or not is_instance_valid(site) or site.dead or not site.built:
 		_leave_mine()
@@ -5324,16 +5395,16 @@ func cmd_sacrifice() -> void:
 	_reset_work()
 	order = "sacrifice"
 	target = null
-	order_target = game.nearest_of(position, team, "brood_pen")
+	order_target = game.offer_place(position, team)
 	if order_target == null:
 		game.tell(team, "No Brood Pen to offer them at.")
 		cmd_stop()
 
 
 func _sacrifice(delta: float) -> Vector2:
-	var pen := order_target as Building
+	var pen: Entity = order_target if is_instance_valid(order_target) else null
 	if pen == null or not is_instance_valid(pen) or pen.dead:
-		pen = game.nearest_of(position, team, "brood_pen")
+		pen = game.offer_place(position, team)
 		order_target = pen
 		path = PackedVector2Array()
 		if pen == null:
@@ -5372,7 +5443,7 @@ func cmd_harvest() -> void:
 
 func _harvest(delta: float) -> Vector2:
 	if cocoon > 0:
-		var hive := game.dropoff_hall(position, team)
+		var hive: Entity = game.dropoff_ent(position, team)
 		if hive == null:
 			return Vector2.ZERO
 		if hive.edge_distance(position) < radius + 17.0:
@@ -6139,6 +6210,8 @@ func die() -> void:
 	elif kind == "cannon" or kind == "mortar":
 		_team_bolts()
 	game.on_unit_died(self)
+	if _k_nb:
+		BroodNew.on_death(game, self)      # (a Rootmaw's food bursts out; the supply and swamp change)
 	Sfx.play_any(["combat/%s_death" % kind, "combat/%s_death" % Sfx.SHORT.get(d["faction"], "crown"), "death_" + Sfx.SHORT.get(d["faction"], "crown")], position)
 	_set_anim(_death_anim(), true)
 	z_index = 3 if Defs.FLYER.has(kind) else -1     # (the Swift and the Owl fall first: under the living once down)
@@ -6169,6 +6242,8 @@ func _anim_or(a: String, fallback: String) -> String:
 
 
 func _death_anim() -> String:
+	if _k_nb:
+		return BroodNew.death_anim(self)
 	if kind == "grub" and cocoon > 0 and ArtData.UNITS["grub"]["frames"].has("death_cocoon_e"):
 		return "death_cocoon"
 	if kind == "skywing" and sky != "air" and sky != "to_land":
@@ -6188,6 +6263,8 @@ func _anim_name() -> String:
 	if work == "reins" and REINS_POSE.has(kind):
 		return _anim_or(String(REINS_POSE[kind][0]), "idle")      # (reaching for the bridle: a held frame, in _animate)
 	var moving := velocity.length() > 10.0
+	if _k_nb:
+		return BroodNew.anim(self, moving)
 	if crew_of != null:
 		return Ballista.crew_anim(self)        # (a Spring Ballista's crewman: push, crank, idle)
 	if kind == Defs.BALLISTA_KIND:
@@ -6267,7 +6344,7 @@ func _anim_name() -> String:
 			if cocoon > 0:
 				return "carry_cocoon" if moving else "idle_cocoon"
 			if work == "feeding":
-				return "burrow"
+				return "harvest" if home_mine is Unit else "burrow"      # (the new Brood: at a Rootmaw's flank)
 			if work == "morphing":
 				return "morph"
 			if phase != "":
@@ -6604,6 +6681,11 @@ func _animate(delta: float) -> void:
 		"burrow":
 			fps = 7.0
 			loop = false
+		"harvest":
+			fps = float(n) / Defs.PIT_TIME      # (a grub at a Rootmaw's flank: the food comes out, it holds it)
+			loop = false
+		"rooted", "breath":
+			fps = 4.0
 		"morph":
 			fps = 3.2
 			loop = false
@@ -6753,6 +6835,8 @@ func _animate(delta: float) -> void:
 		sprite.rotation = (-0.32 if not view_mirrored() else 0.32) if at_air else 0.0
 	if kind == Defs.BALLISTA_KIND:
 		Ballista.look(self, 0.066)    # (its built-in crewman, drawn by it: scripts/ballista.gd)
+	if _k_nb:
+		BroodNew.animate(self, n)     # (rooting, a Rootmaw's food levels, an egg's fall, a pile's size)
 
 
 ## The cannon sheet has one frame per pose, so the crew's work is faked: the gun rocks and
@@ -7264,7 +7348,10 @@ func _draw_unit() -> void:
 	elif kind == "cannon":
 		top = -64.0 if not ArtData.UNITS["cannon"]["frames"].has("walk_e") else -float(ArtData.UNITS[kind]["anchor"].y) * 0.75
 	var bw := radius * 2.4
-	draw_health(top, bw, true)
+	if kind != BroodNew.PILE:
+		draw_health(top, bw, true)
+	if _k_nb:
+		BroodNew.draw(self, top)
 	if owl_t >= 0.0:
 		CwAir.draw_morph(self, top, bw)
 	if has_attack():

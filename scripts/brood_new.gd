@@ -100,6 +100,7 @@ static func start(g: Game, t: int, cell: Vector2i) -> void:
 	var spot := _maw_start_spot(g, c)
 	var m := g._add_unit(MAW, t, spot)
 	m.facing = SE
+	m.nb["food"] = float(Defs.NB["start_food"])       # (the first loads are ready: the grubs start at once)
 	_claim(g, m)
 	_start_rooting(m)
 	var away := 80.0 if c.y < Game.H * Defs.TILE * 0.5 else -80.0
@@ -117,29 +118,32 @@ static func _start_rooting(u: Unit) -> void:
 	u.nb["m"] = "deploying"
 
 
-## Fresh ground about MAW_START tiles from the Mother, on her level, walkable, away from the map's middle.
+## Fresh ground beside the Mother (clear of her great body: about 8 to 10 tiles out), walkable round it, on her level,
+## a little away from the map's middle (behind her, as the old starting pits were) but not off the edge of her ground.
 static func _maw_start_spot(g: Game, c: Vector2) -> Vector2:
 	var mid := Vector2(Game.W, Game.H) * Defs.TILE * 0.5
 	var away := (c - mid).normalized() if c.distance_to(mid) > 1.0 else Vector2.DOWN
 	var h := int(g.height[g.idx(g.cell_of(c))])
+	var home := g.region_of(g.cell_of(c))
 	var best := c + away * 64.0
 	var bs := -INF
-	for r in [6.0, 5.0, 7.0, 4.5]:
-		for i in 16:
-			var dir := Vector2.from_angle(TAU * i / 16.0)
+	for r in [8.5, 9.5, 7.5, 10.5, 6.5]:
+		for i in 24:
+			var dir := Vector2.from_angle(TAU * i / 24.0)
 			var p: Vector2 = c + dir * r * Defs.TILE
 			var cc := g.cell_of(p)
-			if not g._walkable(cc) or int(g.height[g.idx(cc)]) != h or g.ramp[g.idx(cc)] != 0:
+			if not g._walkable(cc) or int(g.height[g.idx(cc)]) != h or g.ramp[g.idx(cc)] != 0 or g.region_of(cc) != home:
 				continue
-			var ok := true
-			for dx in [-1, 0, 1]:
-				for dy in [-1, 0, 1]:
+			# room round it: the cells within 2 tiles walkable and on its level
+			var room := 0
+			for dx in range(-2, 3):
+				for dy in range(-2, 3):
 					var c2 := cc + Vector2i(dx, dy)
-					if not g._walkable(c2):
-						ok = false
-			if not ok:
+					if g.in_map(c2) and g._walkable(c2) and int(g.height[g.idx(c2)]) == h:
+						room += 1
+			if room < 22:
 				continue
-			var s: float = dir.dot(away) - absf(r - 6.0) * 0.1
+			var s: float = dir.dot(away) * 0.5 + room * 0.05 - absf(r - 8.5) * 0.3
 			if s > bs:
 				bs = s
 				best = p
@@ -311,9 +315,11 @@ static func egg_tick(g: Game, e: Unit, delta: float) -> void:
 
 static func father_tick(g: Game, f: Unit, delta: float) -> void:
 	var egg = f.nb.get("fe")
-	var busy := f.velocity.length() > 10.0 or f.phase != "" or not (f.order in ["idle", "hold"])
+	# (busy: walking somewhere or fighting; a shove from a neighbour doesn't count)
+	var busy := f.phase != "" or f.target != null or not (f.order in ["idle", "hold"])
 	if egg != null and (not is_instance_valid(egg) or egg.dead or int(egg.nb.get("fert", 0)) != 1 or busy):
 		f.nb.erase("fe")
+		_mist_node(f).queue_redraw()
 		f.nb["ft"] = 0.0
 		egg = null
 	if egg == null:
@@ -341,6 +347,8 @@ static func father_tick(g: Game, f: Unit, delta: float) -> void:
 		f.nb["ft"] = float(Defs.NB["fert_time"])
 		egg = best
 	f.facing = (egg.position - f.position).normalized() if egg.position.distance_to(f.position) > 1.0 else f.facing
+	if f.visible and g.view_rect.has_point(f.position):
+		_mist_node(f).queue_redraw()        # (the breath's mist moves every frame: draw_mist)
 	f.nb["ft"] = float(f.nb.get("ft", 0.0)) - delta
 	f.nb["mist"] = float(f.nb.get("mist", 0.0)) - delta
 	if float(f.nb["mist"]) <= 0.0 and f.visible and g.view_rect.has_point(f.position):
@@ -354,8 +362,38 @@ static func father_tick(g: Game, f: Unit, delta: float) -> void:
 		egg.nb["fert"] = 2
 		egg.nb["t"] = 0.0
 		f.nb.erase("fe")
+		_mist_node(f).queue_redraw()
 		if f.team == g.human:
 			Sfx.play_any(["roar", "combat/brute_attack"], f.position, -10.0)
+
+
+## The father's breath, drawn over him and the Mother: a red-gold mist streaming from his jaws to the egg (code;
+## docs/art_style_inconsistency.md).
+static func _mist_node(f: Unit) -> Node2D:
+	var n := f.get_node_or_null("Mist") as Node2D
+	if n == null:
+		n = Node2D.new()
+		n.name = "Mist"
+		n.z_index = 4
+		n.draw.connect(draw_mist.bind(f, n))
+		f.add_child(n)
+	return n
+
+
+static func draw_mist(f: Unit, n: Node2D) -> void:
+	if not fertilising(f) or f.dead:
+		return
+	var egg: Unit = f.nb["fe"]
+	var mouth := f.facing.normalized() * f.radius * 1.1 + Vector2(0, -22)
+	var to := egg.position - f.position + Vector2(0, -6)
+	var clk: float = f.game.clock
+	for i in 16:
+		var k := fposmod(float(i) / 16.0 + clk * 0.9, 1.0)
+		var p := mouth.lerp(to, k) + Vector2(sin(clk * 5.0 + i * 1.7), cos(clk * 4.0 + i * 2.3)) * (3.0 + 7.0 * k)
+		var col := Color(1.0, 0.42, 0.16).lerp(Color(1.0, 0.86, 0.35), 0.5 + 0.5 * sin(i * 1.3 + clk * 3.0))
+		col.a = 0.6 * sin(k * PI)
+		n.draw_circle(p, 3.0 + 6.0 * k, col)
+	n.draw_circle(to, 12.0, Color(1.0, 0.6, 0.25, 0.35 + 0.15 * sin(clk * 9.0)))
 
 
 static func fertilising(u: Unit) -> bool:
@@ -447,6 +485,10 @@ static func tick(g: Game, u: Unit, delta: float) -> void:
 	if m != u.tesla_mode:
 		_mode_changed(g, u, m)
 		u.nb["m"] = u.tesla_mode
+		if u.kind == QUEEN or u.kind == MAW:
+			u.nb_mass = 1000.0 if u.tesla_mode != "packed" else (30.0 if u.kind == QUEEN else 1.0)     # (dug in: not shoved)
+	if rooted(u) and u.phase == "" and u.target == null:
+		u.facing = SE          # (rooted, it settles back facing south-east after a fight)
 	match u.kind:
 		QUEEN:
 			if int(u.nb.get("eggs", 0)) < int(Defs.NB["eggs_max"]):
@@ -512,6 +554,7 @@ static func incoming(u: Unit, amount: float) -> float:
 
 static func on_death(g: Game, u: Unit) -> void:
 	if u.kind == MAW:
+		u.nb["dfood"] = float(u.nb.get("food", 0.0))      # (its death: swollen or thin)
 		spill(g, u)        # (its food bursts out: hauling or rooted)
 		_release(g, u)
 	if u.kind == EGG:
@@ -766,3 +809,42 @@ static func draw_key(u: Unit) -> int:
 		QUEEN:
 			return int(u.nb.get("eggs", 0))
 	return 0
+
+
+# ------------------------------------------------------------------ saved games
+
+## A creature's own state as plain values (the father's egg in hand is not kept: he looks again).
+static func unit_save(u: Unit) -> Dictionary:
+	var out := {}
+	for k in u.nb:
+		var v = u.nb[k]
+		if v is Object:
+			continue
+		out[k] = v
+	return out
+
+
+static func unit_load(u: Unit, d: Dictionary) -> void:
+	u.nb = d.duplicate()
+	for k in ["spot", "fert", "eggs", "laid"]:
+		if u.nb.has(k):
+			u.nb[k] = int(u.nb[k])
+	u.nb["m"] = u.tesla_mode
+	if u.kind == QUEEN or u.kind == MAW:
+		u.nb_mass = 1000.0 if u.tesla_mode != "packed" else (30.0 if u.kind == QUEEN else 1.0)
+
+
+static func save(g: Game) -> Dictionary:
+	var spots := []
+	for id in g.nb_spots:
+		var s: Dictionary = g.nb_spots[id]
+		spots.append([int(id), (s["p"] as Vector2).x, (s["p"] as Vector2).y, float(s["left"]), int(s.get("maw", 0))])
+	return {"spots": spots, "next": g.nb_spot_next}
+
+
+static func load(g: Game, d: Dictionary) -> void:
+	g.nb_spots.clear()
+	for s in d.get("spots", []):
+		g.nb_spots[int(s[0])] = {"p": Vector2(float(s[1]), float(s[2])), "left": float(s[3]), "maw": int(s[4])}
+	g.nb_spot_next = int(d.get("next", 0))
+	g.nb_queen.clear()

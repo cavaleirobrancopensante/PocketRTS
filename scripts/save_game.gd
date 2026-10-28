@@ -129,6 +129,8 @@ static func capture(game: Game, cfg: Dictionary) -> Dictionary:
 		"log": Array(game.mlog.lines) if game.mlog else [], "ai": [],
 		"soil_scars": game.soil_scars.map(func(sc: Array) -> Array: return [_v2(sc[0]), sc[1], sc[2], sc[3] if sc.size() > 3 else 0.0]),
 		"pit_spots": game.pit_spots.map(func(sp: Array) -> Array: return [_v2(sp[0]), sp[1], sp[2]]), "buildings": [], "units": []}
+	if game.nb_teams.has(true):
+		d["nb"] = BroodNew.save(game)              # (the new Brood: the Rootmaws' ground)
 	for ai in game.ais:
 		d["ai"].append({"team": ai.team, "walled": ai._walled, "attack_at": ai._attack_at, "strategy": ai.strategy,
 			"failed": ai._failed, "regroup": ai._regroup_until, "opening": ai.opening})
@@ -168,6 +170,8 @@ static func capture(game: Game, cfg: Dictionary) -> Dictionary:
 				ud["rfp"] = u.refit_paid
 		if u.auto_refit:
 			ud["ar"] = true
+		if u._k_nb:
+			ud["nb"] = BroodNew.unit_save(u)         # (the new Brood: eggs, food, an egg's kind and incubation)
 		if u.owl_t >= 0.0:
 			ud["owl"] = snappedf(u.owl_t, 0.01)      # (a Swift turning into a Ticking Owl, paid)
 		if u.net_t > 0.0:
@@ -511,6 +515,8 @@ static func restore(game: Game, d: Dictionary) -> void:
 		u.charge = float(ud["charge"])
 		u.mode = String(ud["mode"])
 		u.tesla_mode = String(ud["tm"])
+		if ud.get("nb") is Dictionary:
+			BroodNew.unit_load(u, ud["nb"])
 		u.carrying = int(ud["carry"])
 		u.load_f = float(ud.get("lf", 0.0))
 		u.auto_work = bool(ud["auto"])
@@ -669,6 +675,8 @@ static func restore(game: Game, d: Dictionary) -> void:
 		if b.kind == "farm" and not b.ghost and not b.dead:
 			var blk := Rect2(b.rect().position + Vector2(Building.FARM_BLOCK.position) * Defs.TILE, Vector2(Building.FARM_BLOCK.size) * Defs.TILE)
 			game._push_units_out(blk)
+	if d.get("nb") is Dictionary:
+		BroodNew.load(game, d["nb"])
 	for t in game.n_players():
 		game._recount_supply(t)
 	game._capital.clear()          # (the capital is found again from the loaded Burrows)

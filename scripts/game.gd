@@ -25,6 +25,13 @@ var factions: Array = ["crown", "crown"]
 var colours: Array = [0, 1]                 # each player's index into Defs.PALETTE
 var sides: Array = [0, 1]                   # players on the same side are allies
 var income_mult: Array = []                 # the Brutal AI's cheat (1.0 = fair)
+## THE NEW BROOD (experiment, scripts/brood_new.gd): per side, true when its slot picked "brood_new" (it plays as the
+## Brood: factions[t] is "brood"); the Mother of each such side (looked up), the Rootmaws' ground spots (id -> {p, left,
+## maw: the serial of the Rootmaw rooted there or 0}).
+var nb_teams: Array = []
+var nb_queen := {}
+var nb_spots := {}
+var nb_spot_next := 0
 var eliminated: Array = []
 
 
@@ -1931,6 +1938,9 @@ func _paint_ramps(img: Image, area := Rect2i(0, 0, W, H)) -> void:
 
 func _start_positions() -> void:
 	for t in n_players():
+		if BroodNew.on(self, t):
+			BroodNew.start(self, t, starts[t])       # (the new Brood: the Mother, a Rootmaw, grubs; no buildings)
+			continue
 		var f: Dictionary = Defs.FACTIONS[factions[t]]
 		var b := _add_building(f["hall"], t, starts[t], true)
 		players[t]["res2"] = float(Defs.START_POWDER) if factions[t] == "crown" else 0.0
@@ -2772,6 +2782,20 @@ var _capital_had := {}          # team -> true once it has had a capital (to tel
 
 
 ## Where workers unload: the Brood's capital; for the others the nearest hall.
+## Where a worker unloads, any kind: the new Brood's Brood Mother, else dropoff_hall.
+func dropoff_ent(p: Vector2, t: int) -> Entity:
+	if BroodNew.on(self, t):
+		return BroodNew.dropoff(self, t)
+	return dropoff_hall(p, t)
+
+
+## Where a Brood creature is offered up (SACRIFICE): the nearest Brood Pen, or the new Brood's Mother.
+func offer_place(p: Vector2, t: int) -> Entity:
+	if BroodNew.on(self, t):
+		return BroodNew.dropoff(self, t)
+	return nearest_of(p, t, "brood_pen")
+
+
 func dropoff_hall(p: Vector2, t: int) -> Building:
 	if faction_of(t) == "brood":
 		return capital(t)
@@ -3875,7 +3899,7 @@ func on_building_complete(b: Building) -> void:
 
 
 func _recount_supply(t: int) -> void:
-	var cap := 0
+	var cap := BroodNew.supply_cap(self, t)
 	for b in buildings:
 		if b.team == t:
 			cap += b.supply()
@@ -3887,6 +3911,9 @@ func supply_used(t: int) -> int:
 	for u in units:
 		if u.team == t and not u.dead:
 			n += int(u.d["supply"])
+			if u._k_still and u.kind == BroodNew.EGG:
+				var ek := String(u.nb.get("k", "grub"))      # (a new-Brood egg holds its creature's supply)
+				n += int(Defs.UNITS[ek]["supply"]) * int(Defs.UNITS[ek].get("spawn", 1))
 			if u.owl_t >= 0.0:
 				n += int(Defs.UNITS[Defs.OWL]["supply"]) - int(u.d["supply"])     # (a Swift turning into an Owl holds its supply)
 	for b in buildings:
@@ -5331,13 +5358,13 @@ func consume_unit(u: Unit) -> void:
 ## Brood Pen SACRIFICE: essence a creature gives when it's offered up (0: it can't be).
 static func sacrifice_value(kind: String) -> int:
 	var d: Dictionary = Defs.UNITS[kind]
-	if d["faction"] != "brood" or d.get("worker", false):
+	if d["faction"] != "brood" or d.get("worker", false) or d.get("new_brood", false):
 		return 0
 	return maxi(1, int(round(float(d["cost"]) / maxf(1.0, float(d.get("spawn", 1))) * Defs.SACRIFICE)))
 
 
 ## A Brood creature that reached a Pen on SACRIFICE: offered up for essence.
-func sacrifice(u: Unit, pen: Building) -> void:
+func sacrifice(u: Unit, pen: Entity) -> void:
 	var ess := sacrifice_value(u.kind)
 	if ess <= 0 or u.dead:
 		return
@@ -5415,6 +5442,18 @@ func _update_swamp() -> void:
 						var dx: float = (x + 0.5 - c.x)
 						var dy: float = (y + 0.5 - c.y) * 1.15
 						if dx * dx + dy * dy <= r * r:
+							g[y * W + x] = 1
+			# the new Brood: the rooted Brood Mother and Rootmaws (scripts/brood_new.gd)
+			for src in BroodNew.swamp_sources(self, t):
+				var nc: Vector2 = src[0]
+				var nr: float = src[1]
+				for y in range(int(nc.y - nr) - 1, int(nc.y + nr) + 2):
+					for x in range(int(nc.x - nr) - 1, int(nc.x + nr) + 2):
+						if x < 0 or y < 0 or x >= W or y >= H or water[y * W + x] == 1:
+							continue
+						var ndx: float = (x + 0.5 - nc.x)
+						var ndy: float = (y + 0.5 - nc.y) * 1.15
+						if ndx * ndx + ndy * ndy <= nr * nr:
 							g[y * W + x] = 1
 			# a rooted Spore Mother spreads swamp around her
 			for u in units:
@@ -6104,7 +6143,7 @@ func separation(u: Unit) -> Vector2:
 	# (one pass, in the grid's order, without a list of the neighbours: every unit asks this
 	# every second or third tick. What it asks of itself is worked out once, before the loop.)
 	var u_rail := Defs.cw_roster and Defs.CW_RAIL.has(u.kind)
-	var mu := 12.0 if u.kind == "cannon" or u.kind == "mortar" or u_rail else 1.0
+	var mu := (12.0 if u.kind == "cannon" or u.kind == "mortar" or u_rail else 1.0) * u.nb_mass
 	var u_still := u.velocity.length() < 15.0
 	var u_mill: bool = u._mill_in
 	var ur: float = u.radius
@@ -6163,7 +6202,7 @@ func separation(u: Unit) -> Vector2:
 				var k := 140.0
 				if o.team == u.team and o.velocity.length() > 15.0 and u_still:
 					k = 260.0
-				var mo := 12.0 if o.kind == "cannon" or o.kind == "mortar" or (Defs.cw_roster and Defs.CW_RAIL.has(o.kind)) else 1.0
+				var mo: float = (12.0 if o.kind == "cannon" or o.kind == "mortar" or (Defs.cw_roster and Defs.CW_RAIL.has(o.kind)) else 1.0) * o.nb_mass
 				push += dvec / dist * strength * k * (2.0 * mo / (mu + mo))
 	return push
 
@@ -6196,7 +6235,7 @@ func _sep_push(u: Unit, o, p: Vector2, rr: float, air: bool, u_rail: bool, mu: f
 			k = 260.0
 		# MASS: a gun is not shoved by the men walking up behind it (they go round it, and
 		# anything light that bumps it gives way); equal masses push each other as before
-		var mo := 12.0 if o.kind == "cannon" or o.kind == "mortar" or (Defs.cw_roster and Defs.CW_RAIL.has(o.kind)) else 1.0
+		var mo: float = (12.0 if o.kind == "cannon" or o.kind == "mortar" or (Defs.cw_roster and Defs.CW_RAIL.has(o.kind)) else 1.0) * o.nb_mass
 		push += dvec / dist * strength * k * (2.0 * mo / (mu + mo))
 	return push
 
@@ -9291,6 +9330,9 @@ func _check_end() -> void:
 		if not b.dead and not b.ghost and b.team >= 0:
 			alive[b.team] += 1
 	for t in n_players():
+		if BroodNew.on(self, t):
+			alive[t] = 1 if BroodNew.queen(self, t) != null else 0     # (the new Brood: it lives while its Mother does)
+	for t in n_players():
 		if alive[t] == 0 and not eliminated[t]:
 			eliminated[t] = true
 			for b in buildings.duplicate():
@@ -10016,6 +10058,8 @@ func workers(t: int) -> Array:
 
 
 func center_of_team(t: int) -> Vector2:
+	if BroodNew.on(self, t) and BroodNew.queen(self, t) != null:
+		return BroodNew.queen(self, t).position      # (the new Brood: where its Mother is)
 	var c := Vector2.ZERO
 	var n := 0
 	for b in buildings:

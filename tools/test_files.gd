@@ -34,6 +34,8 @@ func _used_art() -> Dictionary:
 		for b in Defs.build_list(fac):
 			if Defs.BUILDINGS.has(b):
 				kinds.append_array(Defs.BUILDINGS[b].get("trains", []))
+		if fac == "brood":
+			kinds.append_array(BroodNew.hatch_list() + BroodNew.KINDS)      # (the new Brood, an experiment)
 		for k in kinds:
 			used[k] = true
 			var t: Dictionary = Defs.TEMP_ART.get(k, {})
@@ -103,6 +105,22 @@ func _buildings_and_data() -> void:
 			_requires(fac, k, d)
 	for k in Defs.UNITS:
 		_requires(String(Defs.UNITS[k].get("faction", "")), k, Defs.UNITS[k])
+	# the new Brood (experiment, scripts/brood_new.gd): every creature its Mother lays and its own kinds have art and an
+	# icon; its command icons exist; its art entries follow the strip rules (_strips, with these kinds in a normal game)
+	for k in BroodNew.hatch_list() + BroodNew.KINDS:
+		checked += 1
+		if not Defs.UNITS.has(k) or not ArtData.UNITS.has(k):
+			_fail("new brood %s: no unit or no art" % k)
+		elif not BroodNew.KINDS.has(k) or k in [BroodNew.QUEEN, BroodNew.MAW, BroodNew.FATHER]:
+			if not _icon_found("brood", k):
+				_fail("new brood %s: no icon" % k)
+	for ic in ["ab_nb_root", "ab_uproot", "ab_haul"]:
+		checked += 1
+		if not _icon_found("brood", ic):
+			_fail("new brood: no command icon %s" % ic)
+	checked += 1
+	if not ArtData.UNITS["grub"]["frames"].has("harvest_se"):
+		_fail("new brood: the grub has no harvest strips")
 	for r in Defs.RESEARCH:
 		checked += 1
 		var info: Dictionary = Defs.RESEARCH[r]
