@@ -688,11 +688,14 @@ const BALLISTA_KIND := "ballista"
 ##   (6 s a body, one Missionary a Church, Musketeers and riders only, within 60 s of the fall); the sweep takes only
 ##   Clockwork wrecks (its own losses, and the enemy's in the mirror match), needs a 175 + 75 machine on the spot and two seconds a wreck, and the cogs go straight back into
 ##   the economy: a Clock Soldier 21 cogs, a Pendulum 60, a Winder 15. Mostly a refund of losses: the loser gets a little back (anti-snowball).
+## Crowded (0.14.105): soldiers round a wreck can stop it short of `sweep_reach`; making no headway for `stall` s within
+##   `sweep_near` px of its edge it sweeps from there, and after `stall_out` s anywhere it leaves that wreck for `skip` s.
 ## It rolls on four cog wheels (branch gw-wheels, 2026-10-27; it walked on legs before): the walk strip turns them 90 deg
 ## (3 teeth) a loop of 12 frames, which rolls it 20.25 game px (their rolling radius x pi / 2; docs/great_winder.md):
 ## Unit.WALK_FPS_ART plays it at speed x 12 / 20.25 frames a second (16 at 27), so the wheels do not slide.
 const GREAT_WINDER := {"area": 200.0, "wind": 0.06, "look": 224.0, "reach": 30.0, "mend": 1.5, "mend_wind": 0.3,
-	"sweep_look": 256.0, "sweep_reach": 10.0, "sweep_time": 2.0, "share": 0.30, "danger": 300.0, "stride": 20.25, "frames": 12}
+	"sweep_look": 256.0, "sweep_reach": 10.0, "sweep_near": 40.0, "stall": 1.0, "stall_out": 6.0, "skip": 10.0,
+	"sweep_time": 2.0, "share": 0.30, "danger": 300.0, "stride": 20.25, "frames": 12}
 const GREAT_WINDER_KIND := "great_winder"
 
 
