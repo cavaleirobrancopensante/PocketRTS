@@ -4449,7 +4449,7 @@ func _piece_to_break(wave: Array, c: Vector2) -> Building:
 			continue
 		for dv in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 			var nb: Vector2i = b.cell + dv
-			if game.open_cell(nb) and not game.astar.get_id_path(a, nb).is_empty():
+			if game.open_cell(nb) and not game.astar.get_id_path(game.path_cell(a), game.path_cell(nb)).is_empty():
 				bd = dd
 				best = b
 				break

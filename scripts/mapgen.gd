@@ -924,14 +924,26 @@ func _ramp(from: Vector2, to: Vector2) -> void:
 		edge = mini(edge, k)
 	if edge == 99:
 		return
-	# a straight edge five cells across: two rows of high ground above it, low ground below
+	# two rows of high ground above the edge, five cells across (the landing the three lanes
+	# arrive on, and its flanks); below it the three lanes are the ramp, and the plateau beside
+	# them keeps the line of its own edge: each side cell takes the height of the cell past it,
+	# so the ramp cuts exactly its own width out of the edge, with no tile jutting down or
+	# pulled back beside it (docs/ramp_funnel.md; no_funnel: the old notch, low on both sides)
 	for w in range(-2, 3):
 		for k in range(edge - 2, edge + 4):
 			var cell := pc + side * w + axis * k
-			if g.in_map(cell):
-				height[g.idx(cell)] = 1 if k < edge else 0
-				if w >= -1 and w <= 1 and k >= edge:
-					ramp[g.idx(cell)] = 1
+			if not g.in_map(cell):
+				continue
+			if k < edge:
+				height[g.idx(cell)] = 1
+			elif absi(w) <= 1:
+				height[g.idx(cell)] = 0
+				ramp[g.idx(cell)] = 1
+			elif no_funnel:
+				height[g.idx(cell)] = 0
+			else:
+				var o: Vector2i = cell + side * signi(w)
+				height[g.idx(cell)] = height[g.idx(o)] if g.in_map(o) and ramp[g.idx(o)] == 0 else 0
 
 
 ## Every ramp a clean rectangle along its slope: an end row narrower than the ramp (a
@@ -1107,17 +1119,8 @@ func _by_ramp(c: Vector2i) -> bool:
 	return false
 
 
-## How many rows at a ramp's top have their sides blocked (docs/ramp_funnel.md): the cells beside
-## them sit under or against the drawn cliff wall, so a unit there looked as if it floated.
-const FUNNEL := 2
-
-
-## (tools only: the old open ramp sides, for before/after pictures)
+## (tools only: the old ramp notch and no rails, for before/after pictures; docs/ramp_funnel.md)
 static var no_funnel := false
-
-
-static func funnel_rows(rows: int) -> int:
-	return clampi(rows - 1, 0, FUNNEL)
 
 
 ## Every ramp on the map: {"cells", "down" (the grid step downhill), "side" (the step across),
@@ -1188,45 +1191,45 @@ static func ramp_parts(mg: MapGen) -> Array:
 	return out
 
 
-## The ramp funnel (docs/ramp_funnel.md): beside each ramp's top FUNNEL rows, the low ground
-## that lies under or against the drawn cliff wall (the cell past the top row's end is plateau)
-## can't be walked on or built on, and no high ground beside a ramp can be walked on either. Only
-## the walk and build grid changes (solid 1): the ground, the cliffs and the ramp are drawn as
-## before. Run after the map is built and its decorations placed (Game._setup_astar); it can run
-## again. Returns the cells it blocked.
-func block_ramp_sides() -> Array:
+## The ramp rails (docs/ramp_funnel.md): a low wall down both sides of every ramp, from its top
+## row to the row above its bottom one (the bottom row is open from the sides: a unit may step
+## onto it from the left or right). Units can't cross a rail (Game: the pathfinder, movement, the
+## path smoothing and the walk fills keep to it); the ground beside it stays as it is. Each rail:
+## {"rect": its line in px on the cells' shared edge (zero wide or zero high), "vertical": the
+## line runs north-south, "out": the step from its ramp cells to the side cells, "lanes": the
+## ramp cells beside it, "sides": the cells across it}. A row whose side cell is another ramp's
+## (or off the map) breaks the rail there.
+func ramp_rails() -> Array:
 	var out: Array = []
 	if no_funnel:
 		return out
+	var t := float(Defs.TILE)
 	for r in ramp_parts(self):
-		var side: Vector2i = r["side"]
-		var down: Vector2i = r["down"]
 		var rows: Array = r["rows"]
-		var funnel := funnel_rows(rows.size())
+		var side: Vector2i = r["side"]
 		for k in 2:
 			var step: Vector2i = -side if k == 0 else side
-			var walled := true        # (the row above is walled on this side)
-			for j in rows.size():
-				var row: Array = rows[j]
-				var c: Vector2i = (row[0] if k == 0 else row[-1]) + step
-				if not g.in_map(c):
+			var cur := {}
+			for j in rows.size() - 1:
+				var lane: Vector2i = rows[j][0] if k == 0 else rows[j][-1]
+				var c: Vector2i = lane + step
+				if not g.in_map(c) or ramp[g.idx(c)] == 1:
+					if not cur.is_empty():
+						out.append(cur)
+						cur = {}
 					continue
-				var i := g.idx(c)
-				if ramp[i] == 1 or g.water[i] == 1:
-					walled = false
-					continue
-				var block := false
-				if height[i] == 1:
-					block = true      # high ground beside a ramp: no stepping on from the side
-				elif j < funnel and walled:
-					var above: Vector2i = c - down
-					block = j > 0 or (g.in_map(above) and height[g.idx(above)] == 1 and ramp[g.idx(above)] == 0)
-				if j < funnel:
-					walled = walled and block
-				if block and (g.solid[i] == 0 or g.solid[i] == 5 or g.ramp_block.has(i)):
-					g.solid[i] = 1
-					g.ramp_block[i] = true
-					out.append(c)
+				var a := Vector2(lane) * t
+				if step.x > 0 or step.y > 0:
+					a += Vector2(step) * t
+				var rect := Rect2(a, Vector2(0, t) if side.x != 0 else Vector2(t, 0))
+				if cur.is_empty():
+					cur = {"rect": rect, "vertical": side.x != 0, "out": step, "lanes": [lane], "sides": [c]}
+				else:
+					cur["rect"] = (cur["rect"] as Rect2).merge(rect)
+					cur["lanes"].append(lane)
+					cur["sides"].append(c)
+			if not cur.is_empty():
+				out.append(cur)
 	return out
 
 

@@ -95,7 +95,10 @@ var solid := PackedByteArray()           # 0 free, 1 terrain, 2 building, 3 gate
 var water := PackedByteArray()
 var height := PackedByteArray()          # 1 = high ground
 var ramp := PackedByteArray()
-var ramp_block := {}                   # map index -> true: a cell beside a ramp's top blocked (MapGen.block_ramp_sides)
+var rails: Array = []                    # the ramp rails (MapGen.ramp_rails): low walls down a ramp's sides that no unit crosses
+var rail_bits := PackedByteArray()       # per cell: its sides with a rail (1 east, 2 west, 4 south, 8 north)
+var rail_side := {}                      # map index -> true: a cell across a rail from a ramp, shut in the pathfinder grids (path_cell)
+var rail_layer: RampRails                # draws the rails
 var cliff := PackedByteArray()
 var map_id := "random"
 var map_name := ""
@@ -441,9 +444,9 @@ func _mark(c: Vector2i, size: Vector2i, v: int) -> void:
 				# (a building going up over a decoration hides it: _solidify, _cover_decos)
 				_region_dirty = true
 				if astar.region.size != Vector2i.ZERO:
-					astar.set_point_solid(cc, v != 0 and v != 3 and v != 5)
+					astar.set_point_solid(cc, (v != 0 and v != 3 and v != 5) or rail_side.has(idx(cc)))
 				if astar_siege.region.size != Vector2i.ZERO:
-					astar_siege.set_point_solid(cc, v == 1 or v == 2)
+					astar_siege.set_point_solid(cc, v == 1 or v == 2 or rail_side.has(idx(cc)))
 
 
 ## Gates: map index -> the team that owns it.
@@ -483,7 +486,7 @@ func set_gate_locked(b: Building, on: bool, force := false) -> String:
 		b.queue_redraw()
 		gate_team[i] = b.team
 		if astar.region.size != Vector2i.ZERO:
-			astar.set_point_solid(b.cell, false)
+			astar.set_point_solid(b.cell, rail_side.has(i))
 	_region_dirty = true
 	b._update_sprite()
 	b.queue_redraw()
@@ -758,12 +761,7 @@ func next_site(u: Unit) -> Building:
 
 
 func _setup_astar() -> void:
-	# (the ramp funnel: the cells beside a ramp's top, under the drawn wall, are blocked; docs/ramp_funnel.md)
-	for i in ramp_block:
-		if solid[i] == 1 and cliff[i] == 0 and not _terrain_kind.has(i):
-			solid[i] = 0
-	ramp_block.clear()
-	mapgen.block_ramp_sides()
+	_setup_rails()
 	astar.region = Rect2i(0, 0, W, H)
 	astar.cell_size = Vector2(T, T)
 	astar.offset = Vector2(T, T) * 0.5
@@ -787,6 +785,11 @@ func _setup_astar() -> void:
 				astar.set_point_solid(Vector2i(x, y), true)
 			if sv == 1 or sv == 2:
 				astar_siege.set_point_solid(Vector2i(x, y), true)
+	# (no path steps from beside a ramp onto it across a rail: those cells are shut to the
+	# pathfinder; a path that starts or ends on one goes by path_cell)
+	for i in rail_side:
+		astar.set_point_solid(Vector2i(i % W, i / W), true)
+		astar_siege.set_point_solid(Vector2i(i % W, i / W), true)
 	# Trees and rocks as sprites
 	for sp in _terrain_sprites:
 		sp.queue_free()
@@ -835,6 +838,203 @@ func _setup_astar() -> void:
 			if not _deco_at.has(idx(at)):
 				_deco_at[idx(at)] = []
 			_deco_at[idx(at)].append(s)
+
+
+# ------------------------------------------------------------------ ramp rails
+
+## The ramp rails (docs/ramp_funnel.md, MapGen.ramp_rails): a low wall down both sides of every
+## ramp but its bottom row. A unit gets onto a ramp only straight on at either end, or from the
+## side onto its bottom row. The ground beside a rail stays normal ground. The rule is an EDGE
+## between cells: rail_cut (walk fills), the pathfinder grids (rail_side, path_cell), the path
+## smoothing (line_clear) and movement (rail_fix, in resolve_terrain) all keep to it.
+const RAIL_GAP := 6.0                    # (px: the least a unit's middle keeps from a rail's line)
+
+
+func _setup_rails() -> void:
+	rails = mapgen.ramp_rails()
+	rail_bits = PackedByteArray()
+	rail_bits.resize(W * H)
+	_rail_near = PackedByteArray()
+	_rail_near.resize(W * H)
+	rail_side.clear()
+	_rail_box = PackedFloat32Array()
+	for rl in rails:
+		var rr: Rect2 = rl["rect"]
+		_rail_box.append_array([rr.position.x, rr.position.y, rr.end.x, rr.end.y])
+		var o: Vector2i = rl["out"]
+		var bo := _rail_bit(o)
+		var bi := _rail_bit(-o)
+		var lanes: Array = rl["lanes"]
+		var sides: Array = rl["sides"]
+		for n in lanes.size():
+			var l: Vector2i = lanes[n]
+			var sc: Vector2i = sides[n]
+			rail_bits[idx(l)] |= bo
+			rail_bits[idx(sc)] |= bi
+			for dy in range(-2, 3):
+				for dx in range(-2, 3):
+					var nc := l + Vector2i(dx, dy)
+					if in_map(nc):
+						_rail_near[idx(nc)] = 1
+			if cliff[idx(sc)] == 0 and water[idx(sc)] == 0:
+				rail_side[idx(sc)] = true
+	if rail_layer == null and ground != null:
+		rail_layer = RampRails.new()
+		rail_layer.game = self
+		rail_layer.z_index = -17
+		add_child(rail_layer)
+	if rail_layer != null:
+		rail_layer.queue_redraw()
+
+
+static func _rail_bit(d: Vector2i) -> int:
+	if d.x > 0:
+		return 1
+	if d.x < 0:
+		return 2
+	return 4 if d.y > 0 else 8
+
+
+## A rail between two neighbouring cells (8 ways: a diagonal step is cut when a rail lies on any of
+## the four edges round the corner it passes, so no step cuts the corner past a rail's end).
+func rail_cut(a: Vector2i, b: Vector2i) -> bool:
+	if rails.is_empty() or not in_map(a) or not in_map(b):
+		return false
+	var d := b - a
+	if d.x != 0 and d.y != 0:
+		var h := a + Vector2i(d.x, 0)
+		var v := a + Vector2i(0, d.y)
+		return _rail_edge(a, h) or _rail_edge(a, v) or _rail_edge(h, b) or _rail_edge(v, b)
+	return _rail_edge(a, b)
+
+
+func _rail_edge(a: Vector2i, b: Vector2i) -> bool:
+	if not in_map(a) or not in_map(b):
+		return false
+	return rail_bits[idx(a)] & _rail_bit(b - a) != 0
+
+
+## The cell to give the pathfinder for a path that starts or ends at `c`: `c` itself, or, for a
+## cell beside a rail (shut in the pathfinder grids), the nearest cell open to it that a unit
+## walks to from `c` without crossing a rail (along the foot of the cliff, or away from the ramp).
+func path_cell(c: Vector2i, siege := false) -> Vector2i:
+	if rail_side.is_empty() or not in_map(c) or not rail_side.has(idx(c)):
+		return c
+	var grid: AStarGrid2D = astar_siege if siege else astar
+	var seen := {c: true}
+	var q: Array = [c]
+	var qi := 0
+	while qi < q.size() and qi < 64:
+		var cc: Vector2i = q[qi]
+		qi += 1
+		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var n: Vector2i = cc + d
+			if seen.has(n) or not in_map(n) or not open_cell(n) or rail_cut(cc, n):
+				continue
+			seen[n] = true
+			if not rail_side.has(idx(n)) and not grid.is_point_solid(n):
+				return n
+			q.append(n)
+	return c
+
+
+## Movement past the rails: `pos` (a unit of `radius` going there from `before`) moved back to
+## before's side of any rail it would cross or come closer to than its own half-width. A unit
+## already overlapping a rail (an old save or replay) is pushed out on the side its middle is on.
+func rail_fix(pos: Vector2, before: Vector2, radius: float) -> Vector2:
+	if rails.is_empty():
+		return pos
+	# (every moving unit comes here a few times a tick: away from the rails, one look at the
+	# cells it is in)
+	var ia := clampi(int(pos.y / T), 0, H - 1) * W + clampi(int(pos.x / T), 0, W - 1)
+	var ib := clampi(int(before.y / T), 0, H - 1) * W + clampi(int(before.x / T), 0, W - 1)
+	if _rail_near[ia] == 0 and _rail_near[ib] == 0:
+		return pos
+	var rx := maxf(radius * 0.6, RAIL_GAP)
+	var ry := rx         # (a kerb running east-west: the same gap, as a unit south of it is drawn up over it)
+	for rl in rails:
+		var rr: Rect2 = rl["rect"]
+		if rl["vertical"]:
+			var x := rr.position.x
+			var y0 := rr.position.y - RAIL_GAP       # (past its ends: a small cap, so a big machine still turns onto the open bottom row)
+			var y1 := rr.end.y + RAIL_GAP
+			if maxf(pos.y, before.y) < y0 or minf(pos.y, before.y) > y1 or minf(pos.x, before.x) > x + rx or maxf(pos.x, before.x) < x - rx:
+				continue
+			var s := signf(before.x - x)
+			if s == 0.0:
+				s = -signf(float((rl["out"] as Vector2i).x))
+			var hit := pos.y >= y0 and pos.y <= y1 and (pos.x - x) * s < rx
+			if not hit and (pos.x - x) * s < 0.0:
+				var yc := lerpf(before.y, pos.y, (x - before.x) / (pos.x - before.x))
+				hit = yc >= y0 and yc <= y1
+			if hit:
+				pos.x = x + s * rx
+		else:
+			var y := rr.position.y
+			var x0 := rr.position.x - RAIL_GAP
+			var x1 := rr.end.x + RAIL_GAP
+			if maxf(pos.x, before.x) < x0 or minf(pos.x, before.x) > x1 or minf(pos.y, before.y) > y + ry or maxf(pos.y, before.y) < y - ry:
+				continue
+			var s := signf(before.y - y)
+			if s == 0.0:
+				s = -signf(float((rl["out"] as Vector2i).y))
+			var hit := pos.x >= x0 and pos.x <= x1 and (pos.y - y) * s < ry
+			if not hit and (pos.y - y) * s < 0.0:
+				var xc := lerpf(before.x, pos.x, (y - before.y) / (pos.y - before.y))
+				hit = xc >= x0 and xc <= x1
+			if hit:
+				pos.y = y + s * ry
+	return pos
+
+
+## Does the straight line a-b pass a rail closer than `margin`? (the path smoothing's test)
+## (line_clear asks it thousands of times: each rail's box is first tested against the line's
+## own box, from a flat list)
+func rail_blocks_line(a: Vector2, b: Vector2, margin: float) -> bool:
+	var lx0 := minf(a.x, b.x) - margin
+	var lx1 := maxf(a.x, b.x) + margin
+	var ly0 := minf(a.y, b.y) - margin
+	var ly1 := maxf(a.y, b.y) + margin
+	var n := _rail_box.size()
+	var k := 0
+	while k < n:
+		if lx1 >= _rail_box[k] and lx0 <= _rail_box[k + 2] and ly1 >= _rail_box[k + 1] and ly0 <= _rail_box[k + 3]:
+			if _seg_hits_rect(a, b, (rails[k / 4]["rect"] as Rect2).grow(margin)):
+				return true
+		k += 4
+	return false
+
+
+var _rail_box := PackedFloat32Array()      # each rail's line: x0, y0, x1, y1
+var _rail_near := PackedByteArray()        # per cell: 1 within two cells of a rail's ramp cell
+
+
+static func _seg_hits_rect(a: Vector2, b: Vector2, box: Rect2) -> bool:
+	if box.has_point(a) or box.has_point(b):
+		return true
+	var t0 := 0.0
+	var t1 := 1.0
+	var d := b - a
+	for ax in 2:
+		var p0: float = a.x if ax == 0 else a.y
+		var dv: float = d.x if ax == 0 else d.y
+		var lo: float = box.position.x if ax == 0 else box.position.y
+		var hi: float = box.end.x if ax == 0 else box.end.y
+		if absf(dv) < 0.0001:
+			if p0 < lo or p0 > hi:
+				return false
+			continue
+		var ta := (lo - p0) / dv
+		var tb := (hi - p0) / dv
+		if ta > tb:
+			var tt := ta
+			ta = tb
+			tb = tt
+		t0 = maxf(t0, ta)
+		t1 = minf(t1, tb)
+		if t0 > t1:
+			return false
+	return true
 
 
 var _terrain_sprites: Array = []
@@ -1648,11 +1848,15 @@ func _paint_ramps(img: Image, area := Rect2i(0, 0, W, H)) -> void:
 			var sa := Vector2i(1, 0) if absf(side.x) >= absf(side.y) else Vector2i(0, 1)
 			var neg_open := {}
 			var pos_open := {}
+			# (the bottom row has no rail: it is open from the sides, so no kerb is painted down
+			# its sides either; docs/ramp_funnel.md)
+			var dg := Vector2i(int(signf(dir.x)), 0) if sa.y != 0 else Vector2i(0, int(signf(dir.y)))
 			for c in cells:
 				var nn: Vector2i = c - sa
 				var pp: Vector2i = c + sa
-				neg_open[c] = in_map(nn) and ramp[idx(nn)] == 1
-				pos_open[c] = in_map(pp) and ramp[idx(pp)] == 1
+				var foot := not MapGen.no_funnel and not (in_map(c + dg) and ramp[idx(c + dg)] == 1)
+				neg_open[c] = foot or (in_map(nn) and ramp[idx(nn)] == 1)
+				pos_open[c] = foot or (in_map(pp) and ramp[idx(pp)] == 1)
 			for c in cells:
 				if not area.has_point(c):
 					continue
@@ -5463,15 +5667,21 @@ func find_path(from: Vector2, to: Vector2, siege := false, margin := 7.0) -> Pac
 	var a := cell_of(from) if open_cell(cell_of(from)) else nearest_free(cell_of(from), 6)
 	var b := cell_of(to) if open_cell(cell_of(to)) else nearest_free_level(cell_of(to), 8)
 	var pt := Time.get_ticks_usec()
-	var pts := astar.get_point_path(a, b, true)
+	# (beside a ramp's rail: the pathfinder starts or ends at the nearest cell open to it, and
+	# the last step is walked from there; docs/ramp_funnel.md)
+	var pa := path_cell(a)
+	var pb := path_cell(b)
+	var pts := astar.get_point_path(pa, pb, true)
 	# (allow_partial_path: when b can't be reached the path ends at the reachable cell nearest to it)
-	var whole := not pts.is_empty() and cell_of(pts[pts.size() - 1]) == b
+	var whole := not pts.is_empty() and cell_of(pts[pts.size() - 1]) == pb
 	if not whole and siege:
 		# walled out: walk up to the wall (the unit then breaks it down)
-		var sp := astar_siege.get_point_path(a, b, false)
+		var sp := astar_siege.get_point_path(path_cell(a, true), path_cell(b, true), false)
 		if not sp.is_empty():
 			pts = sp
 			whole = true
+	if whole and pb != b:
+		pts.append(cell_center(b))
 	Prof.add("game/pathfinder", pt)
 	if pts.is_empty():
 		return PackedVector2Array([to])
@@ -5546,6 +5756,8 @@ func line_clear(a: Vector2, b: Vector2, margin := 7.0) -> bool:
 		if v != 0 and v != 5:
 			return false
 		s += 4 if first else 1
+	if not _rail_box.is_empty() and rail_blocks_line(a, b, margin):
+		return false              # (past a ramp's rail: docs/ramp_funnel.md)
 	return true
 
 
@@ -5605,6 +5817,16 @@ const CORNER_SLIP := [0.6, -0.6, 1.1, -1.1]       # (radians: the angles tried t
 
 
 func resolve_terrain(pos: Vector2, before: Vector2, radius: float, team := -1) -> Vector2:
+	if rails.is_empty():
+		return _resolve_terrain(pos, before, radius, team)
+	# the ramp rails (docs/ramp_funnel.md): kept to before the cells are looked at, and again
+	# after (a slide along x or y, or round a corner, mustn't take it over one)
+	before = rail_fix(before, before, radius)
+	pos = rail_fix(pos, before, radius)
+	return rail_fix(_resolve_terrain(pos, before, radius, team), before, radius)
+
+
+func _resolve_terrain(pos: Vector2, before: Vector2, radius: float, team := -1) -> Vector2:
 	pos = pos.clamp(Vector2(radius, radius), Vector2(W * T, H * T) - Vector2(radius, radius))
 	if _clear_at(pos, radius, team):
 		return pos
@@ -9339,7 +9561,7 @@ func _walk_fill(start: Vector2i, team: int, limit: int, max_steps: int) -> Dicti
 			continue
 		for dv in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 			var nb: Vector2i = cc + dv
-			if out.has(nb) or not passable(nb, team):
+			if out.has(nb) or not passable(nb, team) or (not rails.is_empty() and rail_cut(cc, nb)):
 				continue
 			out[nb] = st + 1
 			q.append(nb)
