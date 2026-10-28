@@ -865,19 +865,19 @@ func spring_rate() -> float:
 
 
 ## Cog Press / Mainspring / Light Works (movement_works) / Heavy Works / Regulator / Escapement / Clock Aviary: the painted working loop
-## (assets/buildings/<kind>_work_0..7.png, `frames` of them (the Escapement: 24); `dt` seconds a frame: Defs.GEAR "frame_dt" by default) while it
+## (assets/buildings/<kind>_work_0..7.png, `frames` of them (the Escapement: 24, the Cog Press: 12); `dt` seconds a frame: Defs.GEAR "frame_dt" by default) while it
 ## works; the built picture while it idles, and none of it once it is damaged (under half its hp).
 static var _work_tex := {}       # kind -> its work frames' textures (null where there's none), by number
 
 
-func _gear_anim(working: bool, dt := -1.0, frames := 8) -> void:
+func _gear_anim(working: bool, dt := -1.0, frames := 8) -> int:
 	if sprite == null:
-		return
+		return -1
 	if not working or hp < max_hp * 0.5:
 		if drill_anim:
 			drill_anim = false
 			_update_sprite()
-		return
+		return -1
 	var i := int(game.clock / (dt if dt > 0.0 else float(Defs.GEAR["frame_dt"]))) % frames
 	# (the frame's texture by kind and number, looked up once: the path was put together every tick)
 	var strip = _work_tex.get(kind)
@@ -888,11 +888,31 @@ func _gear_anim(working: bool, dt := -1.0, frames := 8) -> void:
 		strip.append(Game.tex("res://assets/buildings/%s_work_%d.png" % [kind, strip.size()]))
 	var t: Texture2D = strip[i]
 	if t == null:
-		return
+		return -1
 	drill_anim = true
 	if sprite.texture != t:
 		sprite.texture = t
 		sprite.offset = body_offset(kind, t)
+	return i
+
+
+## Cog Press: the stamp as the head hits the cog (Defs.GEAR "press_stamp"), on every other stroke (a press strokes about once
+## a second), only where the player can see it; Sfx's GAP keeps a row of presses from drumming.
+var _press_frame := -1
+
+
+func _press_stamp(i: int) -> void:
+	if i == _press_frame:
+		return
+	_press_frame = i
+	if i != int(Defs.GEAR["press_stamp"]):
+		return
+	var stroke := int(game.clock / (float(Defs.GEAR["press_dt"]) * float(Defs.GEAR["press_frames"])))
+	if (stroke + get_instance_id()) % 2 != 0:
+		return
+	if not game.reveal and not game.is_visible_to(game.human, center()):
+		return
+	Sfx.play("work/cog_press_stamp", center(), -9.0)
 
 
 ## Town Hall / Clocktower / Feeding Pit: the full reserve of its land (Crown soil, Clockwork coal
@@ -1045,7 +1065,7 @@ func _econ(delta: float) -> void:
 				press_paid += pay
 				game.add_gold_f(team, pay)
 				pop_income(pay, delta)
-			_gear_anim(working_crew() > 0 and rate > 0.0)
+			_press_stamp(_gear_anim(working_crew() > 0 and rate > 0.0, float(Defs.GEAR["press_dt"]), int(Defs.GEAR["press_frames"])))
 		"mainspring":
 			# winds TENSION (the Clockwork's second resource) while it is linked and crewed, up to what the springs store
 			while crew.size() > crew_max():

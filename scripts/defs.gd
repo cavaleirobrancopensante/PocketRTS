@@ -410,7 +410,10 @@ const GEAR := {
 	# The buildings that use Tension stand on a polished BRASS floor plate, the others on the dark iron one (owner,
 	# 2026-10-27; GearArt.plate, tools/gear_art/make_brass_plate.py).
 	"brass_plate": ["mainspring", "escapement", "heavy_works", "cuckoo_house"],
-	"frame_dt": 0.11,               # seconds a frame of the Cog Press's and the Mainspring's working loops
+	"frame_dt": 0.11,               # seconds a frame of the Mainspring's working loop
+	"press_dt": 0.09,               # ... of the Cog Press's (12 frames, tools/import_cog_press.py DROP: the ram falls, holds on the cog, rises)
+	"press_frames": 12,
+	"press_stamp": 4,               #     the frame the head hits the cog: work/cog_press_stamp (every other stroke, only where the player sees it)
 	"pop": {"cog_press": 4.0, "mainspring": 6.0},     # seconds between the "+N" shown over a working press / spring (Building.pop_income)
 	"works_dt": 0.12,               # ... of the Light Works' loop (while it trains; internal id movement_works)
 	"heavy_dt": 0.12,               # ... of the Heavy Works' winch key (while it trains)
