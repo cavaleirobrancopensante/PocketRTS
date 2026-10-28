@@ -4,8 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
-	{"v": "0.15.1", "items": [
+	{"v": "0.15.2", "items": [
 		"RAMPS ARE FUNNELS: beside the top two rows of every ramp, the ground is now cliff. The cliff wall steps down beside the planks, and nothing can stand there or be built there, so a unit no longer stands on the drawn wall beside a ramp and looks as if it floats. The only way between the high ground and the low ground is the ramp itself, exactly as wide as its planks. Units on the high ground stop at the edge; units below stop at the foot of the wall. This holds on every map: the built-in ones, generated ones, and maps made in the editor. A computer's ramp wall still takes three pieces.",
+	]},
+	{"v": "0.15.1", "items": [
+		"GREAT WINDER IN A CROWD: when soldiers stand round a wreck so the big machine cannot roll right over it, it now sweeps it from the edge of the crowd after a second, instead of pushing at them for good (the computer's Great Winder sometimes never swept a soldier that fell in the middle of its army). If it cannot get near at all for 6 seconds, it leaves that wreck for 10 seconds and sweeps another.",
 	]},
 	{"v": "0.15.0", "items": [
 		"BIGGER MAPS: every built-in map is larger, about 1.3 times on each side (1.75 times the ground). The classic maps (Greenhold, Highmoor, Dune Sea, Frostfang, Twin Fords, Ashfall, Mirewood, Border March, Red Coast) go from 84 x 60 to 110 x 80: the walk from main to main is about 110 tiles, close to a minute for a Musketeer. The team maps grow by the same factor; the 1v1 maps that already had a long walk grow a little less (Saltmarsh Isles, Frostmere, Hollowfen, Thornwood Maze, Ashford Crossing, Amberfall Vale). Ramps, rivers and tree walls keep their width; the main plateaus are a little bigger.",

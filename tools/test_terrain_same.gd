@@ -1,7 +1,7 @@
 extends SceneTree
 ## The cliff drawing (game.gd _render_ground) must never change the map itself: for every
 ## named map the height map, cliff cells, ramps and passability (solid) hash to the values
-## recorded on main before the cliff work (re-recorded after the tree and rock thinning, which changes `solid`, for the bigger maps of 0.15.0, and for the ramp funnels of 0.15.1:
+## recorded on main before the cliff work (re-recorded after the tree and rock thinning, which changes `solid`, for the bigger maps of 0.15.0, and for the ramp funnels of 0.15.2:
 ## docs/ramp_funnel.md).
 ##   godot --headless --script res://tools/test_terrain_same.gd           (checks)
 ##   godot --headless --script res://tools/test_terrain_same.gd -- record (prints a fresh table)

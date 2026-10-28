@@ -293,6 +293,23 @@ func _sweeping(g: Game) -> void:
 	g.bodies.erase(far)
 	U.step(g, 12.0)      # (the wreck left on the way, once its enemy is gone, is swept meanwhile)
 	check("the wreck it gave up is swept once the enemy is gone", not is_instance_valid(late) or not g.bodies.has(late))
+	# a wreck in a crowd: soldiers on HOLD stand round it, so the big machine cannot roll over it (0.14.105: it sweeps
+	# from the edge of the crowd)
+	var crowded := _man(g, "clock_soldier", 0, gw.position + Vector2(150, 0))
+	var ring: Array = []
+	for k in 8:
+		var s := _man(g, "clock_soldier", 0, crowded.position + Vector2.from_angle(PI + (k - 3.5) * 0.3) * 30.0)
+		s.cmd_hold()
+		ring.append(s)
+	_wreck(g, crowded)
+	U.step(g, 14.0)
+	check("a wreck with its own soldiers crowding round it is still swept", not is_instance_valid(crowded) or not g.bodies.has(crowded),
+		"order %s, %.0f px from it" % [gw.order, gw.position.distance_to(crowded.position) if is_instance_valid(crowded) else -1.0])
+	for s in ring:
+		s.take_damage(100000.0, null)
+		if is_instance_valid(s):
+			g.tear_body(s)
+	U.step(g, 10.0)
 	# an ENEMY Clockwork's wreck (the mirror match, owner 2026-10-28): swept too, the cogs to its own side
 	var theirs := _man(g, "clock_soldier", 1, gw.position + Vector2(-90, -60))
 	_wreck(g, theirs)
@@ -479,7 +496,12 @@ func _computer() -> void:
 	check("and follows it when it moves", gw.order == "move" and gw.order_point.distance_to(c) < 170.0 or gw.position.distance_to(c) < 170.0,
 		"order %s to %s, at %s, army at %s" % [gw.order, str(gw.order_point), str(gw.position), str(c)])
 	# its idle sweep: a soldier of the army falls near it; it sweeps him into cogs and stays with the army
-	await _wait(g, func() -> bool: return army.all(func(u: Unit) -> bool: return u.dead or u.order == "idle"), 40.0)
+	# (the army is still marching to `far`, 700 px off and longer on the 0.15 maps: it is halted here, so it stands about and
+	# its Great Winder with it: the sweep is an idle job)
+	for u in army:
+		if is_instance_valid(u) and not u.dead:
+			u.cmd_stop()
+	await _wait(g, func() -> bool: return army.all(func(u: Unit) -> bool: return not is_instance_valid(u) or u.dead or u.order == "idle"), 40.0)
 	await _wait(g, func() -> bool: return gw.order == "idle", 30.0)
 	var victim: Unit = null
 	for u in army:
