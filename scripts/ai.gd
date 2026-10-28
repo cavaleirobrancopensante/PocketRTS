@@ -3513,12 +3513,23 @@ func _turtling() -> bool:
 
 ## A labourer for a wall site nobody is coming to (Game.sweep_ghosts asks before it drops a
 ## ghost): the nearest free one takes it up. True if one did.
+## Round 6 (0.15 maps): the Crown computer's Town Hall site whose builders were pulled away (a flee, a re-order) was
+## dropped, refunded, 2-3 times a game: now the nearest free Labourer goes back to it (HALL_ADOPT times at most), unless
+## enemies are there (then it is let go).
+const HALL_ADOPT := 6
+
+
 func adopt_site(b: Building) -> bool:
-	if not Defs.BUILDINGS[b.kind].get("line", false) or peaceful:
+	if peaceful:
+		return false
+	var hall_site: bool = r6_cr and _crown() and b.kind == String(_f()["hall"]) and difficulty >= 1
+	if not Defs.BUILDINGS[b.kind].get("line", false) and not hall_site:
 		return false
 	var id := b.get_instance_id()
-	if int(_adopted.get(id, 0)) >= 8:
+	if int(_adopted.get(id, 0)) >= (HALL_ADOPT if hall_site else 8):
 		return false
+	if hall_site and (_unsafe(b.center()) or _foe_army_near(b.center()) > _guard_value()):
+		return false            # (enemies there: the site goes, refunded, rather than feed it builders)
 	var best: Unit = null
 	var bd := INF
 	for u in game.workers(team):
@@ -3532,6 +3543,8 @@ func adopt_site(b: Building) -> bool:
 		return false
 	_adopted[id] = int(_adopted.get(id, 0)) + 1
 	best.give({"o": "build", "e": b})
+	if hall_site and game.mlog and int(_adopted[id]) == 1:
+		game.mlog.add("%s sends a Labourer back to its new Town Hall site (its builders were pulled away)" % game.mlog.who(team))
 	return true
 
 
