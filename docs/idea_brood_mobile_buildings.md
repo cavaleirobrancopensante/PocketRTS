@@ -73,3 +73,5 @@ Still not decided. This is how it could work. The owner asked for both: this pro
 - The Queen is the one that hoards the resources (the grubs bring the food to her).
 
 Still to settle with him (see the chat, 2026-10-28): which units root and what each does rooted (lay eggs, give supply, spread swamp, feed from the ground, unlock tech), where the food comes from (ground circles like today's Feeding Pits, grazed by rooted feeders, or grubs foraging), whether eggs come only from the Queen, and the move-or-root timing.
+- (07:19) Only the QUEEN lays eggs, and she can lay them while she MOVES ("it would be very interesting to see it moving and laying eggs").
+- (07:19) Rooting units take the Feeding Pits' role: a concept for that creature is being worked out (candidates in the chat: the Mire Sow, the Gorger, the Rootmaw).
