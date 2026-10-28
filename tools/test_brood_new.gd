@@ -197,6 +197,20 @@ func _run() -> void:
 	check(BroodNew.nest_eggs(g, f).size() == 2, "   a second one: 2 eggs in the nest (%d)" % BroodNew.nest_eggs(g, f).size())
 	var fert: bool = await wait_for(func() -> bool: return int(re.nb["fert"]) == 2, 6.0)
 	check(fert, "   he breathes on it: fertilised (red)")
+	# (all at once: the eggs in his nest redden together; the second, laid a moment later, is already well on when the first is done)
+	var others := 0
+	var busy := 0
+	for ne in BroodNew.nest_eggs(g, f):
+		if ne != re:
+			others += 1
+			if int(ne.nb.get("fert", 0)) == 2 or float(ne.nb.get("redden", 0.0)) > 0.2:
+				busy += 1
+	var all2: bool = await wait_for(func() -> bool:
+		for ne in BroodNew.nest_eggs(g, f):
+			if int(ne.nb.get("fert", 0)) != 2:
+				return false
+		return true, float(Defs.NB["fert_time"]) + 0.5)
+	check(others > 0 and busy == others and all2, "   ALL the eggs in his nest fertilised together, not one at a time (the owner, 22:42: %d of %d already under his breath)" % [busy, others])
 	var got3: bool = await wait_for(func() -> bool: return mine("raptor").size() >= r0 + 3, Defs.UNITS["raptor"]["time"] + 3.0)
 	var at_nest := 0
 	for rp in mine("raptor"):
