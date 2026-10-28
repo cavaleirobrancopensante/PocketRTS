@@ -19,10 +19,12 @@ extends RefCounted
 
 const QUEEN := "brood_mother"
 const MAW := "rootmaw"
+const TURTLE := "mound_turtle"
 const FATHER := "tyrannosaur"
 const EGG := "brood_egg"
 const PILE := "food_pile"
-const KINDS := [QUEEN, MAW, FATHER, EGG, PILE]
+const KINDS := [QUEEN, MAW, TURTLE, FATHER, EGG, PILE]
+const ROOTERS := [QUEEN, MAW, TURTLE]     # (the creatures that ROOT and UPROOT)
 const SE := Vector2(0.7071, 0.7071)
 
 
@@ -36,7 +38,7 @@ static func is_nb(k: String) -> bool:
 
 ## What the Mother's card offers, in order (the warriors need the father beside her).
 static func hatch_list() -> Array:
-	return ["grub", MAW, FATHER] + (Defs.NB["lines"][FATHER] as Array)
+	return ["grub", MAW, TURTLE, FATHER] + (Defs.NB["lines"][FATHER] as Array)
 
 
 ## The father a warrior needs ("" for none: grubs, Rootmaws, the Tyrannosaur itself).
@@ -164,8 +166,8 @@ static func supply_cap(g: Game, t: int) -> int:
 			continue
 		if u.kind == QUEEN:
 			cap += int(Defs.NB["queen_supply"])
-		elif u.kind == MAW and rooted(u):
-			cap += int(Defs.NB["maw_supply"])
+		elif u.kind == TURTLE and rooted(u):
+			cap += int(Defs.NB["turtle_supply"])
 	return cap
 
 
@@ -185,6 +187,8 @@ static func swamp_sources(g: Game, t: int) -> Array:
 			out.append([u.position / Defs.TILE, float(Defs.NB["queen_swamp"])])
 		elif u.kind == MAW:
 			out.append([u.position / Defs.TILE, float(Defs.NB["maw_swamp"])])
+		elif u.kind == TURTLE:
+			out.append([u.position / Defs.TILE, float(Defs.NB["turtle_swamp"])])
 	return out
 
 
@@ -195,11 +199,11 @@ static func dropoff(g: Game, t: int) -> Unit:
 
 # ------------------------------------------------------------------ eggs
 
-## The Mother's egg rate: every rooted Rootmaw makes her lay 10% faster (up to 30%), as the old Clutch Mounds.
+## The Mother's egg rate: every rooted Mound Turtle makes her lay 10% faster (up to 30%), as the old Clutch Mounds.
 static func egg_rate(g: Game, t: int) -> float:
 	var n := 0
 	for u in g.units:
-		if u.team == t and u.kind == MAW and not u.dead and rooted(u):
+		if u.team == t and u.kind == TURTLE and not u.dead and rooted(u):
 			n += 1
 	return 1.0 + minf(float(Defs.NB["egg_rate"]) * n, float(Defs.NB["egg_rate_max"]))
 
@@ -227,7 +231,7 @@ static func lay_problem(g: Game, q: Unit, k: String) -> String:
 	if g.supply_used(q.team) + int(u["supply"]) * int(u.get("spawn", 1)) > int(g.players[q.team]["cap"]):
 		if int(g.players[q.team]["cap"]) >= g.max_supply(q.team):
 			return "Supply is maxed out."
-		return "Need more supply: root more Rootmaws."
+		return "Need more supply: root more Mound Turtles."
 	return ""
 
 
@@ -410,6 +414,18 @@ static func draw_mist(f: Unit, n: Node2D) -> void:
 	n.draw_circle(to, 12.0, Color(1.0, 0.6, 0.25, 0.35 + 0.15 * sin(clk * 9.0)))
 
 
+## SACRIFICE at the Mother: she turns on the creature offered up and devours it (her swipe frames).
+static func devour(q: Unit, u: Unit) -> void:
+	if q.dead:
+		return
+	q.nb["devour"] = 0.65
+	if u.position.distance_to(q.position) > 1.0:
+		q.facing = (u.position - q.position).normalized()
+	q.frame_i = 0
+	q.anim_t = 0.0
+	Sfx.play_any(["combat/brute_attack", "bite"], q.position, -6.0)
+
+
 static func fertilising(u: Unit) -> bool:
 	return u.kind == FATHER and u.nb.get("fe") != null and is_instance_valid(u.nb.get("fe"))
 
@@ -500,12 +516,14 @@ static func tick(g: Game, u: Unit, delta: float) -> void:
 	if m != u.tesla_mode:
 		_mode_changed(g, u, m)
 		u.nb["m"] = u.tesla_mode
-		if u.kind == QUEEN or u.kind == MAW:
+		if ROOTERS.has(u.kind):
 			u.nb_mass = 1000.0 if u.tesla_mode != "packed" else (30.0 if u.kind == QUEEN else 1.0)     # (dug in: not shoved)
-	if rooted(u) and u.phase == "" and u.target == null:
+	if rooted(u) and u.phase == "" and u.target == null and float(u.nb.get("devour", 0.0)) <= 0.0:
 		u.facing = SE          # (rooted, it settles back facing south-east after a fight)
 	match u.kind:
 		QUEEN:
+			if float(u.nb.get("devour", 0.0)) > 0.0:
+				u.nb["devour"] = maxf(0.0, float(u.nb["devour"]) - delta)
 			if int(u.nb.get("eggs", 0)) < int(Defs.NB["eggs_max"]):
 				u.nb["egg_t"] = float(u.nb.get("egg_t", 0.0)) + delta * egg_rate(g, u.team)
 				if float(u.nb["egg_t"]) >= float(Defs.NB["egg_time"]):
@@ -564,7 +582,7 @@ static func still_tick(g: Game, u: Unit, delta: float) -> void:
 
 ## Less damage while rooted (dug in): the root armour first, then a share off.
 static func incoming(u: Unit, amount: float) -> float:
-	if rooted(u) and (u.kind == QUEEN or u.kind == MAW) and amount >= 1.0:
+	if rooted(u) and ROOTERS.has(u.kind) and amount >= 1.0:
 		return maxf(1.0, amount - float(Defs.NB["root_armor"])) * float(Defs.NB["root_taken"])
 	return amount
 
@@ -719,7 +737,9 @@ static func anim(u: Unit, moving: bool) -> String:
 			return "idle"
 		PILE:
 			return "idle"
-		QUEEN, MAW:
+		QUEEN, MAW, TURTLE:
+			if u.kind == QUEEN and float(u.nb.get("devour", 0.0)) > 0.0:
+				return "attack"         # (SACRIFICE: she devours the creature offered up)
 			if u.tesla_mode == "deploying":
 				return "root"
 			if u.tesla_mode == "packing":
@@ -727,7 +747,7 @@ static func anim(u: Unit, moving: bool) -> String:
 			if u.tesla_mode == "deployed":
 				if u.phase != "":
 					return "attack"
-				return "rooted" if u.kind == QUEEN else "fill"
+				return "fill" if u.kind == MAW else "rooted"
 			if u.phase != "":
 				return "attack"
 			if u.kind == MAW and float(u.nb.get("food", 0.0)) > 0.5:
@@ -867,7 +887,7 @@ static func unit_load(u: Unit, d: Dictionary) -> void:
 			u.nb[k] = int(u.nb[k])
 	u.nb["m"] = u.tesla_mode
 	u.nb.erase("tinted")          # (a fresh sprite: the egg's red is put on again)
-	if u.kind == QUEEN or u.kind == MAW:
+	if ROOTERS.has(u.kind):
 		u.nb_mass = 1000.0 if u.tesla_mode != "packed" else (30.0 if u.kind == QUEEN else 1.0)
 
 

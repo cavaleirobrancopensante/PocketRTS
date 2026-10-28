@@ -3,7 +3,8 @@ extends AI
 ## The computer's simple plan for THE NEW BROOD (an experiment: scripts/brood_new.gd, docs/brood_new.md). It plays it
 ## plainly, so a match against it is possible; it is not clever yet (what it lacks: docs/brood_new.md).
 ##  - the Brood Mother stays rooted at home (she starts rooted); she is never sent out;
-##  - Rootmaws: one more every so often (and when supply runs short), each walked to fresh ground round the Mother and
+##  - Mound Turtles for supply ahead of need, rooted round the Mother;
+##  - Rootmaws: one more every so often, each walked to fresh ground round the Mother and
 ##    rooted; a spent one is uprooted (it spills what little it holds) and walked to new ground;
 ##  - grubs: enough to crew the rooted Rootmaws (idle grubs find work by themselves, Unit WORK);
 ##  - the Tyrannosaur: one, laid early, kept beside the Mother so the warriors' eggs are fertilised;
@@ -39,6 +40,7 @@ func _tick_ai(delta: float) -> void:
 		return
 	_nb_mother(q)
 	_nb_rootmaws(q)
+	_nb_turtles(q)
 	_nb_father(q)
 	_nb_lay(q)
 	_nb_army(q)
@@ -60,10 +62,60 @@ func _nb_mother(q: Unit) -> void:
 # ------------------------------------------------------------------ the economy
 
 func _nb_wanted_maws() -> int:
-	var by_time := 2 + int(game.clock / 100.0)
+	return mini(2 + int(game.clock / 100.0), 8)
+
+
+## Supply ahead of need (the old Clutch Mounds): one more Mound Turtle while the supply is within a few of the cap,
+## counting the ones on their way (eggs, walking to their spot).
+func _nb_short() -> bool:
 	var cap := int(game.players[team]["cap"])
-	var short := game.supply_used(team) + 10 >= cap and cap < game.max_supply(team)
-	return mini(by_time + (1 if short else 0), 9)
+	if cap >= game.max_supply(team):
+		return false
+	var coming := 0
+	for u in game.units:
+		if u.team == team and not u.dead and ((u.kind == BroodNew.TURTLE and u.tesla_mode != "deployed") \
+				or (u.kind == BroodNew.EGG and String(u.nb.get("k", "")) == BroodNew.TURTLE)):
+			coming += int(Defs.NB["turtle_supply"])
+	return game.supply_used(team) + 5 + int(game.clock / 60.0) >= cap + coming
+
+
+## Mound Turtles root a few tiles round the Mother, spread out (their swamp joins hers).
+func _nb_turtles(q: Unit) -> void:
+	for t in _nb_mine(BroodNew.TURTLE):
+		if t.tesla_mode != "packed":
+			continue
+		var goal = _spots.get(t.serial)
+		if goal == null:
+			goal = _nb_turtle_spot(q, t)
+			if goal == null:
+				continue
+			_spots[t.serial] = goal
+			t.cmd_move(goal)
+			continue
+		if t.position.distance_to(goal) < 40.0 or t.order == "idle":
+			t.cmd_deploy()
+			_spots.erase(t.serial)
+
+
+func _nb_turtle_spot(q: Unit, me: Unit):
+	var home := game.region_of(game.cell_of(q.position))
+	for ring in [6.0, 9.0, 12.0, 15.0]:
+		for i in 12:
+			var p: Vector2 = q.position + Vector2.from_angle(TAU * i / 12.0 + ring) * ring * Defs.TILE
+			var c := game.cell_of(p)
+			if not game._walkable(c) or game.region_of(c) != home:
+				continue
+			var ok := true
+			for o in game.units:
+				if o != me and o.team == team and (o.kind == BroodNew.TURTLE or o.kind == BroodNew.MAW) and not o.dead and o.position.distance_to(p) < 4.0 * Defs.TILE:
+					ok = false
+					break
+			for s in _spots:
+				if int(s) != me.serial and (_spots[s] as Vector2).distance_to(p) < 4.0 * Defs.TILE:
+					ok = false
+			if ok:
+				return p
+	return null
 
 
 func _nb_rootmaws(q: Unit) -> void:
@@ -144,14 +196,26 @@ func _nb_nearest_foe_pos(p: Vector2) -> Vector2:
 
 func _nb_father(q: Unit) -> void:
 	var f := BroodNew.father(game, team)
-	if f == null or f.target != null:
-		return
-	if f in _wave:
+	if f == null or f in _wave:
 		return
 	var d := f.position.distance_to(q.position)
-	if d > float(Defs.NB["father_r"]) * Defs.TILE * 0.6 and f.order == "idle":
-		var side := Vector2(-1, 0.4).normalized() * (q.radius + f.radius + 20.0)
-		f.cmd_move(q.position + side)
+	# on a leash: he fights by her, never chases off after a scout (away from her, no warriors are fathered)
+	if d > 14.0 * Defs.TILE and not f.order == "move":
+		f.cmd_move(q.position)
+		return
+	if f.target != null:
+		return
+	if d > float(Defs.NB["father_r"]) * Defs.TILE * 0.6 and (f.order == "idle" or f.order == "hold"):
+		# a walkable spot beside her (she may sit by the map's edge or a cliff), the one nearest him
+		var home := game.region_of(game.cell_of(q.position))
+		var best := Vector2.INF
+		for i in 12:
+			var p: Vector2 = q.position + Vector2.from_angle(TAU * i / 12.0) * (q.radius + f.radius + 24.0)
+			var c := game.cell_of(p)
+			if game._walkable(c) and game.region_of(c) == home and (best == Vector2.INF or p.distance_to(f.position) < best.distance_to(f.position)):
+				best = p
+		if best != Vector2.INF:
+			f.cmd_move(best)
 
 
 # ------------------------------------------------------------------ eggs
@@ -168,7 +232,9 @@ func _nb_lay(q: Unit) -> void:
 	var want_maws := _nb_wanted_maws()
 	var rush := strategy in ["rush", "xrush"]
 	var k := ""
-	if BroodNew.count_of(game, team, BroodNew.FATHER) == 0 and (grubs >= (6 if rush else 9) or game.clock > (40.0 if rush else 80.0)) and maws >= 2:
+	if _nb_short():
+		k = BroodNew.TURTLE
+	elif BroodNew.count_of(game, team, BroodNew.FATHER) == 0 and (grubs >= (6 if rush else 9) or game.clock > (40.0 if rush else 80.0)) and maws >= 2:
 		k = BroodNew.FATHER
 	elif maws < want_maws and (maws < 2 or gold >= 120):
 		k = BroodNew.MAW
@@ -178,7 +244,7 @@ func _nb_lay(q: Unit) -> void:
 		var essence := float(game.players[team]["res2"])
 		k = "brute" if essence >= 20.0 and gold >= 180 and randi() % 3 == 0 else "raptor"
 	if k == "" or BroodNew.lay_problem(game, q, k) != "":
-		if k == BroodNew.FATHER or k == BroodNew.MAW:
+		if k == BroodNew.FATHER or k == BroodNew.MAW or k == BroodNew.TURTLE:
 			return       # (saving up for it)
 		if k != "grub" and grubs < want_grubs and BroodNew.lay_problem(game, q, "grub") == "":
 			k = "grub"

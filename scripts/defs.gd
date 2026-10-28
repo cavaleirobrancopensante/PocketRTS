@@ -1142,7 +1142,7 @@ const UNITS := {
 		"name": "Rootmaw", "hp": 450, "armor": 0, "speed": 80, "cost": 75, "time": 18.0, "supply": 0,
 		"sight": 6, "range": 30, "damage": 14, "cooldown": 1.3, "aim": 0.3, "radius": 22, "from": "brood_mother",
 		"faction": "brood", "new_brood": true,
-		"about": "A swamp lizard that feeds the Brood. ROOT it on fresh ground (3,000 food in a 5-tile circle; rooted circles may not overlap): it drinks the ground and swells, and grubs carry the food from its flank to the Brood Mother (farther pays more). Rooted it gives 20 supply and armour. UPROOT spills its food as a pile (grubs still collect it; it rots); HAUL walks off with it, slow and fat (killed hauling, it bursts). It bites.",
+		"about": "A swamp lizard that feeds the Brood. ROOT it on fresh ground (3,000 food in a 5-tile circle; rooted circles may not overlap): it drinks the ground and swells, and grubs carry the food from its flank to the Brood Mother (farther pays more). Rooted it has more armour. UPROOT spills its food as a pile (grubs still collect it; it rots); HAUL walks off with it, slow and fat (killed hauling, it bursts). It bites.",
 	},
 	"tyrannosaur": {
 		"tags": ["armored"],
@@ -1157,6 +1157,13 @@ const UNITS := {
 		"sight": 3, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 9, "from": "",
 		"no_attack": true, "faction": "brood", "new_brood": true,
 		"about": "One of the Brood Mother's eggs. A warrior's egg waits for the father's breath (it turns red), then hatches.",
+	},
+	"mound_turtle": {
+		"tags": ["armored"],
+		"name": "Mound Turtle", "hp": 350, "armor": 0, "speed": 30, "cost": 75, "time": 18.0, "supply": 0,
+		"sight": 5, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 20, "from": "brood_mother",
+		"no_attack": true, "faction": "brood", "new_brood": true,
+		"about": "A huge swamp turtle (the old Clutch Mound). ROOT it: it sinks into the mud, gives 12 supply, makes the Brood Mother lay 10% faster (up to 3 turtles) and turns the ground round it to swamp (10 tiles). Uprooted it walks slowly and gives no supply. It doesn't fight.",
 	},
 	"food_pile": {
 		"tags": ["light"],
@@ -1827,7 +1834,8 @@ const NB := {
 	"drop": 0.35,                                # seconds an egg falls from under her
 	"father_r": 7.0,                             # tiles: the father near the Mother, and the eggs near him
 	"fert_time": 1.5, "fert_wait": 25.0,         # breath per egg; an egg not fertilised in this time hatches as a grub
-	"queen_supply": 40, "maw_supply": 20,        # supply: the Mother, every ROOTED Rootmaw
+	"queen_supply": 16, "turtle_supply": 12,     # supply: the Mother (the old Burrow's), every ROOTED Mound Turtle (the old Clutch Mound's)
+	"turtle_switch": 2.5, "turtle_swamp": 10.0,  # the Mound Turtle: seconds to root or uproot, tiles of swamp round it rooted
 	"queen_regen": 4.0,                          # hp/s healed while rooted
 	"maw_fill": 4.0, "maw_cap": 300.0, "start_food": 120.0,           # food/s a rooted Rootmaw draws from its ground, what it holds
 	"maw_crew": 6, "pile_crew": 4,

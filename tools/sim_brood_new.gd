@@ -76,4 +76,7 @@ func _line(tm: int) -> String:
 	var extra := ""
 	if q:
 		extra = " eggs %d, mother %s %d hp" % [int(q.nb.get("eggs", 0)), q.tesla_mode, int(q.hp)]
+		var f = BroodNew.father(g, tm)
+		if f:
+			extra += ", father %.1f tiles off (%s%s)" % [f.position.distance_to(q.position) / Defs.TILE, f.order, ", fighting" if f.target else ""]
 	return "t%d gold %d res2 %d supply %d/%d bld %d%s %s" % [tm, int(p["gold"]), int(p["res2"]), g.supply_used(tm), int(p["cap"]), bl, extra, str(counts)]

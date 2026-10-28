@@ -5379,6 +5379,8 @@ func sacrifice(u: Unit, pen: Entity) -> void:
 		Sfx.play("work/midden_essence", pen.center(), -4.0)
 	if u.team == human:
 		float_text(pen.center() + Vector2(0, -34), "+%d essence" % ess, Color(0.8, 0.5, 1.0))
+	if pen is Unit and (pen as Unit).kind == BroodNew.QUEEN:
+		BroodNew.devour(pen, u)          # (the new Brood: the Mother devours it, a swipe)
 	consume_unit(u)
 
 

@@ -30,25 +30,17 @@ es LA NIDADA (NUEVA, EXPERIMENTO)
 pt A Ninhada (nova, experimento)
 es La Nidada (nueva, experimento)
 
-> ROOT
-pt ENRAIZAR
-es ENRAIZAR
-
-> UPROOT
-pt DESENRAIZAR
-es DESENRAIZAR
-
 > HAUL
 pt CARREGAR
 es ACARREAR
 
 > Root
 pt Enraizar
-es Enraizar
+es Arraigar
 
 > Uproot
 pt Desenraizar
-es Desenraizar
+es Desarraigar
 
 > Haul
 pt Carregar
@@ -62,10 +54,6 @@ es Sin Madre de la Camada.
 pt Ainda não está na nova Ninhada.
 es Aún no está en la nueva Nidada.
 
-> No eggs ready.
-pt Nenhum ovo pronto.
-es Ningún huevo listo.
-
 > Needs the %s beside the Brood Mother.
 pt Precisa do %s ao lado da Mãe da Ninhada.
 es Necesita al %s junto a la Madre de la Camada.
@@ -74,9 +62,13 @@ es Necesita al %s junto a la Madre de la Camada.
 pt Só um %s por vez.
 es Solo un %s a la vez.
 
-> Need more supply: root more Rootmaws.
-pt Precisa de mais suprimento: enraíze mais Bocarraízes.
-es Necesitas más suministro: enraíza más Bocarraíces.
+> Need more supply: root more Mound Turtles.
+pt Precisa de mais suprimento: enraíze mais Tartarugas-Montículo.
+es Necesitas más suministro: enraíza más Tortugas Montículo.
+
+> Mound Turtle
+pt Tartaruga-Montículo
+es Tortuga Montículo
 
 > Needs the Brood Mother.
 pt Precisa da Mãe da Ninhada.
@@ -89,10 +81,6 @@ es Demasiado cerca del suelo de otro Bocarraíz: sus círculos no pueden solapar
 > That Rootmaw must be rooted to be fed from.
 pt Esse Bocarraiz precisa estar enraizado para se tirar comida dele.
 es Ese Bocarraíz debe estar enraizado para sacar comida de él.
-
-> No room there.
-pt Não há lugar ali.
-es No hay sitio allí.
 
 > An egg wasn't fertilised in time: it hatches as a grub (paid back the difference).
 pt Um ovo não foi fertilizado a tempo: ele choca como larva (a diferença foi devolvida).

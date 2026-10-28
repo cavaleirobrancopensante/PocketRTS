@@ -16,9 +16,10 @@ Where the decisions come from: docs/idea_brood_mobile_buildings.md (the owner's 
 - At the start, the Mother and the Rootmaw play the end of their rooting. Then they are rooted.
 - Kill the Brood Mother and that side is out. Nothing else counts.
 - ROOT and UPROOT for the Mother and the Rootmaw. Rooting takes 4 seconds for her, 2.5 for the Rootmaw. They always root facing south-east.
-- Rooted: 3 more armour, then a quarter less damage. The Mother heals 4 a second while rooted. Rooted creatures spread swamp: 9 tiles round the Mother, 4 round a Rootmaw.
+- Rooted: 3 more armour, then a quarter less damage. The Mother heals 4 a second while rooted. Rooted creatures spread swamp: 9 tiles round the Mother, 4 round a Rootmaw, 10 round a Mound Turtle.
 - Rooted creatures still fight where they stand. The Mother swipes with her paws, the Rootmaw bites.
-- Only the Mother lays eggs. She holds up to 10 and grows one every 6 seconds. Every rooted Rootmaw makes her 10% faster, up to 30%.
+- Only the Mother lays eggs. She holds up to 10 and grows one every 6 seconds. Every rooted Mound Turtle makes her 10% faster, up to 30%.
+- THE MOUND TURTLE (the owner, 13:25) is the old Clutch Mound: a huge swamp turtle hatched from one of her eggs. Rooted, it sinks into the mud, gives 12 supply, makes her lay faster and turns the ground round it to swamp. Uprooted, it walks slowly and gives no supply. It doesn't fight. Its art isn't drawn yet: rooted it shows the old Clutch Mound's picture, walking a smaller, brown-tinted Rootmaw (a stand-in).
 - You pick a creature on her card. She lays its egg at once, rooted or walking. The egg drops behind her. The fall is drawn in code.
 - The egg hatches after the creature's normal time. It cracks for the last 0.8 seconds, then the creature stands on the open shell while it breaks apart.
 - The Rootmaw roots on fresh ground: 3,000 food in a 5-tile circle. Two rooted circles may not overlap. Old ground keeps what was left, like the old pits.
@@ -32,13 +33,15 @@ Where the decisions come from: docs/idea_brood_mobile_buildings.md (the owner's 
 - The Tyrannosaur fertilises the eggs near him: his head-lowered breath, a red-gold mist drawn in code, and the egg turns red. 1.5 seconds an egg. He only does it standing still, not fighting.
 - An egg he does not reach in 25 seconds hatches as a grub. The price difference is paid back.
 - Only one Tyrannosaur at a time. An egg for one counts. If he dies, lay another.
-- Essence: grubs harvest bodies to the Mother. SACRIFICE offers creatures at the Mother.
+- Essence: grubs harvest bodies to the Mother. SACRIFICE happens at the Mother (the owner, 13:25): the creature walks to her and she devours it with a swipe. There is no Brood Pen creature.
+- THE MOTHER IS THE DEFENCE (the owner, 13:20): no tower, no guard creature. Rooted at home with only her grubs, she beats an early all-in by herself. tools/test_brood_new_defence.gd checks it: 9 Raptors, 3 Horsemen, 5 Musketeers, 12 Clock Soldiers, 2 Brutes with 6 Raptors. She lives through every one with 1,700 to 2,400 of her 2,400 health left. Her numbers were not changed for it.
 - The computer can play it. It keeps the Mother rooted at home, roots Rootmaws on fresh ground round her, keeps grubs on them, lays the Tyrannosaur and keeps him by her, lays Raptors and some Brutes, and attacks in waves. Anything near the Mother is fought by everything.
 
 ## The numbers
 
-- Brood Mother: 2,400 health, armour 1, speed 24, paw 40 damage every 2.4 s. Gives 40 supply.
-- Rootmaw: 450 health, armour 0, speed 80 (40 hauling), bite 14. Costs 75, 18 s. Gives 20 supply while rooted.
+- Brood Mother: 2,400 health, armour 1, speed 24, paw 40 damage every 2.4 s. Gives 16 supply, as the old Burrow.
+- Rootmaw: 450 health, armour 0, speed 80 (40 hauling), bite 14. Costs 75, 18 s.
+- Mound Turtle: 350 health, armour 0, speed 30, no attack. Costs 75, 18 s, as the old Clutch Mound. Rooted: 12 supply, eggs 10% faster (up to 3), swamp 10 tiles.
 - Tyrannosaur: 1,000 health, armour 2, speed 64, bite 42 every 1.9 s. Costs 200, 35 s, 4 supply.
 - Egg: 80 health, armour 1. Food pile: nobody's, cannot be attacked.
 - The starting Rootmaw holds 120 food, so the grubs start at once.
@@ -46,9 +49,9 @@ Where the decisions come from: docs/idea_brood_mobile_buildings.md (the owner's 
 
 ## Claude's choices, for the owner to confirm
 
-- Supply: the Mother gives 40, each rooted Rootmaw 20, up to 200. No supply creature. Moving a Rootmaw costs its supply while it walks.
+- Supply: decided by the owner: the Mound Turtle. The Mother gives 16 (the old Burrow's), each rooted Mound Turtle 12, up to 200. Moving a turtle costs its supply while it walks.
 - Essence and sacrifice: kept. Bodies and offerings go to the Mother.
-- The old buildings' roles. Clutch Mound: supply and swamp now come from rooted Rootmaws. Spawning Den and Gorge Pit: the Tyrannosaur. Brood Pen: the Mother takes offerings. Roost: the Pterodactyl, later. Burrow upgrades: none; the Mother holds 10 eggs.
+- The old buildings' roles (the owner's, 13:20 and 13:25): the Burrow is the Mother, the Feeding Pit the Rootmaw, the Clutch Mound the Mound Turtle, the Spawning Den and Gorge Pit the Tyrannosaur, the Roost the Pterodactyl (later). The Brood Pen has no creature: SACRIFICE is at the Mother. Burrow upgrades: none; the Mother holds 10 eggs.
 - Swamp: kept, but only round rooted creatures. It still makes the Brood faster and heals it. Nothing needs swamp to be placed, since nothing is built.
 - Not in the new Brood yet: Spitters (their father comes later), Bloaters and Skywings (the Pterodactyl comes later). The Mother's card does not offer them.
 - Research: none yet. The old Brood's upgrades lived in buildings.
@@ -70,5 +73,6 @@ Where the decisions come from: docs/idea_brood_mobile_buildings.md (the owner's 
 
 - tools/test_brood_new.gd: rooting buffs, laying while walking, fertilising only near the Mother, unfertilised eggs hatch as grubs, one Tyrannosaur, a Rootmaw drinking its ground, UPROOT spills, HAUL carries and bursts, grubs carry food to the Mother, killing the Mother loses, a saved game continues.
 - tools/test_files.gd checks the new creatures' art and icons. tools/test_replay.gd passes with b:brood_new.
+- tools/test_brood_new_defence.gd: the rooted Mother alone against five early all-ins.
 - tools/sim_brood_new.gd plays a computer match and prints the sides every 30 seconds.
 - Pictures: docs/shots/brood_new/ (tools/shot_brood_new.gd, then python3 -I tools/brood_new_gif.py docs/shots/brood_new).

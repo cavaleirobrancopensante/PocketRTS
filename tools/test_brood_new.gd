@@ -92,7 +92,7 @@ func _run() -> void:
 	check(q.tesla_mode == "deploying" and maw.tesla_mode == "deploying", "   both are finishing their rooting at the start (the cue)")
 	await wait(2.0)
 	check(q.tesla_mode == "deployed" and maw.tesla_mode == "deployed", "   then rooted")
-	check(int(p["cap"]) == int(Defs.NB["queen_supply"]) + int(Defs.NB["maw_supply"]), "   supply %d (Mother + one rooted Rootmaw)" % int(p["cap"]))
+	check(int(p["cap"]) == int(Defs.NB["queen_supply"]), "   supply %d (the Mother's, as the old Burrow's)" % int(p["cap"]))
 	check(g.on_swamp(0, q.position) and g.on_swamp(0, maw.position), "   swamp round the rooted Mother and Rootmaw")
 	# 1. rooting buffs
 	var a: Unit = g._add_unit(BroodNew.MAW, 0, spot_near(q.position, 30.0))
@@ -235,6 +235,23 @@ func _run() -> void:
 	q.nb["eggs"] = 7
 	var saved = JSON.parse_string(JSON.stringify(SaveGame.capture(g, main.last_cfg)))
 	var maws_rooted: int = g.units.filter(func(u) -> bool: return u.team == 0 and u.kind == BroodNew.MAW and u.tesla_mode == "deployed").size()
+	# 10. the Mound Turtle (the old Clutch Mound): rooted, supply, faster eggs and swamp; uprooted, none
+	var cap0: int = int(p["cap"])
+	var rate0: float = BroodNew.egg_rate(g, 0)
+	var tu: Unit = g._add_unit(BroodNew.TURTLE, 0, spot_near(q.position, 9.0))
+	tu.cmd_deploy()
+	await wait(float(Defs.NB["turtle_switch"]) + 0.6)
+	check(tu.tesla_mode == "deployed" and int(p["cap"]) == cap0 + int(Defs.NB["turtle_supply"]), "10. a rooted Mound Turtle gives %d supply (%d -> %d)" % [int(Defs.NB["turtle_supply"]), cap0, int(p["cap"])])
+	check(BroodNew.egg_rate(g, 0) > rate0 + 0.05 and g.on_swamp(0, tu.position + Vector2(8.0 * Defs.TILE, 0)) or g.on_swamp(0, tu.position + Vector2(-8.0 * Defs.TILE, 0)), "    faster eggs (x%.2f) and swamp far round it" % BroodNew.egg_rate(g, 0))
+	tu.cmd_uproot(true)
+	await wait(float(Defs.NB["turtle_switch"]) + 0.6)
+	check(tu.tesla_mode == "packed" and int(p["cap"]) == cap0, "    uprooted: no supply (%d)" % int(p["cap"]))
+	# 11. SACRIFICE at the Mother: she devours it
+	var r1: Unit = g._add_unit("raptor", 0, q.position + Vector2(q.radius + 30.0, 20.0))
+	var ess0: float = float(p["res2"])
+	r1.cmd_sacrifice()
+	var ate: bool = await wait_for(func() -> bool: return float(p["res2"]) > ess0, 8.0)
+	check(ate and float(q.nb.get("devour", 0.0)) > 0.0 and BroodNew.anim(q, false) == "attack", "11. SACRIFICE at the Mother: essence %.0f -> %.0f, she devours it (a swipe)" % [ess0, float(p["res2"])])
 	# 8. killing the Mother loses
 	q.take_damage(999999.0, null)
 	var out: bool = await wait_for(func() -> bool: return bool(g.eliminated[0]), 3.0)

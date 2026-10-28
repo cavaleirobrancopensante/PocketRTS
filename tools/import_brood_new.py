@@ -25,6 +25,7 @@ ab_haul.png (drawn from the existing Brood icons until the owner's arrive; docs/
 """
 import os
 import re
+import shutil
 import sys
 
 import numpy as np
@@ -434,9 +435,46 @@ def still_art():
     small = {("idle", "s"): [ia.unteam(ia.shrink(im, pscale)) for im in piles]}
     small[("death", "s")] = small[("idle", "s")][-1:]
     _place("food_pile", small, data)
+    turtle_standin(data)
     for k, v in data.items():
         write_entry(k, v)
     print("  brood_egg, food_pile from the owner's sheets")
+
+
+def turtle_standin(data):
+    """THE MOUND TURTLE (the owner, 13:25: the Clutch Mound as a huge swamp turtle) has no art yet. Stand-in until its
+    ChatGPT sheets come (docs/art_style_inconsistency.md): rooted, sunk into the mud, it is the old Clutch Mound's
+    picture (assets/buildings/clutch_mound_built.png); walking, the Rootmaw's walk shrunk to a Clutch Mound's width
+    (about 64 px) and tinted a muddy shell brown. Same cell and anchor for both, so the game swaps them freely."""
+    src = "assets/units/rootmaw"
+    ent = re.search(r'\t"rootmaw": \{"cell": Vector2i\((\d+), (\d+)\), "anchor": Vector2\(([\d.]+), ([\d.]+)\)', open("scripts/art_data.gd").read())
+    cw, ch, ax, ay = int(ent.group(1)), int(ent.group(2)), float(ent.group(3)), float(ent.group(4))
+    small = {}
+    k = 0.78
+    for strip, n in [("walk_s", 6), ("walk_se", 6), ("walk_e", 6), ("walk_ne", 6), ("walk_n", 6), ("death_se", 5)]:
+        im = np.array(Image.open(f"{src}/{strip}.png").convert("RGBA"))
+        frames = []
+        for i in range(im.shape[1] // cw):
+            fr = im[:, i * cw:(i + 1) * cw].copy()
+            rgb = fr[..., :3].astype(float)
+            lum = rgb.mean(-1, keepdims=True)
+            shell = np.array([118, 104, 66], float) * (lum / 110.0)
+            key = ((fr[..., 0] == 255) | (fr[..., 0] == 150)) & (fr[..., 1] == 0) & (fr[..., 2] == 0)
+            tinted = np.clip(rgb * 0.35 + shell * 0.65, 0, 255).astype(np.uint8)
+            fr[..., :3] = np.where(key[..., None], fr[..., :3], tinted)     # (the team-red spikes stay team colour)
+            fr = ia.snap_team(ia.shrink(fr, k))
+            frames.append(fr)
+        anim, d = strip.split("_")
+        small[(anim, d)] = frames
+    for d in ["s", "se", "e", "ne", "n"]:
+        small[("idle", d)] = small[("walk", d)][:1]
+    mound = np.array(Image.open(f"{ia.OUT}/buildings/clutch_mound_built.png").convert("RGBA"))
+    small[("rooted", "se")] = [mound]
+    small[("root", "se")] = [mound]
+    small[("uproot", "se")] = [mound]
+    _place("mound_turtle", small, data)
+    # its card portrait meanwhile: the Clutch Mound's
+    shutil.copy(f"{ia.OUT}/icons/clutch_mound.png", f"{ia.OUT}/icons/mound_turtle.png")
 
 
 def _place(name, small, data):

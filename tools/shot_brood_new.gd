@@ -1,7 +1,7 @@
 extends SceneTree
 ## Pictures of THE NEW BROOD in a match (docs/brood_new.md; docs/shots/brood_new/):
 ##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1600x900 --fixed-fps 30 --script res://tools/shot_brood_new.gd -- <outdir>
-## scale.png       the Brood Mother, a Rootmaw and the Tyrannosaur beside a Crown Cottage, a Barracks and a Clocktower
+## scale.png       the Brood Mother, a Rootmaw, the Tyrannosaur and two Mound Turtles (rooted, walking: stand-ins) beside a Crown Cottage, a Barracks and a Clocktower
 ## card_*.png      the command cards: the Mother's (her eggs), a rooted Rootmaw's (UPROOT, HAUL)
 ## start.png       the start: the Mother and the first Rootmaw finishing their rooting, the grubs
 ## harvest.png     grubs taking food at a rooted, well-fed Rootmaw's flank and carrying it to the Mother
@@ -125,12 +125,16 @@ func _run() -> void:
 	m2.facing = BroodNew.SE
 	var f2: Unit = g._add_unit(BroodNew.FATHER, 0, Vector2(b3.center().x, row_y))
 	f2.facing = BroodNew.SE
-	for u in [q2, m2, f2]:
+	var t2: Unit = g._add_unit(BroodNew.TURTLE, 0, Vector2(b3.rect().end.x + 70.0, row_y - 10.0))
+	t2.tesla_mode = "deployed"        # (the Mound Turtle sunk into the mud: the old Clutch Mound's picture, a stand-in)
+	var t3: Unit = g._add_unit(BroodNew.TURTLE, 0, Vector2(b3.rect().end.x + 70.0, row_y + 80.0))
+	t3.facing = BroodNew.SE
+	for u in [q2, m2, f2, t3]:
 		u.cmd_hold()
-	g.camera.position = Vector2(b2.center().x, (b2.center().y + row_y) * 0.5)
+	g.camera.position = Vector2(b2.center().x + 60.0, (b2.center().y + row_y) * 0.5 + 20.0)
 	g.camera.zoom = Vector2(1.0, 1.0)
 	await _snap("scale", 1.0)
-	for u in [q2, m2, f2]:
+	for u in [q2, m2, f2, t2, t3]:
 		g.consume_unit(u)
 	# the Mother walks and lays
 	g.players[0]["gold"] = 5000

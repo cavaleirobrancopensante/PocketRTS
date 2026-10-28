@@ -1033,7 +1033,7 @@ func _kind_flags() -> void:
 	_k_mounted = Defs.FOOT.has(kind)
 	_k_harness = Defs.HARNESSED.has(kind)
 	_k_deploys = kind == "tesla_cart" or kind == "cannon" or kind == "spore_mother" or kind == "mortar" \
-			or kind == BroodNew.QUEEN or kind == BroodNew.MAW
+			or BroodNew.ROOTERS.has(kind)
 	_k_nb = BroodNew.is_nb(kind)
 	_k_still = kind == BroodNew.EGG or kind == BroodNew.PILE
 	nb_mass = 1000.0 if _k_still else (30.0 if kind == BroodNew.QUEEN else (8.0 if kind == BroodNew.FATHER else 1.0))
@@ -1879,6 +1879,8 @@ func switch_time() -> float:
 			return float(Defs.NB["queen_switch"])
 		BroodNew.MAW:
 			return float(Defs.NB["maw_switch"])
+		BroodNew.TURTLE:
+			return float(Defs.NB["turtle_switch"])
 	return Defs.TESLA_SWITCH
 
 

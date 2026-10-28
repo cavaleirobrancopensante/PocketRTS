@@ -1409,21 +1409,21 @@ func _nb_buttons(list: Array, units: Array) -> void:
 						w = u.cmd_lay(kk)
 				if w != "":
 					toast(w), why == "", why, _price_chip(game.unit_price(game.human, kk), false)])
-	var rooters := units.filter(func(u: Unit) -> bool: return (u.kind == BroodNew.QUEEN or u.kind == BroodNew.MAW) and u.team == game.human)
+	var rooters := units.filter(func(u: Unit) -> bool: return BroodNew.ROOTERS.has(u.kind) and u.team == game.human)
 	if rooters.is_empty():
 		return
 	var packed := rooters.any(func(u: Unit) -> bool: return u.tesla_mode == "packed")
 	if packed:
-		_tip_for["ROOT"] = ["Root", "Dig in here: armour and a quarter less damage, swamp around it; a Rootmaw drinks its ground (5-tile circle, may not overlap another's) and gives 20 supply. The Brood Mother and the Rootmaw always root facing south-east."]
+		_tip_for["ROOT"] = ["Root", "Dig in here: armour and a quarter less damage, swamp around it. A Rootmaw drinks its ground (5-tile circle, may not overlap another's); a Mound Turtle sinks into the mud and gives 12 supply and faster eggs. They always root facing south-east."]
 		list.insert(3, ["ab_nb_root", "ROOT", func() -> void:
 			for u in game.selected_units():
-				if (u.kind == BroodNew.QUEEN or u.kind == BroodNew.MAW) and u.tesla_mode == "packed":
+				if BroodNew.ROOTERS.has(u.kind) and u.tesla_mode == "packed":
 					u.cmd_deploy(), true, "", ""])
 	else:
 		_tip_for["UPROOT"] = ["Uproot", "Pull up the roots and walk. A Rootmaw spills its food as a pile on the ground (grubs still collect it; it rots slowly) and walks off thin and quick."]
 		list.insert(3, ["ab_uproot", "UPROOT", func() -> void:
 			for u in game.selected_units():
-				if (u.kind == BroodNew.QUEEN or u.kind == BroodNew.MAW) and u.tesla_mode == "deployed":
+				if BroodNew.ROOTERS.has(u.kind) and u.tesla_mode == "deployed":
 					u.cmd_uproot(true), true, "", ""])
 		if rooters.any(func(u: Unit) -> bool: return u.kind == BroodNew.MAW and u.tesla_mode == "deployed"):
 			_tip_for["HAUL"] = ["Haul", "Uproot the Rootmaw full: it walks at half speed carrying its food and keeps it when it roots again. Killed while hauling, all of it bursts out as a pile."]

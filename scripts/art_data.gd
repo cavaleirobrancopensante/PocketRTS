@@ -1123,6 +1123,22 @@ const BASE_UNITS := {
 		"death_s": 1,
 		"idle_s": 4,
 	}},
+	"mound_turtle": {"cell": Vector2i(114, 76), "anchor": Vector2(57, 72), "frames": {
+		"death_se": 5,
+		"idle_e": 1,
+		"idle_n": 1,
+		"idle_ne": 1,
+		"idle_s": 1,
+		"idle_se": 1,
+		"root_se": 1,
+		"rooted_se": 1,
+		"uproot_se": 1,
+		"walk_e": 6,
+		"walk_n": 6,
+		"walk_ne": 6,
+		"walk_s": 6,
+		"walk_se": 6,
+	}},
 }
 
 const BUILDING_SIZE := {
