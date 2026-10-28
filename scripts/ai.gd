@@ -1984,16 +1984,14 @@ func _build_up() -> void:
 			_construct("barracks")
 		elif barracks == 2 and difficulty >= 2 and t > _lv([9999.0, 9999.0, 330.0]) and gold > 300:
 			_construct("barracks")
-		if r5.barracks_due(barracks, labs) and not _busy_building("barracks"):
-			_construct("barracks")      # (round 5: against the Clockwork Barracks before tech, as the owner played)
 		if _tech_wait():
 			pass          # (soldiers before tech: the Musketeers' gold is not spent on buildings)
 		elif _mine("foundry").is_empty() and game.requirement_met(team, "foundry") and t > _lv([480.0, 260.0, 200.0]):
 			_construct("foundry")
 		# the Armoury: all the Crown's research (and a second place to refit at)
-		if _mine("armoury").is_empty() and game.requirement_met(team, "armoury") and (t > _lv([450.0, 240.0, 180.0]) or gold > 400) and gold >= 150 and not _rushing() and not _tech_wait() and not r5.tech_late():
+		if _mine("armoury").is_empty() and game.requirement_met(team, "armoury") and (t > _lv([450.0, 240.0, 180.0]) or gold > 400) and gold >= 150 and not _rushing() and not _tech_wait():
 			_construct("armoury")
-		if _mine("church").is_empty() and game.requirement_met(team, "church") and t > _lv([500.0, 280.0, 220.0]) and not _tech_wait() and not r5.tech_late():
+		if _mine("church").is_empty() and game.requirement_met(team, "church") and t > _lv([500.0, 280.0, 220.0]) and not _tech_wait():
 			_construct("church")
 		_tend_wall()
 	_bank_spend()
