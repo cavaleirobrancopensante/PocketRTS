@@ -8,8 +8,12 @@ extends SceneTree
 ## harvest.png     grubs taking food at a rooted, well-fed Rootmaw's flank and carrying it to the Mother
 ## rootmaw_fed.png a rooted Rootmaw full of food, close
 ## laying_NN.png   the Mother walking and laying eggs (a frame every 0.1 s: tools/make the GIF from them)
-## fertilise_N.png the Tyrannosaur breathing on the Mother's eggs (red-gold mist, the eggs turning red)
-## egg_NN.png      one egg: yellow-green, reddening under the breath, red, cracking, a Raptor on the open shell (the GIF)
+## root_NN.png     the Tyrannosaur settling on his nest beside the Mother (the GIF root.gif)
+## father_nest.png the Tyrannosaur rooted on his nest beside the Mother, 3 Raptor eggs in it (counted over him)
+## fertilise_N.png him rooted, fertilising (close)
+## egg_NN.png      his nest's queue counting down, the eggs hatching there (the GIF egg.gif)
+## loop_<kind>_NN  each rooted creature's loop, close (the GIFs loop_<kind>.gif)
+## lay_NN.png      the rooted Mother laying twice (the GIF lay.gif)
 ## turtle.png      Mound Turtles beside the Mother: walking, rooting (sinking into the mud), rooted
 ## haul.png        a Rootmaw hauling its food, and a spilled pile
 ## fight.png       the Mother, the Tyrannosaur and Raptors against Crown Musketeers
@@ -272,36 +276,63 @@ func _run() -> void:
 	await create_timer(3.0).timeout
 	q.cmd_deploy()
 	await create_timer(float(Defs.NB["queen_switch"]) + 0.5).timeout
-	# the father breathes on the eggs: he stands west of the nest, a little in front of it (drawn over its edge, not
-	# hidden behind it), and the eggs roll out south-west of her, so he faces them east to south-east
+	# the rooted Mother LAYING (in code until her sheet comes: a heave, her clutch flaring, the egg popping out to the
+	# nest's rim): lay_NN every 0.06 s (tools/brood_new_gif.py: lay.gif)
+	g.camera.position = q.position + Vector2(-10.0, -40.0)
+	g.camera.zoom = Vector2(2.0, 2.0)
+	await create_timer(0.5).timeout
+	q.nb["eggs"] = 10
+	for j in 2:
+		q.cmd_lay("grub")
+		for i in 22:
+			await _snap("lay_%02d" % (j * 22 + i), 0.06)
+	# the father ROOTED on his nest beside her (the Brood's barracks): he walks up west of her, settles (the cross-fade
+	# until his rooting frames come: root_NN), her Raptor eggs go into his nest, he fertilises them, they hatch there
 	# (the eggs laid on the walk and what hatched from them out of the way first)
 	for u in g.units.duplicate():
 		if not u.dead and u.team == 0 and (u.kind == BroodNew.EGG or u.kind == "grub") and u.position.distance_to(q.position) < 600.0:
 			g.consume_unit(u)
-	var f: Unit = g._add_unit(BroodNew.FATHER, 0, q.position + Vector2(-200.0, 45.0))
+	var f: Unit = g._add_unit(BroodNew.FATHER, 0, q.position + Vector2(-205.0, 60.0))
 	f.cmd_stop()
-	await create_timer(1.0).timeout
+	await create_timer(0.5).timeout
+	f.cmd_deploy()
+	g.camera.position = q.position + Vector2(-90.0, -10.0)
+	g.camera.zoom = Vector2(1.5, 1.5)
+	for i in 30:
+		await _snap("root_%02d" % i, 0.1)
+	await create_timer(0.5).timeout
+	print("FATHER rooted %s near %s" % [f.tesla_mode, BroodNew.father_near(g, 0)])
 	q.nb["eggs"] = 10
-	var before: Array = g.units.filter(func(u) -> bool: return u.kind == BroodNew.EGG and not u.dead)
-	q.cmd_lay("raptor")
-	var egg: Unit = g.units.filter(func(u) -> bool: return u.kind == BroodNew.EGG and not u.dead and not before.has(u)).back()
-	g.camera.position = (f.position + egg.position) * 0.5 + Vector2(0, -26)
-	g.camera.zoom = Vector2(2.6, 2.6)
-	# the GIF: one egg yellow-green, reddening under his breath, red, cracking and a Raptor out on the open shell
-	var egg_at: Vector2 = egg.position
-	for i in 72:
-		if i == 24:
-			g.camera.position = egg_at + Vector2(0, -16)
-		if i % 6 == 0:
-			print("EGG %d %s %s" % [i, str(egg.nb) if is_instance_valid(egg) and not egg.dead else "gone", f.nb])
-		await _snap("egg_%02d" % i, 0.2)
 	for i in 3:
-		q.cmd_lay("raptor")
-	await create_timer(0.6).timeout
-	g.camera.position = (f.position + q.position + Vector2(-34, 60)) * 0.5 + Vector2(0, -20)
-	g.camera.zoom = Vector2(2.2, 2.2)
+		print("LAY %s" % q.cmd_lay("raptor"))
+	await create_timer(0.3).timeout
+	await _snap("father_nest", 0.4)
+	g.camera.position = f.position + Vector2(10.0, -50.0)
+	g.camera.zoom = Vector2(2.4, 2.4)
 	for i in 4:
 		await _snap("fertilise_%d" % i, 0.45)
+	# the GIF: the nest's queue counting down and the eggs hatching there (egg_NN every 0.25 s)
+	for i in 64:
+		if i % 8 == 0:
+			var eggs := BroodNew.nest_eggs(g, f)
+			print("NEST %d %d %s" % [i, eggs.size(), str(eggs[0].nb) if not eggs.is_empty() else "-"])
+		await _snap("egg_%02d" % i, 0.25)
+	# each rooted creature's loop, close (loop_<kind>_NN every 0.1 s: tools/brood_new_gif.py makes loop_<kind>.gif):
+	# the Mother (her breathing row, her eggs glowing), the Tyrannosaur (breathing, his fire and eggs flickering), a
+	# Rootmaw half full (breathing, its food glowing)
+	for c in [[q, Vector2(0, -90), 1.6], [f, Vector2(0, -60), 2.6]]:
+		var u: Unit = c[0]
+		g.camera.position = u.position + c[1]
+		g.camera.zoom = Vector2(c[2], c[2])
+		await create_timer(0.4).timeout
+		for i in 30:
+			await _snap("loop_%s_%02d" % [u.kind, i], 0.1)
+	maw.nb["food"] = 160.0
+	g.camera.position = maw.position + Vector2(0, -30)
+	g.camera.zoom = Vector2(3.4, 3.4)
+	await create_timer(0.4).timeout
+	for i in 30:
+		await _snap("loop_rootmaw_%02d" % i, 0.1)
 	# the Mound Turtle beside the Mother: one walking up, one rooting (sinking into the mud), one rooted
 	var tw: Unit = g._add_unit(BroodNew.TURTLE, 0, walk_spot(q.position + Vector2(-60.0, 190.0), 1.0))
 	var tr: Unit = g._add_unit(BroodNew.TURTLE, 0, walk_spot(q.position + Vector2(70.0, 200.0), 1.0))
@@ -314,6 +345,12 @@ func _run() -> void:
 	g.camera.position = q.position + Vector2(40.0, 120.0)
 	g.camera.zoom = Vector2(1.4, 1.4)
 	await _snap("turtle", 0.4)      # (the camera needs a few frames to get there)
+	await create_timer(float(Defs.NB["turtle_switch"])).timeout
+	g.camera.position = td.position + Vector2(0, -30)
+	g.camera.zoom = Vector2(3.4, 3.4)
+	await create_timer(0.4).timeout
+	for i in 30:
+		await _snap("loop_mound_turtle_%02d" % i, 0.1)
 	for u in [tw, tr, td]:
 		g.consume_unit(u)
 	# the turtle walking every way (the JPEG sheets' S, NE, N beside the PNG SE and E; west mirrored), at normal and

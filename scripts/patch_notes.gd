@@ -4,6 +4,12 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.15.11", "items": [
+		"THE NEW BROOD (EXPERIMENT): the Tyrannosaur ROOTS. Rooted on his nest near the Brood Mother he is the Brood's barracks: her warrior eggs go into his nest (counted over him like a training queue), he breathes on them one at a time and they hatch there. Rooted he takes less damage; uprooted he walks and fights as before. His breath is drawn in his picture now: the orange puffs are gone.",
+		"EVERY ROOTED CREATURE MOVES (a rooted creature is a building): the Tyrannosaur breathes fire on his nest, the Rootmaw breathes at each stage of its filling (the designer's drawings), and the food, the eggs and the fire glow and pulse.",
+		"THE BROOD MOTHER LAYS IN HER NEST: rooted, she rears up and lays the egg in front of her clutch, and it rolls out to the nest's rim (walking, it still drops behind her).",
+		"THE BROOD MOTHER CANNOT ATTACK WHILE ROOTED: to fight she must uproot. The computer gets her up when enemies reach her and roots her again after.",
+	]},
 	{"v": "0.15.10", "items": [
 		"THE NEW BROOD (EXPERIMENT): the Mound Turtle has its own pictures now (the designer's): it walks, sinks into the mud as it roots, breathes there rooted, rises and dies, and walks in every direction with the designer's drawings; its card has its own portrait.",
 		"SIZES: the Brood Mother is bigger, as wide in her nest as a Clocktower's gear ring, and the Tyrannosaur as big as a Barracks.",

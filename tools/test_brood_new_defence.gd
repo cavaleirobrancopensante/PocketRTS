@@ -8,13 +8,18 @@ extends SceneTree
 ##   clock       6 Clock Soldiers (the Clockwork's first wave)
 ##   brutes      2 Brutes and 6 Raptors (an old-Brood push at about 3:30)
 ## They spawn 11 tiles out and attack-move onto her. PASS: she lives and they are all dead or spent within 120 s.
-##   godot --headless --fixed-fps 30 --script res://tools/test_brood_new_defence.gd [-- only:<name>]
+## The Mother CANNOT ATTACK while rooted (the owner, 15:58). mode:rooted (the default) leaves her in her nest (only the
+## grubs and the Rootmaw fight); mode:uproot lets her get up and fight as the computer does (BroodNew.mother_guard),
+## and root again after.
+##   godot --headless --fixed-fps 30 --script res://tools/test_brood_new_defence.gd [-- only:<name>] [mode:uproot]
 var main: Node
 var t := 0.0
 var g
 var started := false
 var fails := 0
 var only := ""
+var mode := "rooted"
+var guard := {}
 
 const WAVES := {
 	"raptors": [["raptor", 3, 1]],          # (+6 more below: 9)
@@ -29,6 +34,8 @@ func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("only:"):
 			only = a.substr(5)
+		if a.begins_with("mode:"):
+			mode = a.substr(5)
 	main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
 
@@ -104,7 +111,12 @@ func _run() -> void:
 				r2.cmd_move(q.position, true)
 		var t0: float = g.clock
 		while g.clock - t0 < 120.0:
-			await wait(1.0)
+			await wait(0.5)
+			if mode == "uproot" and not q.dead:
+				BroodNew.mother_guard(g, q, guard, 0.5)
+			await wait(0.5)
+			if mode == "uproot" and not q.dead:
+				BroodNew.mother_guard(g, q, guard, 0.5)
 			if q.dead:
 				break
 			var alive := foes.filter(func(u) -> bool: return is_instance_valid(u) and not u.dead)
@@ -124,14 +136,19 @@ func _run() -> void:
 				killers[u.last_hit_by] = int(killers.get(u.last_hit_by, 0)) + 1
 		print("   killed by: %s" % str(killers))
 		var ok: bool = not q.dead
-		print("%s  %-9s the Mother %s, %d hp of %d left after %.0f s; %d of %d attackers left; %d grubs" % [
-			"PASS" if ok else "FAIL", name, "lives" if ok else "DIES", int(q.hp), int(q.max_hp), g.clock - t0, left, foes.size(), grubs])
+		print("%s  %-9s [%s] the Mother %s, %d hp of %d left after %.0f s; %d of %d attackers left; %d grubs" % [
+			"PASS" if ok else "FAIL", name, mode, "lives" if ok else "DIES", int(q.hp), int(q.max_hp), g.clock - t0, left, foes.size(), grubs])
 		if not ok:
 			fails += 1
 			break
 		for u in foes:
 			if is_instance_valid(u) and not u.dead:
 				g.consume_unit(u)
+		# (back in her nest before the next wave)
+		var t1: float = g.clock
+		while mode == "uproot" and q.tesla_mode != "deployed" and g.clock - t1 < 30.0:
+			await wait(0.5)
+			BroodNew.mother_guard(g, q, guard, 0.5)
 		await wait(1.0)
-	print("brood_new_defence: %d failures" % fails)
+	print("brood_new_defence [%s]: %d failures" % [mode, fails])
 	quit(1 if fails > 0 else 0)

@@ -10,8 +10,10 @@ extends RefCounted
 ##    the Mother (the farther, the more a trip pays: Game.food_at, as the old Feeding Pits). UPROOT spills its food as a
 ##    pile on the ground (grubs still collect it, it rots slowly); HAUL uproots it full and it walks at half speed with
 ##    it (killed while hauling, all of it bursts out as a pile; rooted again, it keeps it).
-##  - THE TYRANNOSAUR ("tyrannosaur"), a FATHER: the Brood's "barracks". Standing near the Mother (Defs.NB "father_r"),
-##    it fertilises her warrior eggs (its head-lowered breath, a red-gold mist, the egg turns red). One at a time.
+##  - THE TYRANNOSAUR ("tyrannosaur"), a FATHER: ROOTED he is the Brood's "barracks" (the owner, 15:45): he settles on
+##    a nest, head lowered, breathing fire-gold on it (his concept's FERTILISING figure). Rooted within Defs.NB
+##    "father_r" of the Mother, her warrior eggs roll into his nest (they are the red eggs drawn there, counted over him
+##    like a Barracks' queue); he fertilises them one at a time and they hatch there. Uprooted he walks and fights.
 ##    Unfertilised eggs hatch as grubs; eggs already fertilised still hatch.
 ##  - EGGS ("brood_egg") and FOOD PILES ("food_pile", nobody's) are units that stand still.
 ## The old Brood (buildings) is untouched and stays the default: everything here only runs for a side whose slot picked
@@ -24,7 +26,7 @@ const FATHER := "tyrannosaur"
 const EGG := "brood_egg"
 const PILE := "food_pile"
 const KINDS := [QUEEN, MAW, TURTLE, FATHER, EGG, PILE]
-const ROOTERS := [QUEEN, MAW, TURTLE]     # (the creatures that ROOT and UPROOT)
+const ROOTERS := [QUEEN, MAW, TURTLE, FATHER]     # (the creatures that ROOT and UPROOT)
 const SE := Vector2(0.7071, 0.7071)
 
 
@@ -74,10 +76,11 @@ static func father(g: Game, t: int) -> Unit:
 	return null
 
 
+## The father rooted on his nest within his reach of the Mother (only then are her warrior eggs fertilised).
 static func father_near(g: Game, t: int) -> bool:
 	var f := father(g, t)
 	var q := queen(g, t)
-	return f != null and q != null and f.position.distance_to(q.position) <= float(Defs.NB["father_r"]) * Defs.TILE
+	return f != null and q != null and rooted(f) and f.position.distance_to(q.position) <= float(Defs.NB["father_r"]) * Defs.TILE
 
 
 static func count_of(g: Game, t: int, k: String) -> int:
@@ -223,7 +226,7 @@ static func lay_problem(g: Game, q: Unit, k: String) -> String:
 	var u: Dictionary = Defs.UNITS[k]
 	var f := father_of(k)
 	if f != "" and not father_near(g, q.team):
-		return "Needs the %s beside the Brood Mother." % Defs.UNITS[f]["name"]
+		return "Needs the %s rooted beside the Brood Mother." % Defs.UNITS[f]["name"]
 	if k == FATHER and count_of(g, q.team, FATHER) > 0:
 		return "Only one %s at a time." % u["name"]
 	var price := g.unit_price(q.team, k)
@@ -262,13 +265,57 @@ static func lay(g: Game, q: Unit, k: String) -> String:
 		p = q.position + Vector2(-34.0 + float((n % 5) - 2) * 15.0, q.radius + 16.0 + float(n % 2) * 8.0)
 	if not g._walkable(g.cell_of(p)):
 		p = q.position + side * 0.3
+	var fa: Unit = father(g, q.team) if father_of(k) != "" else null
+	if fa != null and father_near(g, q.team):
+		p = nest_point(fa)          # (a warrior's egg goes into the father's nest: fertilised and hatched there)
 	var e := g._add_unit(EGG, q.team, p)
 	e.nb = {"k": k, "t": 0.0, "fert": 1 if father_of(k) != "" else 0, "wait": 0.0, "drop": float(Defs.NB["drop"])}
+	if fa == null and rooted(q):
+		# LAYING in her nest (the owner, 16:24, as the Town Hall's bell; walking, the egg just drops behind her). With her
+		# laying frames (brood_mother_rooted_lay_se_chatgpt.png) she lays it in the picture: the game's egg stays hidden
+		# ("hold") until her last frame, appears exactly where that frame draws the new egg (LAY_EGG_AT, as big), then
+		# rolls out to the nest's rim and waits; her rooted loop has no extra egg. Without them: a heave in code, her
+		# clutch flaring, the egg popping out of the clutch (CLUTCH_AT).
+		var drawn: bool = ArtData.UNITS[q.art]["frames"].has("lay_se")
+		q.nb["lay_t"] = lay_time(q)
+		var from := q.position + (LAY_EGG_AT if drawn else CLUTCH_AT) - p
+		e.nb["pop_x"] = from.x
+		e.nb["pop_y"] = from.y
+		e.nb["pop"] = POP_TIME
+		e.nb["drop"] = 0.0
+		if drawn:
+			e.nb["hold"] = lay_time(q)
+	if fa != null and p == nest_point(fa):
+		e.nb["nest"] = true
+		e.nb["drop"] = 0.0
 	e.facing = Vector2.DOWN
 	if q.team == g.human:
 		Sfx.play_any(["work/grub_deliver", "hatch"], p, -8.0)
 	recount(g, q.team)
 	return ""
+
+
+## The rooted Mother's laying. Her sheet's 6 frames last LAY_DUR s each (the owner, 16:40: frames 3 and 4, her head
+## reared high, a big jump from frame 2, held longer); the new egg in frame 6 is at LAY_EGG_AT from her feet (its
+## bottom; tools/import_brood_new.py prints it), LAY_EGG_BIG times the game egg's size. Without the sheet: LAY_TIME s of
+## heave in code; the egg flies from her clutch (CLUTCH_AT). Either way the egg then goes to the rim in POP_TIME s, over
+## an arc POP_ARC px high.
+const LAY_DUR := [0.14, 0.18, 0.3, 0.3, 0.18, 0.16]
+const LAY_EGG_AT := Vector2(14.0, -62.0)
+const LAY_EGG_BIG := 1.7
+const LAY_TIME := 1.0
+const POP_TIME := 0.55
+const POP_ARC := 34.0
+const CLUTCH_AT := Vector2(0.0, -120.0)
+
+
+static func lay_time(q: Unit) -> float:
+	if ArtData.UNITS[q.art]["frames"].has("lay_se"):
+		var t := 0.0
+		for d in LAY_DUR:
+			t += float(d)
+		return t
+	return LAY_TIME
 
 
 static func egg_time(k: String) -> float:
@@ -317,6 +364,10 @@ static func egg_tick(g: Game, e: Unit, delta: float) -> void:
 		return
 	if float(e.nb.get("drop", 0.0)) > 0.0:
 		e.nb["drop"] = maxf(0.0, float(e.nb["drop"]) - delta)
+	if float(e.nb.get("hold", 0.0)) > 0.0:
+		e.nb["hold"] = maxf(0.0, float(e.nb["hold"]) - delta)      # (still in her laying frames)
+	elif float(e.nb.get("pop", 0.0)) > 0.0:
+		e.nb["pop"] = maxf(0.0, float(e.nb["pop"]) - delta)
 	var k := String(e.nb.get("k", "grub"))
 	if int(e.nb.get("fert", 0)) == 1:
 		# waiting for the father's breath; not fertilised in time: a grub after all (the difference paid back)
@@ -340,96 +391,113 @@ static func egg_tick(g: Game, e: Unit, delta: float) -> void:
 
 # ------------------------------------------------------------------ fertilising
 
+## Where the eggs in a rooted father's nest lie (in front of his lowered head, on the nest drawn in his rooted frame,
+## a little in front of his feet so a hatching shell is drawn over the nest).
+const NEST_AT := Vector2(26.0, 2.0)
+const NEST_LIFT := 8.0       # (an egg there is drawn this much higher: on the nest, but sorted in front of him)
+
+
+static func nest_point(f: Unit) -> Vector2:
+	return f.position + NEST_AT
+
+
+## The eggs in his nest, first laid first (the queue counted over him).
+static func nest_eggs(g: Game, f: Unit) -> Array:
+	var out: Array = []
+	for u in g.units_near(nest_point(f), 12.0):
+		if u.team == f.team and u.kind == EGG and not u.dead and bool(u.nb.get("nest", false)) and not u.nb.has("out"):
+			out.append(u)
+	out.sort_custom(func(a, b) -> bool: return a.serial < b.serial)
+	return out
+
+
+## The rooted father: warrior eggs within his reach roll into his nest; he fertilises them one at a time (his breath
+## drawn in the frame; the egg turns red, Defs.NB "fert_time" each); fertilised, they incubate and hatch in the nest.
 static func father_tick(g: Game, f: Unit, delta: float) -> void:
 	var egg = f.nb.get("fe")
-	# (busy: walking somewhere or fighting; a shove from a neighbour doesn't count)
-	var busy := f.phase != "" or f.target != null or not (f.order in ["idle", "hold"])
-	if egg != null and (not is_instance_valid(egg) or egg.dead or int(egg.nb.get("fert", 0)) != 1 or busy):
+	var on_nest := rooted(f)
+	var q := queen(g, f.team)
+	var r := float(Defs.NB["father_r"]) * Defs.TILE
+	var near := on_nest and q != null and f.position.distance_to(q.position) <= r
+	if egg != null and (not is_instance_valid(egg) or egg.dead or int(egg.nb.get("fert", 0)) != 1 or not near):
 		if is_instance_valid(egg) and int(egg.nb.get("fert", 0)) == 1:
-			egg.nb["redden"] = 0.0       # (broken off: it is yellow-green again until he comes back)
+			egg.nb["redden"] = 0.0       # (broken off: it is yellow-green again until he is back on his nest)
 		f.nb.erase("fe")
-		_mist_node(f).queue_redraw()
 		f.nb["ft"] = 0.0
 		egg = null
+	if not near:
+		return
 	if egg == null:
-		if busy:
-			return
 		f.nb["scan"] = float(f.nb.get("scan", 0.0)) - delta
 		if float(f.nb["scan"]) > 0.0:
 			return
 		f.nb["scan"] = 0.25
-		var q := queen(g, f.team)
-		var r := float(Defs.NB["father_r"]) * Defs.TILE
-		if q == null or f.position.distance_to(q.position) > r:
-			return
-		var best: Unit = null
-		var bd := INF
+		# her warrior eggs left on the ground near him (laid before he rooted) roll into the nest
 		for u in g.units_near(f.position, r):
-			if u.team == f.team and u.kind == EGG and not u.dead and int(u.nb.get("fert", 0)) == 1:
-				var dd: float = u.position.distance_to(f.position)
-				if dd < bd:
-					bd = dd
-					best = u
-		if best == null:
+			if u.team == f.team and u.kind == EGG and not u.dead and int(u.nb.get("fert", 0)) == 1 and not bool(u.nb.get("nest", false)):
+				u.nb["nest"] = true
+				u.nb["drop"] = 0.0
+				u.position = nest_point(f)
+				g.note_move(u)
+		for u in nest_eggs(g, f):
+			if int(u.nb.get("fert", 0)) == 1:
+				egg = u
+				break
+		if egg == null:
 			return
-		f.nb["fe"] = best
+		f.nb["fe"] = egg
 		f.nb["ft"] = float(Defs.NB["fert_time"])
-		egg = best
-	f.facing = (egg.position - f.position).normalized() if egg.position.distance_to(f.position) > 1.0 else f.facing
-	if f.visible and g.view_rect.has_point(f.position):
-		_mist_node(f).queue_redraw()        # (the breath's mist moves every frame: draw_mist)
 	f.nb["ft"] = float(f.nb.get("ft", 0.0)) - delta
 	egg.nb["redden"] = clampf(1.0 - float(f.nb["ft"]) / float(Defs.NB["fert_time"]), 0.0, 1.0)     # (it turns red as he breathes)
-	f.nb["mist"] = float(f.nb.get("mist", 0.0)) - delta
-	if float(f.nb["mist"]) <= 0.0 and f.visible and g.view_rect.has_point(f.position):
-		f.nb["mist"] = 0.18
-		var mouth := f.position + f.facing * f.radius * 0.9 + Vector2(0, -18)
-		var to: Vector2 = egg.position + Vector2(0, -6)
-		var fx := g.spawn_effect("smoke", mouth.lerp(to, randf_range(0.2, 0.95)) + Vector2(randf_range(-6, 6), randf_range(-5, 3)), 0.9)
-		fx.modulate = Color(1.0, 0.55, 0.25, 0.7).lerp(Color(1.0, 0.85, 0.35, 0.7), randf())
-		fx.z_index = 3
 	if float(f.nb["ft"]) <= 0.0:
 		egg.nb["fert"] = 2
 		egg.nb["t"] = 0.0
 		f.nb.erase("fe")
-		_mist_node(f).queue_redraw()
 		if f.team == g.human:
 			Sfx.play_any(["roar", "combat/brute_attack"], f.position, -10.0)
 
 
-## The father's breath, drawn over him and the Mother: a red-gold mist streaming from his jaws to the egg (code;
-## docs/art_style_inconsistency.md).
-static func _mist_node(f: Unit) -> Node2D:
-	var n := f.get_node_or_null("Mist") as Node2D
-	if n == null:
-		n = Node2D.new()
-		n.name = "Mist"
-		n.z_index = 4
-		n.draw.connect(draw_mist.bind(f, n))
-		f.add_child(n)
-	return n
+## The computer's Mother (and the defence test's): rooted at home. She CANNOT ATTACK while rooted (the owner, 15:58):
+## when enemies reach her (strike at her, or come within MOTHER_FIGHT tiles of her body) she uproots and fights, on a
+## leash (MOTHER_LEASH tiles from her nest); once nothing has been at her for MOTHER_CALM s, she goes back and roots.
+## st: the caller's own state (her nest, the calm time); dt: the time since the last call.
+const MOTHER_FIGHT := 3.0
+const MOTHER_LEASH := 7.0
+const MOTHER_CALM := 4.0
 
 
-static func draw_mist(f: Unit, n: Node2D) -> void:
-	if not fertilising(f) or f.dead:
-		return
-	var egg: Unit = f.nb["fe"]
-	# (from his lowered jaws: well ahead of his middle and low, as the breath frames hold the head)
-	var mouth := f.facing.normalized() * f.radius * 1.9 + Vector2(0, -20)
-	var to := egg.position - f.position + Vector2(0, -8)
-	var clk: float = f.game.clock
-	# a soft wide haze along the stream, then the bright puffs rolling down it
-	for i in 6:
-		var k0 := float(i) / 5.0
-		n.draw_circle(mouth.lerp(to, k0), 8.0 + 10.0 * k0, Color(1.0, 0.5, 0.2, 0.18))
-	for i in 22:
-		var k := fposmod(float(i) / 22.0 + clk * 0.9, 1.0)
-		var p := mouth.lerp(to, k) + Vector2(sin(clk * 5.0 + i * 1.7), cos(clk * 4.0 + i * 2.3)) * (3.0 + 8.0 * k)
-		var col := Color(1.0, 0.32, 0.1).lerp(Color(1.0, 0.85, 0.3), 0.5 + 0.5 * sin(i * 1.3 + clk * 3.0))
-		col.a = 0.9 * sin(k * PI)
-		n.draw_circle(p, 4.0 + 8.0 * k, col)
-		n.draw_circle(p, 1.5 + 3.0 * k, Color(1.0, 0.95, 0.7, col.a))
-	n.draw_circle(to, 16.0, Color(1.0, 0.55, 0.2, 0.4 + 0.2 * sin(clk * 9.0)))
+static func mother_guard(g: Game, q: Unit, st: Dictionary, dt: float) -> void:
+	if not st.has("home"):
+		st["home"] = q.position
+		st["calm"] = 0.0
+	var home: Vector2 = st["home"]
+	var foe: Unit = null
+	var fd := INF
+	for u in g.units_near(q.position, (MOTHER_FIGHT + 6.0) * Defs.TILE):
+		if not g.hostile(u.team, q.team) or u.dead or u.off_field or u.is_air():
+			continue
+		var at_her: bool = u.target == q or q.edge_distance(u.position) < MOTHER_FIGHT * Defs.TILE
+		var dd: float = u.position.distance_to(q.position)
+		if at_her and dd < fd:
+			fd = dd
+			foe = u
+	st["calm"] = 0.0 if foe != null else float(st["calm"]) + dt
+	match q.tesla_mode:
+		"deployed":
+			if foe != null:
+				q.cmd_uproot(false)       # (to fight she must get up)
+		"packed":
+			if foe != null:
+				if q.position.distance_to(home) > MOTHER_LEASH * Defs.TILE:
+					q.cmd_move(home)
+				elif q.target == null or q.order == "idle":
+					q.cmd_attack(foe)
+			elif float(st["calm"]) >= MOTHER_CALM and q.target == null:
+				if q.position.distance_to(home) > Defs.TILE:
+					if q.order != "move":
+						q.cmd_move(home)
+				elif q.order == "idle" or q.order == "move":
+					q.cmd_deploy()
 
 
 ## SACRIFICE at the Mother: she turns on the creature offered up and devours it (her swipe frames).
@@ -537,13 +605,15 @@ static func tick(g: Game, u: Unit, delta: float) -> void:
 		_mode_changed(g, u, m)
 		u.nb["m"] = u.tesla_mode
 		if ROOTERS.has(u.kind):
-			u.nb_mass = 1000.0 if u.tesla_mode != "packed" else (30.0 if u.kind == QUEEN else 1.0)     # (dug in: not shoved)
+			u.nb_mass = 1000.0 if u.tesla_mode != "packed" else packed_mass(u.kind)     # (dug in: not shoved)
 	if rooted(u) and u.phase == "" and u.target == null and float(u.nb.get("devour", 0.0)) <= 0.0:
 		u.facing = SE          # (rooted, it settles back facing south-east after a fight)
 	match u.kind:
 		QUEEN:
 			if float(u.nb.get("devour", 0.0)) > 0.0:
 				u.nb["devour"] = maxf(0.0, float(u.nb["devour"]) - delta)
+			if float(u.nb.get("lay_t", 0.0)) > 0.0:
+				u.nb["lay_t"] = maxf(0.0, float(u.nb["lay_t"]) - delta)
 			if int(u.nb.get("eggs", 0)) < int(Defs.NB["eggs_max"]):
 				u.nb["egg_t"] = float(u.nb.get("egg_t", 0.0)) + delta * egg_rate(g, u.team)
 				if float(u.nb["egg_t"]) >= float(Defs.NB["egg_time"]):
@@ -571,9 +641,17 @@ static func tick(g: Game, u: Unit, delta: float) -> void:
 			father_tick(g, u, delta)
 
 
+static func packed_mass(k: String) -> float:
+	return 30.0 if k == QUEEN else (8.0 if k == FATHER else 1.0)
+
+
 static func _mode_changed(g: Game, u: Unit, was: String) -> void:
 	match u.tesla_mode:
 		"packing":
+			if u.kind == FATHER:
+				for e in nest_eggs(g, u):
+					e.nb.erase("nest")      # (he gets up: the eggs in his nest lie on the ground, waiting)
+					e.nb["redden"] = 0.0
 			if u.kind == MAW:
 				if bool(u.nb.get("spill", false)):
 					spill(g, u)
@@ -794,27 +872,28 @@ static func anim(u: Unit, moving: bool) -> String:
 			return "idle"
 		PILE:
 			return "idle"
-		QUEEN, MAW, TURTLE:
+		QUEEN, MAW, TURTLE, FATHER:
+			var fr: Dictionary = ArtData.UNITS[u.art]["frames"]
 			if u.kind == QUEEN and float(u.nb.get("devour", 0.0)) > 0.0:
 				return "attack"         # (SACRIFICE: she devours the creature offered up)
 			if u.tesla_mode == "deploying":
-				return "root"
+				return "root" if fr.has("root_se") else "rooted"      # (no rooting frames: the rooted frame, cross-faded: animate)
 			if u.tesla_mode == "packing":
-				return "uproot"
+				return "uproot" if fr.has("uproot_se") else "rooted"
 			if u.tesla_mode == "deployed":
+				if u.kind == QUEEN and float(u.nb.get("lay_t", 0.0)) > 0.0 and fr.has("lay_se"):
+					return "lay"
 				if u.phase != "":
-					return "attack"
-				return "fill" if u.kind == MAW else "rooted"
+					return "attack"         # (the Rootmaw, the turtle and the Tyrannosaur bite from where they are rooted; the Mother can't: Unit.can_hit)
+				if u.kind == MAW:
+					var lv := "fill%d" % maw_level(u)
+					return lv if fr.has(lv + "_se") else "fill"
+				return "rooted"
 			if u.phase != "":
 				return "attack"
 			if u.kind == MAW and float(u.nb.get("food", 0.0)) > 0.5:
 				return ("haul" if ArtData.UNITS[MAW]["frames"].has("haul_se") else "walk") if moving else ("haul" if ArtData.UNITS[MAW]["frames"].has("haul_se") else "idle")
 			return "walk" if moving else "idle"
-		FATHER:
-			if fertilising(u):
-				return "breath"
-			if u.phase != "":
-				return "attack"
 	return "walk" if moving else "idle"
 
 
@@ -834,10 +913,16 @@ static func animate(u: Unit, n: int) -> void:
 			var sw := u.switch_time()
 			var p := clampf(1.0 - u.tesla_t / maxf(sw, 0.01), 0.0, 1.0)
 			s.frame = clampi(int(p * n), 0, n - 1)
+		"lay":
+			var el := lay_time(u) - float(u.nb.get("lay_t", 0.0))
+			var fi := 0
+			while fi < n - 1 and fi < LAY_DUR.size() and el >= float(LAY_DUR[fi]):
+				el -= float(LAY_DUR[fi])
+				fi += 1
+			s.frame = fi
 		"fill":
 			# the Rootmaw's 6 food levels
-			var f := clampf(float(u.nb.get("food", 0.0)) / float(Defs.NB["maw_cap"]), 0.0, 1.0)
-			s.frame = clampi(int(round(f * (n - 1))), 0, n - 1)
+			s.frame = clampi(maw_level(u) - 1, 0, n - 1)
 		"idle":
 			if u.kind == PILE:
 				# fresh to rotted: by the share taken or rotted away, the rot counting more (it darkens the pile)
@@ -855,8 +940,20 @@ static func animate(u: Unit, n: int) -> void:
 				p2 = 0.4 * clampf(1.0 - (egg_time(k) - float(u.nb.get("t", 0.0))) / HATCH_IN, 0.0, 1.0)
 			s.frame = clampi(int(p2 * n), 0, n - 1)
 	if u.kind == EGG:
+		# an egg in the father's nest is one of the red eggs drawn there: it shows itself only to hatch
+		s.visible = (not bool(u.nb.get("nest", false)) or u.anim == "hatch") and float(u.nb.get("hold", 0.0)) <= 0.0
 		var dr := float(u.nb.get("drop", 0.0))
 		s.position = Vector2(0.0, -46.0 * pow(dr / float(Defs.NB["drop"]), 2.0)) if dr > 0.0 else Vector2.ZERO
+		if bool(u.nb.get("nest", false)):
+			s.position.y -= NEST_LIFT
+		var pp := float(u.nb.get("pop", 0.0))
+		if pp > 0.0:
+			var k2 := pp / POP_TIME          # (1 at her clutch .. 0 on the rim)
+			s.position = Vector2(float(u.nb.get("pop_x", 0.0)), float(u.nb.get("pop_y", 0.0))) * k2 + Vector2(0.0, -POP_ARC * sin(PI * k2))
+			if u.nb.has("hold"):
+				s.scale = Vector2.ONE * lerpf(1.0, LAY_EGG_BIG, k2)       # (as big as her frame drew it, shrinking as it rolls out)
+		elif u.nb.has("hold"):
+			s.scale = Vector2.ONE
 		# a fertilised egg glows red-gold (code; the sheet's egg is the waiting yellow-green one)
 		# (it reddens under the father's breath, then stays red until it hatches)
 		var red := 0.0 if u.nb.has("out") else (1.0 if int(u.nb.get("fert", 0)) == 2 else float(u.nb.get("redden", 0.0)))
@@ -870,6 +967,102 @@ static func animate(u: Unit, n: int) -> void:
 		s.scale = Vector2(sx * signf(s.scale.x) if s.scale.x != 0.0 else sx, 1.0 + 0.3 * f3)
 	elif u.kind == MAW:
 		s.scale = Vector2(signf(s.scale.x) if s.scale.x != 0.0 else 1.0, 1.0)
+	if ROOTERS.has(u.kind):
+		_rooted_look(u, n)
+
+
+## A Rootmaw's food level, 1 (thin) to 6 (full): the frame of its fill strip, or its breathing strip fill1..fill6.
+static func maw_level(u: Unit) -> int:
+	var f := clampf(float(u.nb.get("food", 0.0)) / float(Defs.NB["maw_cap"]), 0.0, 1.0)
+	return 1 + clampi(int(round(f * 5.0)), 0, 5)
+
+
+## A rooted creature is a building, and every building moves (the owner, 15:45). Until each has its own drawn loop:
+##  - BREATHING: a still rooted frame (the Tyrannosaur's nest, a Rootmaw's food levels) rises and falls slowly, a small
+##    vertical squash and stretch about the feet (BREATH: period s, height share);
+##  - GLOW: the food, eggs and breath (glow_<strip>, the importer's mask of the frame's glowing pixels) pulse, added on
+##    (the Tyrannosaur's fire flickers);
+##  - a creature without rooting frames (the Tyrannosaur until his nest sheet comes) cross-fades from standing to
+##    rooted and back.
+## (code: docs/art_style_inconsistency.md)
+const BREATH := {"period": 2.6, "rise": 0.022}
+
+
+static func _rooted_look(u: Unit, n: int) -> void:
+	var s := u.sprite
+	var clk: float = u._bob_t + float(u.serial % 17) * 0.37
+	var a := u.anim
+	var still := (a == "rooted" or a == "fill") and n <= 1 or a == "fill"
+	var sx := signf(s.scale.x) if s.scale.x != 0.0 else 1.0
+	if a.begins_with("fill") and a != "fill" and n > 1:
+		s.frame = int(clk * 2.5) % n         # (a Rootmaw's drawn breathing at its food stage: a slow loop)
+	if still:
+		var b := sin(clk * TAU / float(BREATH["period"]))
+		s.scale = Vector2(sx * (1.0 - float(BREATH["rise"]) * 0.3 * b), 1.0 + float(BREATH["rise"]) * b)
+	var lay := 0.0
+	if u.kind == QUEEN and a == "rooted" and float(u.nb.get("lay_t", 0.0)) > 0.0:
+		# laying, in code (no laying frames): a heave (up, then pressed down as the egg comes out, then settling) about the nest
+		var lp := 1.0 - float(u.nb["lay_t"]) / LAY_TIME
+		lay = sin(PI * lp)
+		var hv := sin(TAU * lp) * (1.0 - lp)
+		s.scale = Vector2(sx * (1.0 - 0.025 * hv), 1.0 + 0.06 * hv)
+	# the glow over its food, eggs or breath
+	var gk := "glow_%s_%s" % [a, u.anim_dir]
+	var glow := u.get_node_or_null("Glow") as Sprite2D
+	var has_glow: bool = ArtData.UNITS[u.art]["frames"].has(gk) and u.tesla_mode != "packed"
+	if has_glow:
+		if glow == null:
+			glow = Sprite2D.new()
+			glow.name = "Glow"
+			glow.centered = false
+			var cm := CanvasItemMaterial.new()
+			cm.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+			glow.material = cm
+			u.add_child(glow)
+		var tx := Game.tex("res://assets/units/%s/%s.png" % [u.art, gk])
+		if glow.texture != tx:
+			glow.texture = tx
+			glow.hframes = int(ArtData.UNITS[u.art]["frames"][gk])
+		glow.offset = s.offset
+		glow.scale = s.scale
+		glow.position = s.position
+		glow.frame = clampi(s.frame, 0, glow.hframes - 1)
+		var pulse := 0.5 + 0.5 * sin(clk * TAU / 2.2)
+		var lo := 0.18
+		var hi := 0.42
+		if u.kind == FATHER:
+			pulse = clampf(pulse * 0.75 + 0.25 * absf(sin(clk * 11.0 + sin(clk * 3.7) * 2.0)), 0.0, 1.0)     # (fire flickers)
+			lo = 0.1          # (light: his fertilising loop is drawn, its six frames hardly differ)
+			hi = 0.3
+		glow.modulate = Color(1, 1, 1, minf(1.0, (lo + hi * pulse + 0.6 * lay) * s.self_modulate.a))     # (laying: her clutch flares)
+		glow.visible = true
+	elif glow != null:
+		glow.visible = false
+	# standing to rooted (and back) without rooting frames: the two pictures cross-faded
+	var xf := u.get_node_or_null("Xf") as Sprite2D
+	var fading := a == "rooted" and (u.tesla_mode == "deploying" or u.tesla_mode == "packing")
+	if fading:
+		var p := clampf(1.0 - u.tesla_t / maxf(u.switch_time(), 0.01), 0.0, 1.0)
+		var shown := p if u.tesla_mode == "deploying" else 1.0 - p
+		if xf == null:
+			xf = Sprite2D.new()
+			xf.name = "Xf"
+			xf.centered = false
+			xf.material = s.material
+			var stx := Game.tex("res://assets/units/%s/idle_se.png" % u.art)
+			xf.texture = stx
+			var cell: Vector2i = ArtData.UNITS[u.art]["cell"]
+			xf.offset = -Vector2(ArtData.UNITS[u.art]["anchor"]) - Vector2(0, stx.get_height() - cell.y)
+			u.add_child(xf)
+			u.move_child(xf, s.get_index() + 1)
+		xf.visible = true
+		xf.self_modulate.a = 1.0 - shown
+		s.self_modulate.a = shown
+	else:
+		if xf != null:
+			xf.visible = false
+		if s.self_modulate.a < 1.0:
+			s.self_modulate.a = 1.0
 
 
 ## Over the creature (Unit._draw_unit, its own space): the Mother's eggs, a Rootmaw's food and ground, an egg's
@@ -904,7 +1097,24 @@ static func draw(u: Unit, top: float) -> void:
 		u.draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.6))
 		u.draw_arc(Vector2.ZERO, float(Defs.NB["father_r"]) * Defs.TILE, 0, TAU, 56, Color(1.0, 0.55, 0.3, 0.45), 1.5)
 		u.draw_set_transform(Vector2.ZERO)
-	if u.kind == EGG and mine:
+	if u.kind == FATHER and mine and rooted(u):
+		# his nest's queue, as a Barracks': the eggs in it, the first one's breath or incubation
+		var eggs := nest_eggs(g, u)
+		var font2 := ThemeDB.fallback_font
+		var near := father_near(g, u.team)
+		var txt2 := ("%d eggs" % eggs.size()) if near else "too far from the Mother"
+		u.draw_string_outline(font2, Vector2(-30, top - 6), txt2, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, 4, Color(0, 0, 0, 0.8))
+		u.draw_string(font2, Vector2(-30, top - 6), txt2, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1.0, 0.7, 0.45) if near else Color(1.0, 0.5, 0.4))
+		if not eggs.is_empty():
+			var e0: Unit = eggs[0]
+			var fr2 := 0.0
+			if int(e0.nb.get("fert", 0)) == 1:
+				fr2 = float(e0.nb.get("redden", 0.0))
+			else:
+				fr2 = float(e0.nb.get("t", 0.0)) / egg_time(String(e0.nb.get("k", "grub")))
+			u.draw_rect(Rect2(-30, top - 2, 60, 3).grow(0.5), Color(0, 0, 0, 0.6))
+			u.draw_rect(Rect2(-30, top - 2, 60 * clampf(fr2, 0.0, 1.0), 3), Color(1.0, 0.45, 0.3))
+	if u.kind == EGG and mine and not bool(u.nb.get("nest", false)):
 		var k := String(u.nb.get("k", "grub"))
 		var fr := 0.0
 		var col := Color(0.85, 1.0, 0.45)
@@ -926,6 +1136,8 @@ static func draw_key(u: Unit) -> int:
 			return int(float(u.nb.get("food", 0.0)) / 6.0) + (100000 if u.nb.has("spot") else 0)
 		QUEEN:
 			return int(u.nb.get("eggs", 0))
+		FATHER:
+			return int(u.game.clock * 4.0) if rooted(u) else 0       # (his nest's queue and its progress)
 	return 0
 
 
@@ -955,7 +1167,7 @@ static func unit_load(u: Unit, d: Dictionary) -> void:
 		if not u.game.nb_walls.has(u):
 			u.game.nb_walls.append(u)
 	if ROOTERS.has(u.kind):
-		u.nb_mass = 1000.0 if u.tesla_mode != "packed" else (30.0 if u.kind == QUEEN else 1.0)
+		u.nb_mass = 1000.0 if u.tesla_mode != "packed" else packed_mass(u.kind)
 
 
 static func save(g: Game) -> Dictionary:

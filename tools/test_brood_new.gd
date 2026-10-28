@@ -4,8 +4,10 @@ extends SceneTree
 ##  0. the start: no buildings, the Brood Mother, a Rootmaw and 5 grubs; both finish rooting in a moment; supply 40 + 20
 ##  1. rooted: armour and less damage (the same blow on a rooted and an uprooted Rootmaw)
 ##  2. the Mother lays an egg while she walks (it drops behind her)
-##  3. warriors' eggs are fertilised only near the Mother (refused without the father beside her; fertilised by his
-##     breath; hatch as 3 Raptors); an egg the father doesn't reach in time hatches as a grub (the difference paid back)
+##  3. warriors' eggs are fertilised only by the father ROOTED on his nest near the Mother (refused without him, far
+##     off or standing; rooted he takes less damage; her eggs go into his nest, 2 queued; fertilised by his breath;
+##     they hatch there as 3 Raptors); when he gets up the egg lies on the ground and, never fertilised, hatches as a
+##     grub (the difference paid back)
 ##  4. one Tyrannosaur at a time (an egg for one counts)
 ##  5. a Rootmaw drinks its ground into its body; rooted circles may not overlap
 ##  6. UPROOT spills its food as a pile (grubs take from it; it rots); HAUL carries it, slower; killed hauling it bursts
@@ -146,23 +148,43 @@ func _run() -> void:
 	var f: Unit = g._add_unit(BroodNew.FATHER, 0, far)
 	await wait(0.3)
 	check(not BroodNew.father_near(g, 0) and BroodNew.lay_problem(g, q, "raptor") != "", "   the father far from her: still refused")
-	f.position = q.position + Vector2(-q.radius - 40.0, 10.0)
+	f.position = q.position + Vector2(-q.radius - 140.0, 40.0)
 	f.cmd_stop()
 	await wait(0.3)
-	check(BroodNew.father_near(g, 0) and BroodNew.lay_problem(g, q, "raptor") == "", "   the father beside her: allowed")
+	check(not BroodNew.father_near(g, 0) and BroodNew.lay_problem(g, q, "raptor").contains("rooted"), "   the father beside her but standing: still refused (%s)" % BroodNew.lay_problem(g, q, "raptor"))
+	f.cmd_deploy()
+	var on_nest: bool = await wait_for(func() -> bool: return f.tesla_mode == "deployed", float(Defs.NB["father_switch"]) + 2.0)
+	check(on_nest and BroodNew.father_near(g, 0) and BroodNew.lay_problem(g, q, "raptor") == "", "   ROOTED on his nest beside her: allowed")
+	check(BroodNew.incoming(f, 20.0) < 20.0, "   rooted, he takes less damage (20 -> %.1f)" % BroodNew.incoming(f, 20.0))
 	var r0: int = mine("raptor").size()
 	q.cmd_lay("raptor")
 	await wait(0.1)
 	var re: Unit = mine(BroodNew.EGG).back()
-	check(re != null and int(re.nb["fert"]) == 1, "   the Raptor egg waits for the father's breath")
-	var fert: bool = await wait_for(func() -> bool: return int(re.nb["fert"]) == 2, 6.0)
-	check(fert, "   the father breathes on it: fertilised (red)")
-	var got3: bool = await wait_for(func() -> bool: return mine("raptor").size() >= r0 + 3, Defs.UNITS["raptor"]["time"] + 3.0)
-	check(got3, "   it hatches as 3 Raptors (%d)" % (mine("raptor").size() - r0))
-	# an egg the father never reaches: a grub, the difference paid back
+	check(re != null and int(re.nb["fert"]) == 1 and bool(re.nb.get("nest", false)) and re.position.distance_to(BroodNew.nest_point(f)) < 2.0, "   the Raptor egg goes into his nest")
 	q.cmd_lay("raptor")
+	await wait(0.1)
+	check(BroodNew.nest_eggs(g, f).size() == 2, "   a second one: 2 eggs in the nest (%d)" % BroodNew.nest_eggs(g, f).size())
+	var fert: bool = await wait_for(func() -> bool: return int(re.nb["fert"]) == 2, 6.0)
+	check(fert, "   he breathes on it: fertilised (red)")
+	var got3: bool = await wait_for(func() -> bool: return mine("raptor").size() >= r0 + 3, Defs.UNITS["raptor"]["time"] + 3.0)
+	var at_nest := 0
+	for rp in mine("raptor"):
+		if rp.position.distance_to(BroodNew.nest_point(f)) < 60.0:
+			at_nest += 1
+	check(got3 and at_nest >= 3, "   it hatches as 3 Raptors, in the nest (%d, %d by it)" % [mine("raptor").size() - r0, at_nest])
+	await wait_for(func() -> bool: return BroodNew.nest_eggs(g, f).is_empty(), Defs.UNITS["raptor"]["time"] + 5.0)
+	# an egg the father never breathes on: he gets up, it lies on the ground, a grub after all, the difference paid back
+	for rp in mine("raptor"):
+		g.consume_unit(rp)          # (room in the supply for one more egg)
+	var old_eggs: Array = mine(BroodNew.EGG)
+	var lwhy: String = q.cmd_lay("raptor")
+	check(lwhy == "", "   one more Raptor egg (%s)" % lwhy)
 	await wait(0.05)
-	var lone: Unit = mine(BroodNew.EGG).back()
+	var lone: Unit = mine(BroodNew.EGG).filter(func(e) -> bool: return not old_eggs.has(e)).back()
+	f.cmd_uproot(false)
+	await wait(0.2)
+	check(not bool(lone.nb.get("nest", false)), "   he gets up: the egg in his nest lies on the ground")
+	await wait_for(func() -> bool: return f.tesla_mode == "packed", float(Defs.NB["father_switch"]) + 2.0)
 	f.position = far
 	f.cmd_stop()
 	var gold_a: int = int(p["gold"])

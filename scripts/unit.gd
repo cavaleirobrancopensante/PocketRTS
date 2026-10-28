@@ -1065,6 +1065,8 @@ func can_hit(e: Entity) -> bool:
 		return false
 	if _d_medic or _d_noatk or e.untouchable():
 		return false
+	if _k_nb and kind == BroodNew.QUEEN and tesla_mode != "packed":
+		return false            # (the new Brood's Mother can't attack from her nest: to fight she uproots)
 	if deflate != "" or (kind == "skywing" and sky != "air" and sky != "ground"):
 		return false            # a deflated Bloater, a Skywing landing or taking off
 	if owl_t >= 0.0:
@@ -1881,6 +1883,8 @@ func switch_time() -> float:
 			return float(Defs.NB["maw_switch"])
 		BroodNew.TURTLE:
 			return float(Defs.NB["turtle_switch"])
+		BroodNew.FATHER:
+			return float(Defs.NB["father_switch"])
 	return Defs.TESLA_SWITCH
 
 
