@@ -1,14 +1,66 @@
 # AI round 5: the Crown against the new Clockwork, the Clockwork against Horsemen
 
-Version 0.14.88, branch `ai-round5`. Written to be read aloud.
+Branch `ai-round5-merge` (round 5 merged onto main 0.14.94). Written to be read aloud.
 
-## Status: BLOCKED, not yet played
+## Status: DONE, played, NOT merged into main
 
-This run had no Godot. The task said Godot is at /home/claude/godot. It was not there.
-Downloading Godot 4.7 from GitHub was refused by the session's safety check, and the Nix mirror is blocked by the proxy.
-So no game, no test and no screenshot was run.
-The code is written and checked for syntax only (gdtoolkit's gdparse on both scripts).
-Do not merge it before the checks at the end of this page are run.
+The tests pass and the raid fix works: the Clockwork's Winders now beat a Horseman raid.
+But the Crown computer did not get better against the Clockwork computer. It got a little worse.
+So, as the task said, round 5 is kept on this branch and not pushed to main.
+
+### The raid test (tools/test_ai_cw_horse_raid.gd, Winders lost to Horsemen, round 5 off then on)
+
+| map, riders, when | before: Winders lost, riders killed | after: Winders lost, riders killed | ramp post after |
+|---|---|---|---|
+| greenhold, 2 riders, 3:20 | 4 lost, 2 killed | 0 lost, 2 killed | 1 |
+| greenhold, 3 riders, 3:20 | 11 lost, 0 or 1 killed | 2 lost, 3 killed | 0 (8 soldiers home) |
+| greenhold, 4 riders, 3:20 | 14 lost, 1 killed | 6 lost, 4 killed | 0 |
+| frostmere, 3 riders, 3:40 | 10 lost, 3 killed | 2 lost, 3 killed | 1 |
+| hollowfen, 4 riders, 4:20 | 7 to 16 lost, 1 to 4 killed | 3 or 4 lost, 4 killed | 3 |
+| kestrel_rise, 3 riders, 4:00 | 10 lost, 2 killed | 2 lost, 3 killed | 4 |
+
+Every run passes. The Winders group up (they stand about 50 px apart instead of scattering), the Clock Soldiers come as one group, and the ramp post stands once 12 or so soldiers are at home.
+One seed (greenhold 21 at 7:00) never got a raid going in either run: the riders the test drops did not reach the Winders.
+
+### The AI tests
+
+test_ai_rush, test_ai_rush_followup, test_ai_wall_vs_rush, test_ai_army_response, test_ai_scout, test_ai_scout_defence, test_gear_ai, test_ai_worker_safety: all pass.
+test_determinism (Crown against Clockwork) varies run to run with round 5 on and with it off, as it does on main.
+New: tools/test_ai_r5_hold_spots.gd checks that the Crown finds its spots behind the wall and the Clockwork its ramp post on all four maps.
+
+### The games (Hard against Hard, study_game_v2, the four maps, Crown against Clockwork)
+
+A win by a lead at 30:00 counts as a win.
+
+| version | greenhold | frostmere | hollowfen | kestrel_rise | Crown wins |
+|---|---|---|---|---|---|
+| before (main, `r5:off`) | won, won | won, even | won, won | lost, lost | 5 of 8, 1 even |
+| round 5 first run (v1) | won, lost | won, won | won | lost | 4 of 6 |
+| round 5 as on this branch (v2) | won, lost | won, won | won, lost | lost, lost | 4 of 8 |
+| v3, Barracks before tech (taken out again) | lost, lost | won | | lost | 1 of 4 |
+| part A only (`r5:crown`, the Clockwork as before) | lost | won | even | lost | 1 of 4, 1 even |
+
+The old number to beat, 1 or 2 Crown wins in 8, is out of date: on 0.14.94 the Crown computer already wins 5 of 8.
+Both "before" losses on kestrel_rise came from the Horse Breeder rush opening, which round 5 makes rare. Round 5 lost kestrel_rise with the Musketeer opening too.
+
+Crown against Brood, round 5 on, once on each map: the Crown won all four (12:49, 12:43, 12:02, 9:58), the same as main.
+
+### Why the Crown did not get better
+
+The films and logs show the same story in the lost games.
+The Crown expands at about 6:00. The Clockwork's first wave, 20 to 30 supply, comes at 7:30 to 8:30.
+The Crown has 14 to 17 Musketeers then. Its army dies at the expansion, the expansion falls, the main's soil runs out around 10:00, and the income stops (about 9,000 gold earned by 12:00 against the Clockwork's 12,000 cogs).
+In v1 the army held behind the wall against any bigger wave, so it left the expansion to fall. v2 holds only for a wave at the ramp; the expansion is defended as before. Neither saved the expansion.
+v3 copied the owner's build (Barracks before the Armoury and Church). The Crown then attacked early with 21 supply and lost the army. It was taken out.
+Part B helps the Clockwork against the Crown's two Horsemen too, so "after" games face a slightly stronger Clockwork. But part A alone was no better either.
+
+### What changed in this merge
+
+- The ramps are found at the start (the wall covers the band later, and the ramp finder skips built cells: the hold behind the wall never found its spots).
+- A narrow ramp top with one spot still takes the whole post (the extra guards stand beside it).
+- The hold behind the wall is only for a wave within 12 tiles of the ramp.
+- The Labourer hold is softer: from 30 Labourers, while the army's supply is under 60% of them (24 and 80% starved the economy).
+- Study switches: `r5:off` (all off, the same as main), `r5:crown` (part A only), `r5:clock` (part B only), on the command line after `--`.
 
 ## Where the code is
 
@@ -30,11 +82,11 @@ Before the Clockwork rewrite it won about 6 of 8.
 
 ## Part A: the Crown computer against the Clockwork
 
-1. Labourers. From 4:00, with 24 or more, no new Labourer while the army's supply is under 80% of the Labourers. Never more than 42. (`hold_labourers`)
+1. Labourers. From 4:00, with 30 or more, no new Labourer while the army's supply is under 60% of the Labourers. Never more than 42. (`hold_labourers`)
 2. Horsemen. Two at most, for scouting and picking off Winders. The rest of the Barracks' time goes on Musketeers. A Horseman rush keeps its own rule. (`horsemen_cap`)
 3. Horses. A Foundry keeps one horse standing by, and only while a gun or the wagon is wanted or queued. No spare horse at the breeders. Riders still get their horse when they are trained. (`foundry_horses`, `spare_horses`)
 4. Missionaries. One at most. (`missionary_ok`)
-5. Behind the wall. When enemies come to the outside of the ramp wall and they are worth 85% of our army or more, the whole army holds on the high ground behind the wall. Musketeers stand three tiles in and shoot over it. Cannons and Mortars stand six tiles in. Units that walked out are called back. It holds until the wave is worth under 70% of the army. An enemy inside the wall is fought as before. A smaller wave is met as before. (`hold_behind_wall`)
+5. Behind the wall. When enemies come to the outside of the ramp wall (within 12 tiles of the ramp) and they are worth 85% of our army or more, the whole army holds on the high ground behind the wall. Musketeers stand three tiles in and shoot over it. Cannons and Mortars stand six tiles in. Units that walked out are called back. It holds until the wave is worth under 70% of the army. An enemy inside the wall is fought as before. A smaller wave is met as before. (`hold_behind_wall`)
 6. No attack into a bigger army. A wave only goes out when it is worth 1.2 times the biggest enemy army seen in the last four minutes, or at 60 supply. (`attack_ok`)
 7. Pulling back. A wave that trades badly comes home, with the Clockwork's own rule (lost 2.2 times what it killed, and at least 300, over 30 seconds). (`retreat_rule`)
 8. Expansions. The next Town Hall waits for 14 army supply worth 90% of the biggest enemy army seen. If the main's soil is under 30%, it expands anyway. (`hold_hall`)
@@ -57,14 +109,8 @@ The Crown's changes only apply against the Clockwork. They may suit the Brood ga
 The ramp post uses the same ramp finder the Crown's wall uses.
 The wall hold thresholds (85% in, 70% out) and the hall gate (14 supply) are first guesses.
 
-## What is left: the checks to run
+## What is left
 
-Put Godot 4.7 at /home/claude/godot, then:
-
-1. The raid test, new: `godot --headless --fixed-fps 30 --script res://tools/test_ai_cw_horse_raid.gd -- map:greenhold seed:5 riders:3 at:200`. It plays the same game with round 5 off and on, and counts the Winders lost. Run riders:2 and riders:4, and other seeds.
-2. The AI tests, compared with main: test_ai_* , test_gear_ai, test_ai_rush_followup, test_ai_wall_vs_rush, test_ai_worker_safety, test_determinism.
-3. Crown computer against Clockwork computer, both sides, 8 or more games, the usual four (greenhold 11 0, frostmere 12 1, hollowfen 13 0, kestrel_rise 14 1), twice, with `tools/study/study_game_v2.gd`. Compare with `ai.r5.on = false`.
-4. Crown against Brood, the four maps. These should not change at all.
-5. Films with `tools/shot_ai_match.gd`: the wall hold (the "holds behind its wall" line in log.txt), the Winders grouping ("groups its Winders up"), the ramp post ("posts ... on HOLD").
-
-Things to look for: the army standing behind the wall must still reach the gate with its shots; the ramp post must not block the Clockwork's own Winders and waves; the Crown's halls must not stall for good when the Clockwork army is always bigger.
+- Part B (the Winders against riders, the ramp post) works and could be merged on its own: `r5:clock` games against the Crown, the four maps, would show whether it makes the Clockwork too strong for the Crown computer (the owner beat it easily).
+- Part A needs a different idea. The Crown loses its expansion to the first Clockwork wave and then runs out of soil. Things to try: a later expansion against the Clockwork (with the army at home and the wall), more Labourers on the main's soil first, or Cannons at the expansion.
+- The raid test's greenhold seed 21 at 7:00 never starts a raid.
