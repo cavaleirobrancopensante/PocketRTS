@@ -1,5 +1,5 @@
 extends SceneTree
-## THE GREAT WINDER (scripts/great_winder.gd, Defs.GREAT_WINDER, docs/great_winder.md): made at the Movement Works once an
+## THE GREAT WINDER (scripts/great_winder.gd, Defs.GREAT_WINDER, docs/great_winder.md): made at the Heavy Works (0.14.94) once an
 ## Escapement works (cogs and Tension); its walk is played so the feet do not slide; it WINDS the constructs inside its
 ## area (a run-down one wakes) and not the ones outside, and never runs down itself; MEND (autocast, on from the start)
 ## mends a hurt Clockwork unit near it, costs cogs, and stops when switched off; it never mends a Crown unit; SWEEP
@@ -111,8 +111,9 @@ func _wreck(g: Game, u: Unit) -> void:
 # ------------------------------------------------------------------ the unit
 
 func _roster(g: Game) -> void:
-	var wd: Dictionary = Defs.BUILDINGS[Defs.CW_WORKS]
-	check("the Movement Works trains the Great Winder", (wd["trains"] as Array).has(K))
+	var wd: Dictionary = Defs.BUILDINGS[Defs.CW_HEAVY]
+	check("the Heavy Works trains the Great Winder (0.14.94)", (wd["trains"] as Array).has(K))
+	check("the Light Works does not", not (Defs.BUILDINGS[Defs.CW_WORKS]["trains"] as Array).has(K))
 	check("it is in the gear-mode roster (not retired)", Defs.CW_NEW_UNITS.has(K) and not Defs.retired(K))
 	check("its price is cogs and Tension", g.unit_price(0, K) == [int(Defs.UNITS[K]["cost"]), int(Defs.UNITS[K]["tension"])], str(g.unit_price(0, K)))
 	check("it has no weapon", Defs.UNITS[K].get("no_attack", false) and not g._add_unit(K, 0, U.hall(g, 0).center() + Vector2(0, 200)).has_attack())
@@ -124,19 +125,21 @@ func _roster(g: Game) -> void:
 	g.players[0]["gold"] = 50000
 	g.players[0]["tension"] = 5000.0
 	var hall := U.hall(g, 0)
-	var works := U.put(g, 0, Defs.CW_WORKS, hall.cell)
+	var lw := U.put(g, 0, Defs.CW_WORKS, hall.cell)
 	g._recount_supply(0)
 	g.players[0]["cap"] = 200
-	var why := g.can_train(works, K)
-	check("no Escapement: it is refused", why.contains("Escapement"), why)
+	check("no Escapement: the Heavy Works cannot be placed", g.requirement_text(0, Defs.CW_HEAVY) != "", g.requirement_text(0, Defs.CW_HEAVY))
 	var esc := U.put(g, 0, Defs.CW_TECH, hall.cell)
 	_spring_beside(g, esc)
+	U.step(g, 0.6)
+	var works := U.put(g, 0, Defs.CW_HEAVY, hall.cell)
 	if g.gear_net.spring_for(works) == null:
 		_spring_beside(g, works)
 	U.step(g, 0.6)
 	g.players[0]["cap"] = 200
-	why = g.can_train(works, K)
-	check("with a working Escapement (and a Mainspring at the Works) it trains", why == "", why)
+	var why := g.can_train(works, K)
+	check("with a working Escapement (and a Mainspring at the Heavy Works) it trains", why == "", why)
+	check("the Light Works refuses it", lw == null or g.can_train(lw, K) != "")
 	var ten0 := g.tension(0)
 	why = g.train(works, K)
 	check("the order spends its Tension", why == "" and is_equal_approx(g.tension(0), ten0 - float(Defs.UNITS[K]["tension"])), why)
@@ -331,7 +334,7 @@ func _computer() -> void:
 	root.add_child(_main)
 	await process_frame
 	seed(91)
-	_main.start({"map": "ashford_crossing", "seed": 91, "slots": [
+	_main.start({"map": "greenhold", "seed": 91, "slots": [
 		{"who": "hard", "faction": "clockwork", "colour": 0, "side": 0, "strategy": "balanced"},
 		{"who": "hard", "faction": "crown", "colour": 1, "side": 1, "strategy": "balanced"}]})
 	while _main.game == null:
@@ -348,16 +351,31 @@ func _computer() -> void:
 	var hall: Building = _mine(g, "clocktower")[0]
 	g.players[0]["gold"] = 8000
 	g.players[0]["tension"] = 2000.0
+	# (the Mainspring first, with room for the Escapement and the Heavy Works' big ring, as the computer places it: the
+	# Great Winder is made at the Heavy Works since 0.14.94, which the computer lays itself)
+	var spring: Building = null
+	var rs: Array = GearEcon.room_spot_n(g, 0, "mainspring", [hall], [Defs.CW_TECH, Defs.CW_HEAVY])
+	if int(rs[1]) >= 2:
+		spring = g._add_building("mainspring", 0, rs[0], true)
+		g.gear_net.solve()
+	if spring == null:
+		spring = _put(g, "mainspring", hall)
+	var esc: Building = _put(g, Defs.CW_TECH, spring) if spring else null
 	while _mine(g, Defs.CW_WORKS).size() < 2:
 		if _put(g, Defs.CW_WORKS, hall) == null:
 			break
-	var spring: Building = _mine(g, "mainspring")[0] if not _mine(g, "mainspring").is_empty() else _put(g, "mainspring", hall)
-	var esc: Building = _put(g, Defs.CW_TECH, spring) if spring else null
 	for w in _mine(g, Defs.CW_WORKS):
 		if g.gear_net.spring_for(w) == null:
 			_put(g, "mainspring", w)
 	for i in 8:
 		_put(g, Defs.CW_SUPPLY, hall)       # (room in the supply for a 4-supply machine beside its army)
+	# (Winders to build with, as a real game has by now; the passive Crown's buildings cannot fall, so the match runs on)
+	for i in 8:
+		g._add_unit("winder", 0, g.cell_center(g.nearest_free(g.cell_of(hall.center() + Vector2(-140 + i * 36, 120)), 6)))
+	for b in g.buildings:
+		if b.team == 1:
+			b.max_hp = 1.0e7
+			b.hp = 1.0e7
 	await physics_frame
 	g.gear_net.solve()
 	check("the computer's Escapement works", esc != null and g.gear_net.speed_mult(esc) > 0.0)
@@ -367,14 +385,14 @@ func _computer() -> void:
 		for w in _mine(g, Defs.CW_WORKS):
 			if w.built and g.gear_net.spring_for(w) == null and Engine.get_physics_frames() % 60 == 0:
 				_put(g, "mainspring", w)       # (every Works it adds may make Tension units: the test's help, not the computer's)
-		return not _units(g, K).is_empty(), 300.0)
+		return not _units(g, K).is_empty(), 480.0)
 	check("the computer trains a Great Winder", not _units(g, K).is_empty(), "after %.0f s" % waited)
 	var kinds := {}
 	for u in g.army(0):
 		kinds[u.kind] = int(kinds.get(u.kind, 0)) + 1
 	print("  army %s, tension %.0f, cogs %d" % [str(kinds), g.tension(0), int(g.players[0]["gold"])])
-	for w in _mine(g, Defs.CW_WORKS):
-		print("  works big %s queue %s: %s" % [w.gear_big, str(w.queue), g.can_train(w, K)])
+	for w in _mine(g, Defs.CW_HEAVY):
+		print("  heavy works queue %s: %s" % [str(w.queue), g.can_train(w, K)])
 	await _wait(g, func() -> bool: return false, 90.0)
 	check("one, not more", _units(g, K).size() == 1, "%d" % _units(g, K).size())
 	var army: Array = g.army(0).filter(func(u: Unit) -> bool: return u.kind != K and not u.is_air())
@@ -401,7 +419,10 @@ func _computer() -> void:
 		c += u.position
 	c /= maxi(1, army.size())
 	ai._follow_with_escort(army)
-	check("and follows it when it moves", gw.order == "move" and gw.order_point.distance_to(c) < 140.0, "order %s to %s, army at %s" % [gw.order, str(gw.order_point), str(c)])
+	# (AI._great_winder_follow aims 60 px behind the army and leaves an order within 90 px of that, or a Winder already
+	# within 110 px of it, alone: so up to ~170 px from the army's middle is "following", as in the check above)
+	check("and follows it when it moves", gw.order == "move" and gw.order_point.distance_to(c) < 170.0 or gw.position.distance_to(c) < 170.0,
+		"order %s to %s, at %s, army at %s" % [gw.order, str(gw.order_point), str(gw.position), str(c)])
 	_main.queue_free()
 
 

@@ -233,6 +233,7 @@ const GAIN := {
 	"res://assets/audio/select/horse_breeder.wav": -1.9,
 	"res://assets/audio/select/horse_breeder_1.wav": -2.1,
 	"res://assets/audio/select/horse_breeder_2.wav": -4.0,
+	"res://assets/audio/select/heavy_works.wav": 0.0,
 	"res://assets/audio/select/mainspring.wav": -1.4,
 	"res://assets/audio/select/movement_works.wav": -0.7,
 	"res://assets/audio/select/movement_works_1.wav": -1.1,

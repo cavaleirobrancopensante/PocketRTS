@@ -135,6 +135,11 @@ var ais: Array = []
 
 var selection: Array = []
 var groups: Array = [[], [], [], [], [], [], [], [], [], []]   # control groups 1-9 and 0 (kept in the autosave)
+## The computer keeps spots for buildings it means to lay soon (team -> {kind -> {"cell", "t", "spring"}}): its own other
+## buildings are not put where they would take such a spot or cut into its ring (placement_problem with `ai`). Used for the
+## Escapement and the Heavy Works' big ring by a Mainspring (AI._keep_heavy, 0.14.94). Not saved: the computer works it
+## out again.
+var ai_keep := {}
 var cam_slots: Array = [null, null, null, null, null, null, null]   # camera hotkeys F4-F10: [position, zoom] or null (kept in the autosave)
 var _hash := {}
 var _path_queue: Array = []
@@ -256,6 +261,9 @@ func _ready() -> void:
 	swipe_marks.top = true
 	swipe_marks.z_index = 2             # the Pendulum's smear: over the units it cuts through
 	add_child(swipe_marks)
+	powder_smoke = PowderSmoke.new()        # black powder smoke (looks only: scripts/powder_smoke.gd)
+	powder_smoke.setup(self, 0 if edit_mode else (PowderSmoke.force if PowderSmoke.force >= 0 else Settings.powder_smoke_level()))
+	add_child(powder_smoke)
 	body_bars = Node2D.new()
 	body_bars.z_index = 1
 	body_bars.draw.connect(_draw_body_bars)
@@ -289,6 +297,13 @@ func _ready() -> void:
 	_generate_map()
 	_setup_astar()
 	_render_ground()
+	if not edit_mode:
+		# the best free hall spots of each side, tinted on the ground (scripts/expansion_spots.gd; rated on the bare map)
+		exp_spots = ExpansionSpots.new()
+		exp_spots.game = self
+		exp_spots.spots = ExpansionSpots.rate(self)
+		exp_spots.z_index = -18
+		add_child(exp_spots)
 	if edit_mode:
 		fog_sprite.visible = false
 		camera.position = Vector2(W, H) * T * 0.5
@@ -2860,6 +2875,7 @@ func near_enemy_building(t: int, p: Vector2, tiles: float) -> bool:
 
 
 var _floats: Array = []           # [position, text, colour, time left]
+var exp_spots: ExpansionSpots         # the best expansion spots tinted on the ground (null in the editor)
 var ground_marks: GroundMarks         # AREA MARKS on the ground (area_mark; scripts/ground_marks.gd)
 var swipe_marks: GroundMarks          # the Pendulum's smear, over the units
 
@@ -3717,12 +3733,16 @@ func tension_user_problem(t: int, kind: String) -> String:
 func _idle_text(kind: String) -> String:
 	if kind == Defs.CW_AIR:
 		return "The Clock Aviary stands idle: mesh its gear ring with a Mainspring's."
+	if kind == Defs.CW_HEAVY:
+		return "The Heavy Works stands idle: mesh its gear ring with a Mainspring's."
 	return "The Escapement stands idle: mesh its gear ring with a Mainspring's."
 
 
 func _unlinked_text(kind: String) -> String:
 	if kind == Defs.CW_AIR:
 		return "The Clock Aviary is unlinked: its gear ring must mesh with the gear field."
+	if kind == Defs.CW_HEAVY:
+		return "The Heavy Works is unlinked: its gear ring must mesh with the gear field."
 	return "The Escapement is unlinked: its gear ring must mesh with the gear field."
 
 
@@ -4670,6 +4690,14 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 		var pp := pit_claim_problem(t, c)      # (each pit claims a circle of ground: they may not overlap)
 		if pp != "":
 			return pp
+	if k == Defs.CW_TURRET:
+		var tp := GearNet.turret_problem(self, t, c)      # (THE TURRET CIRCLE: each turret claims a circle; no overlap)
+		if tp != "":
+			return tp
+	if ai and ai_keep.has(t):
+		for kk in ai_keep[t]:
+			if String(kk) != k and _takes_kept(t, k, c, String(kk)):
+				return "Kept for a building the computer lays next."
 	if k == faction_hall(t):
 		var mid0 := (Vector2(c) + Vector2(size) * 0.5) * T
 		# (the Brood has no spacing rule: Burrows own no ground and deliveries go to the capital,
@@ -6016,6 +6044,7 @@ func musket_shot(u: Unit, e: Entity, dmg: float, from := Vector2.INF) -> void:
 	if from != Vector2.INF:
 		muzzle = from
 	spawn_effect("smoke", muzzle + u.facing * 8.0, 1.2).scale = Vector2(0.7, 0.7)
+	powder("musket", muzzle + u.facing * 6.0, u.facing)
 	var hit := randf() < 0.85
 	if hit:
 		e.take_damage(dmg, u, Entity.BLOW_RANGED)
@@ -6112,6 +6141,7 @@ func canister_at(u: Unit, aim: Vector2, dmg: float, e: Entity = null) -> void:
 	Sfx.play_any(["combat/cannon_canister", "combat/cannon_attack", "cannon"], u.global_position)
 	spawn_effect("smoke", from + dir * 12.0, 0.9)
 	spawn_effect("smoke", from + dir * 30.0, 1.2).modulate = Color(1, 1, 1, 0.6)
+	powder("canister", from + dir * 14.0, dir)
 	# a spray of musket balls fanning out of the muzzle
 	var spread := acos(float(Defs.CANISTER["cone"]))
 	for i in 18:
@@ -6261,6 +6291,7 @@ func acid_shot(u: Unit, e: Entity, dmg: float) -> void:
 func cannon_shot(u: Unit, p: Vector2, dmg: float) -> void:
 	var muzzle := u.center() + u.facing * 30.0
 	spawn_effect("smoke", muzzle + u.facing * 10.0, 0.8)
+	powder("cannon", muzzle + u.facing * 12.0, u.facing)
 	var pr := Projectile.new()
 	pr.game = self
 	pr.from = muzzle
@@ -6432,6 +6463,7 @@ func mortar_shot(u: Unit, p: Vector2, dmg: float) -> void:
 	area_mark("ring", u.team, pr.to, Vector2.ZERO, pr.splash, 0.0, "powder", pr.duration, true)     # (where it will land)
 	var sm := spawn_effect("smoke", muzzle + Vector2(0, -8), 0.9)
 	sm.modulate = Color(1, 1, 1, 0.8)
+	powder("mortar", muzzle + Vector2(0, -6), u.facing * 0.3 + Vector2(0, -0.7))
 	Sfx.play_any(["combat/mortar_attack", "combat/cannon_attack", "cannon"], u.global_position)
 
 
@@ -6443,6 +6475,7 @@ func mortar_land(p: Vector2, dmg: float, splash: float, t: int, shooter: Entity,
 	var fx := spawn_effect(name, p, 1.0)
 	fx.offset = Vector2(0, -float(ArtData.EFFECTS[name]["size"].y) * 0.4)
 	fx.scale = Vector2.ONE * (splash / 36.0)
+	powder("shell", p)
 	Sfx.play_any(["combat/mortar_hit", "combat/cannon_hit", "boom"], p)
 	blast_bodies(p, splash, aimed, Vector2.INF, Vector2.INF, 0.0, dmg)
 	area_mark("ring", t, p, Vector2.ZERO, splash, 0.0, "powder")
@@ -6664,6 +6697,8 @@ func ground_shot_fx(u: Unit, to: Vector2) -> void:
 			Sfx.play_any(["combat/steam_walker_attack", "steam"], from)
 		_:
 			spawn_effect("smoke", from + u.facing * 8.0, 1.2).scale = Vector2(0.7, 0.7)
+			if powder_gun(u):
+				powder("musket", from + u.facing * 6.0, u.facing)
 			var s := Shot.new()
 			s.face_offset = PI
 			s.scale = Vector2(0.45, 0.45)
@@ -7201,6 +7236,8 @@ func fog_miss(u: Unit, e: Entity) -> void:
 			spawn_effect("smoke", from + u.facing * 12.0, 0.9)
 		"balloon", "musketeer":
 			spawn_effect("smoke", from + u.facing * 8.0, 1.2).scale = Vector2(0.7, 0.7)
+	if powder_gun(u):
+		powder("cannon" if u.kind == "cannon" else "musket", from + u.facing * 8.0, u.facing)
 	if sname != "":
 		var s := Shot.new()
 		s.scale = Vector2(0.45, 0.45) if sname == "ball" else Vector2(0.8, 0.8)
@@ -7510,6 +7547,7 @@ func powder_blast(src: Entity, p: Vector2, dmg: float, r: float, big := false) -
 	var sc := r / (40.0 if big else 30.0)
 	fx.scale = Vector2(sc, sc)
 	fx.offset = Vector2(0, -float(ArtData.EFFECTS[name]["size"].y) * 0.4)
+	powder("wagon" if big else "keg", p)
 	if big:
 		spawn_effect("explosion", p + Vector2(0, -10), 1.4).scale = Vector2(2.2, 2.2)
 		for i in 4:
@@ -8508,6 +8546,38 @@ func _draw_body_bars() -> void:
 var view_rect := Rect2()                 # what the camera sees (a bit bigger), for culling
 
 
+# ------------------------------------------------------------------ black powder smoke (looks only)
+
+var powder_smoke: PowderSmoke = null
+
+
+## A black powder shot's smoke (PowderSmoke.KINDS: musket, cannon, canister, mortar, shell, keg,
+## wagon) at p, pushed along dir. Looks only: no random numbers of the game's, nothing read back.
+## Online the guests, and the replay, get it as an effect "powder:<kind>" (its speed field: the
+## direction's angle, or 9 for none; a version without it drops the unknown effect).
+func powder(kind: String, p: Vector2, dir := Vector2.ZERO) -> void:
+	if not puppet:
+		var f := ["e", "powder:" + kind, p, dir.angle() if dir != Vector2.ZERO else 9.0]
+		# (shots and blows first: the smoke takes only what room is left in a snapshot's effects)
+		if net != null and net.fx.size() < NetSession.FX_MAX - 15:
+			net.fx.append(f)
+		if rec != null and rec.fx.size() < NetSession.FX_MAX - 15:
+			rec.fx.append(f)
+	if powder_smoke != null:
+		powder_smoke.puff(kind, p, dir)
+
+
+## Guest / replay: a powder effect from the host's list (powder above).
+func powder_fx(name: String, p: Vector2, a: float) -> void:
+	if powder_smoke != null:
+		powder_smoke.puff(name.trim_prefix("powder:"), p, Vector2.ZERO if a > 8.0 else Vector2.from_angle(a))
+
+
+## Does this unit fire black powder (its musket, the cavalry's pistol, a gun, a mortar)?
+func powder_gun(u: Unit) -> bool:
+	return u.mode == "pistol" or u.kind in ["musketeer", "cannon", "mortar", "balloon"]
+
+
 ## Can side `t` see this target (to shoot at it from `from`)? A unit: where it stands. A
 ## building: its centre or the part of it nearest the shooter.
 func target_seen(t: int, e: Entity, from: Vector2) -> bool:
@@ -8907,6 +8977,23 @@ func abandon(b: Building) -> void:
 		b.crate_obj.remove()            # (a Clockwork crate waiting for this site goes too)
 
 
+## Would a building of kind k at cell c take the spot the computer keeps for a `kk` (ai_keep): its footprint on the kept
+## one (a tile of margin), or its gear ring cutting into the kept ring?
+func _takes_kept(t: int, k: String, c: Vector2i, kk: String) -> bool:
+	var keep: Dictionary = ai_keep[t][kk]
+	var kc: Vector2i = keep["cell"]
+	var ks: Vector2i = Defs.BUILDINGS[kk]["size"]
+	var sz: Vector2i = Defs.BUILDINGS[k]["size"]
+	if Rect2i(kc, ks).grow(1).intersects(Rect2i(c, sz)):
+		return true
+	if Defs.gear_mode and String(Defs.BUILDINGS[k]["faction"]) == "clockwork" and String(Defs.BUILDINGS[kk]["faction"]) == "clockwork":
+		var ga := GearNet.gpos(Vector2(c) * T + Vector2(sz) * T * 0.5)
+		var gb := GearNet.gpos(Vector2(kc) * T + Vector2(ks) * T * 0.5)
+		if ga.distance_to(gb) - GearNet.ring_r(k, sz, false) - GearNet.ring_r(kk, ks, false) < -float(Defs.GEAR["overlap"]) * T:
+			return true
+	return false
+
+
 ## Pull down a finished building of your own (nothing comes back).
 ## GEAR SWAP (Clockwork, gear mode): a building's connecting gear changes between SMALL and BIG. Costs Defs.GEAR.swap_cost
 ## cogs, takes Defs.GEAR.swap_time seconds; the building idles meanwhile and its ring visibly changes size. Returns "" or
@@ -8918,12 +9005,23 @@ func gear_swap_problem(b: Building) -> String:
 		return "Wait until it is built."
 	if b.gear_swap_t >= 0.0:
 		return "Its gear is already being swapped."
+	if GearNet.big_only(b.kind):
+		return "The %s runs only on its big gear: the heavy torque." % String(b.d["name"])
 	var pw := Pendulum.swap_problem(b)       # (a Pendulum in its queue keeps the Works on the big gear)
 	if pw != "":
 		return pw
 	if int(players[b.team]["gold"]) < int(Defs.GEAR["swap_cost"]):
 		return "Not enough %s." % String(Defs.FACTIONS[faction_of(b.team)]["res"][0]).to_lower()
 	return ""
+
+
+## THE GEAR VIEW (owner, 2026-10-27; the ` key, or GEAR VIEW on a Clockwork building's card): the whole gear network at a
+## glance (GearNet._draw_view). A view only: nothing in the match changes, nothing is sent online.
+func toggle_gear_view() -> void:
+	gear_net.view = not gear_net.view
+	gear_net.queue_redraw()
+	if hud != null:
+		hud.toast("GEAR VIEW: green full speed, yellow 90%, orange 80%, red 70% or idle." if gear_net.view else "Gear view off.")
 
 
 func swap_gear(b: Building) -> String:

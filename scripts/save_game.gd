@@ -160,6 +160,10 @@ static func save(game: Game, cfg: Dictionary) -> void:
 			ud["pl"] = u.pistol
 			if u.pistol_t > 0.0:
 				ud["plt"] = snappedf(u.pistol_t, 0.01)
+		if u.kind == "cuirassier":
+			# the rider's fight on the move (scripts/ride_by.gd) and his gallop toward a charge
+			ud["rb"] = [u.rb_state, u.rb_side, snappedf(u.rb_t, 0.01), snappedf(u.rb_last, 0.01), snappedf(u.run_t, 0.01),
+				snappedf(u.rb_head.x, 0.001), snappedf(u.rb_head.y, 0.001)]
 		if u.patrol_a != Vector2.INF:
 			ud["pat"] = [_v2(u.patrol_a), _v2(u.patrol_b)]
 		if u.order == "bombard":
@@ -367,7 +371,7 @@ static func restore(game: Game, d: Dictionary) -> void:
 			b.auto_train = "horseman"      # (before the Armoury, "cuirassier" was the one horseman)
 		b.batteries = int(bd.get("bat", 0))
 		b.stock = float(bd.get("stock", 0.0))
-		b.gear_big = bool(bd.get("gb", false))                # (the gear field's connecting gear: scripts/gear.gd)
+		b.gear_big = bool(bd.get("gb", false)) or GearNet.big_only(b.kind)      # (the gear field's connecting gear: scripts/gear.gd)
 		b.gear_swap_t = float(bd.get("gs", -1.0))
 		b.gear_swap_to = bool(bd.get("gst", false))
 		b.vertical = bool(bd.get("v", false))
@@ -547,6 +551,14 @@ static func restore(game: Game, d: Dictionary) -> void:
 			u.pistol = bool(ud.get("pl", true))           # (older saves: loaded)
 			u.pistol_t = float(ud.get("plt", 0.0))
 			u.powder = minf(u.powder, u._pmax)            # (older saves: an Officer's 10 carbine shots)
+		if ud.get("rb") is Array and (ud["rb"] as Array).size() >= 7:
+			var rb: Array = ud["rb"]
+			u.rb_state = String(rb[0])
+			u.rb_side = int(rb[1])
+			u.rb_t = float(rb[2])
+			u.rb_last = float(rb[3])
+			u.run_t = float(rb[4])
+			u.rb_head = Vector2(float(rb[5]), float(rb[6]))
 		if ud.get("pat") is Array and (ud["pat"] as Array).size() == 2:
 			u.patrol_a = _to_v2(ud["pat"][0])
 			u.patrol_b = _to_v2(ud["pat"][1])

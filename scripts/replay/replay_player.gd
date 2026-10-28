@@ -264,7 +264,7 @@ func _apply(m: Dictionary) -> void:
 		for f in m["fx"]:
 			if _seeking and f[0] != "c" and f[0] != "h":
 				continue           # (a jump: only the bodies torn or hit, no sights or sounds from the times between)
-			if f[0] == "e" and not ArtData.EFFECTS.has(String(f[1])):
+			if f[0] == "e" and not ArtData.EFFECTS.has(String(f[1])) and not String(f[1]).begins_with("powder:"):
 				continue
 			keep.append(f)
 		m["fx"] = keep
@@ -485,6 +485,8 @@ func _clear_world() -> void:
 		grp.clear()
 	g._floats.clear()
 	g._fx_hidden.clear()
+	if g.powder_smoke:
+		g.powder_smoke.clear()          # (black powder smoke from another time: gone)
 	g._tracers.clear()
 	g._pings.clear()
 	by_id.clear()

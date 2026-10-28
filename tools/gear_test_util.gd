@@ -67,7 +67,7 @@ static func put(g: Game, t: int, kind: String, near: Vector2i, big := false) -> 
 	if c.x < 0:
 		return null
 	var b := g._add_building(kind, t, c, true)
-	b.gear_big = big
+	b.gear_big = big or GearNet.big_only(kind)
 	g.gear_net.solve()
 	return b
 

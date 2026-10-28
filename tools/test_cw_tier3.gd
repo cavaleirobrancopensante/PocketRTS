@@ -1,14 +1,13 @@
 extends SceneTree
 ## TIER 3 of the gear-mode Clockwork (scripts/pendulum.gd, scripts/netter.gd; docs/clockwork_gear_prototype.md "Tier 3"):
-## the PENDULUM and the NETTER come from the Movement Works once an Escapement WORKS (none, or an idle one, refuses them);
-## both cost cogs AND Tension (Tension short refuses; a cancel pays the Tension back). The Pendulum is refused while the
-## Works runs on its SMALL gear (the reason names the BIG gear), allowed once a swap to the big gear is under way or done,
-## and a Works with a Pendulum queued cannot go back to the small gear. The Pendulum's swing hurts EVERY enemy in the arc
+## the PENDULUM (from the HEAVY WORKS since 0.14.94, on its big gear only, a Tension user) and the NETTER (from the Light
+## Works) once an Escapement WORKS (none, or an idle one, refuses them); both cost cogs AND Tension (Tension short refuses; a
+## cancel pays the Tension back). The Light Works cannot make the Pendulum; the Heavy Works cannot swap to the small gear. The Pendulum's swing hurts EVERY enemy in the arc
 ## in front of it, not one behind it nor one beside it out of the arc, never its own side; the blow lands on the 5th
 ## frame of its swing. The Netter's net flies and catches ONE enemy: caught, it does not move or fire for the net's time,
 ## then it does again; a flyer it catches is on the ground meanwhile (a ground-only unit can hit it, its sprite comes
 ## down) and flies again after; the Netter then waits its long reload; by itself it nets the most dangerous enemy in reach
-## and not one caught already. The Lab starts with a big-gear Works, two Pendulums and two Netters; the sandbox lists both.
+## and not one caught already. The Lab starts with a Heavy Works, two Pendulums and two Netters; the sandbox lists both.
 ## Both cost Tension, so (THE TENSION RULE, scripts/gear_econ.gd) they are made only at a Works whose ring meshes with a
 ## Mainspring's: a Works with none refuses them.
 ##   godot --headless --fixed-fps 30 --script res://tools/test_cw_tier3.gd
@@ -43,22 +42,22 @@ func _run() -> void:
 	var P := Defs.PENDULUM
 	var N := Defs.NETTER
 	var wd: Dictionary = Defs.BUILDINGS[Defs.CW_WORKS]
-	check("the Movement Works trains the Pendulum and the Netter", (wd["trains"] as Array).has(P) and (wd["trains"] as Array).has(N))
+	var hd: Dictionary = Defs.BUILDINGS[Defs.CW_HEAVY]
+	check("the Light Works trains the Netter, not the Pendulum (0.14.94)", (wd["trains"] as Array).has(N) and not (wd["trains"] as Array).has(P))
+	check("the Heavy Works trains the Pendulum", (hd["trains"] as Array).has(P))
 	check("the Pendulum's price is cogs and Tension", g.unit_price(0, P) == [int(Defs.UNITS[P]["cost"]), int(Defs.UNITS[P]["tension"])], str(g.unit_price(0, P)))
 	check("the Netter's price is cogs and Tension", g.unit_price(0, N) == [int(Defs.UNITS[N]["cost"]), int(Defs.UNITS[N]["tension"])], str(g.unit_price(0, N)))
 	g.players[0]["gold"] = 50000
 	g.players[0]["tension"] = 5000.0
 	var hall := U.hall(g, 0)
 	var works := U.put(g, 0, Defs.CW_WORKS, hall.cell)
-	check("a Movement Works links (on its small gear)", works != null and g.gear_net.is_linked(works) and not works.gear_big)
+	check("a Light Works links (on its small gear)", works != null and g.gear_net.is_linked(works) and not works.gear_big)
 	if works == null:
 		_end()
 		return
 	g._recount_supply(0)
 	g.players[0]["cap"] = 200
-	var why := g.can_train(works, P)
-	check("no Escapement: the Pendulum is refused", why.contains("Escapement"), why)
-	why = g.can_train(works, N)
+	var why := g.can_train(works, N)
 	check("no Escapement: the Netter is refused", why.contains("Escapement"), why)
 	var esc := U.put(g, 0, Defs.CW_TECH, hall.cell)
 	U.step(g, 0.6)
@@ -68,44 +67,46 @@ func _run() -> void:
 	var spring := _spring_beside(g, esc)
 	U.step(g, 0.6)
 	check("a Mainspring meshes with the Escapement: it works", spring != null and g.gear_net.speed_mult(esc) > 0.0)
-	# ---- THE TENSION RULE (GearEcon): both cost Tension, so they are made only at a Works whose ring meshes with a Mainspring's
+	# ---- THE TENSION RULE (GearEcon): the Netter costs Tension, so it is made only at a Works whose ring meshes with a Mainspring's
 	if g.gear_net.spring_for(works) == null:
 		why = g.can_train(works, N)
 		check("a Works meshing with no Mainspring refuses the Netter (it costs Tension)", why.contains("meshes with no Mainspring"), why)
 		var wsp := _spring_beside(g, works)
 		U.step(g, 0.6)
 		check("a Mainspring put beside the Works meshes with it", wsp != null and g.gear_net.spring_for(works) != null)
-	# ---- the Netter at the small-gear Works; the Pendulum only on the big gear
 	why = g.can_train(works, N)
-	check("with a working Escapement the Netter trains at a small-gear Works", why == "", why)
+	check("with a working Escapement the Netter trains at a small-gear Light Works", why == "", why)
 	why = g.can_train(works, P)
-	check("on the SMALL gear the Pendulum is refused, naming the big gear", why.contains("BIG gear"), why)
+	check("the Light Works cannot make the Pendulum", why != "", why)
+	# ---- the HEAVY WORKS: on its big gear, a Tension user (by a Mainspring)
+	var heavy := U.put(g, 0, Defs.CW_HEAVY, hall.cell)
+	check("a Heavy Works stands on its big gear", heavy != null and heavy.gear_big)
+	if heavy == null:
+		_end()
+		return
+	if g.gear_net.spring_for(heavy) == null:
+		U.step(g, 0.6)
+		check("a Heavy Works with no Mainspring stands idle", g.gear_net.needs_spring(heavy) and g.can_train(heavy, P) != "", g.can_train(heavy, P))
+		var hsp := _spring_beside(g, heavy)
+		U.step(g, 0.6)
+		check("a Mainspring put beside the Heavy Works meshes with it", hsp != null and g.gear_net.spring_for(heavy) != null)
+	check("the Heavy Works cannot swap to the small gear", g.gear_swap_problem(heavy) != "", g.gear_swap_problem(heavy))
+	g.players[0]["cap"] = 200          # (the game counts the supply again as it runs: room for the orders)
 	var cogs0 := int(g.players[0]["gold"])
 	var ten0 := g.tension(0)
-	why = g.swap_gear(works)
-	check("the Works starts swapping to its big gear", why == "" and works.gear_swap_t >= 0.0 and works.gear_swap_to, why)
-	why = g.can_train(works, P)
-	check("with the big gear being fitted the Pendulum may be ordered", why == "", why)
-	U.step(g, float(Defs.GEAR["swap_time"]) + 0.6)
-	check("the Works runs on its big gear", works.gear_big and works.gear_swap_t < 0.0)
-	g.players[0]["cap"] = 200          # (the game counts the supply again as it runs: room for the orders)
-	cogs0 = int(g.players[0]["gold"])
-	ten0 = g.tension(0)
-	why = g.train(works, P)
-	check("the Works takes a Pendulum order on the big gear", why == "", why)
+	why = g.train(heavy, P)
+	check("the Heavy Works takes a Pendulum order", why == "", why)
 	check("its cogs were spent", int(g.players[0]["gold"]) == cogs0 - int(Defs.UNITS[P]["cost"]), "%d -> %d" % [cogs0, int(g.players[0]["gold"])])
 	check("its Tension was spent", is_equal_approx(g.tension(0), ten0 - float(Defs.UNITS[P]["tension"])), "%.0f -> %.0f" % [ten0, g.tension(0)])
-	var sw := g.gear_swap_problem(works)
-	check("with a Pendulum queued the Works cannot go back to the small gear", sw.contains("Pendulum"), sw)
 	# (a second one, cancelled: its Tension comes back)
-	why = g.train(works, P)
+	why = g.train(heavy, P)
 	var ten1 := g.tension(0)
-	g.cancel_train(works)
-	check("a cancelled Pendulum pays its Tension back", why == "" and works.queue == [P] and is_equal_approx(g.tension(0), ten1 + float(Defs.UNITS[P]["tension"])), why)
+	g.cancel_train(heavy)
+	check("a cancelled Pendulum pays its Tension back", why == "" and heavy.queue == [P] and is_equal_approx(g.tension(0), ten1 + float(Defs.UNITS[P]["tension"])), why)
 	# Tension short: refused, with a reason
 	var keep := g.tension(0)
 	g.players[0]["tension"] = 20.0
-	why = g.can_train(works, P)
+	why = g.can_train(heavy, P)
 	check("short of Tension, the Pendulum is refused", why.contains("Tension"), why)
 	why = g.can_train(works, N)
 	check("short of Tension, the Netter is refused", why.contains("Tension"), why)
@@ -113,7 +114,7 @@ func _run() -> void:
 	cogs0 = int(g.players[0]["gold"])
 	ten0 = g.tension(0)
 	why = g.train(works, N)
-	check("the Works takes a Netter order too", why == "", why)
+	check("the Light Works takes a Netter order", why == "", why)
 	check("the Netter's cogs and Tension were spent", int(g.players[0]["gold"]) == cogs0 - int(Defs.UNITS[N]["cost"]) \
 			and is_equal_approx(g.tension(0), ten0 - float(Defs.UNITS[N]["tension"])))
 	U.step(g, float(Defs.UNITS[P]["time"]) + float(Defs.UNITS[N]["time"]) + 2.0)
@@ -121,7 +122,6 @@ func _run() -> void:
 	var made_n := g.units.filter(func(u: Unit) -> bool: return u.team == 0 and u.kind == N and not u.dead)
 	check("a Pendulum came out", made_p.size() == 1, "%d" % made_p.size())
 	check("a Netter came out", made_n.size() == 1, "%d" % made_n.size())
-	check("with the queue empty the Works may go back to the small gear", g.gear_swap_problem(works) == "", g.gear_swap_problem(works))
 	_clear(g, made_p + made_n)
 	# ---- the PENDULUM's swing: every enemy in the arc in front, not behind, not beside, not its own side
 	var at := _open_near(g, hall.center() + Vector2(0, 260))
@@ -281,12 +281,12 @@ func _run() -> void:
 	g2._recount_supply(g2.human)
 	var big_works: Building = null
 	for b in g2.buildings:
-		if b.team == g2.human and not b.dead and b.kind == Defs.CW_WORKS and b.gear_big:
+		if b.team == g2.human and not b.dead and b.kind == Defs.CW_HEAVY:
 			big_works = b
-	check("the Lab has a Movement Works on its big gear, linked", big_works != null and big_works.built and g2.gear_net.is_linked(big_works))
+	check("the Lab has a Heavy Works, linked", big_works != null and big_works.built and g2.gear_net.is_linked(big_works))
 	var regs: int = g2.buildings.filter(func(b: Building) -> bool: return b.team == g2.human and b.kind == Defs.CW_SUPPLY and b.built and not b.dead).size()
 	check("in the Lab a Pendulum can be trained at once", big_works != null and g2.can_train(big_works, P) == "",
-			"%s (supply %d / %d, %d Regulators)" % [g2.can_train(big_works, P) if big_works else "no big Works", g2.supply_used(g2.human), int(g2.players[g2.human]["cap"]), regs])
+			"%s (supply %d / %d, %d Regulators)" % [g2.can_train(big_works, P) if big_works else "no Heavy Works", g2.supply_used(g2.human), int(g2.players[g2.human]["cap"]), regs])
 	var lab_p := g2.units.filter(func(u: Unit) -> bool: return u.team == g2.human and u.kind == P and not u.dead)
 	var lab_n := g2.units.filter(func(u: Unit) -> bool: return u.team == g2.human and u.kind == N and not u.dead)
 	check("the Lab has two Pendulums", lab_p.size() == 2, "%d" % lab_p.size())

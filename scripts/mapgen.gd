@@ -772,6 +772,17 @@ func _rivers() -> void:
 					g.solid[i3] = 1
 					g.water[j] = 1
 					g.solid[j] = 1
+	# and the fords too, open ground on both sides (the river's wiggle is not its own twin: a ford cell's twin was river,
+	# and a ford laid over river already drawn stayed water, so the two sides' fords differed; docs/expansion_spots.md)
+	for y in H:
+		for x in W:
+			var i4 := y * W + x
+			var j4 := (H - 1 - y) * W + (W - 1 - x)
+			if ford[i4] == 1 or ford[j4] == 1:
+				for k in [i4, j4]:
+					ford[k] = 1
+					g.water[k] = 0
+					g.solid[k] = 0
 	_woods(20, _keep())
 
 
