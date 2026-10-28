@@ -1,6 +1,6 @@
 # AI round 5: the Crown against the new Clockwork, the Clockwork against Horsemen
 
-Branch `ai-round5-merge` (round 5 merged onto main 0.14.94). Written to be read aloud.
+Branch `ai-round5-merge`, version 0.14.100 (round 5 merged onto main 0.14.99; the games were played on 0.14.90 to 0.14.94, the raid test also on 0.14.99). If it is merged into main later, it takes the next free number then. Written to be read aloud.
 
 ## Status: DONE, played, NOT merged into main
 
@@ -53,6 +53,10 @@ The Crown has 14 to 17 Musketeers then. Its army dies at the expansion, the expa
 In v1 the army held behind the wall against any bigger wave, so it left the expansion to fall. v2 holds only for a wave at the ramp; the expansion is defended as before. Neither saved the expansion.
 v3 copied the owner's build (Barracks before the Armoury and Church). The Crown then attacked early with 21 supply and lost the army. It was taken out.
 Part B helps the Clockwork against the Crown's two Horsemen too, so "after" games face a slightly stronger Clockwork. But part A alone was no better either.
+
+Pictures (greenhold, seed 11, filmed with tools/shot_ai_match.gd):
+`docs/shots/ai_round5/crown_expansion_0840.png`: 8:40, the Clockwork's 41-supply wave walks into the Crown's low-ground expansion, held by a handful of men while the army holds behind the ramp wall.
+`docs/shots/ai_round5/clockwork_ramp_post_1000.png`: 10:00, the Clockwork's ramp post: Clock Soldiers on HOLD at the top of its ramp.
 
 ### What changed in this merge
 
