@@ -4780,6 +4780,9 @@ func _push_anyway(ready: Array) -> bool:
 		return false
 	if game.supply_used(team) >= game.max_supply(team) - 8:
 		return true
+	if _pull_until > 0.0:
+		return false            # (just pulled back: only the supply cap overrides the higher bar, else it fed wave after wave
+		                        # into the same guns, out again a second after each pull-back, 0.15 Greenhold)
 	if not _clock():
 		return false            # (far ahead: the Clockwork only; the Crown's waves keep their own bar)
 	_horse_watch()
