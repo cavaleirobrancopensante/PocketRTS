@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.15.17", "items": [
+		"THE NEW BROOD (EXPERIMENT): a father fertilises ALL the warrior eggs in his nest at once, not one at a time: a queue of 10 Raptor eggs is fathered together and hatches together. The same for every father.",
+	]},
 	{"v": "0.15.16", "items": [
 		"THE NEW BROOD (EXPERIMENT), from the designer's playtest: a grub keeps BUILD (B) like every worker; its build menu has the Rootmaw, the Mound Turtle and the Tyrannosaur, then the ROOT ghost. The grub's card, its tooltips and every text a new-Brood player sees now speak of the Rootmaws and the Brood Mother, not the old Brood's buildings (in Portuguese and Spanish too, with the labels that were still in English).",
 		"EXPANSION SPOTS SAY SO: \"OPTIMAL EXPANSION SPOT\" on the best gold spot and \"EXPANSION SPOT\" on the next, small on the ground, when zoomed in and while placing a hall, for every faction that shows them. The new Brood sees them too: its best spots for a Mound Turtle on fresh ground, 15 tiles or more from the Mother, with room for Rootmaws.",

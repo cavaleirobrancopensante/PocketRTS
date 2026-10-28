@@ -13,7 +13,7 @@ extends RefCounted
 ##  - THE TYRANNOSAUR ("tyrannosaur"), a FATHER: ROOTED he is the Brood's "barracks" (the owner, 15:45): he settles on
 ##    a nest, head lowered, breathing fire-gold on it (his concept's FERTILISING figure). Rooted within Defs.NB
 ##    "father_r" of the Mother, her warrior eggs roll into his nest (they are the red eggs drawn there, counted over him
-##    like a Barracks' queue); he fertilises them one at a time and they hatch there. Uprooted he walks and fights.
+##    like a Barracks' queue); he fertilises them all at once and they hatch there. Uprooted he walks and fights.
 ##    Unfertilised eggs hatch as grubs; eggs already fertilised still hatch.
 ##  - EGGS ("brood_egg") and FOOD PILES ("food_pile", nobody's) are units that stand still.
 ## The old Brood (buildings) is untouched and stays the default: everything here only runs for a side whose slot picked
@@ -671,26 +671,27 @@ static func nest_eggs(g: Game, f: Unit) -> Array:
 	return out
 
 
-## The rooted father: warrior eggs within his reach roll into his nest; he fertilises them one at a time (his breath
-## drawn in the frame; the egg turns red, Defs.NB "fert_time" each); fertilised, they incubate and hatch in the nest.
+## The rooted father: warrior eggs within his reach roll into his nest; he fertilises them ALL AT ONCE (the owner,
+## 22:42: a queue of 10 Raptor eggs is fathered together, the same for every father): his breath drawn in the frame,
+## each egg turns red over Defs.NB "fert_time" (its own timer, "fb"); fertilised, they incubate and hatch in the nest.
+## "fe" points at one egg he is breathing on (his loop, fertilising(), the net snapshot), not a queue.
 static func father_tick(g: Game, f: Unit, delta: float) -> void:
-	var egg = f.nb.get("fe")
 	var on_nest := rooted(f)
 	var q := queen(g, f.team)
 	var r := float(Defs.NB["father_r"]) * Defs.TILE
 	var near := on_nest and q != null and f.position.distance_to(q.position) <= r
-	if egg != null and (not is_instance_valid(egg) or egg.dead or int(egg.nb.get("fert", 0)) != 1 or not near):
-		if is_instance_valid(egg) and int(egg.nb.get("fert", 0)) == 1:
-			egg.nb["redden"] = 0.0       # (broken off: it is yellow-green again until he is back on his nest)
-		f.nb.erase("fe")
-		f.nb["ft"] = 0.0
-		egg = null
+	var ft := float(Defs.NB["fert_time"])
 	if not near:
+		if f.nb.has("fe"):
+			for u in nest_eggs(g, f):
+				if int(u.nb.get("fert", 0)) == 1:
+					u.nb["redden"] = 0.0       # (broken off: yellow-green again until he is back on his nest)
+					u.nb.erase("fb")
+			f.nb.erase("fe")
+		f.nb["ft"] = 0.0
 		return
-	if egg == null:
-		f.nb["scan"] = float(f.nb.get("scan", 0.0)) - delta
-		if float(f.nb["scan"]) > 0.0:
-			return
+	f.nb["scan"] = float(f.nb.get("scan", 0.0)) - delta
+	if float(f.nb["scan"]) <= 0.0:
 		f.nb["scan"] = 0.25
 		# her warrior eggs left on the ground near him (laid before he rooted) roll into the nest
 		for u in g.units_near(f.position, r):
@@ -699,22 +700,29 @@ static func father_tick(g: Game, f: Unit, delta: float) -> void:
 				u.nb["drop"] = 0.0
 				u.position = nest_point(f)
 				g.note_move(u)
-		for u in nest_eggs(g, f):
-			if int(u.nb.get("fert", 0)) == 1:
-				egg = u
-				break
-		if egg == null:
-			return
-		f.nb["fe"] = egg
-		f.nb["ft"] = float(Defs.NB["fert_time"])
-	f.nb["ft"] = float(f.nb.get("ft", 0.0)) - delta
-	egg.nb["redden"] = clampf(1.0 - float(f.nb["ft"]) / float(Defs.NB["fert_time"]), 0.0, 1.0)     # (it turns red as he breathes)
-	if float(f.nb["ft"]) <= 0.0:
-		egg.nb["fert"] = 2
-		egg.nb["t"] = 0.0
+	var any = null
+	var roared := false
+	for u in nest_eggs(g, f):
+		if int(u.nb.get("fert", 0)) != 1:
+			continue
+		var left := float(u.nb.get("fb", ft)) - delta
+		u.nb["fb"] = left
+		u.nb["redden"] = clampf(1.0 - left / ft, 0.0, 1.0)     # (it turns red as he breathes)
+		if left <= 0.0:
+			u.nb["fert"] = 2
+			u.nb["t"] = 0.0
+			u.nb.erase("fb")
+			if f.team == g.human and not roared:
+				roared = true
+				Sfx.play_any(["roar", "combat/brute_attack"], f.position, -10.0)
+		elif any == null:
+			any = u
+	if any != null:
+		f.nb["fe"] = any
+		f.nb["ft"] = float(any.nb.get("fb", ft))
+	else:
 		f.nb.erase("fe")
-		if f.team == g.human:
-			Sfx.play_any(["roar", "combat/brute_attack"], f.position, -10.0)
+		f.nb["ft"] = 0.0
 
 
 ## The computer's Mother (and the defence test's): rooted at home. No rooted creature attacks (the owner, 15:58, 17:14):
