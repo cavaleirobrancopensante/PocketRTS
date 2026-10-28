@@ -116,9 +116,9 @@ func _lag_lines() -> void:
 	for c in game.get_children():
 		if c is Effect:
 			fx += 1
-	lines.append("  Performance: %d fps avg, 1%% low %d fps, worst frame %d ms, %d frames over 33 ms, %d over 50 ms, %.1f physics steps a frame | units %d, buildings %d, bodies %d, corpses %d, effects %d, nodes %d, objects %d" % [
+	lines.append("  Performance: %d fps avg, 1%% low %d fps, worst frame %d ms, %d frames over 33 ms, %d over 50 ms, %.1f physics steps a frame | units %d, buildings %d, bodies %d, corpses %d, effects %d, smoke puffs %d, nodes %d, objects %d" % [
 		int(round(avg_fps)), int(round(low_fps)), int(round(worst)), over33, over50, float(_phys_ticks) / maxf(n, 1),
-		game.units.size(), game.buildings.size(), bodies, game.corpses.size(), fx,
+		game.units.size(), game.buildings.size(), bodies, game.corpses.size(), fx, game.powder_smoke.alive if game.powder_smoke else 0,
 		int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)), int(Performance.get_monitor(Performance.OBJECT_COUNT))])
 	# where the time went: ms per second of play, busiest first
 	Prof.flush()

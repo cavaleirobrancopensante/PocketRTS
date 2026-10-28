@@ -12,6 +12,7 @@ static var grid_keys := false         # computer: command card keys by position 
 static var tooltips := true           # hover tooltips (computer) and the "?" help button (phone)
 static var build_grid := true         # show the planning grid while placing a building
 static var area_marks := true         # area attacks lay their shape on the ground where they strike (GroundMarks)
+static var powder_smoke := -1         # black powder smoke (PowderSmoke): -1 = not chosen (THICK for now), 0 off, 1 light, 2 full, 3 thick
 static var expansion_spots := true    # the best expansion spots tinted on the ground (ExpansionSpots; Crown and Clockwork)
 static var mini_alpha := 0.6          # how solid the minimap is drawn (0.2 to 1)
 static var relay_url := "wss://pocketrts-relay.salgarellius-rts.workers.dev"   # online: the relay (tools/relay/README.md)
@@ -35,6 +36,7 @@ static func load_all() -> void:
 		tooltips = cfg.get_value("input", "tooltips", true)
 		build_grid = cfg.get_value("input", "build_grid", true)
 		area_marks = bool(cfg.get_value("ui", "area_marks", true))
+		powder_smoke = clampi(int(cfg.get_value("ui", "powder_smoke", -1)), -1, 3)
 		expansion_spots = bool(cfg.get_value("ui", "expansion_spots", true))
 		mini_alpha = clampf(float(cfg.get_value("input", "mini_alpha", 0.6)), 0.2, 1.0)
 		relay_url = String(cfg.get_value("online", "relay_url", relay_url))
@@ -58,6 +60,7 @@ static func save_all() -> void:
 	cfg.set_value("input", "tooltips", tooltips)
 	cfg.set_value("input", "build_grid", build_grid)
 	cfg.set_value("ui", "area_marks", area_marks)
+	cfg.set_value("ui", "powder_smoke", powder_smoke)
 	cfg.set_value("ui", "expansion_spots", expansion_spots)
 	cfg.set_value("input", "mini_alpha", mini_alpha)
 	cfg.set_value("online", "relay_url", relay_url)
@@ -78,6 +81,16 @@ static func ui_scale_now() -> float:
 	if ui_size > 0:
 		return ui_size / 100.0
 	return 1.0 if pc() else 1.5
+
+
+## The powder smoke drawn now: as the player set it, or, never chosen, THICK on every platform
+## (the owner's experiment, 2026-10-27: the smoke over everything, "a bit annoying"; before it:
+## full on a computer, light on a phone or in a browser).
+const POWDER_SMOKE_DEFAULT := 3
+static func powder_smoke_level() -> int:
+	if powder_smoke >= 0:
+		return powder_smoke
+	return POWDER_SMOKE_DEFAULT
 
 
 static func pc() -> bool:

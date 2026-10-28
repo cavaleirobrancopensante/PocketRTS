@@ -381,6 +381,10 @@ func play_fx(list: Array) -> void:
 		if f[0] == "h":
 			game.body_health_at(p, float(f[3]))     # a body the host's men hit (Game.hit_body): its health here too
 			continue
+		if f[0] == "e" and String(f[1]).begins_with("powder:"):
+			if game.view_rect.grow(500.0).has_point(p):
+				game.powder_fx(String(f[1]), p, float(f[3]))    # (black powder smoke: it lingers, so a little past the view too)
+			continue
 		if not game.view_rect.has_point(p):
 			continue
 		if f[0] == "e":

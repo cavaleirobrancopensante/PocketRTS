@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.99", "items": [
+		"BLACK POWDER SMOKE: every powder shot now leaves its smoke on the field. A Musketeer's or Guardsman's musket (a Dragoon's too, once off his horse), a Horseman's pistol, a Field Cannon (round shot and canister), a Mortar and its bursting shell, a keg or a Powder Wagon going up: each leaves grey-white puffs that drift slowly on a light wind, grow, thin and fade over 10 to 24 seconds (a cannon's last longest). A long firefight builds a haze over the firing lines that clears slowly afterwards. It is only for the look: it hides nothing and changes nothing in the fight, the units stay visible in it, and their health bars, rings and orders are drawn over it. You see it only where your side sees the ground. The Clockwork and the Brood fire no powder.",
+		"POWDER SMOKE in Settings: OFF, LIGHT, FULL or THICK (experiment). LIGHT has fewer puffs with shorter lives. It applies from the next match.",
+		"THICK (an EXPERIMENT, the owner's, and the default for now on every platform): the smoke is drawn OVER everything on the field, the units, their health bars, the selection rings and the order lines (still under the interface, the minimap and the menus), a third denser and lasting a quarter longer than FULL. It is meant to be a bit annoying, as a real powder battle was. It is still only for the look: it hides nothing from your side's sight and changes nothing in the fight. To go back: Settings > POWDER SMOKE > FULL (a choice you made before is kept).",
+	]},
 	{"v": "0.14.98", "items": [
 		"TAKING THE REINS has its own moment now: a man told to LEAD a horse stops at its head for half a second and reaches for the bridle, the horse stops and turns its head to him, the rein appears, and then they walk off together (a pause at each horse when he fetches several). The rein is easier to see: tan leather with a dark edge. Mounting is unchanged: a soldier right-clicked on a horse still gets on it; LEAD (Q) is how a soldier leads one. Labourers lead on a right-click.",
 	]},

@@ -315,6 +315,13 @@ The owner, after playing: the legs looked silly. The painted legs are gone from 
   painted half-built stages. Wanted: two or three painted construction stages per building (plates and lower frame,
   half-built walls in scaffold, the full scaffold) to replace the clip.
 
+## Black powder smoke (code, 0.14.96; scripts/powder_smoke.gd, docs/powder_smoke.md)
+- The lingering smoke of every powder shot is the painted muzzle smoke (assets/effects/smoke.png, its three puff frames,
+  not the flash) REUSED in code: scaled up 2 to 5 times as it grows, turned, drawn with LINEAR filtering (soft, not
+  pixel-hard like the rest of the art), and tinted in a shader toward an even light grey (the art's own shading kept at
+  40%, its darkest edge pixels thinned so the grown puffs have soft edges). Hundreds of them overlap into the haze.
+  Wanted, if the art rework reaches it: two or three painted soft smoke puffs made to be scaled up (wispy edges, light
+  grey, no outline), and maybe a painted haze texture for a thick firing line.
 ## Officers and riders in white coats, recoloured in code (2026-10-27, tools/recolour_officers.py)
 - The owner (2026-10-27): "The Officer is hard to tell apart from the Musketeer." The Musketeer keeps his red coat
   (team colour) and light trousers; the Officer (assets/units/dismounted), the Armoured Officer (dismounted_armoured,
