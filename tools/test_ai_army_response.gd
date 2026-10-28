@@ -21,6 +21,11 @@ func _setup(main: Node, ai_faction: String) -> Game:
 		{"who": "hard", "faction": ai_faction, "colour": 1, "side": 1, "strategy": "balanced"}]})
 	for a in main.game.ais:
 		a.safe_opening = false      # (the old layout this test was made on; before the first think)
+		if a.team == 0:
+			# (slot 0 is played by a computer too: its army orders sent the "parked" raider on attack-moves into the
+			# defenders, where since ride-by (scripts/ride_by.gd) he rides loops through them instead of standing: the
+			# raider is the test's prop, parked where the test puts him)
+			a.process_mode = Node.PROCESS_MODE_DISABLED
 	return main.game
 
 

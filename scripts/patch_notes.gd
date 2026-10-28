@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.96", "items": [
+		"HORSEMEN AND CUIRASSIERS ATTACK ON THE MOVE, like the Cyclone: on any order (move, attack-move, attack, patrol) they strike an enemy in sabre reach as they ride past, on their normal reload and at full damage, without slowing or stopping. A plain move still goes where you sent them, cutting down what they pass.",
+		"Told to attack a unit or a building, a rider rides AT it, strikes in passing, rides on a little and swings round its far end for the next pass, instead of standing beside it. A man on the run is ridden down. His one pistol shot is fired from the gallop too (on an attack or attack-move).",
+		"HOLD POSITION, or stopped on guard, a rider stands and fights as before. Walls and gates are still hacked at standing. The Cavalry Charge doubles only the first blow after a gallop (no blow for 5 s, then 2 s at the gallop), not every pass. The Dragoon is unchanged.",
+	]},
 	{"v": "0.14.95", "items": [
 		"EXPANSION SPOTS: the best places to expand are now marked on every map, as a few ground tiles in warm gold where a new Town Hall or Clocktower fits. Each side gets its best spot (a little brighter) and the next one, picked for the room to build round it, few ways in, a short walk from home and distance from the enemy. Both sides of a map get the same. They show for the Crown and the Clockwork (not for the Brood, which rarely moves its capital) and when watching, as small gold squares on the minimap too, and a touch brighter while you place a hall. A spot hides once a building you know of stands on it. Settings: SHOW EXPANSION SPOTS turns them off.",
 		"FIX: on the classic river maps (Twin Fords, Mirewood, Border March) the fords were a few cells wider on one side than the other. Now both sides match.",

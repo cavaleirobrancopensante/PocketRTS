@@ -109,6 +109,18 @@ var _anim_dt := 0.0
 # New units
 var charge := 0.0               # Stormcaller: fills inside a Clockwork field, spent on storms
 var run_t := 0.0                # Cuirassier: seconds at the gallop (a charge after Defs.CHARGE.run)
+# the Horseman's and Cuirassier's fight on the move (scripts/ride_by.gd, Defs.RIDE_BY)
+var rb_state := ""              # "" / "in" (riding at the target) / "out" (riding on past it before turning)
+var rb_side := 1                # which side of the target this pass goes by (+1 / -1: flips every pass)
+var rb_t := 0.0                 # seconds riding on past ("out")
+var rb_head := Vector2.ZERO     # his heading (turns at most Defs.RIDE_BY.turn rad/s)
+var rb_last := -999.0           # (game clock) his last sabre blow: a run counts toward a charge only after Defs.RIDE_BY.calm
+var rb_aim := 0.0               # aiming the pistol on the move: seconds left
+var rb_aim_e: Entity = null     # ...at him
+var ride_n := 0                 # passing blows struck (streamed: a guest and a replay draw the sabre arc when it goes up)
+var _ride_seen := -1
+var _ride_blow := false         # (_strike) this blow is struck in passing
+var _rides_by := false          # (this tick) fighting on the move
 var spell_cd := 0.0             # Spore Mother: miasma cooldown
 var cast_spell := ""            # the spell this unit is on its way to cast
 var cast_at := Vector2.ZERO
@@ -3219,7 +3231,9 @@ func _tick_unit(delta: float) -> void:
 		_powder_tick(delta)
 	if kind == "cuirassier" and game.has_tech(team, "charge"):
 		# (drilled: Cavalry Charge) a gallop builds up to a charge; standing about loses it
-		if velocity.length() > speed * 0.7:
+		# (a run only counts once he has struck no blow for Defs.RIDE_BY "calm" s: riding round a fight in passes does
+		# not charge again on every pass, only the first blow after a run does)
+		if velocity.length() > speed * 0.7 and game.clock - rb_last >= float(Defs.RIDE_BY["calm"]):
 			run_t += delta
 		elif phase == "":
 			run_t = maxf(run_t - delta * 3.0, 0.0)
@@ -3393,6 +3407,12 @@ func _tick_unit(delta: float) -> void:
 		_prune_led()
 	if crew_of != null and order != "crew":
 		Ballista.leave(self)          # (a Ballista's crewman given another order: he steps off and does it)
+	# a Horseman or Cuirassier in the saddle, under way on an order: he fights on the move (scripts/ride_by.gd)
+	_rides_by = RideBy.rides(self)
+	if _rides_by:
+		RideBy.blows(self, delta)
+	elif rb_state != "":
+		rb_state = ""
 	match order:
 		"idle":
 			if d.get("medic", false) and scan_t <= 0.0:
@@ -3478,7 +3498,7 @@ func _tick_unit(delta: float) -> void:
 				target = _pick_target(_scan_range())
 			_walled_check(delta)
 			if target:
-				want = _engage(target, delta, true)
+				want = RideBy.steer(self, target, delta) if _rides_by else _engage(target, delta, true)
 				if target == null or not _valid_target(target):
 					_request_path(order_point)
 			elif deploys() and tesla_mode == "deployed" and held_t > 0.0:
@@ -3496,7 +3516,7 @@ func _tick_unit(delta: float) -> void:
 					cmd_stop()
 			else:
 				target = _attack_detour(delta)
-				want = _engage(target, delta, true)
+				want = RideBy.steer(self, target, delta) if _rides_by else _engage(target, delta, true)
 		"gather":
 			want = _gather(delta)
 		"repair":
@@ -4310,6 +4330,19 @@ func _engage(e: Entity, delta: float, may_move: bool) -> Vector2:
 	return _follow(delta)
 
 
+## (a rider fighting on the move, scripts/ride_by.gd) the chase part of _engage alone: straight when close and
+## clear, otherwise along a path to the target's approach point.
+func _engage_path(e: Entity, delta: float) -> Vector2:
+	var goal := e.center() if e.is_unit() else e.rect().get_center()
+	if e.is_unit() and position.distance_to(goal) < 140.0 and game.line_clear(position, goal, _path_margin()):
+		path = PackedVector2Array()
+		return (goal - position).normalized() * speed
+	if repath_t <= 0.0 or path.is_empty():
+		repath_t = 1.0
+		_request_path(game.approach_point(e, position))
+	return _follow(delta)
+
+
 func _attack_cycle(e: Entity, delta: float) -> void:
 	if kind == "thresher" and stun_t <= 0.0:
 		# in reach and cutting: the saws spin up
@@ -4510,10 +4543,14 @@ func _strike(e: Entity) -> void:
 		_:
 			var bonus: Dictionary = d.get("bonus", {})
 			dmg *= float(bonus.get(e.kind, 1.0))
+			if _ride_blow:
+				dmg *= float(Defs.RIDE_BY["hit"])       # (struck in passing: Defs.RIDE_BY "hit", 1.0 = the full blow)
 			var charged := kind == "cuirassier" and run_t >= float(Defs.CHARGE["run"]) and game.has_tech(team, "charge")
 			if charged:
 				dmg *= float(Defs.CHARGE["mult"])
-				run_t = 0.0
+			if kind == "cuirassier":
+				run_t = 0.0                 # (every blow ends the run; a new one counts only after Defs.RIDE_BY "calm")
+				rb_last = game.clock
 			# a single blow (the Brood's jaws and claws: nothing left of a horse; the
 			# Thresher's saws cleave, like area)
 			e.take_damage(dmg, self, "" if kind == "thresher" else (BLOW_BROOD if d["faction"] == "brood" else BLOW_MELEE))
@@ -6389,6 +6426,12 @@ static func beat_frame(a: String, t: float, n: int, loop: bool) -> int:
 
 ## Animation runs at most 15 times a second, and not at all for units nobody can see.
 func _animate(delta: float) -> void:
+	if ride_n != _ride_seen:
+		# a blow struck in passing (scripts/ride_by.gd): the gallop goes on and a sabre arc sweeps (ride_n is streamed,
+		# so a guest and a replay draw it too)
+		if _ride_seen >= 0 and not dead and visible and game.view_rect.has_point(position):
+			RideBy.slash(self)
+		_ride_seen = ride_n
 	_anim_dt += delta
 	# (a walking or hammering Labourer steps at 30 Hz: his frames follow the ground he covers
 	# and the hammer beat, which 15 Hz ticks would make uneven)
