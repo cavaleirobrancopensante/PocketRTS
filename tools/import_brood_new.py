@@ -40,7 +40,12 @@ KEY = 40
 HOLE = 1500
 
 # kind -> south-east walk width in game px (the anchor of the creature's size)
-TARGET_W = {"brood_mother": 250, "rootmaw": 84, "tyrannosaur": 128}
+# (checked in game, tools/shot_brood_new.gd scale.png: the Clocktower's gear ring is about 350 px across, a Cottage 72 px
+# wide, a Barracks 140 px: the Mother rooted in her nest about as wide as the ring, the Rootmaw a bit wider than the
+# Cottage, the Tyrannosaur about the Barracks' width)
+TARGET_W = {"brood_mother": 315, "rootmaw": 84, "tyrannosaur": 142,
+            # (the Mound Turtle: rooted in its mud about a Clutch Mound's 74 px, so its walk about 66)
+            "mound_turtle": 66}
 
 # kind -> list of sheets: (file, [row specs], ref (row, frame), fudge)
 # a row spec: (anim, dir) or None (row skipped); frames: all of the row, or (anim, dir, [indices])
@@ -85,8 +90,26 @@ SHEETS = {
         ("tyrannosaur_n_bite_chatgpt.png", [("attack", "n")], (0, 0), 1.0),
     ],
 }
+# THE MOUND TURTLE (the owner's sheets, 14:18): the south-east sheet in 5 rows (walk 6, rooting 6, rooted loop 4,
+# uprooting 5, death 5); the east sheet's first row is the east walk; the south walk is 2 rows of 3 (a JPEG made PNG).
+# The north-east walk: 7 frames in 2 rows (4 + 3), the second row drawn about an eighth bigger (ROW_EVEN brings it to
+# the first row's size); its 5th frame (the second row's first: lower, with no bubbles) breaks the step and is dropped,
+# leaving a 6-frame loop; it is drawn flatter, so at the same height its body is bigger: 0.95 brings its area to the
+# east walk's. The north walk (one row of 6) is drawn too tall and narrow, almost upright: SHEET_FIT scales
+# it to the south walk's width and squashes it to 78% of its height, so it sits as low and wide as the south walk.
+SHEETS["mound_turtle"] = [
+    ("mound_turtle_se_chatgpt.png", [("walk", "se"), ("root", "se"), ("rooted", "se"), ("uproot", "se"), ("death", "se")], (0, 0), 1.0),
+    ("mound_turtle_e_sheet_chatgpt.png", [("walk", "e")], (0, 0), 1.0),
+    ("mound_turtle_s_walk_chatgpt.png", [("walk", "s"), ("walk", "s2")], (0, 0), 1.0),
+    ("mound_turtle_ne_walk_chatgpt.png", [("walk", "ne"), ("walk", "ne2", [1, 2])], (0, 0), 0.95),
+    ("mound_turtle_n_walk_chatgpt.png", [("walk", "n")], (0, 0), 1.0),
+]
+ROW_BY_MIDDLE = {"mound_turtle_se_chatgpt.png": 5, "mound_turtle_e_sheet_chatgpt.png": 5}
+ROW_EVEN = {"mound_turtle_ne_walk_chatgpt.png"}      # each row scaled to the first row's mean frame width
+# sheet: (the sheet whose first frame's width in game it takes, its height squashed by this much)
+SHEET_FIT = {"mound_turtle_n_walk_chatgpt.png": ("mound_turtle_s_walk_chatgpt.png", 0.78)}
 PORTRAIT = {"brood_mother": "brood_mother_portrait_chatgpt.png", "rootmaw": "rootmaw_lizard_portrait_chatgpt.png",
-            "tyrannosaur": "tyrannosaur_portrait_chatgpt.png"}
+            "tyrannosaur": "tyrannosaur_portrait_chatgpt.png", "mound_turtle": "mound_turtle_portrait_chatgpt.png"}
 # HAUL (the Rootmaw walking full; its swollen body stands about HAUL_UP times as tall as the thin walk)
 HAUL_UP = 1.3
 OPTIONAL = {"rootmaw": [("rootmaw_lizard_haul_%s_chatgpt.png" % d, [("haul", d)], (0, 0), HAUL_UP)
@@ -96,8 +119,19 @@ GRUB_SHEET = "grub_harvest_chatgpt.png"         # rows S, SE, E, (a second E: no
 GRUB_SHEET_NE = "grub_harvest_ne_chatgpt.png"   # one row: NE
 
 
-def key_mask(px):
+# Sheets that came as JPEG screenshots at odd sizes (the owner, 2026-10-28): soft edges and colour noise in the dark
+# background. Their key is taken on a 3x3 median of the sheet (the noise does not pass the tolerance), islands smaller
+# than ISLAND source pixels are dropped (speckle), and the dark navy fringe JPEG leaves round the outline is peeled off
+# (FRINGE passes: an outline pixel that is dark and near the background goes).
+JPEG_SHEETS = {"mound_turtle_s_walk_chatgpt.png", "mound_turtle_ne_walk_chatgpt.png", "mound_turtle_n_walk_chatgpt.png"}
+ISLAND = 60
+FRINGE = 3
+
+
+def key_mask(px, jpeg=False):
     rgb = px[..., :3].astype(int)
+    if jpeg:
+        rgb = ndimage.median_filter(rgb, size=(3, 3, 1))
     border = np.concatenate([rgb[:4].reshape(-1, 3), rgb[-4:].reshape(-1, 3), rgb[:, :4].reshape(-1, 3), rgb[:, -4:].reshape(-1, 3)])
     bg = np.median(border, 0)
     d = np.abs(rgb - bg).sum(-1)
@@ -115,12 +149,24 @@ def key_mask(px):
         small = np.zeros(n + 1, bool)
         small[1:] = sz < HOLE
         fg |= small[lab] & (lab > 0)
+    if jpeg:
+        lab, n = ndimage.label(fg)
+        if n:
+            sz = ndimage.sum(fg, lab, range(1, n + 1))
+            keep = np.zeros(n + 1, bool)
+            keep[1:] = sz >= ISLAND
+            fg = keep[lab]
+        v = px[..., :3].astype(int).max(-1)
+        draw = np.abs(px[..., :3].astype(int) - bg).sum(-1)
+        for _ in range(FRINGE):
+            edge = fg & ~ndimage.binary_erosion(fg)
+            fg &= ~(edge & (v < 90) & (draw < KEY * 2.5))
     return fg
 
 
 def sheet_rows(path):
     px = ia.load(R + path)
-    fg = key_mask(px)
+    fg = key_mask(px, path in JPEG_SHEETS)
     big = max(2500, int(fg.sum() * 0.012))
     sprites = ia.components(fg, 4, min_big=big, attach_dist=40)
     if not sprites:
@@ -137,8 +183,23 @@ def sheet_rows(path):
             return dx * dx + dy * dy
         i = min(range(len(big_ones)), key=lambda j: gap(big_ones[j]))
         big_ones[i] = _piece(big_ones[i]["mask"] | s["mask"])
-    sprites = big_ones
-    groups = ia.cluster_1d(np.array([s["y1"] for s in sprites]), 80)
+    sprites = split_tall(big_ones)
+    # rows by the frames' feet; a sheet whose rows' feet wander (the turtle's last uprooting frame stands up, its feet
+    # nearer the next row's) is cut into its known number of rows (ROW_BY_MIDDLE) at the widest gaps between the frames'
+    # middles
+    if path in ROW_BY_MIDDLE:
+        cys = np.array([s["cy"] for s in sprites])
+        order = list(np.argsort(cys))
+        gaps = sorted(range(len(order) - 1), key=lambda i: cys[order[i + 1]] - cys[order[i]], reverse=True)[:ROW_BY_MIDDLE[path] - 1]
+        groups, cur = [], []
+        for i, o in enumerate(order):
+            cur.append(o)
+            if i in gaps:
+                groups.append(cur)
+                cur = []
+        groups.append(cur)
+    else:
+        groups = ia.cluster_1d(np.array([s["y1"] for s in sprites]), 80)
     rows = [sorted([sprites[i] for i in g], key=lambda s: s["cx"]) for g in groups]
     rows = [split_wide(r) for r in rows]
     rows.sort(key=lambda r: np.mean([s["cy"] for s in r]))
@@ -149,6 +210,30 @@ def _piece(mask):
     ys, xs = np.nonzero(mask)
     return {"mask": mask, "y0": ys.min(), "y1": ys.max() + 1, "x0": xs.min(), "x1": xs.max() + 1,
             "cy": (ys.min() + ys.max()) / 2, "cx": (xs.min() + xs.max()) / 2, "area": len(ys)}
+
+
+def split_tall(sprites):
+    """Two frames of neighbouring rows joined by a bubble or a splash (one piece about twice as tall as the others): cut
+    where the rows are emptiest round its middle."""
+    if len(sprites) < 3:
+        return sprites
+    med = float(np.median([sp["y1"] - sp["y0"] for sp in sprites]))
+    out = []
+    for sp in sprites:
+        h = sp["y1"] - sp["y0"]
+        if h > med * 1.7:
+            prof = sp["mask"][sp["y0"]:sp["y1"]].sum(1).astype(float)
+            lo, hi = int(h * 0.3), int(h * 0.7)
+            cut = sp["y0"] + lo + int(np.argmin(prof[lo:hi]))
+            for a0, b0 in ((sp["y0"], cut), (cut, sp["y1"])):
+                m = sp["mask"].copy()
+                m[:a0] = False
+                m[b0:] = False
+                if m.any():
+                    out.append(_piece(m))
+        else:
+            out.append(sp)
+    return out
 
 
 def split_wide(row):
@@ -178,6 +263,35 @@ def split_wide(row):
         else:
             out.append(s)
     return sorted(out, key=lambda s: s["cx"])
+
+
+def snap_jpeg(img):
+    """ia.snap_team for a JPEG sheet: JPEG smears the red spikes' colour into their neighbours (orange-brown edges), so
+    a less pure red still counts as team colour (green at most 0.45 of the red, not 0.3)."""
+    r, g, b = img[..., 0].astype(int), img[..., 1].astype(int), img[..., 2].astype(int)
+    red = (img[..., 3] > 0) & (r >= 95) & (g <= r * 0.45) & (b <= r * 0.45)
+    light = red & (r >= 175)
+    img[light, :3] = ia.TEAM_LIGHT
+    img[red & ~light, :3] = ia.TEAM_DARK
+    return img
+
+
+def shrink2(img, sx, sy):
+    """ia.shrink with its own vertical scale (a sheet drawn too tall is squashed)."""
+    if abs(sx - sy) < 1e-6:
+        return ia.shrink(img, sx)
+    h, w = img.shape[:2]
+    nw, nh = max(1, int(round(w * sx))), max(1, int(round(h * sy)))
+    a = img[..., 3:4].astype(np.float32) / 255.0
+    pre = np.concatenate([img[..., :3] * a, a * 255.0], -1).clip(0, 255).astype(np.uint8)
+    s = np.array(Image.fromarray(pre).resize((nw, nh), Image.BOX)).astype(np.float32)
+    al = s[..., 3:4] / 255.0
+    rgb = np.where(al > 0.01, s[..., :3] / np.maximum(al, 0.01), 0)
+    out = np.zeros((nh, nw, 4), np.uint8)
+    out[..., :3] = rgb.clip(0, 255)
+    out[..., 3] = np.where(al[..., 0] >= 0.45, 255, 0)
+    out[out[..., 3] == 0] = 0
+    return out
 
 
 def anchor_of(im):
@@ -214,6 +328,7 @@ def import_kind(kind, data, contact_dir):
     base = TARGET_W[kind] / w0
     H = h0 * base
     small = {}
+    width_in_game = {}
     for f, rowspec, ref, fudge in sheets:
         if f not in raw:
             continue
@@ -221,14 +336,28 @@ def import_kind(kind, data, contact_dir):
         r0, i0 = ref
         refimg = cut[r0][i0]
         scale = H * fudge / refimg.shape[0] if f != SHEETS[kind][0][0] else base
+        squash = 1.0
+        if f in SHEET_FIT:
+            other, squash = SHEET_FIT[f]
+            scale = width_in_game[other] / refimg.shape[1]
+        width_in_game[f] = refimg.shape[1] * scale
+        row0_w = np.mean([im.shape[1] for im in cut[0]])
         for ri, spec in enumerate(rowspec):
             if spec is None or ri >= len(cut):
                 continue
             anim, d = spec[0], spec[1]
             imgs = cut[ri]
+            sc = scale
+            if f in ROW_EVEN:
+                sc = scale * row0_w / np.mean([im.shape[1] for im in imgs])
             if len(spec) > 2:
                 imgs = [imgs[i] for i in spec[2] if i < len(imgs)]
-            small[(anim, d)] = [ia.snap_team(ia.shrink(im, scale)) for im in imgs]
+            snap = snap_jpeg if f in JPEG_SHEETS else ia.snap_team
+            small[(anim, d)] = [snap(shrink2(im, sc, sc * squash)) for im in imgs]
+    # a walk drawn in two rows (the turtle's south walk: 2 x 3): one strip
+    for d in ["s", "se", "e", "ne", "n"]:
+        if (("walk", d + "2")) in small:
+            small[("walk", d)] = small.get(("walk", d), []) + small.pop(("walk", d + "2"))
     # standing: the first walk frame in each direction (the rooted Queen and Rootmaw have their own strips)
     for d in ["s", "se", "e", "ne", "n"]:
         if ("walk", d) in small:
@@ -435,46 +564,9 @@ def still_art():
     small = {("idle", "s"): [ia.unteam(ia.shrink(im, pscale)) for im in piles]}
     small[("death", "s")] = small[("idle", "s")][-1:]
     _place("food_pile", small, data)
-    turtle_standin(data)
     for k, v in data.items():
         write_entry(k, v)
     print("  brood_egg, food_pile from the owner's sheets")
-
-
-def turtle_standin(data):
-    """THE MOUND TURTLE (the owner, 13:25: the Clutch Mound as a huge swamp turtle) has no art yet. Stand-in until its
-    ChatGPT sheets come (docs/art_style_inconsistency.md): rooted, sunk into the mud, it is the old Clutch Mound's
-    picture (assets/buildings/clutch_mound_built.png); walking, the Rootmaw's walk shrunk to a Clutch Mound's width
-    (about 64 px) and tinted a muddy shell brown. Same cell and anchor for both, so the game swaps them freely."""
-    src = "assets/units/rootmaw"
-    ent = re.search(r'\t"rootmaw": \{"cell": Vector2i\((\d+), (\d+)\), "anchor": Vector2\(([\d.]+), ([\d.]+)\)', open("scripts/art_data.gd").read())
-    cw, ch, ax, ay = int(ent.group(1)), int(ent.group(2)), float(ent.group(3)), float(ent.group(4))
-    small = {}
-    k = 0.78
-    for strip, n in [("walk_s", 6), ("walk_se", 6), ("walk_e", 6), ("walk_ne", 6), ("walk_n", 6), ("death_se", 5)]:
-        im = np.array(Image.open(f"{src}/{strip}.png").convert("RGBA"))
-        frames = []
-        for i in range(im.shape[1] // cw):
-            fr = im[:, i * cw:(i + 1) * cw].copy()
-            rgb = fr[..., :3].astype(float)
-            lum = rgb.mean(-1, keepdims=True)
-            shell = np.array([118, 104, 66], float) * (lum / 110.0)
-            key = ((fr[..., 0] == 255) | (fr[..., 0] == 150)) & (fr[..., 1] == 0) & (fr[..., 2] == 0)
-            tinted = np.clip(rgb * 0.35 + shell * 0.65, 0, 255).astype(np.uint8)
-            fr[..., :3] = np.where(key[..., None], fr[..., :3], tinted)     # (the team-red spikes stay team colour)
-            fr = ia.snap_team(ia.shrink(fr, k))
-            frames.append(fr)
-        anim, d = strip.split("_")
-        small[(anim, d)] = frames
-    for d in ["s", "se", "e", "ne", "n"]:
-        small[("idle", d)] = small[("walk", d)][:1]
-    mound = np.array(Image.open(f"{ia.OUT}/buildings/clutch_mound_built.png").convert("RGBA"))
-    small[("rooted", "se")] = [mound]
-    small[("root", "se")] = [mound]
-    small[("uproot", "se")] = [mound]
-    _place("mound_turtle", small, data)
-    # its card portrait meanwhile: the Clutch Mound's
-    shutil.copy(f"{ia.OUT}/icons/clutch_mound.png", f"{ia.OUT}/icons/mound_turtle.png")
 
 
 def _place(name, small, data):
@@ -547,7 +639,11 @@ def main():
         print(kind)
         import_kind(kind, data, contact_dir)
         write_entry(kind, data[kind])
-        portrait(kind)
+        if os.path.exists(R + PORTRAIT.get(kind, "-")):
+            portrait(kind)
+        elif kind == "mound_turtle":
+            # (no portrait yet: the Clutch Mound's icon on its card meanwhile)
+            shutil.copy(f"{ia.OUT}/icons/clutch_mound.png", f"{ia.OUT}/icons/mound_turtle.png")
     if not only:
         command_icons()
         grub_harvest()

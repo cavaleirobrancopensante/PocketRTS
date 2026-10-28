@@ -1047,7 +1047,7 @@ const BASE_UNITS := {
 		"tongue_e": 13,
 		"walk_e": 14,
 	}},
-	"brood_mother": {"cell": Vector2i(418, 296), "anchor": Vector2(209, 294), "frames": {
+	"brood_mother": {"cell": Vector2i(528, 373), "anchor": Vector2(264, 371), "frames": {
 		"attack_e": 6,
 		"attack_n": 6,
 		"attack_ne": 6,
@@ -1095,7 +1095,7 @@ const BASE_UNITS := {
 		"walk_s": 6,
 		"walk_se": 6,
 	}},
-	"tyrannosaur": {"cell": Vector2i(242, 176), "anchor": Vector2(121, 174), "frames": {
+	"tyrannosaur": {"cell": Vector2i(268, 195), "anchor": Vector2(134, 193), "frames": {
 		"attack_e": 6,
 		"attack_n": 6,
 		"attack_ne": 6,
@@ -1123,16 +1123,16 @@ const BASE_UNITS := {
 		"death_s": 1,
 		"idle_s": 4,
 	}},
-	"mound_turtle": {"cell": Vector2i(114, 76), "anchor": Vector2(57, 72), "frames": {
+	"mound_turtle": {"cell": Vector2i(94, 65), "anchor": Vector2(47, 63), "frames": {
 		"death_se": 5,
 		"idle_e": 1,
 		"idle_n": 1,
 		"idle_ne": 1,
 		"idle_s": 1,
 		"idle_se": 1,
-		"root_se": 1,
-		"rooted_se": 1,
-		"uproot_se": 1,
+		"root_se": 6,
+		"rooted_se": 4,
+		"uproot_se": 5,
 		"walk_e": 6,
 		"walk_n": 6,
 		"walk_ne": 6,
