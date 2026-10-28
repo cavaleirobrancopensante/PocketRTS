@@ -43,6 +43,16 @@ const PEN_GUARD := 6            # army supply at home before the Pen's biomass i
 const GORGE_ESSENCE := 15.0     # essence earned (or in hand) before the Gorge Pit is due
 const RESERVE_MAX := 45.0       # a reserve not spent in this long (no room, no grub) ...
 const RESERVE_REST := 30.0      # ... is dropped for this long
+## brood-econ (docs/brood_econ.md): since the Burrows lost their ground (0.12.99, 0.14.42) a Burrow only lays
+## eggs, gives 16 supply and spreads swamp, so the Crown's "expand on a timer / with money in the bank" made
+## the Brood computer pour 350 biomass and a grub into Burrows it did not need (up to 6 in 12 minutes, the
+## first at about 3:50 with no army), and a Brood Pen for each (one is enough). Now a Burrow comes only when
+## the eggs run short (hall_due) and there is one Pen. (true = the old behaviour, for a "before" number.)
+const BURROW_ON_TIMER := false
+const BURROW_ON_BANK := false
+const PEN_PER_HALL := false
+## brood-econ: Horsemen seen once kept the alert (the grub floor at 9, the army at home) for the whole game.
+const HORSE_ALERT_FOREVER := false
 
 ## (tools switch it off before a match for a "before" number: the Brood computer as it was)
 static var enabled := true
@@ -359,9 +369,16 @@ func grub_floor() -> int:
 	var base := 10 if ai.strategy == "economy" else 9
 	if ai.strategy == "rush" and not ai._first_wave:
 		return 6            # (a rush's first wave first)
-	if ai._threat() != Vector2.INF or ai._horse_alert():
-		return base         # (the enemy is in our base, or Horsemen are hunting the grubs: the army first)
-	return mini(base + int(maxf(0.0, game.clock - FLOOR_FROM) / FLOOR_STEP * _floor_k()), FLOOR_MAX)
+	if ai._threat() != Vector2.INF:
+		return base         # (the enemy is in our base: the army first)
+	var k := _floor_k()
+	if ai._horse_alert():
+		k *= HORSE_FLOOR_K  # (Horsemen about: the army comes first more often, but the economy still grows; at 9 grubs for
+							# the whole game the Brood had a third of the Crown's income at 10:00, brood-econ)
+	return mini(base + int(maxf(0.0, game.clock - FLOOR_FROM) / FLOOR_STEP * k), FLOOR_MAX)
+
+
+const HORSE_FLOOR_K := 0.5
 
 
 ## How fast the floor rises: the plan's worker share (faster on Economy); a Rush keeps its slower pace

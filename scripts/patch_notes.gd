@@ -4,6 +4,12 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.14.103", "items": [
+		"BROOD ECONOMY (a proposal on the brood-econ branch, for the owner to decide; docs/brood_econ.md): grubs haul more. A load is worth half as much again (FOOD_RATE 0.6 -> 0.9): a grub now earns about 45 to 50 biomass a minute at a pit by the capital and up to about 70 far out on the swamp (a Labourer at a Farm earns about 70 gold, a Winder at a Cog Press about 80 cogs). The pits' ground is unchanged, so a pit with a full crew now runs dry sooner, in about 9 to 11 minutes.",
+		"BROOD COMPUTER: no more Burrows it did not need. Since the Burrows lost their ground (0.14.42) it saw every Burrow as spent and saved everything for the next one: no new pits, no Spawning Den, no army while it saved, up to six Burrows in twelve minutes, each with its own Brood Pen. Now a Burrow comes only when every egg is taken for a while, and it keeps one Brood Pen. This also brings back its Extreme rush (the Spawning Den at 0:36 again, the first attack at about 1:20 to 1:25).",
+		"BROOD COMPUTER against Horsemen: one Horseman seen no longer keeps it on 9 grubs with its army at home for the rest of the game. The alert ends two and a half minutes after the last Horseman it saw, and while it lasts the grubs still grow, at half the pace.",
+		"BROOD COMPUTER: a grub out harvesting bodies is no longer the one called away to build something (the bodies were left lying).",
+	]},
 	{"v": "0.14.102", "items": [
 		"The game is now called Working Title for RTS for the time being (the old name belongs to another game). Your settings, saves, replays and hotkeys carry over; the web address and the Android app file keep their old names for now, and the app installs over the old one.",
 	]},

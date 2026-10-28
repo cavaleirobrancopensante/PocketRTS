@@ -96,8 +96,11 @@ func _run() -> void:
 	var attacked_before := ai._attacking
 	var raptors_sent := 0
 	var nd := g.clock
+	var stray_min := stray_far0 if stray != null else 0.0
 	while g.clock < end_t and not g.over:
 		await physics_frame
+		if stray != null and is_instance_valid(stray) and not stray.dead:
+			stray_min = minf(stray_min, ai._home_dist(stray.position))     # (brood-econ: the alert now ends 150 s after the last Horseman seen, so look while it lasts)
 		if OS.get_cmdline_user_args().has("debug") and g.clock >= nd:
 			nd += 20.0
 			print("   t=%d biomass %d reserve %d saving %s hall_res %s army %d workers %d pit_busy %s" % [int(g.clock), ai._gold(), ai._reserve, ai._saving, ai._hall_reserve, ai._army_supply(g.army(1)), g.workers(1).size(), ai._busy_building("gorge_pit")])
@@ -115,7 +118,7 @@ func _run() -> void:
 		return
 	check(ai._hz_horse_t > 0.0, "the Horsemen were seen")
 	if stray != null and is_instance_valid(stray) and not stray.dead:
-		check(ai._home_dist(stray.position) < stray_far0 - 100.0, "a stray Raptor walks back to the post (%d -> %d)" % [int(stray_far0), int(ai._home_dist(stray.position))])
+		check(stray_min < stray_far0 - 100.0, "a stray Raptor walks back to the post (%d -> %d)" % [int(stray_far0), int(stray_min)])
 	check(attack_t < 0.0 or attack_t > see + 150.0, "no wave goes out in the 150 s after the sighting (first attack %s)" % ("never" if attack_t < 0.0 else str(int(attack_t))))
 	check(_count("spitter") + _count("brute") > 0 or ai._mine("brood_pen").size() > 0, "it answers with a Pen / Spitters / Brutes, not Raptors only")
 	check(ai.strategy != "rush" and ai.strategy != "xrush" or plan == "balanced" or plan == "timing", "a rush plan falls back to a normal game")

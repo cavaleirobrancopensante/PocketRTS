@@ -1861,6 +1861,8 @@ func _econ_build() -> void:
 			order.append("brood_pen")
 		if _warren_due() and _mine("feeding_pit").size() >= 2:
 			order.erase("feeding_pit")
+		if not AIBrood.PEN_PER_HALL and not _mine("brood_pen").is_empty():
+			order.erase("brood_pen")      # (one Pen is enough: offerings and essence don't grow with more)
 	else:
 		# batteries need somewhere to go: a crusher first, then Boilers, a crusher per Boiler
 		var mill := Defs.GEAR_PRESS if Defs.gear_mode else ("ore_drill" if Defs.rail_econ else "ore_crusher")      # (gear mode: Cog Presses; rails: Drills dig, trains haul)
@@ -2171,7 +2173,7 @@ func _build_up() -> void:
 			_construct("barracks")
 		elif _clock() and _mine(_works()).size() < 5 and not _busy_building(_works()) and not _mine(_works()).is_empty() and not _tech_hold:
 			_construct(_works())
-		elif _brood() and gold > 700:
+		elif _brood() and gold > 700 and AIBrood.BURROW_ON_BANK:
 			_more_halls(true)
 	# Expand once our economy structures are all up (a new hall brings more slots).
 	var hall: String = _f()["hall"]
@@ -2187,14 +2189,15 @@ func _build_up() -> void:
 	var soil := _best_soil()
 	if soil < 0.4:
 		expand_t *= soil / 0.4
-	if _halls().size() >= 2 and (game.clock > expand_t * 1.8 or soil < 0.4) and gold > int(Defs.BUILDINGS[hall]["cost"]) + (150 if soil >= 0.4 else 0):
+	if _halls().size() >= 2 and (game.clock > expand_t * 1.8 or soil < 0.4) and gold > int(Defs.BUILDINGS[hall]["cost"]) + (150 if soil >= 0.4 else 0) \
+			and (not _brood() or AIBrood.BURROW_ON_TIMER):
 		_more_halls(false)
 	_saving = false
 	# (with the soil nearly spent, the next hall is worth saving for even under attack)
 	var urgent := soil < 0.25 and not _busy_building(hall)
 	if _brood():
 		# no far expansions: more Burrows at home for more eggs
-		if t > expand_t and gold > int(Defs.BUILDINGS[hall]["cost"]) + 150:
+		if t > expand_t and gold > int(Defs.BUILDINGS[hall]["cost"]) + 150 and AIBrood.BURROW_ON_TIMER:
 			_more_halls(true)
 	elif _halls().size() == 1 and ((full and t > expand_t * 0.6) or t > expand_t):
 		var spot: Vector2i = game.expansions[team]
@@ -2274,6 +2277,11 @@ func _hall_first() -> bool:
 	if r5.hold_hall():
 		return false        # (round 5: against the Clockwork the next hall waits for an army to hold it)
 	if _halls().size() >= 7:
+		return false
+	if _brood() and not AIBrood.BURROW_ON_TIMER:
+		# (brood-econ: a Burrow has no ground since 0.14.42, so it never counted as "fresh" and this held every
+		# biomass for the next Burrow, again and again: no pits, no Den, no army while it saved. New Burrows come
+		# when the eggs run short: AIBrood.hall_due)
 		return false
 	# halls with a fair share of soil left (one going up counts: it's fresh land)
 	var fresh := _halls().filter(func(h: Building) -> bool: return not h.built or _land(h) > 0.25).size()
@@ -3468,7 +3476,8 @@ func _construct(kind: String, at := Vector2i(-1, -1)) -> void:
 			trip = INF
 			for h in towers:
 				trip = minf(trip, u.position.distance_to(h.center()) + h.center().distance_to(target))
-		var dd: float = trip + (0.0 if u.order == "idle" else 150.0) + (200.0 if u.carrying > 0 else 0.0)
+		var dd: float = trip + (0.0 if u.order == "idle" else 150.0) + (200.0 if u.carrying > 0 else 0.0) \
+				+ (600.0 if u.order == "harvest" or u.cocoon > 0.0 else 0.0)      # (brood-econ: not the grub out harvesting bodies)
 		if dd < bd:
 			bd = dd
 			best = u
@@ -7327,7 +7336,13 @@ func _horse_alert() -> bool:
 		return false
 	_horse_watch()
 	if scout != null and scout.rush_units_seen() > 0 and scout._foe_faction() == "crown":
-		_hz_horse_t = maxf(_hz_horse_t, game.clock - 1.0)
+		if AIBrood.HORSE_ALERT_FOREVER:
+			_hz_horse_t = maxf(_hz_horse_t, game.clock - 1.0)
+		else:
+			# (brood-econ: what the scout saw counts as long as a Horseman in sight does, not for the whole game:
+			# one Horseman seen at 2:00 kept the Brood on 9 grubs and its army at home to the end)
+			for k in scout.foe_rush_seen:
+				_hz_horse_t = maxf(_hz_horse_t, float(scout.foe_rush_seen[k].get("last", -999.0)))
 	var on := game.clock - _hz_horse_t <= HORSE_MEMORY
 	if on and not _hz_logged and game.mlog:
 		_hz_logged = true

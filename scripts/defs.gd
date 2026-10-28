@@ -125,10 +125,12 @@ const KEG := {"blast": 40.0, "radius": 48.0}
 ## from FOOD_NEAR tiles in, up to FOOD_BONUS more (+30%) at FOOD_FAR tiles, flat to
 ## FOOD_PEAK, then a little less per tile beyond (FOOD_FADE). The trip is estimated as
 ## PIT_TIME + FOOD_TRIP seconds a tile of open ground between the two buildings (less the
-## FOOD_REACH a grub needn't walk: it unloads beside each one). So a grub earns ~30-35 biomass
-## a minute within 9 tiles of the capital and ~44 from 15-24 tiles out (half of what it was; tools/econ_bench.gd pits).
+## FOOD_REACH a grub needn't walk: it unloads beside each one). So a grub earns ~47-51 biomass
+## a minute within 10 tiles of the capital and ~66-71 from 15-22 tiles out (tools/measure_brood_econ.gd mode=sat;
+## a Labourer at a Farm earns ~71 gold, a Winder at a Cog Press ~80 cogs). brood-econ (docs/brood_econ.md): at 0.6 a
+## grub earned 31-47, under half a Labourer in a main base, and a pit took 2.3 minutes to pay for itself (a Farm 0.9).
 const PIT_TIME := 2.0             # seconds a grub feeds at the pit before hauling
-const FOOD_RATE := 0.6            # biomass per grub-second of round trip (near pits; was 1.2: halved, same distance curve)
+const FOOD_RATE := 0.9            # biomass per grub-second of round trip (near pits; brood-econ: 0.6 -> 0.9, docs/brood_econ.md)
 const FOOD_NEAR := 6.0
 const FOOD_FAR := 18.0
 const FOOD_PEAK := 22.0
@@ -156,7 +158,7 @@ const PIT_CREW_STEP := 4.0
 const PIT_CREW_MAX := 12
 ## Brood resource buildings (Feeding Pit, Brood Pen) need swamp joined to the capital's, no farther than this.
 const BROOD_RESOURCE_MAX_D := 40.0
-const PIT_GROUND := 3000          # biomass in each Feeding Pit's own ground (a full crew of 6 draws ~200-250 a minute: ~12-15 minutes)
+const PIT_GROUND := 3000          # biomass in each Feeding Pit's own ground (a full crew in a main base draws ~280-360 a minute: ~9-11 minutes; far out ~570-640: ~5)
 const PIT_CLAIM := 5.0            # tiles: the radius of the circle of ground a Feeding Pit claims (living pits' circles may not overlap)
 ## Brood Pen SACRIFICE: a Brood creature offered up at a Pen gives this share of its biomass
 ## cost as essence (a Raptor, 25 biomass, gives 9). Was 12% (3 a Raptor) until 0.14.40, when the Pen

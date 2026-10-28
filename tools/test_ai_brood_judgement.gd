@@ -189,14 +189,14 @@ func _case_harvest() -> void:
 	for f in dead:
 		f.take_damage(99999, null)
 	await _frames(10)
-	var e0 := float(g.players[1]["res2"])
+	var e0 := float(g.stats[1]["res2_in"])      # (essence earned, not banked: a Brood with a Pen may spend it at once, brood-econ)
 	var bodies0 := g.corpses.size()
 	var out_max := 0
 	for i in 30 * 70:
 		await physics_frame
 		var out := g.workers(1).filter(func(w: Unit) -> bool: return w.order == "harvest").size()
 		out_max = maxi(out_max, out)
-	var gained := float(g.players[1]["res2"]) - e0
+	var gained := float(g.stats[1]["res2_in"]) - e0
 	check(bodies0 >= 6, "six bodies lie in front of the base (%d)" % bodies0)
 	check(out_max >= 1 and ai.brood.harvest_sent >= 1, "grubs went to harvest them (at most %d out at once, %d sent)" % [out_max, ai.brood.harvest_sent])
 	check(gained >= 5.0, "the essence came home (+%.2f)" % gained)
