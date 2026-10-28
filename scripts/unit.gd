@@ -4127,7 +4127,8 @@ func _move(want: Vector2, delta: float) -> void:
 	last_pos = position
 
 
-## Stuck against a rooted new-Brood creature (the Brood Mother, a Rootmaw, an enemy's Mound Turtle): paths go straight
+## Stuck against a rooted new-Brood creature (the Brood Mother, a Rootmaw, an enemy's Mound Turtle) or the Tyrannosaur
+## standing at her eggs, where her hatchlings come out: paths go straight
 ## through it, as it is not in the path grid, and a repath gave the same line, so a walker stood pressed to her side
 ## for minutes. A waypoint round its flank, on the goal's side (the other side the next time).
 var _nb_side := 1.0
@@ -4135,8 +4136,8 @@ var _nb_side := 1.0
 
 func _nb_round() -> bool:
 	for o in game.units_near(position, radius + 100.0):
-		if o == self or o.dead or not o._k_nb or o._k_still or o.tesla_mode == "packed":
-			continue
+		if o == self or o.dead or not o._k_nb or o._k_still or o.nb_mass < 8.0 or o.velocity.length() > 10.0:
+			continue          # (rooted, or a heavy one standing: the Mother, the Tyrannosaur at his eggs)
 		if o._k_shell and (o.team == team or game.allied(o.team, team)):
 			continue           # (its own side climbs over a turtle's shell)
 		var away: Vector2 = position - o.position
