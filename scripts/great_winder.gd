@@ -8,10 +8,14 @@ extends RefCounted
 ## - MENDING (order "mend", work "mending": its WIND strip, the key arm out and turning): one hurt Clockwork unit at a time,
 ##   faster than a Winder, paid in cogs like a repair. Autocast MEND = the unit's auto_repair (on from the start).
 ## - SWEEPING (order "sweep", work "sweeping": its SWEEP strip, the rollers turning): the wrecks of its own side's Clockwork
-##   units, into PARTS (Unit.parts, up to the cap). Autocast SWEEP = Unit.auto_sweep (on from the start). Crown and Brood
-##   bodies are never swept (owner, 2026-10-27).
-## State on the Unit: `parts` (saved, streamed online and in replays), `auto_sweep` (the same), `auto_repair` (MEND), and
-## while sweeping the meta "gw_sweep" (seconds at the wreck so far). Nothing here uses the clock or random numbers.
+##   units (and an enemy Clockwork's in the mirror match, owner 2026-10-28), turned into COGS at once: Defs.GREAT_WINDER "share" of the unit's cog price (owner, 2026-10-28: "The Great
+##   Winder turns Clockwork bodies into cogs ... It doesn't reassemble anything"; each faction gets something different
+##   from bodies: the Brood essence, the Crown resurrects its own, the Clockwork regains cogs). Autocast SWEEP =
+##   Unit.auto_sweep (on from the start): standing idle, it rolls to a wreck near it, sweeps it and rolls back to where it
+##   stood; it skips a wreck with enemies near it (danger). Crown and Brood bodies are never swept (owner, 2026-10-27).
+## State on the Unit: `auto_sweep` (saved, streamed online and in replays), `auto_repair` (MEND), and while sweeping the
+## metas "gw_sweep" (seconds at the wreck so far) and "gw_home" (where it stood when it went). Nothing here uses the clock
+## or random numbers.
 
 const G := Defs.GREAT_WINDER
 const KIND := Defs.GREAT_WINDER_KIND
@@ -85,10 +89,11 @@ static func idle_scan(u: Unit) -> bool:
 		if p != null and u.game.players[u.team]["gold"] >= 1:
 			cmd_mend(u, p)
 			return true
-	if u.auto_sweep and u.parts < int(G["cap"]):
+	if u.auto_sweep:
 		var w := sweep_pick(u, float(G["sweep_look"]))
 		if w != null:
 			cmd_sweep(u, w)
+			u.set_meta("gw_home", u.position)     # (it rolls back here when the sweeping is done: _sweep_done)
 			return true
 	return false
 
@@ -185,15 +190,16 @@ static func mend(u: Unit, o: Unit, delta: float) -> float:
 
 # ------------------------------------------------------------------ sweeping
 
-## Is `b` a wreck it may sweep: the body of a Clockwork unit of its side (or an ally's), lying at rest, not torn up, not
-## already being swept by another Great Winder. Never a Crown or Brood body (owner, 2026-10-27).
+## Is `b` a wreck it may sweep: the body of a Clockwork unit of ANY side (its own, an ally's, or an enemy Clockwork's in
+## the mirror match: owner, 2026-10-28, the cogs go to its own side), lying at rest, not torn up, not already being swept
+## by another Great Winder. Never a Crown or Brood body (owner, 2026-10-27).
 static func sweepable(u: Unit, b) -> bool:
 	if b == null or not is_instance_valid(b) or not (b is Unit):
 		return false
 	var w := b as Unit
 	if not w.dead or w.torn or not u.game.bodies.has(w):
 		return false
-	if String(w.d.get("faction", "")) != "clockwork" or not u.game.allied(w.team, u.team) or w.kind == "horse":
+	if String(w.d.get("faction", "")) != "clockwork" or w.kind == "horse":
 		return false
 	if not w.has_meta("gw_by"):
 		return true
@@ -202,15 +208,27 @@ static func sweepable(u: Unit, b) -> bool:
 			or (by as Unit).order_target != w
 
 
-## The nearest sweepable wreck within r.
-static func sweep_pick(u: Unit, r: float) -> Unit:
+## Is it dangerous to go to p: an enemy soldier (not a worker) within Defs.GREAT_WINDER "danger" px of it (about a
+## Musketeer's or a cannon's reach). It has no weapon: it never rolls into a fight for a wreck.
+static func danger(u: Unit, p: Vector2) -> bool:
+	var r := float(G["danger"])
+	for o in u.game.units_near(p, r):
+		if o is Unit and not o.dead and not o.off_field and u.game.hostile(o.team, u.team) and not o.is_worker() \
+				and o.position.distance_to(p) <= r:
+			return true
+	return false
+
+
+## The nearest sweepable wreck within r of `from` (its own spot by default) with no enemies near it.
+static func sweep_pick(u: Unit, r: float, from := Vector2.INF) -> Unit:
+	var c := u.position if from == Vector2.INF else from
 	var best: Unit = null
 	var bd := r
 	for b in u.game.bodies:
 		if not is_instance_valid(b):
 			continue
-		var dd: float = (b as Unit).position.distance_to(u.position)
-		if dd <= bd and sweepable(u, b):
+		var dd: float = (b as Unit).position.distance_to(c)
+		if dd <= bd and sweepable(u, b) and not danger(u, (b as Unit).position):
 			bd = dd
 			best = b
 	return best
@@ -227,30 +245,45 @@ static func cmd_sweep(u: Unit, b: Unit) -> void:
 	b.set_meta("gw_by", u)
 
 
-## How many parts a wreck gives: its price (one of a spawn) / per_part, by how much of it is left (rot and damage), at
-## least 1.
-static func parts_of(b: Unit) -> int:
+## How many cogs a wreck gives: Defs.GREAT_WINDER "share" of its cog price (one of a spawn), by how much of it is left
+## (rot and damage), at least 1. Its Tension is not paid back (the gear ground's running power, not a stock).
+static func cogs_of(b: Unit) -> int:
 	var cost := float(b.d.get("cost", 0)) / maxf(1.0, float(b.d.get("spawn", 1)))
 	var left := clampf(b.body_left() / maxf(b.body_size(), 1.0), 0.0, 1.0)
-	return maxi(1, int(round(cost / float(G["per_part"]) * left)))
+	return maxi(1, int(round(cost * float(G["share"]) * left)))
+
+
+## Done sweeping (no wreck left near, or it was given up): back to where it stood when it went (the meta "gw_home", set
+## by idle_scan), else it stays.
+static func _sweep_done(u: Unit) -> void:
+	var home = u.get_meta("gw_home", null)
+	u.remove_meta("gw_home")
+	if home is Vector2 and (home as Vector2).distance_to(u.position) > 24.0:
+		u.cmd_move(home)
+	else:
+		u.cmd_stop()
 
 
 ## Order "sweep", every tick: walks up to the wreck, rollers first, then sweeps it (work "sweeping") for sweep_time s.
+## Enemies come near the wreck: it gives it up and rolls back. The next wreck is looked for round where it stood.
 static func sweep_tick(u: Unit, delta: float) -> Vector2:
 	var b = u.order_target
-	if not sweepable(u, b) or u.parts >= int(G["cap"]):
+	var bad: bool = not sweepable(u, b)
+	if not bad and danger(u, (b as Unit).position):
+		bad = true
+		(b as Unit).remove_meta("gw_by")
+	if bad:
 		u.work = ""
-		if u.parts >= int(G["cap"]) and u.team == u.game.human and not u.has_meta("gw_full_told"):
-			u.set_meta("gw_full_told", true)
-			u.game.tell(u.team, "Your Great Winder's hopper is full of parts.")
 		if u._next_order():
+			u.remove_meta("gw_home")
 			return Vector2.ZERO
-		if u.auto_sweep and u.parts < int(G["cap"]):
-			var nxt := sweep_pick(u, float(G["sweep_look"]))
+		if u.auto_sweep:
+			var home = u.get_meta("gw_home", null)
+			var nxt := sweep_pick(u, float(G["sweep_look"]), home if home is Vector2 else Vector2.INF)
 			if nxt != null:
 				cmd_sweep(u, nxt)
 				return Vector2.ZERO
-		u.cmd_stop()
+		_sweep_done(u)
 		return Vector2.ZERO
 	var w := b as Unit
 	if w.position.distance_to(u.position) < u.radius + float(G["sweep_reach"]):
@@ -268,17 +301,19 @@ static func sweep_tick(u: Unit, delta: float) -> Vector2:
 	return u._walk_to(w.position, delta)
 
 
-## The wreck goes into the hopper: its parts are kept (up to the cap) and it is gone from the field (online and in
-## replays too: Game.sweep_body).
+## The wreck goes into the hopper and comes out as cogs for its side (Game.add_gold: they count as cogs earned), and it
+## is gone from the field (online and in replays too: Game.sweep_body). Returns the cogs gained.
 static func take(u: Unit, w: Unit) -> int:
-	var n := mini(parts_of(w), int(G["cap"]) - u.parts)
-	u.parts += n
+	var before: int = int(u.game.players[u.team]["gold"])
+	u.game.add_gold(u.team, cogs_of(w))
+	var n: int = int(u.game.players[u.team]["gold"]) - before
 	u.set_meta("gw_swept", int(u.get_meta("gw_swept", 0)) + 1)
+	u.set_meta("gw_cogs", int(u.get_meta("gw_cogs", 0)) + n)
 	u.game.sweep_body(w)
 	if u.visible and u.game.view_rect.has_point(u.position):
 		Sfx.play_any(["combat/great_winder_sweep", "work/winder_crank"], u.position, -4.0)
 		if u.team == u.game.human:
-			u.game.float_text(u.position + Vector2(0, -56), "+%d parts" % n, Color(0.95, 0.8, 0.45))
+			u.game.float_text(u.position + Vector2(0, -56), "+%d cogs" % n, Color(0.95, 0.8, 0.45))
 	if u.game.mlog and not u.game._first_of.has("%d:gw_sweep" % u.team):
 		u.game._first_of["%d:gw_sweep" % u.team] = true
 		u.game.mlog.add("%s's Great Winder sweeps up its first wreck" % u.game.mlog.who(u.team))
@@ -310,14 +345,14 @@ static func draw_area(u: Unit) -> void:
 
 # ------------------------------------------------------------------ the card
 
-## The selection card's line: its parts, the area and what it does now.
+## The selection card's line: the area and what it does now.
 static func card_line(u: Unit) -> String:
-	var a := [u.parts, int(G["cap"]), int(round(float(G["area"]) / Defs.TILE))]
+	var a := int(round(float(G["area"]) / Defs.TILE))
 	if u.work == "mending":
-		return "Parts %d/%d · winds everything within %d tiles · mending." % a
+		return "Winds everything within %d tiles · mending." % a
 	if u.work == "sweeping":
-		return "Parts %d/%d · winds everything within %d tiles · sweeping a wreck." % a
-	return "Parts %d/%d · winds everything within %d tiles." % a
+		return "Winds everything within %d tiles · sweeping a wreck into cogs." % a
+	return "Winds everything within %d tiles." % a
 
 
 ## Its command card buttons (HUD._ability_buttons): MEND and SWEEP, both autocasts that glow while on (a press switches
@@ -329,11 +364,8 @@ static func card(hud, list: Array, units: Array) -> void:
 	var game: Game = hud.game
 	var mend_on: bool = gws.all(func(o: Unit) -> bool: return o.auto_repair)
 	var sweep_on: bool = gws.all(func(o: Unit) -> bool: return o.auto_sweep)
-	var parts := 0
-	for o in gws:
-		parts += o.parts
 	hud._tip_for["MEND"] = ["Mend (automatic)", "On: standing about, the Great Winder mends the most hurt Clockwork unit near it with its key arm, one at a time, %d%% faster than a Winder (it costs cogs, like a repair), and winds it up. Right-click a hurt unit to send it there. Press to switch it off or on." % int(round((float(G["mend"]) - 1.0) * 100.0))]
-	hud._tip_for["SWEEP"] = ["Sweep (automatic)", "On: with nothing to mend, the Great Winder walks to the wrecks of your Clockwork units near it and sweeps them into its hopper as PARTS (%d at most; for reassembly, later). It never sweeps Crown or Brood bodies. Press to switch it off or on." % int(G["cap"])]
+	hud._tip_for["SWEEP"] = ["Sweep (automatic)", "On: standing idle, the Great Winder rolls to the Clockwork wrecks near it (yours, and the enemy's against the Clockwork), sweeps them up and turns them into cogs for you (%d%% of the unit's cog price), then rolls back. It skips a wreck with enemies near it, and never sweeps Crown or Brood bodies. Press to switch it off or on." % int(round(float(G["share"]) * 100.0))]
 	list.append(["ab_mend", ("~ " if mend_on else "") + "MEND", func() -> void:
 		for o in game.selected_units():
 			if o.kind == KIND:
@@ -343,4 +375,4 @@ static func card(hud, list: Array, units: Array) -> void:
 		for o in game.selected_units():
 			if o.kind == KIND:
 				game.net_set(o, "auto_sweep", not sweep_on)
-		hud.toast("Sweeping off." if sweep_on else "Sweeping on: it sweeps up your Clockwork wrecks near it."), true, "", "%d" % parts])
+		hud.toast("Sweeping off." if sweep_on else "Sweeping on: it turns the Clockwork wrecks near it into cogs."), true, "", ""])

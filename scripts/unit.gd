@@ -178,8 +178,7 @@ var loaded := true              # (a ballista) its bolt is in (the spring wound)
 var bolts := 0                  # (a ballista) bolts fired (tests)
 var bolt_hits: Array = []       # (a ballista) what its last bolt hit, in order (tests)
 var _db_t := 0.0                # (a ballista) s to the next look for a shot on the move
-# the Great Winder (scripts/great_winder.gd): MEND is its auto_repair; SWEEP its auto_sweep; the parts it has swept up
-var parts := 0                  # (a Great Winder) parts in its hopper (from its side's Clockwork wrecks; for reassembly later)
+# the Great Winder (scripts/great_winder.gd): MEND is its auto_repair; SWEEP its auto_sweep (its side's wrecks into cogs)
 var auto_sweep := false         # (a Great Winder) SWEEP autocast: on from the start
 var _board_t := 0.0
 var _descend := 0.0             # (a balloon) 1 = down low, taking men on or letting them off

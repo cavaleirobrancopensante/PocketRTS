@@ -261,7 +261,7 @@ Picture shown: the file under `assets/` the button really draws. "Crown style" o
 | Swift | train button; MORPH TO OWL; CANCEL MORPH | `cuckoo` portrait (framed), `clockwork/ab_morph_owl`, `clockwork/cancel` |
 | Ticking Owl | its portrait on the unit card (it is morphed, never trained); a BOMB at a spot later | `ticking_owl` portrait (framed), `clockwork/ab_owl_bomb` (if it gets one) |
 | Spring Catapult (planned) | train button; THROW (fling a Clock Soldier or Pendulum into the enemy); BOMBARD (it uses the new order) | `spring_catapult` portrait, `clockwork/ab_throw`, `clockwork/ab_bombard` |
-| Reassembly (planned) | its research; REASSEMBLE on a unit (rebuilt into its pair: Clock Soldier and Jack, Swift and Owl, Netter and Catapult) | `clockwork/research_reassembly`, `clockwork/ab_reassemble` (the target's portrait can sit on the button too) |
+| Reassembly (DROPPED by the owner, 2026-10-28: the Great Winder turns wrecks into cogs) | its research; REASSEMBLE on a unit (rebuilt into its pair: Clock Soldier and Jack, Swift and Owl, Netter and Catapult) | `clockwork/research_reassembly`, `clockwork/ab_reassemble` (the target's portrait can sit on the button too) |
 | Sweeper (planned) | train button; SWEEP (collect every body around it, on/off); its winding area (on/off) | `sweeper` portrait, `clockwork/ab_sweep`, `clockwork/ab_wind_area` |
 
 ## TO DRAW
