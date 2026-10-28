@@ -12,7 +12,9 @@ extends RefCounted
 
 var ai = null                   # the AI (scripts/ai.gd)
 var on := true                  # (tests switch round 5 off for a "before" number)
-var _only := ""                 # (study games: "crown" = part A only, "clock" = part B only)
+var crown_on := false           # part A (the Crown against the Clockwork): OFF by default, it did not win more games
+								# (docs/ai_round5.md); `-- r5:crown` on the command line turns it on for study games
+var _only := ""                 # (study games: "crown" = part A only)
 
 # ---- B: the Clockwork against Horsemen
 const RAIDER_SPEED := 95.0      # an armed ground enemy this fast is a rider (AI.FAST_SPEED)
@@ -67,9 +69,10 @@ func _init(owner_ai) -> void:
 	if args.has("r5:off"):
 		on = false              # (study games: `-- ... r5:off` plays the "before" computer, the same as 0.14.90)
 	elif args.has("r5:crown"):
-		_only = "crown"         # (`r5:crown`: part A only, the Clockwork as before)
-	elif args.has("r5:clock"):
-		_only = "clock"         # (`r5:clock`: part B only, the Crown as before)
+		crown_on = true         # (`r5:crown`: part A on as well)
+	elif args.has("r5:crownonly"):
+		crown_on = true
+		_only = "crown"         # (`r5:crownonly`: part A only, the Clockwork as before)
 
 
 func _bands() -> Array:
@@ -90,7 +93,7 @@ func _log(key: String, msg: String) -> void:
 
 ## The Crown against a Clockwork enemy (any of its enemies), Normal and up.
 func vs_clock() -> bool:
-	if not on or _only == "clock" or ai.difficulty < 1 or not ai._crown():
+	if not on or not crown_on or ai.difficulty < 1 or not ai._crown():
 		return false
 	if _vs_clock < 0:
 		_vs_clock = 0
@@ -104,7 +107,7 @@ func vs_clock() -> bool:
 ## The chance of the Horse Breeder opening (AI._ready). Against the Clockwork the rush lost every game:
 ## its Clock Soldiers come out at 1:50 and the computer switches to an army on seeing a Horseman.
 func breeder_chance(normal: float) -> float:
-	if not on or _only == "clock" or ai.game.faction_of(ai.team) != "crown":
+	if not on or not crown_on or ai.game.faction_of(ai.team) != "crown":
 		return normal
 	var clock_foe := false
 	for t in ai.game.enemies_of(ai.team):

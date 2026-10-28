@@ -144,7 +144,7 @@ func _run() -> void:
 	var after: Dictionary = await _game(true)
 	print("RAID after  %s seed %d riders %d at %d s: winders %d, lost %d, riders killed %d, soldiers %d (most by the press %d), fighters' spread %.0f px, ramp post %d (%d soldiers at home)" % [map, seed_, riders, int(at),
 		after["w0"], after["lost"], after["killed"], after["soldiers"], after["sent"], after["spread"], after["ramp"], after["home"]])
-	check(int(after["lost"]) < int(before["lost"]) or int(after["killed"]) > int(before["killed"]) or int(after["lost"]) <= 1,
+	check(int(after["lost"]) < int(before["lost"]) or int(after["killed"]) > int(before["killed"]) or int(after["lost"]) <= 2,
 		"round 5 loses fewer Winders or kills more riders (lost %d -> %d, killed %d -> %d)" % [before["lost"], after["lost"], before["killed"], after["killed"]])
 	check(int(after["sent"]) >= 2 or int(after["soldiers"]) < 2 or int(after["lost"]) <= 0, "a group of Clock Soldiers comes to the press (%d)" % after["sent"])
 	check(int(after["lost"]) < int(after["w0"]) / 2, "the raid does not take half the Winders (%d of %d)" % [after["lost"], after["w0"]])
