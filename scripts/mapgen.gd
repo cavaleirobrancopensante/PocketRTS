@@ -1,6 +1,6 @@
 class_name MapGen
 ## Map layouts and biomes. Every map is mirrored through its middle so both sides get the
-## same ground. The classic maps (MAPS, 84 x 60) are generated anew each match from the
+## same ground. The classic maps (MAPS, 110 x 80) are generated anew each match from the
 ## match's seed: with 3-4 players they're mirrored both ways and everyone starts in a corner.
 ## The named maps (MapData.NAMED) are hand-made: any size, 1v1 to 4v4, a fixed layout
 ## (their own seed and pieces) so each one always looks the same; they're turned through
@@ -143,8 +143,31 @@ const BIOMES := {
 }
 
 
+## The classic maps' size (84 x 60 before 0.15.0; docs/map_sizes.md).
+const CLASSIC := Vector2i(110, 80)
+
+
+## The version that made the built-in maps bigger: a replay or a saved match of a built-in
+## map from before it was played on the old ground, so it can't be shown or resumed.
+const RESIZED := "0.15.0"
+
+
+## Was a match of `map_id` recorded on `version` played on that map's old, smaller layout?
+static func old_layout(map_id: String, version: String) -> bool:
+	if not (MAPS.has(map_id) or MapData.NAMED.has(map_id)):
+		return false
+	var a := version.split(".")
+	var b := RESIZED.split(".")
+	if a.size() < 3 or not a[0].is_valid_int():
+		return false              # ("dev" builds)
+	for i in 3:
+		if int(a[i]) != int(b[i]):
+			return int(a[i]) < int(b[i])
+	return false
+
+
 ## The size in cells of a map: a named map's own, a custom map's (saved with it; older
-## ones are 84 x 60), the editor's blank "blank:WxH", the classic maps 84 x 60.
+## ones are 84 x 60), the editor's blank "blank:WxH", the classic maps CLASSIC.
 static func size_of(map_id: String) -> Vector2i:
 	if MapData.NAMED.has(map_id):
 		var sz: Array = MapData.NAMED[map_id]["size"]
@@ -155,7 +178,7 @@ static func size_of(map_id: String) -> Vector2i:
 		var p := map_id.substr(6).split("x")
 		if p.size() == 2:
 			return Vector2i(clampi(int(p[0]), 16, MAX_SIZE.x), clampi(int(p[1]), 16, MAX_SIZE.y))
-	return Vector2i(84, 60)
+	return CLASSIC
 
 
 ## Every built-in map: the classic ones, then the named ones.
@@ -319,16 +342,18 @@ func generate(map_id: String) -> Array:
 				_crossroads()
 		if four():
 			_fold()
+		else:
+			_symmetrize()       # (the middle hill's two ramps came out a row apart: the halves must match exactly)
 		_square_ramps()
 		_cliffs()
 		var ok := true
-		for i in g.starts.size():
-			if not g._connected(g.starts[0], g.starts[i]) or not g._connected(g.starts[0], g.expansions[i]):
+		for c in g.starts + g.expansions + extra_sites:
+			if not g._connected(g.starts[0], c):
 				ok = false
 		if ok:
 			break
-	# every base site (all four corners with 3-4 players, used or not)
-	g.base_sites = g.starts + g.expansions
+	# every base site (all four corners with 3-4 players, used or not; the thirds of every side)
+	g.base_sites = g.starts + g.expansions + extra_sites
 	var all_mains: Array = g.starts.duplicate()
 	_assign_corners()
 	# a light scatter of decorations (their own dice: the map's layout stays as it was)
@@ -337,6 +362,8 @@ func generate(map_id: String) -> Array:
 	_decorate(drng, [], 0.6)
 	_clear_mains(all_mains)
 	_thin_sites(g.base_sites)
+	_clear_footprints(g.base_sites)
+	_open_ways(g.base_sites)
 	g.height = height
 	g.ramp = ramp
 	return [m[1], m[2]]
@@ -354,11 +381,13 @@ func generate(map_id: String) -> Array:
 ## checked (it passed the editor's CHECK). A picture for the lobby sits beside it (<name>.png).
 const CELL_CODES := ".hrwftTkK"
 const MAP_DIR := "user://maps"
-const MAX_SIZE := Vector2i(192, 192)
+const MAX_SIZE := Vector2i(256, 256)
 
 
-## A custom map's size (older maps were all 84 x 60).
+## A custom map's size (older maps were all 84 x 60; a new, empty one is the classic size).
 static func custom_size(d: Dictionary) -> Vector2i:
+	if d.is_empty():
+		return CLASSIC
 	var sz: Array = d.get("size", [84, 60])
 	if sz.size() < 2:
 		return Vector2i(84, 60)
@@ -640,21 +669,43 @@ func four() -> bool:
 	return g.n_players() > 2
 
 
-## Hall spots: two opposite corners, or all four corners with 3-4 players.
-## `nat4` is the natural expansion used when there are four corners (the 2-player
-## natural would sit too close to the corner below it).
-func _base_spots(hall: Vector2i, nat: Vector2i, nat4 := Vector2i(30, 6)) -> void:
-	var sz := Vector2i(5, 4)
+## Hall spots: two opposite corners, or all four corners with 3-4 players. `nat` is each
+## main's natural (in front of its ramp), `thirds` the other base sites of the top-left
+## player (their twins are added). With four corners the map is the top-left quarter folded
+## both ways: `nat4` is that quarter's natural (the 2-player one would sit too close to the
+## corner below it) and `thirds4` its other sites.
+var extra_sites: Array = []         # base sites that are nobody's start or natural (all sides)
+
+
+func _base_spots(hall: Vector2i, nat: Vector2i, thirds: Array = [], nat4 := Vector2i(40, 6), thirds4: Array = []) -> void:
+	var sz := HALL
+	extra_sites = []
 	if not four():
 		g.starts = [hall, g._mirror(hall, sz)]
 		g.expansions = [nat, g._mirror(nat, sz)]
+		for c in thirds:
+			extra_sites.append(c)
+			extra_sites.append(g._mirror(c, sz))
 		return
-	for c in [hall, nat4]:
+	for c in [hall, nat4] + thirds4:
 		var list: Array = [c, Vector2i(c.x, H - c.y - sz.y), Vector2i(W - c.x - sz.x, c.y), g._mirror(c, sz)]   # TL, BL, TR, BR
 		if c == hall:
 			g.starts = list
-		else:
+		elif c == nat4:
 			g.expansions = list
+		else:
+			extra_sites.append_array(list)
+
+
+## The hall spots themselves are open ground (no tree, rock or decoration on the footprint
+## or the ring round it).
+func _clear_footprints(sites: Array) -> void:
+	for st in sites:
+		for y in range(st.y - 1, st.y + HALL.y + 1):
+			for x in range(st.x - 1, st.x + HALL.x + 1):
+				var c := Vector2i(x, y)
+				if g.in_map(c) and (g._terrain_kind.has(g.idx(c)) or _prop_at.has(g.idx(c))) and g.water[g.idx(c)] == 0 and g.cliff[g.idx(c)] == 0:
+					_clear_cell(g.idx(c))
 
 
 ## Who starts where: allies share a side of the map (left or right).
@@ -710,43 +761,45 @@ func _fold() -> void:
 
 func _keep() -> Array:
 	var keep: Array = []
-	for st in g.starts + g.expansions:
+	for st in g.starts + g.expansions + extra_sites:
 		keep.append([Vector2(st) + Vector2(2.5, 2), 13.0])
 	return keep
 
 
 ## Open ground (mains up on high ground), a hill in the middle with two ramps, lakes and woods.
+## Each side: the natural below its ramp, a corner beyond it, a site past the pond on its own
+## edge and one along the top beside its main (the owner's Greenhold drawing, 2026-10-28).
 func _crossroads() -> void:
-	_base_spots(Vector2i(10, 8), Vector2i(7, 34))
+	_base_spots(Vector2i(10, 8), Vector2i(7, 30), [Vector2i(5, 69), Vector2i(31, 68), Vector2i(36, 5), Vector2i(38, 25)], Vector2i(38, 6), [Vector2i(36, 26)])
 	_main_plateau()
-	_plateau(Vector2(42, 30), Vector2(5, 4), [Vector2(30, 30), Vector2(54, 30)], false)
-	_lake(Vector2(22, 50), Vector2(5, 3))
-	_lake(Vector2(40, 12), Vector2(3, 2))
-	_woods(22, _keep())
+	_plateau(Vector2(55, 40), Vector2(6, 5), [Vector2(40, 40), Vector2(70, 40)], false)
+	_lake(Vector2(20, 66), Vector2(5, 4))
+	_lake(Vector2(54, 15), Vector2(4, 3))
+	_woods(38, _keep())
 
 
 ## Each main base sits on high ground with a single ramp down toward its natural.
 func _highlands() -> void:
-	_base_spots(Vector2i(10, 8), Vector2i(8, 38))
+	_base_spots(Vector2i(10, 8), Vector2i(7, 31), [Vector2i(6, 66), Vector2i(27, 69), Vector2i(38, 5), Vector2i(38, 25)], Vector2i(38, 6), [Vector2i(36, 26)])
 	_main_plateau()
-	_plateau(Vector2(42, 30), Vector2(4, 3), [Vector2(42, 37), Vector2(42, 23)], false)
-	_lake(Vector2(30, 46), Vector2(4, 3))
-	_lake(Vector2(36, 16), Vector2(3, 2))
-	_woods(18, _keep())
+	_plateau(Vector2(55, 40), Vector2(5, 4), [Vector2(55, 49), Vector2(55, 31)], false)
+	_lake(Vector2(42, 61), Vector2(5, 4))
+	_lake(Vector2(48, 21), Vector2(4, 3))
+	_woods(31, _keep())
 
 
 ## A river splits the map between the two bases (mains up on high ground); three fords are the only crossings.
 func _rivers() -> void:
-	_base_spots(Vector2i(10, 8), Vector2i(7, 34))
+	_base_spots(Vector2i(10, 8), Vector2i(7, 30), [Vector2i(6, 50), Vector2i(38, 5), Vector2i(30, 28), Vector2i(64, 4)])
 	_main_plateau()
 	var fords: Array = [0.22, 0.5, 0.78]
-	for i in 160:
-		var f := i / 159.0
+	for i in 210:
+		var f := i / 209.0
 		# the river runs from the top-right corner to the bottom-left one
 		var c := Vector2(W - 1, 0).lerp(Vector2(0, H - 1), f) + Vector2(sin(f * 9.0) * 3.0, cos(f * 7.0) * 2.0)
 		var is_ford := false
 		for fd in fords:
-			if absf(f - fd) < 0.025:
+			if absf(f - fd) < 0.019:
 				is_ford = true
 		for dy in range(-2, 3):
 			for dx in range(-2, 3):
@@ -783,16 +836,16 @@ func _rivers() -> void:
 					ford[k] = 1
 					g.water[k] = 0
 					g.solid[k] = 0
-	_woods(20, _keep())
+	_woods(35, _keep())
 
 
 ## Four players: two rivers cross in the middle, cutting the map into quarters.
 func _rivers4() -> void:
-	_base_spots(Vector2i(10, 8), Vector2i(7, 34))
+	_base_spots(Vector2i(10, 8), Vector2i(7, 30), [], Vector2i(38, 6), [Vector2i(36, 26)])
 	_main_plateau()
-	for i in 120:
-		var f := i / 119.0
-		var is_ford := absf(f - 0.25) < 0.035 or absf(f - 0.75) < 0.035
+	for i in 160:
+		var f := i / 159.0
+		var is_ford := absf(f - 0.25) < 0.027 or absf(f - 0.75) < 0.027
 		for c in [Vector2(W * 0.5 + sin(f * 11.0) * 1.5, f * H), Vector2(f * W, H * 0.5 + sin(f * 13.0) * 1.5)]:
 			for dy in range(-1, 2):
 				for dx in range(-1, 2):
@@ -807,7 +860,7 @@ func _rivers4() -> void:
 					elif ford[i2] == 0:
 						g.water[i2] = 1
 						g.solid[i2] = 1
-	_woods(20, _keep())
+	_woods(35, _keep())
 
 
 # ------------------------------------------------------------------ pieces
@@ -815,7 +868,7 @@ func _rivers4() -> void:
 ## Every main base sits on high ground with one ramp down toward its natural (two with
 ## four players), so it can be walled off.
 func _main_plateau() -> void:
-	_plateau(Vector2(11, 9), Vector2(15, 12), [Vector2(17, 28), Vector2(36, 8)] if four() else [Vector2(17, 28)], true)
+	_plateau(Vector2(11, 9), Vector2(16, 13), [Vector2(17, 29), Vector2(39, 8)] if four() else [Vector2(17, 29)], true)
 
 
 ## High ground (mirrored too when `mirror`): an ellipse, with ramps toward the given points.
