@@ -1847,6 +1847,7 @@ func _paint_ramps(img: Image, area := Rect2i(0, 0, W, H)) -> void:
 			var path_t := _tile(b["base"], 3)
 			# the side axis on the grid, and which cells continue the ramp on each side
 			var sa := Vector2i(1, 0) if absf(side.x) >= absf(side.y) else Vector2i(0, 1)
+			var sideways := sa.y != 0      # the ramp runs east-west (down to the east or the west)
 			var neg_open := {}
 			var pos_open := {}
 			# (the bottom row has no rail: it is open from the sides, so no kerb is painted down
@@ -1892,6 +1893,20 @@ func _paint_ramps(img: Image, area := Rect2i(0, 0, W, H)) -> void:
 							sd = minf(sd, along)
 						if not pos_open.get(c, false):
 							sd = minf(sd, float(T) - 1.0 - along)
+						# (a sideways ramp, running east-west: its kerbs are the drawn rails alone
+						# (RampRails); no rock wedge and no painted kerb, which slanted across the
+						# planks there, only the rails' shadow as an even band along each side)
+						if sideways:
+							if sd < 6.0:
+								col = col.darkened(0.42)
+							elif sd < 9.0:
+								col = col.darkened(0.42 * (9.0 - sd) / 3.0)
+							var td_s := p.dot(dir) - lo_p
+							if td_s < 6.0:
+								col = col.darkened(0.45 * (1.0 - td_s / 6.0))
+							col.a = 1.0
+							img.set_pixel((c.x - area.position.x) * T + px, (c.y - area.position.y) * T + py, col)
+							continue
 						var wedge := 8.0 * (1.0 - f)
 						var k := sd - wedge
 						if sd < wedge:

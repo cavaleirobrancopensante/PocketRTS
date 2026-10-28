@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.15.6", "items": [
+		"SIDEWAYS RAMPS: a ramp that runs east-west no longer has slanted lines across its planks along the rails. Its rails now cast an even shadow band along each side, and a soft shadow lies across its high end, where it leaves the plateau, fading downhill. North-south ramps are unchanged. Only the drawing changed.",
+	]},
 	{"v": "0.15.5", "items": [
 		"CLIFF SIDES: the east and west edges of high ground now have a visible side wall, a narrow strip of the same rock as the south walls, with the high ground's lip along its top edge. West-facing walls are a little lit; east-facing walls are in shadow and cast a slightly deeper shadow on the ground beside them. A sideways ramp now clearly climbs a cliff instead of seeming to lead onto flat ground. Only the drawing changed: the ground, paths and building spots are the same.",
 	]},
