@@ -23,7 +23,7 @@ var lobby := {
 const WHO := ["you", "easy", "normal", "hard", "brutal"]
 const MAX_SLOTS := 8          # players in a skirmish (the 4v4 maps)
 const WHO_LABEL := {"you": "YOU", "easy": "EASY AI", "normal": "NORMAL AI", "hard": "HARD AI", "brutal": "BRUTAL AI"}
-const FACS := ["crown", "brood", "clockwork", "random", Defs.BROOD_NEW]      # (the last: the new Brood, an experiment)
+const FACS := ["crown", "brood", "clockwork", "random"]
 
 const HELP := {
 	"BASICS": """Destroy every enemy building to win.
@@ -353,7 +353,16 @@ func show_menu() -> void:
 	sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(sp)
 	var save := SaveGame.peek()
-	if not save.is_empty() and save.get("version", "") == version:
+	if not save.is_empty() and SaveGame.old_brood(save):
+		# (a match kept from before 0.18.0 with the old Brood in it: it can't go on; said once, plainly)
+		var old := UiStyle.text(Loc.t("Your saved match can't be continued.") + " " + Loc.t(Defs.OLD_BROOD_NOTE), 20, Color(1, 0.85, 0.6), HORIZONTAL_ALIGNMENT_CENTER)
+		old.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		old.custom_minimum_size = Vector2(560, 0)
+		var orow := HBoxContainer.new()
+		orow.alignment = BoxContainer.ALIGNMENT_CENTER
+		orow.add_child(old)
+		v.add_child(orow)
+	elif not save.is_empty() and save.get("version", "") == version:
 		var facs: Array = []
 		for sl in save["cfg"]["slots"]:
 			facs.append(Loc.t(Defs.base_faction(String(sl["faction"])).capitalize()))
@@ -474,7 +483,8 @@ func _faction_card(f: String) -> Control:
 	v.add_theme_constant_override("separation", 4)
 	p.add_child(v)
 	var img := TextureRect.new()
-	img.texture = load("res://assets/buildings/%s_built.png" % Defs.FACTIONS[f]["hall"])
+	img.texture = load("res://assets/icons/%s.png" % Defs.FACTIONS[f]["card"]) if Defs.FACTIONS[f].has("card") \
+		else load("res://assets/buildings/%s_built.png" % Defs.FACTIONS[f]["hall"])
 	img.custom_minimum_size = Vector2(140, 130)
 	img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -1258,7 +1268,8 @@ func _slot_row(i: int) -> Control:
 		who.add_theme_color_override("font_color", Color(1, 0.9, 0.55))
 	h.add_child(who)
 	# faction
-	var f: String = sl["faction"]
+	var f: String = Defs.base_faction(String(sl["faction"]))
+	sl["faction"] = f        # (a slot kept from before 0.18.0 may still say "brood_new": the Brood)
 	var fac_opts: Array = []
 	for ff in FACS:
 		fac_opts.append([Defs.faction_label(ff).to_upper(), ff, false])
@@ -1446,7 +1457,7 @@ func make_map_preview(id: String, slots: Array) -> Control:
 
 
 func _faction_icon(f: String) -> Texture2D:
-	return load("res://assets/icons/%s.png" % Defs.FACTIONS[f]["hall"])
+	return load("res://assets/icons/%s.png" % Defs.FACTIONS[f].get("card", Defs.FACTIONS[f]["hall"]))
 
 
 func _colour_taken(c: int, except: int) -> bool:
@@ -2128,7 +2139,6 @@ func start(cfg: Dictionary = {}) -> void:
 	last_cfg.erase("replay")
 	var slots: Array = cfg["slots"]
 	var facs: Array = []
-	var nbs: Array = []          # (the new Brood, an experiment: it plays as the Brood, scripts/brood_new.gd)
 	var cols: Array = []
 	var sides: Array = []
 	var mult: Array = []
@@ -2137,10 +2147,9 @@ func start(cfg: Dictionary = {}) -> void:
 	for i in slots.size():
 		var sl: Dictionary = slots[i]
 		var f: String = sl["faction"]
-		var picked: String = ["crown", "brood", "clockwork"][randi() % 3] if f == "random" else f
+		var picked: String = ["crown", "brood", "clockwork"][randi() % 3] if f == "random" else Defs.base_faction(f)
 		last_cfg["slots"][i]["faction"] = picked     # a continued match keeps the same factions
 		facs.append(Defs.base_faction(picked))
-		nbs.append(picked == Defs.BROOD_NEW)
 		cols.append(int(sl["colour"]))
 		sides.append(int(sl["side"]))
 		var lvl := LEVELS.find(sl["who"])
@@ -2155,7 +2164,6 @@ func start(cfg: Dictionary = {}) -> void:
 	game.human = maxi(human, 0) if not watching else maxi(int(_replay_data["header"].get("me", 0)), 0)
 	game.difficulty = top
 	game.factions = facs
-	game.nb_teams = nbs
 	game.colours = cols
 	game.sides = sides
 	game.income_mult = mult
@@ -2174,7 +2182,7 @@ func start(cfg: Dictionary = {}) -> void:
 	for t in slots.size():
 		if t == human or game.puppet or slots[t]["who"] == "remote":
 			continue         # (a friend online plays that side; a guest's game runs no computers)
-		var ai: AI = AIBroodNew.new() if bool(nbs[t]) else AI.new()      # (the new Brood's own simple plan)
+		var ai: AI = AIBroodNew.new() if facs[t] == "brood" else AI.new()      # (the Brood's own plan: scripts/ai_brood_new.gd)
 		ai.game = game
 		ai.team = t
 		ai.difficulty = maxi(0, LEVELS.find(slots[t]["who"]))

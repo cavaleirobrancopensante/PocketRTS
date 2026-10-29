@@ -214,7 +214,7 @@ func _set_ai(t: int, on: bool) -> void:
 			ai.process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
 			return
 	if on:
-		var ai: AI = AIBroodNew.new() if BroodNew.on(game, t) else AI.new()
+		var ai: AI = AIBroodNew.new() if game.faction_of(t) == "brood" else AI.new()
 		ai.game = game
 		ai.team = t
 		ai.difficulty = 2

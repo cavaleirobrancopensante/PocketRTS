@@ -5,26 +5,6 @@ class_name Defs
 const TILE := 32
 const CAMERA_MARGIN_TILES := 7  # the camera may scroll this many tiles past every map edge (a base by the edge can be centred); units stay on the map (owner: 25 was too much)
 const START_GOLD := 250
-const EGGS_MAX := 5               # a Burrow's eggs (an upgraded hall holds more: HALL_LEVELS)
-## Seconds for a Burrow to lay one egg (a Clutch Mound still speeds it up). Was 6.0: +50% so each
-## hatched unit is a bigger commitment; cancelling a hatching egg no longer gives the egg back.
-const EGG_TIME := 9.0
-## The Brood's main hall grows in three levels (its kind stays "hive" at every level; the
-## level is kept on the building and saved): name, health, armour and how many eggs it holds.
-## Levels 2 and 3 are upgrades on the hall's card (`label`), paid in biomass (`cost`) and
-## essence (`cost2`), taking `time` s, `needs` a finished building of that kind; the hall
-## keeps laying, hatching and taking food meanwhile, and CANCEL pays it back. `art`: its
-## sprite sheet (assets/buildings/<art>_<state>.png, tools/import_brood_halls.py); until it
-## exists the Burrow's is drawn `scale` times bigger (anchored at the bottom).
-const HALL_LEVELS := [
-	{"name": "Burrow", "hp": 1500, "armor": 1, "eggs": 5, "art": "hive", "scale": 1.0},
-	{"name": "Warren", "hp": 2000, "armor": 1, "eggs": 10, "art": "warren_hall", "scale": 1.15,
-		"label": "WARREN", "cost": 150, "cost2": 0, "time": 40.0,
-		"about": "Upgrade to Warren: up to 10 eggs, more health (2000). The hall keeps laying eggs and hatching meanwhile."},
-	{"name": "Broodmound", "hp": 2600, "armor": 2, "eggs": 15, "art": "broodmound", "scale": 1.3,
-		"label": "BROODMOUND", "cost": 250, "cost2": 50, "time": 60.0, "needs": "gorge_pit",
-		"about": "Upgrade to Broodmound: up to 15 eggs, more health (2600) and armour 2. The hall keeps laying eggs and hatching meanwhile."},
-]
 const WIND_DECAY := 0.012         # Clockwork: charge lost per second outside a field (empty in ~80 s)
 const WIND_MIN := 0.55
 const AUTO_REPAIR := 8           # REPAIR autocast: how far (tiles) an idle worker looks for something to fix
@@ -34,10 +14,6 @@ const REPAIR_RATE := 20.0         # slowest repair speed (hp/s per worker); fast
 # Each town hall allows a fixed number of each economy structure (FACTIONS[f]["econ"]);
 # Crown and Clockwork ones must stand near one of their halls.
 const ECON_RANGE := 14            # tiles from a hall
-## Brood Burrows have no ground of their own (each Feeding Pit has its own) and have no spacing rule for
-## the player (since 0.12.99); this is only how far apart the COMPUTER plants its extra ones
-## (centre to centre, tiles).
-const BROOD_HALL_SPACING := 8
 const HALL_SPACING := 18          # a new hall needs its own ground: tiles from your other halls
 ## Lodes: every Town Hall's ground holds a reserve of saltpetre for its Powder Mill, every
 ## Clocktower's a reserve of ore for its Ore Crushers (a Mill / Crusher draws on the nearest
@@ -67,7 +43,7 @@ const FARM_YIELD := 380           # gold a harvest (fresh soil; was 450 while a 
 ## built where a hall fell takes over what was left there). Powder Mills draw on its saltpetre (LODE).
 const SOIL_RESERVE := 9000
 const SOIL_TIRED := 0.0           # share of a harvest that spent soil still pays (none: barren; was 1/3)
-const SOIL_LOW := 0.25            # warn the player below this share of the reserve (a Feeding Pit's ground too)
+const SOIL_LOW := 0.25            # warn the player below this share of the reserve (a Rootmaw's ground too)
 const MILL_RATE := 0.33           # powder per second per labourer at a Powder Mill (6 per hall: ~2/s, ~120/min) while its saltpetre lasts
 ## The Crown starts with no powder: a Powder Mill comes before Musketeers (or a Horse Breeder
 ## before Horsemen: the two openings).
@@ -123,14 +99,12 @@ const BALLOON := {"store": 40, "keg": 10, "haul": 3.0, "reach": 2.0}
 ## (Step 3, keg mines, will reuse the keg carry and Game.powder_blast.)
 ## A dropped keg on the ground (PowderKeg): `hp` health; it blows up with the same blast, scaled by the powder left.
 const KEG := {"blast": 40.0, "radius": 48.0, "hp": 30.0}
-# Brood: grubs haul food from Feeding Pits to a Hive; the longer the haul, the richer it is.
-## A load pays for the time its round trip takes, at a rate that rises with the pit's
-## distance from its Hive (centre to centre, in tiles): FOOD_RATE biomass per grub-second
-## from FOOD_NEAR tiles in, up to FOOD_BONUS more (+30%) at FOOD_FAR tiles, flat to
-## FOOD_PEAK, then a little less per tile beyond (FOOD_FADE). The trip is estimated as
-## PIT_TIME + FOOD_TRIP seconds a tile of open ground between the two buildings (less the
-## FOOD_REACH a grub needn't walk: it unloads beside each one). So a grub earns ~30-35 biomass
-## a minute within 9 tiles of the capital and ~44 from 15-24 tiles out (half of what it was; tools/econ_bench.gd pits).
+# Brood: grubs carry food from a rooted Rootmaw's flank (or a food pile) to the Brood Mother; the longer the trip,
+# the richer it is (Game.food_at, scripts/brood_new.gd).
+## A load pays for the time its round trip takes, at a rate that rises with the Rootmaw's distance from the Mother
+## (in tiles): FOOD_RATE biomass per grub-second from FOOD_NEAR tiles in, up to FOOD_BONUS more (+30%) at FOOD_FAR
+## tiles, flat to FOOD_PEAK, then a little less per tile beyond (FOOD_FADE). The trip is estimated as PIT_TIME +
+## FOOD_TRIP seconds a tile of open ground between the two (less the FOOD_REACH a grub needn't walk).
 const PIT_TIME := 2.0             # seconds a grub feeds at the pit before hauling
 const FOOD_RATE := 0.6            # biomass per grub-second of round trip (near pits; was 1.2: halved, same distance curve)
 const FOOD_NEAR := 6.0
@@ -138,33 +112,19 @@ const FOOD_FAR := 18.0
 const FOOD_PEAK := 22.0
 const FOOD_BONUS := 0.3
 const FOOD_FADE := 0.015          # share of the rate lost per tile beyond FOOD_PEAK
-## The capital's swamp reaches this many tiles farther than other Burrows', to cover a normal main base.
-const CAPITAL_SWAMP_BONUS := 5
 const FOOD_TRIP := 0.8            # seconds of round trip per tile walked (mostly on swamp)
 const FOOD_REACH := 1.5           # tiles of the gap a grub doesn't walk
 const FOOD_MAX_D := 32.0          # a load is worth no more from farther out than this
-## PIT GROUND (owner's decision, 2026-10-27): every Feeding Pit has its OWN ground, PIT_GROUND biomass;
-## every load hauled from it draws its value from it, and once it's spent the pit yields NOTHING
-## (barren). Each pit claims a circle of ground PIT_CLAIM tiles round its centre, and two of a
-## player's living pits' circles may not overlap (centres at least 2 x PIT_CLAIM apart: about 4-5
-## pits on a main plateau). The ground belongs to the land: a dead pit leaves its circle behind as
-## an "old ground" spot (Game.pit_spots) with what was left, and a new pit whose circle overlaps old
-## spots takes over the SMALLEST amount left among them (they merge into its claim), so rebuilding
-## beside a spent pit can't refresh the ground.
-## THE CAPITAL: a Brood player's FIRST Burrow (the oldest one standing; if it falls the next oldest takes
-## over) is the only hall grubs unload at (food and cocoons). It has no ground of its own (the pits do).
-## The other Burrows only lay eggs, give supply and spread swamp. Where the Queen sits.
-## A Feeding Pit's crew (its `crew` is the base) grows with its distance from the capital: +1 grub per
-## PIT_CREW_STEP tiles beyond FOOD_NEAR, up to PIT_CREW_MAX, so far pits can take more hands.
+## THE GROUND (owner's decision, 2026-10-27, kept by the Rootmaw): each rooted Rootmaw drinks from its own ground,
+## PIT_GROUND biomass in a circle PIT_CLAIM tiles round it; two of a side's rooted circles may not overlap, and a
+## spot keeps what was left when its Rootmaw gets up (Game.nb_spots). A Rootmaw's crew grows with its distance from
+## the Mother: +1 grub per PIT_CREW_STEP tiles beyond FOOD_NEAR, up to PIT_CREW_MAX.
 const PIT_CREW_STEP := 4.0
 const PIT_CREW_MAX := 12
-## Brood resource buildings (Feeding Pit, Brood Pen) need swamp joined to the capital's, no farther than this.
-const BROOD_RESOURCE_MAX_D := 40.0
-const PIT_GROUND := 3000          # biomass in each Feeding Pit's own ground (a full crew of 6 draws ~200-250 a minute: ~12-15 minutes)
-const PIT_CLAIM := 5.0            # tiles: the radius of the circle of ground a Feeding Pit claims (living pits' circles may not overlap)
-## Brood Pen SACRIFICE: a Brood creature offered up at a Pen gives this share of its biomass
-## cost as essence (a Raptor, 25 biomass, gives 9). Was 12% (3 a Raptor) until 0.14.40, when the Pen
-## also stopped turning bodies that fell near it into essence (the fallen are harvested by grubs only).
+const PIT_GROUND := 3000          # biomass in each Rootmaw's ground
+const PIT_CLAIM := 5.0            # tiles: the radius of a Rootmaw's circle of ground (rooted circles may not overlap)
+## SACRIFICE: a Brood creature offered up at the Brood Mother gives this share of its biomass cost as spoils (a
+## Raptor, 25 biomass, gives 9).
 const SACRIFICE := 0.35
 # Clockwork: Winders carry batteries from the energy buildings to the Ore Crushers.
 ## Clockwork economy: only the Clocktower and Boilers (2 per Clocktower) fill batteries;
@@ -333,7 +293,7 @@ const CW := {
 	# (enemies near the Line within it are hit too); pressure scales damage between `min_p` and 1; units it passes get
 	# overcharged for `charge` s (friends); `pressure_rate` = bonus damage per point of local pressure over 0.5.
 	"tesla": {"jumps": 2, "falloff": 0.55, "reach": 96.0, "min_p": 0.6, "pass": 70.0, "pressure_bonus": 0.6},
-	# STORM ENGINE: THUNDER raises a storm of `radius` px for `time` s at up to `range` px: `dps` damage and the acid slow (Defs.BLOAT slow)
+	# STORM ENGINE: THUNDER raises a storm of `radius` px for `time` s at up to `range` px: `dps` damage and the acid slow (Defs.ACID_SLOW)
 	# to enemies in it; cooldown after. Set up off the rails with Tin Militia: `off_*` multipliers.
 	# COUPLING (scripts/cw_consist.gd): rail vehicles hook together into one train. len: [side view, end-on view] px a vehicle
 	# is long on the track (a coupling joins two vehicles at half of each length less the hook overlap); reach: px from the
@@ -809,12 +769,13 @@ const FACTIONS := {
 		"about": "Musketeers, cannons and mortars, and horses for them. Farms ripen into big harvests; Horse Breeders sell the horses that cavalry and guns need; Powder Mills grind each Town Hall's saltpetre into powder for muskets and cannons. Slow and strong when dug in.",
 	},
 	"brood": {
-		"name": "The Brood", "hall": "hive", "worker": "grub", "supply": "clutch_mound",
-		"build": ["hive", "clutch_mound", "feeding_pit", "brood_pen", "warren", "gorge_pit", "roost"],
-		"start_workers": 5, "ready": true, "max_supply": 200,
-		"res": ["Biomass", "Spoils"], "econ": {"feeding_pit": 3, "brood_pen": 1},
-		"start": ["feeding_pit"],
-		"about": "A swarm of cheap lizards. Grubs haul food from pits to the Burrow: the longer the haul, the richer the food, and each Burrow's ground runs out in time. Upgrade it to a Warren, then a Broodmound, for more eggs. Spoils come from the fallen and from offerings at the Brood Pen. Supply cap 200.",
+		# (since 0.18.0 the only Brood is the creature Brood, scripts/brood_new.gd: no buildings, so no hall, supply
+		# building, build list or economy buildings; "card" is its picture on the faction cards and menus)
+		"name": "The Brood", "hall": "", "worker": "grub", "supply": "", "card": "brood_mother",
+		"build": [], "start_workers": 5, "ready": true, "max_supply": 200,
+		"res": ["Biomass", "Spoils"], "econ": {},
+		"start": [],
+		"about": "A swarm of reptiles with no buildings. The Brood Mother lays every egg and is the Brood's life: kill her and it is out. Grubs carry food from Rootmaws to her (the farther, the richer) and turn into rooting creatures: Rootmaws, Mound Turtles for supply and the Sires that father her warriors. Rooted creatures are its buildings; uprooted they walk. Spoils come from the fallen and from offerings. Supply cap 200.",
 	},
 	"clockwork": {
 		"name": "The Clockwork", "hall": "clocktower", "worker": "winder", "supply": "spring_tower",
@@ -913,43 +874,29 @@ const UNITS := {
 	"grub": {
 		"tags": ["light"],
 		"name": "Grub", "hp": 46, "armor": 0, "speed": 68, "cost": 50, "time": 12.0, "supply": 1,
-		"sight": 6, "range": 18, "damage": 6, "cooldown": 1.0, "radius": 8, "from": "hive",
+		"sight": 6, "range": 18, "damage": 6, "cooldown": 1.0, "radius": 8, "from": "",
 		"faction": "brood", "worker": true,
-		"about": "Hauls food from Feeding Pits to a Burrow (longer hauls pay more). Turns into buildings.",
+		"about": "Carries food from Rootmaws (and food piles) to the Brood Mother: the farther the trip, the more it pays. BUILD (B): it turns into a Rootmaw, a Mound Turtle or a Sire where you pick (the grub is used up). HARVEST: it wraps bodies and carries them to her as spoils.",
 	},
 	"raptor": {
 		"tags": ["light"],
 		"name": "Raptors", "hp": 36, "armor": 0, "speed": 108, "cost": 75, "time": 11.0, "supply": 1, "spawn": 3,
-		"sight": 7, "range": 22, "damage": 6, "cooldown": 0.9, "aim": 0.1, "radius": 7, "from": "hive",
-		"requires": "warren", "faction": "brood", "about": "Fast, flimsy claws. Three hatch from each egg.",
+		"sight": 7, "range": 22, "damage": 6, "cooldown": 0.9, "aim": 0.1, "radius": 7, "from": "",
+		"faction": "brood", "about": "Fast, flimsy claws. Three hatch from each egg.",
 	},
 	"spitter": {
 		"tags": ["light"],
 		"name": "Spitters", "hp": 70, "armor": 0, "speed": 68, "cost": 90, "time": 13.0, "supply": 1, "spawn": 2,
-		"sight": 8, "range": 170, "damage": 8, "cooldown": 2.0, "aim": 0.35, "radius": 12, "from": "hive",
-		"acid": 3.0, "requires": ["warren", "brood_pen"], "cost2": 5, "anti_air": true, "faction": "brood",
+		"sight": 8, "range": 170, "damage": 8, "cooldown": 2.0, "aim": 0.35, "radius": 12, "from": "",
+		"acid": 3.0, "cost2": 5, "anti_air": true, "faction": "brood",
 		"about": "Spit acid that burns and strips armour. Two hatch from each egg.",
 	},
 	"brute": {
 		"tags": ["armored"],
 		"name": "Brute", "hp": 240, "armor": 2, "speed": 56, "cost": 150, "time": 22.0, "supply": 3,
-		"sight": 7, "range": 28, "damage": 26, "cooldown": 1.8, "aim": 0.25, "radius": 24, "from": "hive",
-		"art_scale": 1.2, "building_bonus": 2.5, "requires": "gorge_pit", "cost2": 20, "faction": "brood",
+		"sight": 7, "range": 28, "damage": 26, "cooldown": 1.8, "aim": 0.25, "radius": 24, "from": "",
+		"art_scale": 1.2, "building_bonus": 2.5, "cost2": 20, "faction": "brood",
 		"about": "Huge horned tank. Charges in, knocks enemies back and batters down walls and gates.",
-	},
-	"spore_mother": {
-		"tags": ["armored"],
-		"name": "Spore Mother", "hp": 260, "armor": 1, "speed": 40, "cost": 175, "cost2": 40, "time": 26.0, "supply": 4,
-		"sight": 10, "range": 300, "min_range": 70, "damage": 26, "splash": 50, "cooldown": 4.0, "aim": 0.6,
-		"radius": 20, "from": "hive", "requires": "gorge_pit", "faction": "brood",
-		"about": "Walking, she can't attack. ROOT her (2.5 s): she lobs big spit blobs that splash a whole area, and spreads swamp. Casts MIASMA, a cloud that heals the Brood.",
-	},
-	"bloater": {
-		"tags": ["light"],
-		"name": "Bloater", "hp": 60, "armor": 0, "speed": 44, "cost": 50, "cost2": 25, "time": 14.0, "supply": 1,
-		"sight": 8, "range": 160, "damage": 7, "cooldown": 2.2, "aim": 0.5, "radius": 12, "from": "hive",
-		"air": true, "ground_only": true, "requires": "roost", "faction": "brood",
-		"about": "A floating gas sac full of acid. It spits acid from afar, but every glob uses up gas; out of gas it deflates (slower, harmless) and slowly fills up again, faster on swamp. On HOLD GAS it keeps it all and drifts in to burst as a huge acid bomb. Used up when it bursts.",
 	},
 	"winder": {
 		"tags": ["light"],
@@ -1129,8 +1076,8 @@ const UNITS := {
 	"skywing": {
 		"tags": ["light"],
 		"name": "Skywing", "hp": 75, "armor": 0, "speed": 118, "cost": 100, "cost2": 40, "time": 16.0, "supply": 2,
-		"sight": 9, "range": 130, "damage": 11, "cooldown": 1.1, "aim": 0.15, "radius": 13, "from": "hive",
-		"air": true, "anti_air": true, "air_only": true, "requires": "roost", "faction": "brood",
+		"sight": 9, "range": 130, "damage": 11, "cooldown": 1.1, "aim": 0.15, "radius": 13, "from": "",
+		"air": true, "anti_air": true, "air_only": true, "faction": "brood",
 		"about": "Flying, it hunts other flyers with volleys of spines (it can't touch the ground). LAND it (1.2 s) to fight on the ground with its bite: then it walks, can't cross cliffs, and anything can hit it. Costs spoils.",
 	},
 	# ---- THE NEW BROOD (experiment, scripts/brood_new.gd, docs/brood_new.md): creatures only, no buildings
@@ -1211,8 +1158,8 @@ const UNITS := {
 	"mist_toad": {
 		"tags": ["light"],
 		"name": "Mist Toad", "hp": 90, "armor": 0, "speed": 42, "cost": 100, "cost2": 25, "time": 22.0, "supply": 3,
-		"sight": 9, "range": 24, "damage": 4, "cooldown": 1.6, "aim": 0.3, "radius": 14, "from": "hive",
-		"requires": "gorge_pit", "faction": "brood",
+		"sight": 9, "range": 24, "damage": 4, "cooldown": 1.6, "aim": 0.3, "radius": 14, "from": "",
+		"faction": "brood",
 		"about": "Slow, fragile swamp caster with only a weak lick. Its energy (fills over time, faster on swamp) pays for two spells. FOG lays a swamp fog bank: shots fired from or into it miss half the time, and units inside see only 2 tiles. TONGUE marks one enemy for 3 s (they see the crosshair), then drags it to the Toad's feet, a flyer too (through the air, to just over the Toad); heavy engines, field guns and mortars, the Brood Mother and the fathers are only staggered (stunned 2.5 s).",
 	},
 	"ornithopter": {
@@ -1329,24 +1276,6 @@ const BUILDINGS := {
 		"name": "Foundry", "hp": 900, "armor": 2, "cost": 200, "time": 45.0, "size": Vector2i(4, 3),
 		"supply": 0, "sight": 7, "trains": ["cannon", "mortar", "balloon", "powder_wagon"], "requires": "barracks", "faction": "crown", "about": "Casts field cannons and mortars, rigs observation balloons and builds powder wagons (each cannon, mortar and wagon needs a horse: one at the Foundry, else a free one at a breeder walks over, else a breeder trains one; the gun waits for it). Needs a Barracks.",
 	},
-	"hive": {
-		"name": "Burrow", "hp": 1500, "armor": 1, "cost": 350, "time": 55.0, "size": Vector2i(5, 4),
-		"supply": 16, "sight": 9, "trains": ["grub", "raptor", "spitter", "brute", "skywing", "spore_mother", "bloater", "mist_toad"], "eggs": true, "swamp": 9,
-		"faction": "brood", "about": "Lays eggs (up to 5); every Brood unit hatches here. Your FIRST Burrow is the capital (the Queen's seat): the only one grubs unload at. It has no ground of its own: every Feeding Pit has its own, in a circle round it. The others only lay eggs. If the capital falls, the next oldest takes over. Allows 1 Brood Pen each; Feeding Pits go on your swamp, as far from the capital as it reaches; plant Clutch Mounds forward to push the swamp out. Upgrades to a Warren (10 eggs), then a Broodmound (15 eggs).",
-	},
-	"clutch_mound": {
-		"name": "Clutch Mound", "hp": 350, "armor": 0, "cost": 75, "time": 18.0, "size": Vector2i(2, 2),
-		"supply": 12, "sight": 5, "trains": [], "swamp": 10, "faction": "brood", "about": "12 more supply. Its swamp spreads far around it (10 tiles), so plant it forward and guard it: it must stand on swamp joined to a Burrow's. If it falls, the swamp only it held shrinks back. Each one makes your Burrows lay eggs 10% faster (up to 3).",
-	},
-	"warren": {
-		"name": "Spawning Den", "hp": 800, "armor": 1, "cost": 150, "time": 35.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 7, "trains": [], "swamp": 5, "faction": "brood", "about": "Lets your Burrows hatch Raptors and Spitters.",
-	},
-	"gorge_pit": {
-		"name": "Gorge Pit", "hp": 800, "armor": 1, "cost": 200, "time": 45.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 7, "trains": [], "swamp": 5, "requires": "warren", "faction": "brood",
-		"about": "Lets your Burrows hatch Brutes, Spore Mothers and Mist Toads, and a Warren grow into a Broodmound. Needs a Spawning Den.",
-	},
 	"clocktower": {
 		"name": "Clocktower", "hp": 2000, "armor": 3, "cost": 400, "time": 60.0, "size": Vector2i(5, 4),
 		"supply": 10, "sight": 9, "trains": ["winder"], "field": 9, "battery": [2.0, 6], "crew": 4, "faction": "clockwork",
@@ -1430,21 +1359,6 @@ const BUILDINGS := {
 		"name": "Church", "hp": 900, "armor": 2, "cost": 150, "time": 35.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 7, "trains": ["missionary"], "requires": "barracks", "faction": "crown",
 		"about": "Sends out one Missionary. Needs a Barracks.",
-	},
-	"feeding_pit": {
-		"name": "Feeding Pit", "hp": 450, "armor": 0, "cost": 75, "time": 18.0, "size": Vector2i(3, 3),
-		"supply": 0, "sight": 6, "trains": [], "crew": 6, "swamp": 4, "faction": "brood",
-		"about": "Grubs haul food from here to the capital (6, and one more for every 4 tiles beyond 6, up to 12). Farther from the capital pays more per grub (best from about 18 to 22 tiles). Each pit has its own ground (3,000 biomass) in a circle 5 tiles round it: spent ground yields nothing, and your pits' circles may not overlap. A pit raised over old ground takes over what was left there. Needs swamp joined to the capital's.",
-	},
-	"brood_pen": {
-		"name": "Brood Pen", "hp": 600, "armor": 0, "cost": 100, "time": 22.0, "size": Vector2i(4, 3),
-		"supply": 0, "sight": 6, "trains": [], "swamp": 4, "faction": "brood",
-		"about": "SACRIFICE: Brood creatures brought here are offered up for spoils (35% of their biomass cost: 9 a Raptor). The fallen give spoils too: grubs wrap the bodies on the field and carry them home.",
-	},
-	"roost": {
-		"name": "Roost", "hp": 700, "armor": 1, "cost": 175, "time": 35.0, "size": Vector2i(3, 3),
-		"supply": 0, "sight": 8, "trains": [], "swamp": 4, "requires": "warren", "faction": "brood",
-		"about": "Lets your Burrows hatch Skywings. Needs a Spawning Den.",
 	},
 	"boiler": {
 		"name": "Boiler", "hp": 900, "armor": 2, "cost": 150, "time": 30.0, "size": Vector2i(4, 4),
@@ -1805,14 +1719,8 @@ const RIDE_BY := {"kinds": ["cuirassier"], "hit": 1.0, "side": 8.0, "commit": 56
 ## A control spell, not a killer (the rework: was radius 96, 3 s, 8 damage a second to
 ## enemies, charge only): it stuns, hurts almost nothing, and burns `cost2` stored batteries.
 const STORM := {"cost": 70.0, "cost2": 2, "max": 100.0, "fill": 7.0, "range": 260.0, "radius": 80.0, "time": 2.5, "dps": 0.0, "cast": 0.7}
-## Spore Mother: rooting takes a while; rooted she spreads swamp. Miasma heals the Brood
-## inside it, up to a share of each unit's health per cloud; clouds don't stack.
-## Bloater: its acid cloud
-## (a full sac: burst damage and cloud at their biggest; each spit empties some of it).
-## `buildings`: the cloud eats enemy buildings inside it at this share of `dps`.
-const BLOAT := {"radius": 80.0, "time": 9.0, "dps": 4.0, "slow": 0.6, "burst": 60.0, "spit_cost": 15.0, "reach": 22.0, "buildings": 0.5}
-## Bloater out of gas: it deflates (no spitting, no bursting, slower) and fills up again.
-const DEFLATE := {"refill": 4.0, "swamp": 2.0, "slow": 0.8, "anim": 0.8}
+## Acid (the Storm Engine's cloud, cw_units.gd): a unit inside it moves at this share of its speed.
+const ACID_SLOW := 0.6
 ## Observation Balloon as a dropship: who can ride in the basket (all of them die with it).
 ## A balloon shot down: each man in the basket rolls his fall. [chance, share of his health left]
 ## (hp share 0 = he dies): bruised, hurt (yellow health), crippled (red health) or killed.
@@ -1857,9 +1765,10 @@ const ROT := {"base": 0.2696, "double": 60.0}
 ## lands at its point: an enemy standing there takes it as a normal hit, otherwise the nearest body within `near` tiles,
 ## otherwise the ground. Units reaching under `ranged` px strike as melee. It goes on until another order.
 const GROUND := {"click": 1.5, "lane": 0.5, "near": 0.5, "ranged": 60.0, "scan": 0.5,
-	"not": ["netter", "bloater"]}
-## THE NEW BROOD (experiment; scripts/brood_new.gd, docs/brood_new.md). The slot's faction value picks it; the side
-## plays as "brood" (its creatures, grubs, essence, swamp and sounds), with Game.nb_teams[t] on.
+	"not": ["netter"]}
+## THE BROOD (scripts/brood_new.gd, docs/brood_new.md; the only Brood since 0.18.0, docs/brood_replace.md). Its
+## numbers. BROOD_NEW is the faction value the experiment's slots had before 0.18.0 (old cfgs, saves and replays): it
+## is read as "brood" (base_faction).
 const BROOD_NEW := "brood_new"
 const NB := {
 	"root_armor": 3.0, "root_taken": 0.75,       # rooted: 3 more armour, then a quarter less damage
@@ -1931,34 +1840,39 @@ const NB := {
 }
 
 
-## THE NEW BROOD'S OWN TEXT for the units it shares with the old Brood (the owner, 21:28: the grub's card said it hauls
-## "from Feeding Pits to a Burrow"; the new Brood has no buildings). A unit of a new-Brood side takes NB_ABOUT as its
-## card text (Unit.setup), and its tooltips NB_TIPS (tip(kind, true)); the old Brood keeps its own.
-const NB_ABOUT := {
-	"grub": "Carries food from Rootmaws (and food piles) to the Brood Mother: the farther the trip, the more it pays. BUILD (B): it turns into a Rootmaw, a Mound Turtle or a father where you pick (the grub is used up). HARVEST: it wraps bodies and carries them to her as spoils.",
-}
-const NB_TIPS := {
-	"grub": "Carries food from Rootmaws and food piles to the Brood Mother (longer trips pay more). BUILD turns it into a Rootmaw, a Mound Turtle or a father.",
-}
+## THE OLD BROOD IS GONE (0.18.0, docs/brood_replace.md): saves and replays carry a Brood format (a save's "brood", a
+## replay header's "format"); before BROOD_FORMAT a slot that says "brood" is the old Brood of buildings, which this
+## version can't play or show. ("brood_new", the experiment's slots, is today's Brood: those still work.)
+const BROOD_FORMAT := 2
 
 
-## A slot's faction as the game plays it (the experiment plays as the Brood).
+## Does a match set up with these slots, written in Brood format `fmt`, have the old Brood in it?
+static func old_brood(slots: Array, fmt: int) -> bool:
+	if fmt >= BROOD_FORMAT:
+		return false
+	for sl in slots:
+		if sl is Dictionary and String((sl as Dictionary).get("faction", "")) == "brood":
+			return true
+	return false
+
+
+## What the player is told about a save or replay with the old Brood in it.
+const OLD_BROOD_NOTE := "It has the old Brood in it (before v0.18.0), which is no longer in the game."
+
+
+## A slot's faction as the game plays it (the experiment's old value "brood_new" is the Brood).
 static func base_faction(f: String) -> String:
 	return "brood" if f == BROOD_NEW else f
 
 
 ## A slot's faction as the menus name it.
 static func faction_label(f: String) -> String:
-	if f == BROOD_NEW:
-		return "The Brood (new, experiment)"
+	f = base_faction(f)
 	if f == "random":
 		return "Random"
 	return String(FACTIONS[f]["name"]) if FACTIONS.has(f) else f
 
 
-const ROOT_SWITCH := 2.5
-const ROOT_SWAMP := 4.0          # tiles
-const MIASMA := {"cost2": 30, "cooldown": 18.0, "range": 220.0, "radius": 96.0, "time": 8.0, "hps": 7.0, "cap": 0.3, "cast": 0.7}
 ## Mist Toad: its energy (`charge`) fills `fill` a second (x `swamp` on Brood swamp) up to
 ## `max`; a new Toad hatches with `start`. Its two spells spend it.
 const TOAD := {"max": 150.0, "fill": 1.5, "swamp": 2.0, "start": 75.0}
@@ -1986,7 +1900,7 @@ const ROUND_SHOT := {"line": 90.0, "width": 9.0, "vs_armored": 1.75, "splash": 2
 ## canister, whichever it is loaded with), the Mortar, the Brood's Spore Mother (her spit blobs; she roots). And the
 ## Clockwork's Spring Ballista (its bolt through the spot, scripts/ballista.gd). `queued`: with orders Shift-queued behind it, a unit fires this many shots at the spot and
 ## then goes on to the next order (the last one it keeps firing).
-const BOMBARD := {"kinds": ["cannon", "mortar", "spore_mother", "ballista"], "queued": 3}
+const BOMBARD := {"kinds": ["cannon", "mortar", "ballista"], "queued": 3}
 ## AREA SHOTS DESTROY BODIES (owner, 2026-10-26): a shell, round shot or canister fired at a spot (BOMBARD) tears up the
 ## bodies lying in its blast (Game.blast_bodies): the Brood can no longer harvest them, a Missionary can no longer raise them
 ## (the Crown's own dead too: the price of blasting). The blast: a Mortar shell's splash, round shot's small splash where it
@@ -2010,7 +1924,7 @@ const BODY_BLAST := {"combat": 0.0, "body": 10.0}
 static func has_tag(kind: String, tag: String) -> bool:
 	return UNITS.has(kind) and (UNITS[kind].get("tags", []) as Array).has(tag)
 
-const ADVANCED := ["barracks", "horse_breeder", "armoury", "foundry", "church", "warren", "gorge_pit", "roost", "assembly_works", "engine_hall", "charging_pylon", "capacitor_works", "rail_yard"]
+const ADVANCED := ["barracks", "horse_breeder", "armoury", "foundry", "church", "assembly_works", "engine_hall", "charging_pylon", "capacitor_works", "rail_yard"]
 
 
 static func is_basic(kind: String) -> bool:
@@ -2090,12 +2004,10 @@ const TIPS := {
 	"balloon": "Carries 4 Musketeers or Labourers anywhere, over cliffs too. Musketeers aboard shoot 35% further. Slow and fragile.",
 	"missionary": "Bandages the wounded and raises fallen Crown soldiers. Can't be hurt away from enemy buildings. One per Church.",
 	# Brood units
-	"grub": "Hauls food from Feeding Pits to a Burrow (longer hauls pay more) and turns into buildings.",
+	"grub": "Carries food from Rootmaws and food piles to the Brood Mother (longer trips pay more). BUILD turns it into a Rootmaw, a Mound Turtle or a Sire.",
 	"raptor": "Fast, flimsy claws. Three hatch from each egg.",
 	"spitter": "Spits acid that burns and strips armour. Two hatch from each egg.",
 	"brute": "Huge horned tank: charges in, knocks enemies back and batters down walls and gates.",
-	"spore_mother": "ROOT her to lob splashing spit blobs and spread swamp; MIASMA heals the Brood. Can't attack while walking.",
-	"bloater": "Floating acid sac: spits from afar until its gas runs out. On HOLD GAS it drifts in to burst as a huge acid bomb.",
 	"skywing": "Flying, it hunts flyers with spines. LAND it to bite ground units (then anything can hit it).",
 	"mist_toad": "Swamp caster. FOG makes shots miss half the time; TONGUE drags an enemy to its feet. Weak in a fight.",
 	"tyrant_challenger": "A matured Raptor, a young Tyrant Sire: a medium all-round biter between the Raptor and the Brute.",
@@ -2112,14 +2024,6 @@ const TIPS := {
 	"farm": "Ripens into a 380-gold harvest about every 40 s with a full crew (up to 8 Labourers).",
 	"powder_mill": "Up to 6 Labourers grind the Hall's saltpetre into powder (you start with none). Unlocks Musketeers. Soldiers and wagons nearby refill here.",
 	"church": "Sends out one Missionary.",
-	# Brood buildings
-	"hive": "Lays eggs (up to 5): every Brood unit hatches here. The first Burrow is the capital: the only one grubs unload at. Allows 1 Brood Pen each. Upgrades to a Warren (10 eggs), then a Broodmound (15).",
-	"clutch_mound": "12 more supply. Spreads swamp far around it (10 tiles; plant it forward, on swamp joined to a Burrow's); if it falls, the swamp only it held shrinks back. Each makes Burrows lay eggs 10% faster (up to 3).",
-	"warren": "Lets your Burrows hatch Raptors and Spitters.",
-	"gorge_pit": "Lets your Burrows hatch Brutes, Spore Mothers and Mist Toads; a Warren can grow into a Broodmound.",
-	"feeding_pit": "Up to 6 grubs haul food from here to the Burrow. Farther from the Burrow pays more (best 18 to 22 tiles). Its own ground (3,000 biomass) lies in a 5-tile circle round it; your pits' circles may not overlap.",
-	"brood_pen": "SACRIFICE Brood creatures here for spoils (35% of their biomass cost).",
-	"roost": "Lets your Burrows hatch Skywings and Bloaters.",
 	# Crown research
 	"armour": "Unlocks the ARMOUR refit (Guardsman: +1 armour, +20 health; Cuirassier: +1 armour, +30 health) and the armoured recruits.",
 	"matchlock": "Unlocks the Matchlock refit: reload 10% faster. New Musketeers come out with it.",
@@ -2140,10 +2044,7 @@ const GEAR_TIPS := {
 }
 
 
-## nb: for a new-Brood side (its own text for the units it shares with the old Brood: NB_TIPS).
-static func tip(kind: String, nb := false) -> String:
-	if nb and NB_TIPS.has(kind):
-		return NB_TIPS[kind]
+static func tip(kind: String) -> String:
 	if gear_mode and GEAR_TIPS.has(kind):
 		return GEAR_TIPS[kind]
 	if TIPS.has(kind):

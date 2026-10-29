@@ -55,10 +55,6 @@ func _s(key: String) -> Variant:
 ## "breeder" (Horse Breeder first, a Horseman rush: on Rush, and else about 3 games in 10).
 var opening := "mill"
 var scout: AIScout = null       # scouts the enemy first and picks the plan from what it saw (unless rushing)
-## The Brood's own judgement (scripts/ai_brood.gd): essence, supply ahead of need, when a wave may go and
-## when it pulls back. null for the other factions (and with AIBrood.enabled off: the Brood as it was,
-## for a "before" number); every Brood branch below then runs as before.
-var brood: AIBrood = null
 ## AI round 5 (scripts/ai_round5.gd, docs/ai_round5.md): the Crown against the Clockwork, the Clockwork against Horsemen.
 const AIRound5 := preload("res://scripts/ai_round5.gd")
 var r5 = AIRound5.new(self)      # (made with the AI: tests that build one by hand get it too)
@@ -85,8 +81,6 @@ func _ready() -> void:
 	if game.mlog and game.faction_of(team) == "crown":
 		game.mlog.add("%s opens with a %s" % [game.mlog.who(team), "Horse Breeder (Horseman rush)" if opening == "breeder" else "Powder Mill (Musketeers)"])
 	scout = AIScout.new(self)
-	if game.faction_of(team) == "brood" and AIBrood.enabled:
-		brood = AIBrood.new(self)
 	_attack_at = int(_s("wave"))
 	if opening == "breeder" and strategy == "rush":
 		_attack_at = maxi(_attack_at, RUSH_HORSEMEN * int(Defs.UNITS["cuirassier"]["supply"]))   # (the first 3 Horsemen ride out together)
@@ -125,12 +119,9 @@ func _wave_end() -> void:
 		return
 	_failed += 1
 	_attack_at = maxi(_attack_at, int(ceil(_wave_sup * 1.4)))
-	if _brood() and strategy in ["xrush", "rush"]:
-		_xrush_over("its first wave failed")
-		return
 	if strategy in ["rush", "air"]:
 		strategy = "balanced"
-		_attack_at = maxi(_attack_at, 30 if _brood() else 24)
+		_attack_at = maxi(_attack_at, 24)
 		_regroup_until = game.clock + _lv([240.0, 180.0, 150.0])
 		if game.mlog:
 			game.mlog.add("%s's %s failed: it builds up (economy, tech) and comes back in force" % [game.mlog.who(team), String(STRATEGIES[_opened]["name"]).to_lower()])
@@ -142,13 +133,9 @@ var _wave_target := Vector2.ZERO
 var _saving := false            # holding gold back for an expansion
 var _escort: Array = []         # Clockwork: Winders that follow the army to repair it
 var _reserve := 0               # gold held back for the next economy structure
-var _swarm: Array = []          # Brood: the groups of a wave, each [units, staging point]
-var _swarm_phase := ""          # "", "flank" (getting into position), "strike"
-var _swarm_t := 0.0
-var _tight := false            # Brood: this wave packs tight (the enemy has little splash damage)
 var _no_room := {}              # economy kinds with no free spot, and when we looked
 var _hall_bad := {}            # Crown: a new hall's spot -> until when not to try it again (its builders fled from raiders there)
-var _abandoned := {}            # kind -> when a site of it was last dropped as "abandoned" (its builder fled): AIBrood.supply waits a little
+var _abandoned := {}            # kind -> when a site of it was last dropped as "abandoned" (its builder fled): _construct waits a little
 # how the last wave went: what it was worth going out, and the enemy value killed before it
 var _wave_value := 0.0
 var _wave_sup := 0
@@ -188,7 +175,6 @@ var _rush_def := 0.0            # armed defenders last seen (value) ...
 var _rush_def_t := -999.0       # ... and when
 var _rush_wk_peak := 0
 var _rush_why := ""
-var _mop_pending := false       # the mop-up force has not gone out yet (a Brood swarm then needs no 30 supply)
 var _raid_block := 0.0          # no raiding party forms before this
 var _raid_peak := 0             # the biggest the party has been since it formed
 var _wave_set: Dictionary = {}  # Unit -> true: the units sent in the wave out (the rest wait at home)
@@ -329,10 +315,8 @@ func _rush_failed(party: Array) -> void:
 	_raid_peak = 0
 	_raid_block = game.clock + _lv([240.0, 180.0, 150.0])
 	_regroup_until = maxf(_regroup_until, game.clock + _lv([150.0, 120.0, 90.0]))
-	_attack_at = maxi(maxi(_attack_at, int(ceil(_wave_sup * 1.4))), 30 if _brood() else 14)
-	if _brood() and strategy in ["xrush", "rush"]:
-		_xrush_over(_rush_why)
-	elif strategy == "rush":
+	_attack_at = maxi(maxi(_attack_at, int(ceil(_wave_sup * 1.4))), 14)
+	if strategy == "rush":
 		strategy = "balanced"
 		_attack_at = maxi(_attack_at, 24)
 
@@ -352,10 +336,6 @@ func _rush_mop(party: Array) -> void:
 	_raid_block = game.clock + 600.0
 	_regroup_until = 0.0
 	_attack_at = need
-	_mop_pending = true
-	if _brood() and strategy in ["xrush", "rush"]:
-		strategy = "balanced"
-		_xr_wave.clear()
 
 
 ## One tick of the verdict on a rush party; returns true when the party is disbanded.
@@ -441,8 +421,6 @@ func _think_stage(i: int) -> void:
 			_lap("ai/raid", pt)
 		3:
 			scout.tick()
-			if brood != null:
-				brood.tick()                # (what the eyes show, the income, the grubs harvesting)
 			_army()
 			_lap("ai/army", pt)
 		4:
@@ -1264,10 +1242,6 @@ func _works() -> String:
 	return Defs.CW_WORKS if Defs.gear_mode else "assembly_works"
 
 
-func _brood() -> bool:
-	return game.faction_of(team) == "brood"
-
-
 func _clock() -> bool:
 	return game.faction_of(team) == "clockwork"
 
@@ -1294,62 +1268,6 @@ func _res2() -> float:
 
 # ------------------------------------------------------------------ economy
 
-## Brood: the Spawning Den is due (no Den yet, enough hands to spare): the grubs wait for its
-## 150 biomass instead of eating every coin (the Den is the only door to Raptors).
-func _warren_due() -> bool:
-	if not _brood() or not _mine("warren").is_empty():
-		return false
-	return game.workers(team).size() >= _warren_hands()
-
-
-## Hands the Brood wants before the Den goes down (the rushing plans open with it sooner).
-func _warren_hands() -> int:
-	if strategy in ["xrush", "rush"]:
-		return 4          # (the pit takes one grub: the Den goes down with the rest, as soon as 150 is there)
-	var n: int = _lv([8, 7, 6])
-	if strategy in ["rush", "air"]:
-		n = mini(n, 5)
-	return n
-
-
-## Brood: the army value the plan wants by now (a curve per plan: start second, full second,
-## value), or more when we SEE a bigger enemy army (1.2x its value; only what our eyes show).
-## Under it, the eggs come before grubs beyond a working minimum. No cheating: unseen
-## enemies count for nothing.
-const ARMY_CURVE := {
-	"rush": [40.0, 120.0, 300.0], "xrush": [30.0, 110.0, 400.0], "air": [100.0, 260.0, 330.0], "timing": [70.0, 200.0, 300.0],
-	"balanced": [70.0, 200.0, 260.0], "economy": [100.0, 260.0, 200.0],
-}
-
-
-func _army_value() -> float:
-	var v := 0.0
-	for u in game.army(team):
-		if not u.dead:
-			v += float(u.d.get("cost", 50)) / maxf(1.0, float(u.d.get("spawn", 1))) + float(u.d.get("cost2", 0)) * 0.5
-	for h in _halls():
-		for k in h.queue:
-			if Defs.UNITS.has(k) and not bool(Defs.UNITS[k].get("worker", false)):
-				v += float(Defs.UNITS[k]["cost"]) / maxf(1.0, float(Defs.UNITS[k].get("spawn", 1)))
-	return v
-
-
-func _army_want() -> float:
-	var c: Array = ARMY_CURVE.get(strategy, ARMY_CURVE["balanced"])
-	var want := clampf((game.clock - float(c[0])) / (float(c[1]) - float(c[0])), 0.0, 1.0) * float(c[2])
-	var foe := _foe()
-	if foe >= 0:
-		var seen := 0.0
-		for u in game.army(foe):
-			if not u.dead and game.is_visible_to(team, u.position):
-				seen += float(u.d.get("cost", 50)) / maxf(1.0, float(u.d.get("spawn", 1)))
-		want = maxf(want, seen * 1.2)
-	return want
-
-
-## Brood: the army is under its curve and the Den stands: eggs before more grubs.
-func _army_behind() -> bool:
-	return _brood() and game._has_built(team, "warren") and _army_value() < _army_want()
 
 
 func _workers() -> void:
@@ -1360,9 +1278,7 @@ func _workers() -> void:
 			cap += b.crew_max()
 	var fill: float = 0.75 if difficulty == 0 else 1.0
 	var extra := 2
-	if _brood():
-		extra = 3          # grubs get used up as buildings
-	elif _clock():
+	if _clock():
 		extra = 1 + (2 if game.army(team).size() >= 4 else 0)   # builder + escorts
 		if Defs.gear_mode:
 			extra = 1 + _escort_want(game.army(team))          # (the Winders that go with the army are extra hands, not taken from the presses)
@@ -1372,8 +1288,6 @@ func _workers() -> void:
 		# Mainspring of 3): the rest of the supply is for the army
 		want = mini(want, (16 if Defs.gear_mode else 14) * _halls().size() + extra + 2)
 		want = mini(want, 36 if difficulty >= 3 else _lv([16, 26, 32]))
-	if strategy == "xrush":
-		want = mini(want, 8)       # (a six-pool: about eight hands, everything else is Raptors)
 	var worker: String = _f()["worker"]
 	var queued := 0
 	for h in _halls():
@@ -1389,21 +1303,8 @@ func _workers() -> void:
 	if _clock() and _mine(_works()).is_empty() and game.clock > _lv([90.0, 60.0, 40.0]) and labs.size() >= 7 \
 			and _gold() < int(Defs.BUILDINGS[_works()]["cost"]) + 20:
 		hold_gold = true            # (the Winders wait for the Works' 200)
-	if _brood():
-		# the Den first (save its 150), then the army before more grubs than a working minimum
-		if _warren_due() and _gold() < int(Defs.BUILDINGS["warren"]["cost"]) + 25:
-			hold_gold = true
-		elif brood != null and strategy != "xrush":
-			# (the army before more grubs, but the economy never stands still: AIBrood.army_first; and the
-			# biomass put by for a Clutch Mound, the Pen or the Gorge Pit: AIBrood.reserve)
-			if brood.army_first(labs.size() + queued) or (labs.size() + queued >= 4 and brood.holding(int(Defs.UNITS[worker]["cost"]))):
-				hold_gold = true
-		elif _army_behind() and labs.size() + queued >= (5 if strategy == "xrush" else ((6 if not _first_wave else 10) if strategy == "rush" else (9 if strategy != "economy" else 10))):
-			hold_gold = true
-		elif brood != null and labs.size() + queued >= 4 and brood.holding(int(Defs.UNITS[worker]["cost"])):
-			hold_gold = true      # (biomass put by for a Clutch Mound, the Pen or the Gorge Pit: scripts/ai_brood.gd)
 	for h in _halls():
-		if h.built and not hold_gold and labs.size() + queued < want and (h.uses_eggs() or h.queue.size() < 2):
+		if h.built and not hold_gold and labs.size() + queued < want and h.queue.size() < 2:
 			if game.train(h, worker) == "":
 				queued += 1
 	# Everyone idle goes to a post with room (escorts excepted).
@@ -1420,7 +1321,7 @@ func _workers() -> void:
 	if _crown():
 		_balance_mill(labs)
 		_fill_farm(labs)
-	if _crown() or _brood():
+	if _crown():
 		_move_off_tired_soil(labs)
 	if _clock():
 		_tend_sites(labs)
@@ -1817,13 +1718,12 @@ func _tend_sites(labs: Array) -> void:
 			best.cmd_build(b)
 
 
-## Crown: farmers on spent soil walk over to fresh farms with room (a couple at a time);
-## Brood: grubs on pits whose Hive's ground is spent, to pits on fresh ground.
+## Crown: farmers on spent soil walk over to fresh farms with room (a couple at a time).
 const TIRED_FARM := 0.25
 
 
 func _move_off_tired_soil(labs: Array) -> void:
-	var site_kind := "farm" if _crown() else "feeding_pit"
+	var site_kind := "farm"
 	# (round 6, Crown: farmers on tired soil, under a quarter, move to a fresh farm with room too, before it is spent: a new
 	# hall's farms stood empty while the main's were nearly done, 0.14.100 Kestrel Rise 7:32)
 	var tired := TIRED_FARM if r6_cr and _crown() and difficulty >= 1 else 0.0
@@ -1877,18 +1777,6 @@ func _econ_build() -> void:
 			# no Mill until the rush is out: the first few Horsemen (or the rush is over)
 			if game.econ_count(team, "powder_mill") == 0 and (no_breeder or not barracks_up or _rushing()):
 				order.erase("powder_mill")
-	elif _brood():
-		order = ["feeding_pit"]
-		# (the Pen turns the fallen into essence: after the Den and a first army, not before; the first one
-		# as soon as the army has caught up, its biomass put by: scripts/ai_brood.gd)
-		if brood != null and brood.pen_due():
-			order.append("brood_pen")
-		elif _mine("warren").is_empty() or (_army_behind() and not _horse_alert()):
-			pass
-		else:
-			order.append("brood_pen")
-		if _warren_due() and _mine("feeding_pit").size() >= 2:
-			order.erase("feeding_pit")
 	else:
 		# batteries need somewhere to go: a crusher first, then Boilers, a crusher per Boiler
 		var mill := Defs.GEAR_PRESS if Defs.gear_mode else ("ore_drill" if Defs.rail_econ else "ore_crusher")      # (gear mode: Cog Presses; rails: Drills dig, trains haul)
@@ -1908,8 +1796,6 @@ func _econ_build() -> void:
 			continue                 # (the Horse Breeder: one)
 		if (Defs.is_econ(kind) and game.econ_count(team, kind) >= game.econ_limit(team, kind)) or _busy_building(kind):
 			continue
-		if _brood() and kind == "feeding_pit" and (not _pit_wanted() or (strategy == "xrush" and _mine("feeding_pit").size() >= 2)):
-			continue
 		if _gold() < int(Defs.BUILDINGS[kind]["cost"]):
 			if _threat() == Vector2.INF:
 				_reserve = int(Defs.BUILDINGS[kind]["cost"])    # save up for it first
@@ -1919,25 +1805,6 @@ func _econ_build() -> void:
 			_construct(kind, spot)
 			return
 		_no_room[kind] = game.clock      # nowhere to put it right now; look again later
-		if kind == "feeding_pit":
-			_spread_swamp()
-	if _brood() and _mine("clutch_mound").size() < _halls().size() + 1 and game.clock > 120.0 and not _warren_due() and not _army_behind():
-		_spread_swamp()
-
-
-## Brood: another Feeding Pit is wanted when the ones we have are nearly full (fewer than 3 free
-## places) and the grub limit isn't reached; pits have no count cap, only the swamp's reach and their
-## ground circles (Defs.PIT_CLAIM). A pit whose own ground is spent counts for nothing: it is replaced.
-func _pit_wanted() -> bool:
-	var room := 0
-	var live: Array = _mine("feeding_pit").filter(func(p: Building) -> bool: return not p.built or not p.barren())
-	for p in live:
-		room += p.crew_max() - p.crew.size() if p.built else p.crew_max()
-	var limit: int = 46 if difficulty >= 3 else _lv([16, 30, 40])
-	var total := 0
-	for p in live:
-		total += p.crew_max()
-	return room < 3 and total < limit + 6
 
 
 ## Crown, a Horseman rush: the Mill waits until this many Horsemen are out.
@@ -1961,17 +1828,6 @@ func _econ_spot(kind: String) -> Vector2i:
 		return ds
 	var halls := _halls()
 	var lodes := kind == "powder_mill" or kind == "ore_crusher" or kind == "ore_drill" or kind == Defs.GEAR_PRESS
-	if kind == "feeding_pit":
-		# Brood: the pit hauls to the capital and must stand on swamp joined to it, as far out as pays most
-		var cap := game.capital(team)
-		if cap == null or not cap.built:
-			return Vector2i(-1, -1)
-		# (find_spot keeps the pits' ground circles apart and prefers fresh ground; once the best stretch
-		# is taken, a pit goes as far out as the swamp reaches)
-		var sp := game.find_spot(team, kind, cap, 7, mini(int(Defs.FOOD_PEAK), int(game.swamp_reach[team])), "far_safe")
-		if sp.x < 0 and int(game.swamp_reach[team]) > int(Defs.FOOD_PEAK):
-			sp = game.find_spot(team, kind, cap, int(Defs.FOOD_PEAK) - 2, int(game.swamp_reach[team]), "near")
-		return sp
 	if kind == "farm":
 		# farms (pits) go where the soil (the Hive's ground) is freshest: tired land pays a third
 		halls.sort_custom(func(a: Building, b: Building) -> bool: return a.soil_left() > b.soil_left())
@@ -1984,98 +1840,12 @@ func _econ_spot(kind: String) -> Vector2i:
 		if not h.built:
 			continue
 		var spot: Vector2i
-		if kind == "feeding_pit":
-			# far from the Hive pays more (best from ~18 to 22 tiles); stay on our side of the map
-			spot = game.find_spot(team, kind, h, 7, int(Defs.FOOD_PEAK), "far_safe")
-		elif kind == "brood_pen":
-			spot = game.find_spot(team, kind, h, 3, 12, "near")
-		else:
-			# (on the hall's own ground first: never down below the ramp while there's room up top)
-			spot = game.find_spot(team, kind, h, 4, Defs.ECON_RANGE - 2, "behind", true)
-			if spot.x < 0:
-				spot = game.find_spot(team, kind, h, 4, Defs.ECON_RANGE - 2, "behind")
+		# (on the hall's own ground first: never down below the ramp while there's room up top)
+		spot = game.find_spot(team, kind, h, 4, Defs.ECON_RANGE - 2, "behind", true)
+		if spot.x < 0:
+			spot = game.find_spot(team, kind, h, 4, Defs.ECON_RANGE - 2, "behind")
 		if spot.x >= 0:
 			return spot
-	return Vector2i(-1, -1)
-
-
-## Brood: a Clutch Mound planted at the edge of the swamp pushes it out for richer pits (it is also
-## the supply building: it only goes up while supply is below the cap).
-func _spread_swamp() -> void:
-	var sup: String = _sup()
-	if _busy_building(sup) or _mine(sup).size() >= 2 * _halls().size() + 1:
-		return
-	if int(game.players[team]["cap"]) >= game.max_supply(team):
-		return
-	if _no_room.has(sup):
-		return
-	_no_room[sup] = game.clock
-	if _gold() < int(Defs.BUILDINGS[sup]["cost"]) + 40:
-		return
-	var spot := _mound_spot()
-	if spot.x >= 0:
-		_construct(sup, spot)
-
-
-## Brood: where a Clutch Mound goes. The swamp only reaches the low ground joined to the Burrow's if
-## a mound stands by the ramp, so: the FIRST mound goes on the plateau close to the top of the ramp;
-## the next ones go down on the low ground, at the swamp's edge nearest the enemy, so the swamp keeps
-## walking toward them. Falls back to the old rule (out from the capital, safe side) when the map
-## has no ramp or no room. (-1, -1): no room.
-func _mound_spot() -> Vector2i:
-	var cap := game.capital(team)
-	if cap == null or not cap.built:
-		return Vector2i(-1, -1)
-	var sup: String = _sup()
-	var spot := Vector2i(-1, -1)
-	var h0 := int(game.height[game.idx(game.cell_of(cap.center()))])
-	if _mine(sup).is_empty() or not _swamp_on_low_ground(h0):
-		var top := game.ramp_top(cap)
-		if top != Vector2.INF:
-			spot = game.find_spot(team, sup, cap, 3, 10, "near", true, top)
-	else:
-		spot = _forward_low_spot(cap, h0, sup)
-	if spot.x >= 0:
-		return spot
-	var reach := int(game.swamp_reach[team])
-	spot = game.find_spot(team, sup, cap, maxi(8, reach - 4), reach, "far_safe")
-	if spot.x < 0:
-		spot = game.find_spot(team, sup, cap, 8, reach, "far_safe")
-	return spot
-
-
-## Brood: does our swamp already cover a stretch of low ground (not the capital's height) joined to the Burrow?
-func _swamp_on_low_ground(h0: int) -> bool:
-	var join: PackedByteArray = game.swamp_hall_conn[team] if game.swamp_hall_conn.size() > team else PackedByteArray()
-	if join.size() != game.W * game.H:
-		return false
-	var n := 0
-	for i in join.size():
-		if join[i] == 1 and int(game.height[i]) != h0 and game.ramp[i] == 0 and game.cliff[i] == 0:
-			n += 1
-			if n >= 12:
-				return true
-	return false
-
-
-## Brood: a spot on the low ground at the edge of the joined swamp, as near the enemy as the swamp goes.
-func _forward_low_spot(cap: Building, h0: int, sup: String) -> Vector2i:
-	var join: PackedByteArray = game.swamp_hall_conn[team]
-	var foe := _enemy_base() / float(Defs.TILE)
-	var cands: Array[Vector2i] = []
-	for i in join.size():
-		if join[i] == 1 and int(game.height[i]) != h0 and game.ramp[i] == 0 and game.cliff[i] == 0:
-			cands.append(Vector2i(i % game.W, i / game.W))
-	cands.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return Vector2(a).distance_squared_to(foe) < Vector2(b).distance_squared_to(foe))
-	var tried := 0
-	var i := 0
-	while i < cands.size() and tried < 8:
-		var c := cands[i]
-		tried += 1
-		var spot := game.find_spot(team, sup, cap, 0, 14, "near", false, Vector2(c) + Vector2(0.5, 0.5))
-		if spot.x >= 0:
-			return spot
-		i += maxi(1, cands.size() / 40)     # (try a few well-spread cells, not 8 neighbours)
 	return Vector2i(-1, -1)
 
 
@@ -2091,15 +1861,12 @@ func _energy_split() -> void:
 
 
 func _supply() -> void:
-	if brood != null:
-		brood.supply()            # (Clutch Mounds ahead of need, judged from the income and the eggs: scripts/ai_brood.gd)
-		return
 	var cap: int = game.players[team]["cap"]
 	if cap >= game.max_supply(team):
 		return
 	var used := game.supply_used(team)
 	var sup: String = _sup()
-	var prod := _halls().size() * 3 if _brood() else 3 * _mine("barracks").size() + 2 * _mine("foundry").size()
+	var prod := 3 * _mine("barracks").size() + 2 * _mine("foundry").size()
 	if _clock():
 		prod = (3 * _mine(_works()).size()) if Defs.gear_mode else 6 * _mine("assembly_works").size() + 5 * _mine("engine_hall").size()
 	var margin := 3 + prod
@@ -2112,8 +1879,7 @@ func _supply() -> void:
 			_construct(sup)
 		return
 	if cap - used <= margin and building == 0:
-		# Brood: the first mound goes by the ramp, later ones on the low ground toward the enemy (_mound_spot)
-		_construct(sup, _mound_spot() if _brood() else Vector2i(-1, -1))
+		_construct(sup)
 
 
 func _build_up() -> void:
@@ -2145,20 +1911,6 @@ func _build_up() -> void:
 			_construct("charging_pylon")
 		if works > 0 and _mine("capacitor_works").is_empty() and game.requirement_met(team, "capacitor_works") and (t > _lv([700.0, 400.0, 320.0]) or gold > 450):
 			_construct("capacitor_works")
-	elif _brood():
-		_horse_tech()
-		if _mine("warren").is_empty() and labs >= _warren_hands():
-			_construct("warren")
-		if brood != null:
-			if brood.gorge_due(t):
-				_construct("gorge_pit")         # (after the Pen; its biomass is put by: AIBrood.reserve)
-		elif _mine("gorge_pit").is_empty() and game.requirement_met(team, "gorge_pit") and t > _lv([480.0, 250.0, 190.0]):
-			_construct("gorge_pit")
-		if _mine("roost").is_empty() and game.requirement_met(team, "roost") and t > _lv([560.0, 320.0, 260.0]) and (brood == null or brood.roost_ok()):
-			_construct("roost")
-		elif strategy == "air" and _mine("roost").is_empty() and game.requirement_met(team, "roost"):
-			_construct("roost")
-		_grow_hall()
 	else:
 		# the wall comes before anything else is paid for (a standard moment, or at once when a
 		# rush is feared); the rest waits for its gold
@@ -2190,7 +1942,7 @@ func _build_up() -> void:
 			_construct("church")
 		_tend_wall()
 	_bank_spend()
-	# Money in the bank: more production (and for the Brood, more Hives to lay eggs).
+	# Money in the bank: more production.
 	var at_cap: bool = _crown() and bank_spend_on and game.supply_used(team) >= game.max_supply(team) - 2      # (at the real cap of 200 more production would idle)
 	if gold > 400 and not _saving and not _rushing() and not at_cap:
 		if _crown() and _mine("foundry").size() < 3 and gold > 700 and not _mine("foundry").is_empty() and not _busy_building("foundry"):
@@ -2199,8 +1951,6 @@ func _build_up() -> void:
 			_construct("barracks")
 		elif _clock() and _mine(_works()).size() < 5 and not _busy_building(_works()) and not _mine(_works()).is_empty() and not _tech_hold:
 			_construct(_works())
-		elif _brood() and gold > 700:
-			_more_halls(true)
 	# Expand once our economy structures are all up (a new hall brings more slots).
 	var hall: String = _f()["hall"]
 	var full := true
@@ -2209,7 +1959,7 @@ func _build_up() -> void:
 			continue        # (another mode's economy building: the Clockwork's crushers, drills or Boilers)
 		if game.econ_count(team, kind) < game.econ_limit(team, kind):
 			full = false
-	var expand_t: float = _lv([9999.0, 420.0, 330.0]) * (0.7 if _brood() else 1.0) * float(_s("expand"))
+	var expand_t: float = _lv([9999.0, 420.0, 330.0]) * float(_s("expand"))
 	# Crown: tired soil makes expanding urgent (from ~40% of the best hall's reserve left
 	# the wait shrinks to nothing as it runs out)
 	var soil := _best_soil()
@@ -2220,11 +1970,7 @@ func _build_up() -> void:
 	_saving = false
 	# (with the soil nearly spent, the next hall is worth saving for even under attack)
 	var urgent := soil < 0.25 and not _busy_building(hall)
-	if _brood():
-		# no far expansions: more Burrows at home for more eggs
-		if t > expand_t and gold > int(Defs.BUILDINGS[hall]["cost"]) + 150:
-			_more_halls(true)
-	elif _halls().size() == 1 and ((full and t > expand_t * 0.6) or t > expand_t):
+	if _halls().size() == 1 and ((full and t > expand_t * 0.6) or t > expand_t):
 		var spot: Vector2i = game.expansions[team]
 		if game.placement_problem(team, hall, spot, true) == "":
 			if gold >= int(Defs.BUILDINGS[hall]["cost"]) + 50:
@@ -2238,60 +1984,17 @@ func _build_up() -> void:
 		_saving = _halls().filter(func(h: Building) -> bool: return _land(h) > 0.0).size() < int(_s("halls"))
 
 
-## Brood: grow the main hall (the highest level, the oldest first) a level at a time: a
-## Warren once there's a Spawning Den and a first army out (with biomass to spare), a
-## Broodmound later (a Gorge Pit and 300 biomass in the bank). One upgrade at a time.
-func _grow_hall() -> void:
-	if _saving or _rushing() or game.over or strategy == "xrush":
-		return
-	var main: Building = null
-	for h in _halls():
-		if not h.built or h.dead:
-			continue
-		if h.upgrade_t >= 0.0:
-			return                      # already growing
-		if main == null or h.level > main.level:
-			main = h
-	if main == null or main.next_level().is_empty():
-		return
-	var nl := main.next_level()
-	if main.level == 1:
-		var army_out: bool = _wave_sup > 0 or _army_supply(game.army(team)) >= _lv([16, 12, 10])
-		if not army_out or _gold() < int(nl["cost"]) + _lv([200, 120, 60]):
-			return
-	elif main.level == 2:
-		if _gold() < 300 or _res2() < float(nl.get("cost2", 0)) + 20.0:
-			return
-	if game.hall_upgrade_problem(main) == "":
-		game.start_hall_upgrade(main)
-
-
-## Brood: a Warren that could grow into a Broodmound (a Gorge Pit, 300 biomass banked)
-## waits only for the essence: meanwhile the eggs go to creatures that cost none, and spare
-## Raptors are offered up for it (_offer).
-func _mound_saving() -> bool:
-	if not _brood() or _gold() < 300 or not game._has_built(team, "gorge_pit"):
-		return false
-	var top := 0
-	for h in _halls():
-		if h.built and not h.dead:
-			if h.upgrade_t >= 0.0:
-				return false
-			top = maxi(top, h.level)
-	return top == 2 and _res2() < float(Defs.HALL_LEVELS[2]["cost2"]) + 20.0
-
-
 var _walled := false
 var _hall_reserve := false      # Crown: holding gold for a Town Hall on fresh land
 var _new_hall: Building = null  # Crown: the expansion the guards stand over
 var _guards: Array = []         # Crown: the part of the army guarding it
-const HALL_FIRST_SOIL := 0.65   # Crown/Brood: the next hall comes first from this share of soil left
+const HALL_FIRST_SOIL := 0.65   # Crown: the next hall comes first from this share of soil left
 const FRESH_CROWN := 0.4        # round 6, Crown: a hall with less soil left than this is not fresh (the next one is due)
 var _stage_spot := Vector2i(-1, -1)   # where the next hall goes (the escort walks there first)
 var _stage_t := 0.0
 
 
-## Crown (and Brood): once the freshest soil (ground) is under HALL_FIRST_SOIL and there's no second
+## Crown: once the freshest soil is under HALL_FIRST_SOIL and there's no second
 ## fresh hall coming, a new hall comes before anything else: gold is held for it whatever
 ## the army's size (training, tech and new buildings wait; the army keeps what it has), it
 ## goes on the safest free ground and (Crown) part of the army walks over to guard it.
@@ -2680,10 +2383,8 @@ func _guard_new_hall(army: Array) -> Array:
 	return army.filter(func(u: Unit) -> bool: return not _guards.has(u))
 
 
-## The share of soil (Crown), ground (Brood) or ore (Clockwork) left at our freshest hall.
+## The share of soil (Crown) or ore (Clockwork) left at our freshest hall.
 func _best_soil() -> float:
-	if _brood():
-		return 1.0          # (the Brood's ground is the capital's alone: no fresh ground to expand to)
 	var best := 0.0
 	for h in _halls():
 		if h.built:
@@ -2691,7 +2392,7 @@ func _best_soil() -> float:
 	return best if not _halls().is_empty() else 1.0
 
 
-## What's left of what a hall lives on: its soil (Crown), its ground (Brood), its ore (Clockwork).
+## What's left of what a hall lives on: its soil (Crown), its ore (Clockwork).
 func _land(h: Building) -> float:
 	# (Clockwork: its ore, or its Boilers' coal if that runs out first)
 	return minf(h.lode_left(), h.soil_left()) if _clock() else h.soil_left()
@@ -2699,11 +2400,11 @@ func _land(h: Building) -> float:
 
 ## How much a hall spot is worth for the lode a hall there would find (fresh, unless a hall of
 ## ours fell there), in tiles of walking: the Clockwork lives on ore, the Crown wants fresh
-## saltpetre for powder, the Brood has none. Only the map's own base sites count (they have
+## saltpetre for powder. Only the map's own base sites count (they have
 ## room for a hall's whole economy); other free ground is a last resort.
 func _lode_value(c: Vector2i) -> float:
 	c = _site_alias.get(c, c)       # (round 6: a cell standing in for a base site has its lode)
-	if _brood() or not game.base_sites.has(c):
+	if not game.base_sites.has(c):
 		return 0.0
 	return game.lode_at_spot(c, _f()["hall"]) * (16.0 if _clock() else 6.0)
 
@@ -2730,29 +2431,18 @@ func _recycle_spent() -> void:
 
 
 ## Take more ground: a new hall at a free spot on our side of the map, 18-30 tiles from one
-## of ours. `macro`: the Brood just needs more Hives to spend its food (eggs come from Hives).
+## of ours. `macro`: one more than the plan's limit (money in the bank).
 func _more_halls(macro: bool) -> void:
 	var hall: String = _f()["hall"]
 	if r5.hold_hall():
 		return
 	# (halls on spent soil don't count toward the strategy's limit: the land has run out)
-	var live := _halls().filter(func(h: Building) -> bool: return _brood() or _land(h) > 0.0).size()
+	var live := _halls().filter(func(h: Building) -> bool: return _land(h) > 0.0).size()
 	if live >= int(_s("halls")) + (1 if macro else 0) or _halls().size() >= 7 or _busy_building(hall):
 		return
 	if _gold() < int(Defs.BUILDINGS[hall]["cost"]):
 		return
-	if _brood():
-		# Burrows only lay eggs: they go close round the capital (no ground of their own to find)
-		var cap := game.capital(team)
-		if cap == null or not cap.built:
-			return
-		var home := game.find_spot(team, hall, cap, Defs.BROOD_HALL_SPACING, Defs.BROOD_HALL_SPACING + 8, "near", true)
-		if home.x < 0:
-			home = game.find_spot(team, hall, cap, Defs.BROOD_HALL_SPACING, Defs.BROOD_HALL_SPACING + 12, "near")
-		if home.x >= 0:
-			_construct(hall, home)
-		return
-	if not macro and not _brood():
+	if not macro:
 		# a base site with a fresh lode first (the Clockwork lives on ore)
 		var sp := _safe_hall_spot()
 		if sp.x >= 0 and _lode_value(sp) > 0.0:
@@ -3626,7 +3316,10 @@ func _tend_wall() -> void:
 ## walled again (only its gaps); anything else is simply missing and gets placed anew.
 ## "abandoned" (its builder was pulled off, e.g. fled from raiders): the kind's look-again wait (_no_room) stays, or the
 ## site would be placed again at once in the same danger and dropped again a second later, over and over (0.14.53 QA
-## soak: a Brood Clutch Mound placed and refunded every second while raiders stood near).
+## soak: a supply building placed and refunded every second while raiders stood near).
+const ABANDON_WAIT := 8.0       # s a dropped site (its builder fled) waits before another of its kind is placed
+
+
 func site_failed(b: Building, why := "blocked") -> void:
 	if Defs.BUILDINGS[b.kind].get("line", false):
 		_walled = false
@@ -3643,7 +3336,7 @@ func _construct(kind: String, at := Vector2i(-1, -1)) -> void:
 		return
 	if kind != String(_f()["hall"]) and _low_soil_keep() and _gold() - int(Defs.BUILDINGS[kind]["cost"]) < int(Defs.BUILDINGS[_f()["hall"]]["cost"]):
 		return          # (round 6: the soil is nearly spent: a Town Hall's gold stays in the bank)
-	if game.clock - float(_abandoned.get(kind, -99.0)) < AIBrood.ABANDON_WAIT:
+	if game.clock - float(_abandoned.get(kind, -99.0)) < ABANDON_WAIT:
 		return          # (a site of this kind was just dropped, its builder fled: not again at once into the same danger)
 	if game.tension(team) < float(Defs.tension_cost(Defs.BUILDINGS[kind])):
 		return          # (gear mode: a Tension price, the Clock Aviary's)
@@ -3651,9 +3344,6 @@ func _construct(kind: String, at := Vector2i(-1, -1)) -> void:
 		return
 	var spot := at if at.x >= 0 else _find_spot(kind)
 	if spot.x < 0:
-		return
-	# Brood: the grub is used up, so don't eat into a tiny economy.
-	if _brood() and game.workers(team).size() <= 3 and kind != _sup():
 		return
 	# The nearest worker that isn't busy building; idle ones first.
 	var best: Unit = null
@@ -3759,8 +3449,6 @@ func _find_spot(kind: String) -> Vector2i:
 func _produce() -> void:
 	# Saving up only pauses the army once there is a minimum army to hold the line.
 	var minimum := mini(40, 6 + int(game.clock / 20.0))
-	if _reserve > 0 and _horse_alert():
-		minimum = mini(minimum, 6)      # (Horsemen seen: more Raptors would not hold the line; the Pen and the Gorge Pit first)
 	if (_hall_reserve or _low_soil_keep()) and _gold() < int(Defs.BUILDINGS[_f()["hall"]]["cost"]) + 30:
 		return          # (Crown: the new Town Hall first, whatever the army; round 6: and a hall's gold kept once the soil runs low)
 	if _tech_hold:
@@ -3935,56 +3623,6 @@ func _produce() -> void:
 				if k != "":
 					game.train(w, k)
 		return
-	if _brood():
-		var brutes := army.filter(func(u: Unit) -> bool: return u.kind == "brute").size()
-		var wings := army.filter(func(u: Unit) -> bool: return u.kind == "skywing").size()
-		var mothers := army.filter(func(u: Unit) -> bool: return u.kind == "spore_mother").size()
-		var toads := army.filter(func(u: Unit) -> bool: return u.kind == "mist_toad").size()
-		for h in _halls():
-			toads += (h.queue as Array).count("mist_toad")     # (hatching ones too)
-		var saving_mound := _mound_saving()
-		for h in _halls():
-			if not h.built:
-				continue
-			while h.eggs > 0:
-				if brood != null and brood.holding(int(Defs.UNITS["raptor"]["cost"])):
-					break           # (biomass put by for a Clutch Mound, the Pen or the Gorge Pit: AIBrood.reserve)
-				if strategy == "xrush":
-					if game.train(h, "raptor") != "":      # (only Raptors, all the income)
-						break
-					continue
-				var k := "raptor" if randf() < 0.6 or game.can_train(h, "spitter") != "" else "spitter"
-				if k == "spitter" and brood != null and not brood.spitter_ok():
-					k = "raptor"    # (the essence is kept for the next Brute or Mist Toad)
-				# a Roost and too few Skywings: they come first whenever the essence is there
-				# (spare raptors are offered up at the Brood Pen for it: see _offer)
-				var want_wing: bool = game._has_built(team, "roost") and wings * (2 if strategy == "air" else 6) < army.size() + (6 if strategy == "air" else 0)
-				if want_wing and game.can_train(h, "skywing") == "":
-					k = "skywing"
-					wings += 1
-				elif army.size() >= 12 and toads < (1 if army.size() < 24 else 2) and game.can_train(h, "mist_toad") == "":
-					# a Mist Toad or two in the middle game: fog for the swarm, a tongue for their guns
-					k = "mist_toad"
-					toads += 1
-				elif game.can_train(h, "brute") == "" and brutes * 12 < army.size() + 6:
-					k = "brute"
-					brutes += 1
-				elif game.can_train(h, "bloater") == "" and army.filter(func(u: Unit) -> bool: return u.kind == "bloater").size() * 10 < army.size() and randf() < 0.3:
-					k = "bloater"
-				elif game.can_train(h, "spore_mother") == "" and mothers * 14 < army.size():
-					k = "spore_mother"
-					mothers += 1
-				if randf() < 0.75:
-					k = _horse_counter(h, army, k)      # (Horsemen seen: Spitters and Brutes)
-				if saving_mound and int(Defs.UNITS[k].get("cost2", 0)) > 0:
-					k = "raptor"            # (the essence goes to the Broodmound first)
-				if brood != null:
-					k = brood.egg_choice(h, army, k)      # (Spitters wait for their biomass once the essence is there)
-					if k == "":
-						break
-				if game.train(h, k) != "":
-					break
-		return
 	var cannons := army.filter(func(u: Unit) -> bool: return u.kind == "cannon").size()
 	var mortars := army.filter(func(u: Unit) -> bool: return u.kind == "mortar").size()
 	var muskets := army.filter(func(u: Unit) -> bool: return Defs.MUSKETS.has(u.kind)).size()
@@ -4106,11 +3744,9 @@ func _soldier_key(b: Building, kind: String) -> String:
 
 
 ## Units busy with something of their own the army orders must leave alone: a balloon
-## drop, an Ornithopter fetching or delivering a battery, a Bloater out of gas.
+## drop, an Ornithopter fetching or delivering a battery.
 func _on_errand(u: Unit) -> bool:
 	if u.order in ["courier", "overload", "board", "unload", "heal", "revive", "refit", "restock"]:
-		return true
-	if u.kind == "bloater" and u.deflate != "":
 		return true
 	if not _drop.is_empty() and (u == _drop.get("b") or (_drop.get("men", []) as Array).has(u)):
 		return true
@@ -4192,12 +3828,6 @@ func _army() -> void:
 		_horse_watch()                  # (round 6: the enemy army in sight, counted every 3 s, for _wave_worth)
 	if _crown() and not r5.holding():
 		army = _guard_new_hall(army)    # (round 5: while it holds behind the wall the hall's guards come home too)
-	# Bloaters out of gas float home to fill up again (faster on the swamp)
-	for u in game.army(team):
-		if u.kind == "bloater" and u.deflate == "flat" and u.order != "move":
-			var hall: Array = _halls()
-			if not hall.is_empty() and u.position.distance_to(hall[0].center()) > 220.0:
-				u.cmd_move(hall[0].center() + Vector2(randf_range(-80, 80), randf_range(-80, 80)))
 	# Ornithopters fetch batteries for the constructs that run down
 	if _clock():
 		for u in army:
@@ -4219,7 +3849,6 @@ func _army() -> void:
 		army = army.filter(func(u: Unit) -> bool: return not _det.has(u))
 	elif not _det.is_empty():
 		_end_defence()
-	_horse_posture(army)
 	# Clockwork: constructs running low on charge go back into a field first
 	if _clock():
 		var fields: Array = game.buildings.filter(func(b: Building) -> bool: return b.team == team and not b.dead and b.built and b.d.has("field"))
@@ -4232,9 +3861,6 @@ func _army() -> void:
 				u.cmd_move(best.center() + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
 		army = army.filter(func(u: Unit) -> bool: return u.wind >= 0.2 or u._in_field or u.runs_on_spring())   # (wind-ups fight on; the escort cranks them)
 	var sup := _army_supply(army)
-	var swarm_min := 7 if strategy == "rush" else (10 if strategy in ["rush", "air"] or scout.verdict == "greedy" else 30)
-	if _brood() and _attack_at < swarm_min and strategy != "xrush" and not _mop_pending:
-		_attack_at = swarm_min     # a swarm waits until it's a swarm
 	# timing attack: nothing goes out before the timing; then everything does, wave after wave
 	if strategy == "timing" and game.clock >= float(_s("timing")) * (1.0 if difficulty >= 2 else 1.25) and _attack_at >= 999:
 		_attack_at = scout.timing_wave()    # (6 unless the scout sized the attack from what it saw)
@@ -4243,12 +3869,6 @@ func _army() -> void:
 	# a failed rush: building up again; nothing goes out until the regroup is over (unless
 	# the army is already huge)
 	var regrouping := game.clock < _regroup_until and sup < 60
-	if _brood():
-		if strategy in ["xrush", "rush"]:
-			_xrush_army(army, sup)
-		else:
-			_swarm_army(army, sup, regrouping)
-		return
 	# (riders still on foot, their horses on the way, don't count yet: they follow mounted)
 	var ready := army.filter(func(u: Unit) -> bool: return not _horse_coming(u))
 	if r6_cw and _pull_until > 0.0 and game.clock >= _pull_until:
@@ -4264,7 +3884,6 @@ func _army() -> void:
 		_wave_target = _enemy_base()
 		_attack_at = mini(_attack_at + int(_s("step")), 70)
 		_wave_start(ready)
-		_mop_pending = false
 		_wave_set.clear()
 		for u in ready:
 			_wave_set[u] = true      # (only these go; the ones trained later wait for a group)
@@ -4431,242 +4050,6 @@ func _home_spot(front: Vector2) -> Vector2:
 	return spot
 
 
-## Brood: a swarm never walks into the guns in one lump. Each wave splits into groups
-## that circle round to different sides of the target, wait until everyone is in place,
-## and then all go in at once. Hatchlings that come out mid-attack wait at home for the
-## next wave instead of trickling in one by one.
-func _swarm_army(army: Array, sup: int, regrouping := false) -> void:
-	var hall: Array = _halls()
-	var front: Vector2 = _rally_front(hall[0]) if not hall.is_empty() else game.center_of_team(team)
-	# don't throw a small swarm at a much bigger army: wait until it's worth as much
-	var mine := 0.0
-	for u in army:
-		mine += float(u.d["cost"]) / maxf(1.0, float(u.d.get("spawn", 1)))
-	var theirs := 0.0
-	var foe := _foe()
-	if foe >= 0:
-		for u in game.army(foe):
-			if game.is_visible_to(team, u.position):      # (only what our eyes show)
-				theirs += float(u.d["cost"])
-	var big_enough := mine >= theirs * 0.8 or sup >= 70 or strategy in ["rush", "air"] or (strategy == "timing" and scout.timing_ok(mine))
-	# (and never into an enemy army we have seen to be clearly stronger: AIBrood.attack_ok)
-	if _swarm_phase == "" and sup >= _attack_at and big_enough and not regrouping and not _horse_hold(army) and (brood == null or brood.attack_ok(mine)):
-		_attacking = true
-		_wave_target = _enemy_base()
-		_attack_at = mini(_attack_at + int(_s("step")), 70)
-		_mop_pending = false
-		_wave_start(army)
-		_plan_swarm(army)
-		_swarm_phase = "flank"
-		_swarm_t = 0.0
-	elif _swarm_phase != "":
-		_swarm_t += 1.0
-		var alive := 0
-		var wave: Array = []
-		for g in _swarm:
-			g[0] = (g[0] as Array).filter(func(u) -> bool: return is_instance_valid(u) and not u.dead and not _on_errand(u))      # (untyped: a freed Raptor fails a typed lambda's conversion, an error that emptied the group)
-			alive += _army_supply(g[0])
-			wave.append_array(g[0])
-		var sieging := false
-		if alive >= 6:
-			# a wall in the way: the swarm weighs it up as one (break in, or pull back), and
-			# doesn't circle round to flanking spots it can't reach
-			sieging = _siege_tick(wave)
-			if sieging and _swarm_phase == "flank":
-				_swarm_phase = "strike"
-		if _swarm_phase == "":
-			pass                     # (it just pulled back from a wall)
-		elif alive < 6:
-			_swarm_phase = ""
-			_swarm.clear()
-			_attacking = false
-			_wave_end()
-		elif brood != null and brood.wave_lost(wave, _wave_value):
-			# a clearly lost fight: the swarm pulls back home and the next wave waits for a bigger army
-			brood.retreat(wave, brood.fight_value(wave))
-			_swarm_phase = ""
-			_swarm.clear()
-			_siege_clear()
-			_attacking = false
-			_regroup_until = maxf(_regroup_until, game.clock + float(_lv([90.0, 60.0, 45.0])))
-			_wave_end()
-		elif _swarm_phase == "flank":
-			# everyone in place (or it's taking too long, or we were spotted and hit): go
-			var ready := true
-			var hit := false
-			for g in _swarm:
-				var there := 0
-				for u in g[0]:
-					if u.position.distance_to(g[1]) < 200.0:
-						there += 1
-					if u.target != null:
-						hit = true
-				if there < (g[0] as Array).size() * 0.6:
-					ready = false
-			if ready or hit or _swarm_t > (8.0 if strategy == "rush" else 40.0):
-				_swarm_phase = "strike"
-				_wave_target = _enemy_base()
-				# caught a fight on the way: everyone goes there together, not on to the base
-				var fs := _fight_spot()
-				if fs != Vector2.INF:
-					_wave_target = fs
-				# a few grubs follow the swarm to harvest the fallen
-				var spare := game.workers(team).filter(func(u: Unit) -> bool: return u.kind == "grub" and u.order != "build" and u.cocoon == 0)
-				var want_h := 2 if spare.size() > 10 else (1 if spare.size() > 6 else 0)
-				var have := game.workers(team).filter(func(u: Unit) -> bool: return u.order == "harvest").size()
-				for g2 in spare.slice(0, maxi(0, want_h - have)):
-					g2.cmd_harvest()
-					g2.harvest_home = (_swarm[0][1] as Vector2) if not _swarm.is_empty() else _wave_target
-				var sp := _spread()
-				for g in _swarm:
-					for u in g[0]:
-						u.cmd_move(_wave_target + Vector2(randf_range(-sp, sp), randf_range(-sp, sp)), true)
-		else:
-			# strike: wherever part of the wave is fighting, the rest joins that fight
-			var fs := _fight_spot()
-			_wave_target = fs if fs != Vector2.INF else _enemy_base()
-			var sp := _spread()
-			for g in _swarm:
-				for u in g[0]:
-					if u.deploys() and u.tesla_mode == "deployed" and u.target:
-						continue
-					if u.siege_t > 0.0:
-						continue             # breaking in at a wall: the siege gives its orders
-					var join: bool = fs != Vector2.INF and u.target == null and u.position.distance_to(fs) > 140.0
-					if (u.order == "idle" or join) and u.wall_flee_t <= 0.0:
-						u.cmd_move(_wave_target + Vector2(randf_range(-sp, sp), randf_range(-sp, sp)), true)
-	# everyone not in the wave gathers at home
-	var in_wave := {}
-	for g in _swarm:
-		for u in g[0]:
-			in_wave[u] = true
-	for u in army:
-		if in_wave.has(u):
-			continue
-		if u.order == "idle" and u.position.distance_to(front) > 160.0:
-			u.cmd_move(_home_spot(front), true)
-		elif u.deploys() and u.order == "idle" and u.tesla_mode == "packed":
-			u.cmd_deploy()
-
-
-# ---- Brood EXTREME RUSH (the "six-pool")
-var _xr_t0 := 0.0
-var _xr_wave: Array = []
-
-
-## The rush is over (it failed, was beaten back, or ran out of time): a normal Brood game
-## from here (workers, Pen, tech, expansions) and a bigger army before the next attack.
-func _xrush_over(why: String) -> void:
-	strategy = "balanced"
-	_attack_at = maxi(_attack_at, 30)
-	_regroup_until = game.clock + _lv([150.0, 120.0, 90.0])
-	_xr_wave.clear()
-	if game.mlog:
-		game.mlog.add("%s's extreme rush is over (%s): it builds up (workers, tech) and comes back in force" % [game.mlog.who(team), why])
-
-
-## The first wave is 6 Raptors straight at the enemy's workers (no flanking: speed is the
-## point), every new Raptor follows, the fight is left only when it is clearly lost (the enemy
-## there is worth over 1.6x the wave and 150+) or when it has made no headway after 75 s.
-func _xrush_army(army: Array, sup: int) -> void:
-	var hall: Array = _halls()
-	var front: Vector2 = _rally_front(hall[0]) if not hall.is_empty() else game.center_of_team(team)
-	if not _attacking and _horse_alert():
-		_xrush_over("Horsemen seen: Raptors would do little")      # (a normal game: Pen, Spitters, Brutes; _horse_hold keeps the army home)
-		return
-	if not _attacking:
-		if sup >= int(_s("wave")) and not peaceful and game.clock >= _regroup_until and (brood == null or brood.attack_ok(brood.army_value(army), AIBrood.RUSH_RATIO)):
-			_attacking = true
-			_xr_t0 = game.clock
-			_wave_target = _enemy_base()
-			_wave_start(army)
-			_xr_wave = army.duplicate()
-			if _rush_state == "" and not _first_wave:
-				_rush_begin(_xr_wave, false)
-			if game.mlog and not _first_wave:
-				_first_wave = true
-				game.mlog.add("%s's first attack goes out (%d supply of Raptors)" % [game.mlog.who(team), sup])
-		else:
-			for u in army:
-				if u.order == "idle" and u.position.distance_to(front) > 160.0:
-					u.cmd_move(_home_spot(front), true)
-			return
-	_xr_wave = _xr_wave.filter(func(u) -> bool: return is_instance_valid(u) and not u.dead)
-	# the ones trained since wait at home and join as a group (2+), never one by one
-	var fresh: Array = army.filter(func(u: Unit) -> bool: return not _xr_wave.has(u))
-	var finishing := _rush_state == "succeeded" and _rush_mode == "finish"
-	if fresh.size() >= GROUP_MIN:
-		_xr_wave.append_array(fresh)
-	else:
-		for u in fresh:
-			if u.order == "idle" and u.position.distance_to(front) > 160.0:
-				u.cmd_move(_home_spot(front), true)
-	var alive := _army_supply(_xr_wave)
-	var c := Vector2.ZERO
-	var mine := 0.0
-	for u in _xr_wave:
-		c += u.position
-		mine += _unit_value(u)
-	if not _xr_wave.is_empty():
-		c /= _xr_wave.size()
-	var gained := int(game.stats[team]["value_killed"]) - _wave_kill0
-	var losing := false
-	if not _xr_wave.is_empty():
-		var a := _assess(c)
-		losing = a["value"] >= 100.0 and a["value"] > mine * 1.15 and game.clock - _xr_t0 > 6.0 and a["value"] != DEF_UNSEEN
-	var stale: bool = game.clock - _xr_t0 > 75.0 and gained < _wave_value * 0.3
-	if _rush_state == "ongoing" and not (alive < 2 or losing or stale):
-		var v := _rush_verdict(_xr_wave)
-		if v == "failed":
-			_rush_failed(_xr_wave)
-			return
-		elif v == "succeeded":
-			_rush_state = "succeeded"
-			_rush_mode = _rush_mode_now(_xr_wave)
-			if _rush_mode == "mop":
-				_rush_mop(_xr_wave)
-				return
-			_rush_log("SUCCEEDED, %d workers left and no defenders: new Raptors in groups of 2+ may finish them" % _rush_workers_left())
-	elif finishing and _rush_mode_now(_xr_wave) == "mop":
-		_rush_mop(_xr_wave)
-		return
-	if alive < 2 or losing or stale:
-		if _rush_state == "succeeded":
-			_rush_mop(_xr_wave)          # (the finishing party is spent: the mop-up force takes over)
-			return
-		_rush_why = "wiped out" if alive < 2 else ("clearly outgunned" if losing else "no headway")
-		_rush_failed(_xr_wave)
-		return
-	# a sealed ramp (a Cottage and a Gate, a palisade): the wave breaks the piece in its way, instead of
-	# milling about at the foot of the ramp until the wave is called off. The defender pays repairs
-	# until its Musketeers are out (docs/design_principles.md, 5).
-	var brk := _piece_to_break(_xr_wave, c)
-	if brk != null:
-		for u in _xr_wave:
-			if u.siege_t > 0.0 or u.dead or u.off_field:
-				continue
-			if u.target != brk or u.order != "attack":
-				u.cmd_attack(brk)
-		return
-	# armed defenders in sight: fight them together (an attack-move; a plain move would run the
-	# Raptors past the guns to the workers and they would die without a bite), else hunt workers
-	var guard: Unit = null
-	var gd := 340.0
-	for o in game.units_near(c, 340.0):
-		if o.dead or o.off_field or not game.hostile(o.team, team) or not _armed(o) or not game.is_visible_to(team, o.position):
-			continue
-		var dd: float = o.position.distance_to(c)
-		if dd < gd:
-			gd = dd
-			guard = o
-	for u in _xr_wave:
-		if u.siege_t > 0.0:
-			continue
-		if guard != null:
-			if u.target == null and (u.order == "idle" or u.order == "move" or u.position.distance_to(guard.position) > 200.0):
-				u.cmd_move(guard.position + Vector2(randf_range(-30, 30), randf_range(-30, 30)), true)
-		else:
-			_hunt(u, _prey_spot(u.position))
 
 
 ## The enemy wall or gate piece nearest the wave that it can walk up to, when the prey (the
@@ -4703,81 +4086,9 @@ func _piece_to_break(wave: Array, c: Vector2) -> Building:
 	return best
 
 
-## Split the army into groups (two or three, mixed: every group gets its share of
-## raptors, spitters and brutes) and give each a spot on a different side of the target.
-func _plan_swarm(army: Array) -> void:
-	_swarm.clear()
-	var target := _wave_target
-	var home := game.center_of_team(team)
-	var n := 1
-	_tight = _splash_share() < 0.25
-	if _tight:
-		n = 1               # single-target shooters: one packed swarm hits all at once
-	elif army.size() >= 24:
-		n = 3
-	elif army.size() >= 10:
-		n = 2
-	var dir := (home - target).normalized()
-	var angles: Array = [0.0] if n == 1 else ([-1.1, 1.1] if n == 2 else [0.0, -1.3, 1.3])
-	var dist := 520.0
-	for a in angles:
-		var p: Vector2 = target + dir.rotated(a) * dist
-		var c: Vector2i = game.cell_of(p)
-		c = Vector2i(clampi(c.x, 1, game.W - 2), clampi(c.y, 1, game.H - 2))
-		c = game.nearest_free(c, 12)
-		if c.x < 0:
-			c = game.cell_of(target.lerp(home, 0.4))
-		_swarm.append([[], Vector2(c) * Defs.TILE + Vector2(16, 16)])
-	# deal the units out kind by kind so each group is a mix; slow casters go up the middle
-	var by_kind := {}
-	for u in army:
-		if not by_kind.has(u.kind):
-			by_kind[u.kind] = []
-		by_kind[u.kind].append(u)
-	var i := 0
-	for k in by_kind:
-		for u in by_kind[k]:
-			var gi := 0 if k == "spore_mother" else i % n
-			_swarm[gi][0].append(u)
-			i += 1
-	var sp := _spread()
-	for g in _swarm:
-		for u in g[0]:
-			u.cmd_move(g[1] + Vector2(randf_range(-sp, sp), randf_range(-sp, sp)), false)
 
-
-## How much of the enemy army (by cost) deals splash damage: against splash the swarm
-## spreads out and flanks; against single-target shooters it packs tight and goes in together.
-const SPLASH_KINDS := ["cannon", "mortar", "steam_walker", "spore_mother", "bloater", "stormcaller", "thresher", "tesla_cart"]
-
-func _splash_share() -> float:
-	var foe := _foe()
-	if foe < 0:
-		return 0.0
-	var all := 0.0
-	var splash := 0.0
-	for u in game.army(foe):
-		var c := float(u.d["cost"])
-		all += c
-		if SPLASH_KINDS.has(u.kind):
-			splash += c
-	return splash / all if all > 0.0 else 0.0
-
-
-func _spread() -> float:
-	return 22.0 if _tight else 60.0
-
-
-## Where the wave is fighting right now (the middle of its engaged units), or INF.
-func _fight_spot() -> Vector2:
-	var sum := Vector2.ZERO
-	var n := 0
-	for g in _swarm:
-		for u in g[0]:
-			if is_instance_valid(u) and not u.dead and u.target != null and is_instance_valid(u.target):
-				sum += u.position
-				n += 1
-	return sum / n if n > 0 else Vector2.INF
+## The enemy kinds that deal splash damage (sieges: the guns behind a wall are dived on first).
+const SPLASH_KINDS := ["cannon", "mortar", "steam_walker", "stormcaller", "thresher", "tesla_cart"]
 
 
 # ------------------------------------------------------------------ the trade (gear mode's Clockwork)
@@ -4829,7 +4140,7 @@ var _pull_at0 := 0
 
 
 func _push_anyway(ready: Array) -> bool:
-	if difficulty < 1 or _brood():
+	if difficulty < 1:
 		return false
 	var sup := _army_supply(ready)
 	if sup < PUSH_MIN:
@@ -4931,12 +4242,7 @@ func _siege_clear() -> void:
 func in_wave(u: Unit) -> bool:
 	if not _attacking:
 		return false
-	if not _brood():
-		return not _guards.has(u) and not _raiders.has(u)
-	for g in _swarm:
-		if (g[0] as Array).has(u):
-			return true
-	return false
+	return not _guards.has(u) and not _raiders.has(u)
 
 
 func _melee(u: Unit) -> bool:
@@ -5231,8 +4537,6 @@ func _siege_plan(ground: Array, wave: Array) -> bool:
 		_walled_halls[hall] = game.clock + 120.0
 	_siege_clear()
 	_attacking = false
-	_swarm_phase = ""
-	_swarm.clear()
 	_release_escort()
 	_wave_end()
 	# it comes back only with a bigger army (not straight back at the same wall)
@@ -6201,7 +5505,7 @@ func _armed(u: Unit) -> bool:
 
 
 func _is_gun(u: Unit) -> bool:
-	return u.kind in ["cannon", "mortar", "spore_mother"] or (u.kind == "tesla_cart" and u.tesla_mode == "deployed")
+	return u.kind in ["cannon", "mortar"] or (u.kind == "tesla_cart" and u.tesla_mode == "deployed")
 
 
 ## The visible enemies around a raid spot, as numbers.
@@ -6325,7 +5629,7 @@ func _defend(army: Array, threat: Vector2, spots: Array) -> void:
 			_release(u, false)
 			continue
 		var far: float = _home_dist(u.position)
-		if lone and (far > LONE_LEASH or game.clock - float(e["t0"]) > LONE_TIME) or far > REAL_LEASH or _gun_danger(u.position) or _horse_leash(u, far):
+		if lone and (far > LONE_LEASH or game.clock - float(e["t0"]) > LONE_TIME) or far > REAL_LEASH or _gun_danger(u.position):
 			_release(u, lone)
 			continue
 		e["spot"] = a["spot"]
@@ -6336,8 +5640,6 @@ func _defend(army: Array, threat: Vector2, spots: Array) -> void:
 		if _gun_danger(spot):
 			continue
 		var lone: bool = a["lone"]
-		if lone and brood != null and brood.raid_party(spot):
-			lone = false        # (Brood: two Horsemen hunting the grubs are a raid, not a lone rider: the Raptors answer as a pack)
 		if lone and game.clock < _lone_cool:
 			continue
 		var committed := 0.0
@@ -6584,12 +5886,6 @@ func _reach_b(b: Building, flood: PackedByteArray) -> bool:
 ## Canister when a crowd closes on a cannon. (Musketeers pick musket or bayonet by themselves.)
 func _abilities() -> void:
 	_spells()
-	if _brood():
-		_skywings()
-		if brood != null:
-			brood.offer()           # (offerings for the next tech creature when no bodies are coming: scripts/ai_brood.gd)
-		else:
-			_offer()
 	if _clock():
 		_overloads()
 		_braces()
@@ -6725,13 +6021,9 @@ func _shell_bodies() -> void:
 			game.mlog.add("%s's %s shells %d bodies so the Brood can't harvest them" % [game.mlog.who(team), g.d["name"], best_n])
 
 
-## Stormcallers drop storms on packed enemies (not on our own men); Spore Mothers heal a
-## hurt swarm in the middle of a fight.
+## Stormcallers drop storms on packed enemies (not on our own men).
 func _spells() -> void:
 	for u in game.army(team):
-		# half the Bloaters keep their gas for big bursts (on walls and clumps)
-		if u.kind == "bloater" and u.mode == "" and u.serial % 2 == 0:
-			u.set_hold_gas(true)
 		if u.order == "cast" or u.order == "tongue" or u.tongue_stage != "":
 			continue
 		if u.kind == "mist_toad":
@@ -6757,21 +6049,13 @@ func _spells() -> void:
 			# the storm only stuns: worth it when our own army is there to hit them meanwhile
 			if best != Vector2.INF and game.units_near(best, r + 160.0).any(func(f: Unit) -> bool: return f.team == team and not f.dead and not f.is_worker() and f.kind != "stormcaller" and f.position.distance_to(best) > r):
 				u.cmd_cast("storm", best)
-		elif u.kind == "spore_mother" and u.spell_cd <= 0.0 and _res2() >= float(Defs.MIASMA["cost2"]) + 10.0:
-			var hurt := 0
-			var at := Vector2.ZERO
-			for o in game.units_near(u.position, float(Defs.MIASMA["range"])):
-				if o.team == team and not o.dead and o.hp < o.max_hp * 0.65:
-					hurt += 1
-					at += o.position
-			if hurt >= 4:
-				u.cmd_cast("miasma", at / hurt)
+
 
 
 ## Mist Toad: TONGUE drags a high-value target (guns, casters, a Missionary) into the swarm,
 ## once our army is close enough to eat it; FOG goes down on an enemy firing line while our
 ## army is engaging it. It keeps the energy for a TONGUE when there's a prize about.
-const TONGUE_PRIZES := ["cannon", "mortar", "stormcaller", "tesla_cart", "arc_thrower", "missionary", "spore_mother",
+const TONGUE_PRIZES := ["cannon", "mortar", "stormcaller", "tesla_cart", "arc_thrower", "missionary",
 	"balloon", "ornithopter", "skywing"]      # (flyers too since 0.15.23: a Balloon, an Ornithopter, a Skywing pulled into the swarm)
 
 
@@ -6863,55 +6147,6 @@ func _skywings() -> void:
 			u.sky_cd = 6.0
 
 
-## Brood: when it can hatch essence-costing creatures (Skywings, Bloaters, Brutes, Spore
-## Mothers; Spitters too) but lacks the essence and its biomass bank is high, spare Raptors
-## at home are offered up at the Brood Pen (3 essence each). With almost none left, a few
-## go whatever the bank (Spitters need 5 an egg).
-var _offer_next := 0.0
-
-
-func _offer() -> void:
-	if game.clock < _offer_next or _hall_reserve:
-		return
-	var pen := game.nearest_of(game.center_of_team(team), team, "brood_pen")
-	if pen == null:
-		return
-	var want := 0
-	for k in ["skywing", "bloater", "brute", "spore_mother", "mist_toad", "spitter"]:
-		var u: Dictionary = Defs.UNITS[k]
-		var reqs: Array = u["requires"] if u.get("requires", "") is Array else [u["requires"]]
-		if reqs.all(func(r: String) -> bool: return game._has_built(team, r)):
-			want = maxi(want, int(u.get("cost2", 0)))
-	if _mound_saving():
-		want = maxi(want, int(Defs.HALL_LEVELS[2]["cost2"]) + 20)     # (for the Broodmound)
-	if want == 0:
-		return
-	var target := want
-	var pending := 0
-	for u in game.army(team):
-		if u.order == "sacrifice":
-			pending += Game.sacrifice_value(u.kind)
-	var have := _res2() + pending
-	# a little essence always (Spitters, 5 an egg, are the swarm's answer to armour and
-	# flyers): a few raptors whatever the bank; more only with biomass piling up
-	var small := have < 10.0
-	if have >= target or (not small and _gold() < _lv([700, 550, 450])):
-		return
-	if small and _gold() < 100:
-		return
-	var in_wave := {}
-	for g in _swarm:
-		for u in g[0]:
-			in_wave[u] = true
-	var raptors := game.army(team).filter(func(u: Unit) -> bool: return u.kind == "raptor" and not in_wave.has(u) \
-		and u.order in ["idle", "move", "amove"] and u.target == null)
-	if raptors.size() <= 6:
-		return              # (keep a few at home)
-	raptors.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_squared_to(pen.center()) < b.position.distance_squared_to(pen.center()))
-	var n := mini(mini(int(ceil((target - have) / 3.0)), 4 if small and _gold() < _lv([700, 550, 450]) else 9), raptors.size() - 6)
-	for u in raptors.slice(0, n):
-		u.cmd_sacrifice()
-	_offer_next = game.clock + _lv([40.0, 25.0, 15.0])
 
 
 ## Clockwork: Bulwarks BRACE when the army faces a firing line (musketeers, spitters and
@@ -6927,7 +6162,7 @@ func _braces() -> void:
 		for o in game.units_near(u.position, 340.0):
 			if not game.hostile(o.team, team) or o.dead or o.off_field or o.is_worker():
 				continue
-			if float(o.d["range"]) >= 100.0 and o.kind != "cannon" and o.kind != "spore_mother":
+			if float(o.d["range"]) >= 100.0 and o.kind != "cannon":
 				shooters += 1
 				at += o.position
 			elif o.position.distance_to(u.position) < 70.0:
@@ -7477,8 +6712,7 @@ var _catchers: Array = []        # men sent to catch a loose horse (they let it 
 ## Loose horses (nobody's: their riders fell, Unit._rider_falls). The Crown sends its
 ## nearest free man who can lead horses (an idle Labourer or soldier, a Labourer at work; not
 ## its groom) to catch one in its base or by its army, with no enemy close; a Clockwork
-## Winder close by takes one; the Brood kills one near its creatures (cheap essence) with
-## nobody to fight there, but doesn't chase them across the map.
+## Winder close by takes one. (The Brood's computer, scripts/ai_brood_new.gd, leaves them be.)
 func _loose_horses() -> void:
 	# the ones caught: let go where they stand (strays are sent home: _horses)
 	for u in _catchers.duplicate():
@@ -7494,7 +6728,7 @@ func _loose_horses() -> void:
 		return
 	_loose_at = game.clock + 2.0
 	var fac := game.faction_of(team)
-	if fac != "crown" and fac != "brood" and fac != "clockwork":
+	if fac != "crown" and fac != "clockwork":
 		return
 	var T := Defs.TILE
 	for h in game.units:
@@ -7506,20 +6740,6 @@ func _loose_horses() -> void:
 		if near.any(func(o: Unit) -> bool: return not o.dead and game.hostile(o.team, team) and o.kind != "horse" \
 				and o.position.distance_to(h.position) < 6.0 * T):
 			continue                     # enemies there: not worth it
-		if fac == "brood":
-			var biter: Unit = null
-			var bd := 8.0 * T
-			for o in near:
-				if o.team != team or o.dead or o.is_worker() or not o.has_attack() or not o.can_hit(h) or o.target != null \
-						or not (o.order == "idle" or o.order == "hold") or _on_errand(o):
-					continue
-				var dd: float = o.position.distance_to(h.position)
-				if dd < bd:
-					bd = dd
-					biter = o
-			if biter:
-				biter.cmd_attack(h)
-			continue
 		# the Crown: in its base, or by its army; the Clockwork: a Winder close by
 		var reach := 6.0 * T
 		if fac == "crown":
@@ -7635,16 +6855,12 @@ func _mount_men(horses: Array, keep: Dictionary, need: int) -> void:
 			u.auto_mount = true         # (the computer's Dragoons always get back on to move)
 
 
-# ---- Brood against Horsemen: keep the Raptors home (36 hp, 6 damage do little against 140 hp and armour)
+# ---- the enemy army in sight (round 6's wave worth)
 const HORSE_MEMORY := 150.0     # a Horseman seen this long ago still counts
-const HORSE_PUSH := 1.2         # the army must be worth this much times what was seen before it pushes
-const RAPTOR_VS_HORSE := 0.35   # (a Raptor's cost counts this much against mounted soldiers)
 var bank_spend_on := true        # (tests switch the Crown's bank spending off for a "before" number)
-var horse_hold_on := true      # (tests switch the Horsemen answer off for a "before" number)
 var _hz_t := -99.0              # (cache) when the sightings were last counted
 var _hz_horse_t := -999.0       # the last time an enemy Horseman / Cuirassier / Dragoon was in sight
 var _hz_log: Array = []         # [clock, enemy army value in sight]
-var _hz_logged := false
 
 
 ## Count what our eyes show of the enemy army, every 3 s: when it was last mounted, and how much it is worth.
@@ -7671,20 +6887,6 @@ func _horse_watch() -> void:
 		_hz_log.pop_front()
 
 
-## Brood only (not the air plan): Horsemen were seen lately.
-func _horse_alert() -> bool:
-	if not horse_hold_on or not _brood() or strategy == "air" or difficulty < 1 or peaceful:
-		return false
-	_horse_watch()
-	if scout != null and scout.rush_units_seen() > 0 and scout._foe_faction() == "crown":
-		_hz_horse_t = maxf(_hz_horse_t, game.clock - 1.0)
-	var on := game.clock - _hz_horse_t <= HORSE_MEMORY
-	if on and not _hz_logged and game.mlog:
-		_hz_logged = true
-		game.mlog.add("%s saw Horsemen: Raptors do little against them, so it keeps its army at home and builds Spitters and Brutes" % game.mlog.who(team))
-	return on
-
-
 ## The most the enemy army was worth in sight lately (what a push has to beat).
 func _horse_seen_value() -> float:
 	var v := 0.0
@@ -7692,48 +6894,6 @@ func _horse_seen_value() -> float:
 		if game.clock - float(e[0]) <= HORSE_MEMORY + 90.0:
 			v = maxf(v, float(e[1]))
 	return v
-
-
-## What our army is worth against Horsemen: Raptors count a third.
-func _horse_value(army: Array) -> float:
-	var v := 0.0
-	for u in army:
-		var c := float(u.d["cost"]) / maxf(1.0, float(u.d.get("spawn", 1))) + float(u.d.get("cost2", 0)) * 0.5
-		v += c * (RAPTOR_VS_HORSE if u.kind == "raptor" else 1.0)
-	return v
-
-
-## True while the army stays home: Horsemen were seen and the army (Raptors at a third) is not yet
-## worth HORSE_PUSH times what was seen.
-func _horse_hold(army: Array) -> bool:
-	if not _horse_alert():
-		return false
-	return _horse_value(army) < _horse_seen_value() * HORSE_PUSH
-
-
-## The unit to hatch against Horsemen when it is asked for: Spitters (their acid strips the armour, from range), then Brutes.
-func _horse_counter(h: Building, army: Array, k: String) -> String:
-	if not _horse_alert():
-		return k
-	var brutes := army.filter(func(u: Unit) -> bool: return u.kind == "brute").size()
-	if game.can_train(h, "brute") == "" and brutes * 5 < army.size() + 3:
-		return "brute"
-	if game.can_train(h, "spitter") == "":
-		return "spitter"
-	return k
-
-
-## The Brood Pen and the Gorge Pit (Spitters, Brutes) come at once when Horsemen are about.
-func _horse_tech() -> void:
-	if not _horse_alert() or _mine("warren").is_empty():
-		return
-	for k in ["brood_pen", "gorge_pit"]:
-		if _mine(k).is_empty() and not _busy_building(k) and game.requirement_met(team, k):
-			if _gold() >= int(Defs.BUILDINGS[k]["cost"]) + 20:
-				_construct(k)
-			else:
-				_reserve = maxi(_reserve, int(Defs.BUILDINGS[k]["cost"]))      # (the eggs wait: save up for it)
-			return
 
 
 # ---- Crown: gold piling up unspent
@@ -7790,20 +6950,3 @@ func _bank_spend() -> void:
 			bank_log.append([game.clock, hall])
 
 
-## Horsemen seen: a Raptor is no match for one, and one can never catch a rider. The Raptors stay by the
-## capital and the ramp: a detachment of them is called back at HORSE_LEASH, and a Raptor found far
-## from home outside an attack wave walks back to the post.
-const HORSE_LEASH := 300.0
-func _horse_leash(u: Unit, far: float) -> bool:
-	return u.kind == "raptor" and far > HORSE_LEASH and _horse_alert()
-
-
-func _horse_posture(army: Array) -> void:
-	if _attacking or _swarm_phase != "" or not _horse_alert():
-		return
-	var post := _post_spot()
-	if post == Vector2.INF:
-		return
-	for u in army:
-		if u.kind == "raptor" and u.order != "move" and _home_dist(u.position) > HORSE_LEASH + 120.0:
-			u.cmd_move(post, true)

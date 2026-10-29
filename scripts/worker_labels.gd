@@ -2,7 +2,7 @@ class_name WorkerLabels
 extends RefCounted
 ## THE WORKER LABELS over your economy buildings (the owner, 2026-10-29): each crew count says whose it is, a small job
 ## word before it ("HAULERS 2/4" on a Town Hall, "FARMERS 3/8" on a Farm, "POWDER MAKERS 1/6" on a Powder Mill,
-## "WINDERS 4/6" on a Cog Press or Mainspring, "GRUBS 4/6" on the Brood's Feeding Pits, Rootmaws and food piles), and
+## "WINDERS 4/6" on a Cog Press or Mainspring, "GRUBS 4/6" on the Brood's Rootmaws and food piles), and
 ## resting the mouse on it (~0.5 s; a long press on a phone) opens a tooltip saying what those workers do, with the real
 ## numbers. Drawn on the game's overlay (Game._draw_mine_labels calls draw_all), hit-tested by the same layout (at), so
 ## what you see is what you hover. The label only draws and explains: a click on it still selects its building
@@ -23,7 +23,6 @@ const WORDS := {
 	"town_hall": "HAULERS",
 	"farm": "FARMERS",
 	"powder_mill": "POWDER MAKERS",
-	"feeding_pit": "GRUBS",
 	"cog_press": "WINDERS",
 	"mainspring": "WINDERS",
 	"clocktower": "WINDERS",       # (the old Line economy only: in gear mode it has no crew)
@@ -392,8 +391,6 @@ static func tip(g: Game, e: Entity) -> Dictionary:
 			return _tip_farm(g, b)
 		"powder_mill":
 			return _tip_mill(g, b)
-		"feeding_pit":
-			return _tip_pit(g, b)
 		Defs.GEAR_PRESS, "mainspring":
 			if Defs.gear_mode:
 				return _tip_gear_crew(g, b)
@@ -445,16 +442,6 @@ static func _tip_mill(g: Game, b: Building) -> Dictionary:
 	return {"title": Loc.t("Powder makers"), "stats": st,
 		"body": Loc.t("Labourers grinding the Town Hall's saltpetre into black powder, about %d powder a minute each (%d with all %d). Powder buys Musketeers and Powder Wagons and refills your soldiers' shots. Once the saltpetre is spent the Mill grinds nothing.") % [
 			int(round(Defs.MILL_RATE * 60.0)), int(round(Defs.MILL_RATE * 60.0 * crew)), crew]}
-
-
-static func _tip_pit(g: Game, b: Building) -> Dictionary:
-	var dist := g.capital_dist(b.team, b.center())
-	var trip := g.food_value(b)
-	var per_min := _per_min(dist, trip)
-	var st := Loc.t("%d of %d at work") % [b.crew.size(), b.crew_max()] + "  ·  " + Loc.t("%d tiles from the capital") % int(round(dist)) + "  ·  " + Loc.t("ground left %d%%") % int(round(b.soil_left() * 100.0))
-	return {"title": Loc.t("Grubs"), "stats": st,
-		"body": Loc.t("Grubs carry food from this pit's ground to the Burrow. A trip from here pays about %d food, about %d a minute for each grub: the farther the pit, the more a trip pays (best about %d to %d tiles out). It takes %d grubs, one more for every %d tiles beyond %d, up to %d.") % [
-			int(round(trip)), int(round(per_min)), int(Defs.FOOD_FAR), int(Defs.FOOD_PEAK), Defs.crew_cap(b.d), int(Defs.PIT_CREW_STEP), int(Defs.FOOD_NEAR), Defs.PIT_CREW_MAX]}
 
 
 ## Food a minute for one grub: a load pays for the time its round trip takes (Game.food_at: a rate a grub-second that

@@ -12,8 +12,7 @@ extends Node2D
 ## walks up to it), the walk from its own main, and how much nearer it is to its own main than to the enemy's. The
 ## two best of each side are marked. The map is turned through its middle, so twin spots score the same.
 ##
-## Shown to a Crown or Clockwork player (the old Brood rarely moves its capital: not to an old-Brood player; the NEW
-## Brood sees its best Mound Turtle spots, nb_pick), with a small label (_label), and when watching
+## Shown to every player (a Brood player sees its best Mound Turtle spots, nb_pick), with a small label (_label), and when watching
 ## (spectator, replay). A spot hides once a building the viewer knows of stands on it (his own and his allies', an
 ## enemy's once seen), and when its lode was drawn out by a hall that fell there. Settings.expansion_spots turns them
 ## off. No per-frame drawing: the tiles are drawn once and redrawn only when a spot is taken or freed, or while the
@@ -46,11 +45,10 @@ func active() -> bool:
 		return true
 	if game.human < 0 or game.human >= game.n_players():
 		return false
-	# the old Brood rarely moves its capital: none; the NEW Brood expands with Mound Turtles: its turtle spots (nb_pick)
-	return game.faction_of(game.human) != "brood" or BroodNew.on(game, game.human)
+	return true          # (the Brood expands with Mound Turtles: its turtle spots, nb_pick)
 
 
-## The viewer plays the new Brood: its spots are the best TURTLE spots (nb_pick), not hall spots.
+## The viewer plays the Brood: its spots are the best TURTLE spots (nb_pick), not hall spots.
 func _nb_view() -> bool:
 	return not game.demo and game.replay == null and game.human >= 0 and BroodNew.on(game, game.human)
 

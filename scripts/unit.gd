@@ -156,7 +156,6 @@ var ride_n := 0                 # passing blows struck (streamed: a guest and a 
 var _ride_seen := -1
 var _ride_blow := false         # (_strike) this blow is struck in passing
 var _rides_by := false          # (this tick) fighting on the move
-var spell_cd := 0.0             # Spore Mother: miasma cooldown
 var cast_spell := ""            # the spell this unit is on its way to cast
 var cast_at := Vector2.ZERO
 var auto_work := true
@@ -164,7 +163,7 @@ var held_t := 0.0               # a set-up gun holding fire for its own men: it 
 var auto_repair := false        # REPAIR autocast: idle, it fixes damaged buildings nearby first (Winders: on from the start)
 var _cold := false
 var cw := {}                 # Clockwork roster prototype state (scripts/cw_units.gd)
-var slow_t := 0.0              # slowed (Bloater acid)
+var slow_t := 0.0              # slowed (acid clouds: the Storm Engine's)
 var kills := 0:                 # veterancy: enemy kills only (it shows on the sprite: VetLook)
 	set(v):
 		var was := VetLook.level(kills)
@@ -176,7 +175,6 @@ var patrol_b := Vector2.INF
 var friendly_kills := 0         # our own men his blows finished off (splash): just for the card
 var harvester: Unit = null      # (a body) the grub coming to take it
 var cocoon := 0.0               # (a grub) essence it carries home (Game.corpse_value: 2 a supply)
-var gas := 100.0                # Bloater: what's left in the sac (spits use it, the burst scales with it)
 # A Musketeer in a balloon's basket: its pose up there (gun_state[0], "idle"/"down"/"up") and
 # how long it has held it
 var gun_cd: Array = [0.0, 1.5]
@@ -213,9 +211,6 @@ var sky := "air"
 var sky_t := 0.0
 var sky_cd := 0.0               # (the computer) not too many landings and take-offs
 var _land_at := Vector2.INF
-# Bloater out of gas: "" (normal), "deflating", "flat", "refilling"
-var deflate := ""
-var deflate_t := 0.0
 # Ornithopter: COURIER (fetch batteries, wind up constructs) and the battery it carries
 var courier := false
 var topter_bat := ""            # "", "yellow" or "blue"
@@ -1041,7 +1036,7 @@ func _kind_flags() -> void:
 	_k_fac = String(Defs.UNITS[kind]["faction"]) if Defs.UNITS.has(kind) else ""
 	_k_mounted = Defs.FOOT.has(kind)
 	_k_harness = Defs.HARNESSED.has(kind)
-	_k_deploys = kind == "tesla_cart" or kind == "cannon" or kind == "spore_mother" or kind == "mortar" \
+	_k_deploys = kind == "tesla_cart" or kind == "cannon" or kind == "mortar" \
 			or BroodNew.ROOTERS.has(kind)
 	_k_nb = BroodNew.is_nb(kind)
 	_k_still = kind == BroodNew.EGG or kind == BroodNew.PILE
@@ -1077,8 +1072,8 @@ func can_hit(e: Entity) -> bool:
 		return false
 	if _k_nb and tesla_mode != "packed" and BroodNew.ROOTERS.has(kind):
 		return false            # (the new Brood: no rooted creature attacks, rooted is a building; to fight it uproots)
-	if deflate != "" or (kind == "skywing" and sky != "air" and sky != "ground"):
-		return false            # a deflated Bloater, a Skywing landing or taking off
+	if kind == "skywing" and sky != "air" and sky != "ground":
+		return false            # a Skywing landing or taking off
 	if owl_t >= 0.0 or moult_t >= 0.0:
 		return false            # (a Swift turning into a Ticking Owl; a young Brood unit moulting)
 	if kind == Defs.NETTER and (not (e is Unit) or ((e as Unit).net_t > 0.0 and not (order == "attack" and e == order_target))):
@@ -1240,16 +1235,6 @@ func _powder_tick(delta: float) -> void:
 				k.powder -= take2 * per
 				powder += take2
 				return
-
-
-## Cannon: round shot (long range, splash, smashes buildings) or canister (short range,
-## a cone of musket balls that shreds crowds).
-## Bloater: HOLD GAS (no spitting, a full-size burst) or SPIT.
-func set_hold_gas(on: bool) -> void:
-	if kind != "bloater":
-		return
-	mode = "hold" if on else ""
-	phase = ""
 
 
 ## Powder Wagon: SUPPLY on: up to two labourers bring it kegs from the Powder Mill while it
@@ -1676,7 +1661,7 @@ func _gunner_material(g: Sprite2D, p: Unit) -> void:
 ## a crowd from piling up): hammering and sawing on a site, a hoe in a farm, a crank.
 const WORK_SOUNDS := {"building": {"labourer": "work/crown_build", "winder": "work/clock_build", "grub": "work/brood_build"},
 	"repairing": {"labourer": "work/crown_build", "winder": "work/clock_build", "grub": "work/brood_build"},
-	"morphing": {"grub": "work/brood_build"}, "winding": {"winder": "work/winder_crank"},
+	"winding": {"winder": "work/winder_crank"},
 	"manning": {"labourer": "work/hoe", "winder": "work/winder_crank"}}    # (a Winder manning a Cog Press: its crank)
 var _work_snd_t := randf() * 2.0
 
@@ -1724,9 +1709,6 @@ func setup(g: Game, k: String, t: int, pos: Vector2) -> void:
 	d = Defs.UNITS[k]
 	if Defs.ARMOURED.has(k) or k in ["cannon", "mortar"]:
 		d = d.duplicate(true)        # his own: armour (put_on_armour) and drills (Game.apply_drills) change it
-	if Defs.NB_ABOUT.has(k) and BroodNew.on(g, t):
-		d = d.duplicate(true)        # (the new Brood's own card text: no old Brood buildings in it)
-		d["about"] = Defs.NB_ABOUT[k]
 	max_hp = d["hp"]
 	hp = max_hp
 	if k == "powder_wagon":
@@ -1901,8 +1883,6 @@ func switch_time() -> float:
 			return Defs.CANNON_SWITCH
 		"mortar":
 			return Defs.MORTAR_SWITCH
-		"spore_mother":
-			return Defs.ROOT_SWITCH
 		BroodNew.QUEEN:
 			return float(Defs.NB["queen_switch"])
 		BroodNew.MAW:
@@ -1967,7 +1947,7 @@ func cmd_nb_rally(p: Vector2) -> void:
 		queue_redraw()
 
 
-## Go to a spot and cast a spell there (Stormcaller: storm; Spore Mother: miasma).
+## Go to a spot and cast a spell there (Stormcaller: storm; Mist Toad: fog).
 func cmd_cast(spell: String, p: Vector2) -> void:
 	if aboard:
 		return      # riding in a balloon
@@ -2236,7 +2216,7 @@ func can_bombard() -> bool:
 
 ## Can it ATTACK GROUND (Defs.GROUND)? Anything that can attack: area weapons, shooters, melee units and the workers that
 ## can hurt (Labourers, grubs, Winders). Not medics, wagons, horses, balloons, the trains on their rails, flyers that
-## only hit flyers, nor the Netter (its net is for the living) or the Bloater (its spit is its gas, its bite is its end).
+## only hit flyers, nor the Netter (its net is for the living).
 func can_ground_attack() -> bool:
 	if dead or aboard != null or off_field:
 		return false
@@ -2248,8 +2228,7 @@ func can_ground_attack() -> bool:
 
 
 ## BOMBARD / ATTACK GROUND (as in Total Annihilation): attack the ground at `p` (or along its stretch a..b of a dragged
-## line) until another order. Area weapons walk into range, set up (a gun unlimbers, a Mortar deploys, a Spore Mother
-## roots) and keep firing; shooters keep firing at the spot or spread their fire along the stretch, at the bodies in it
+## line) until another order. Area weapons walk into range, set up (a gun unlimbers, a Mortar deploys) and keep firing; shooters keep firing at the spot or spread their fire along the stretch, at the bodies in it
 ## while there are any; melee units and workers strike the bodies there, new ones too, and wait when there are none. Out
 ## of shot it waits there (a Powder Wagon nearby fills it up again). It fires at nothing else meanwhile.
 func cmd_bombard(p: Vector2, a := Vector2.INF, b := Vector2.INF) -> void:
@@ -3167,40 +3146,6 @@ func _sky_switch(delta: float) -> Vector2:
 	return Vector2.ZERO
 
 
-# ------------------------------------------------------------------ bloater gas
-
-## Out of gas, a Bloater deflates (no spitting, no burst, slower) and fills up again.
-func _bloater_gas(delta: float) -> void:
-	match deflate:
-		"":
-			if mode != "hold" and gas < float(Defs.BLOAT["spit_cost"]):
-				deflate = "deflating"
-				deflate_t = float(Defs.DEFLATE["anim"])
-				frame_i = 0
-				anim_t = 0.0
-				phase = ""
-				target = null
-				if order in ["attack", "amove", "hold"]:
-					cmd_stop()
-				if team == game.human:
-					game.float_text(position + Vector2(0, -40), "out of gas", Color(0.75, 0.95, 0.25))
-		"deflating", "refilling":
-			deflate_t -= delta
-			if deflate_t <= 0.0:
-				deflate = "flat" if deflate == "deflating" else ""
-				frame_i = 0
-				anim_t = 0.0
-		"flat":
-			var rate := float(Defs.DEFLATE["refill"]) * (float(Defs.DEFLATE["swamp"]) if game.on_swamp(team, position) else 1.0)
-			gas = minf(100.0, gas + rate * delta)
-			speed *= float(Defs.DEFLATE["slow"])
-			if gas >= 100.0:
-				deflate = "refilling"
-				deflate_t = float(Defs.DEFLATE["anim"])
-				frame_i = 0
-				anim_t = 0.0
-
-
 # ------------------------------------------------------------------ ornithopter
 
 func _is_construct(e) -> bool:
@@ -3441,7 +3386,6 @@ func _tick_unit(delta: float) -> void:
 		Ballista.wind(self, delta)                 # (its spring is wound only while it stands, faster with crew)
 	elif kind != "dragoon":
 		cooldown = maxf(cooldown - delta, 0.0)     # (a Dragoon's reload waits while he rides)
-	spell_cd = maxf(spell_cd - delta, 0.0)
 	jump_cd = maxf(jump_cd - delta, 0.0)
 	if _pmax > 0.0:
 		_powder_tick(delta)
@@ -3479,7 +3423,7 @@ func _tick_unit(delta: float) -> void:
 			_wait_horse()
 	if slow_t > 0.0:
 		slow_t -= delta
-		speed *= float(Defs.BLOAT["slow"])
+		speed *= Defs.ACID_SLOW
 	if Defs.cw_roster and _k_cw:
 		CwUnits.pre_tick(self, delta)
 	if shield_up or shield_t > 0.0:
@@ -3488,8 +3432,6 @@ func _tick_unit(delta: float) -> void:
 		speed *= 1.3
 		if hp < max_hp:
 			hp = minf(max_hp, hp + 2.0 * delta)
-	if kind == "bloater":
-		_bloater_gas(delta)
 	if _k_nb:
 		BroodNew.tick(game, self, delta)      # (the new Brood: eggs, food, fertilising, HAUL's pace)
 	if not game.zones.is_empty() or sight != int(d["sight"]):
@@ -3827,8 +3769,6 @@ func _tick_unit(delta: float) -> void:
 		want = Vector2.ZERO        # a gun or wagon without its horse stands where it is
 	if kind == "balloon" and not incoming.is_empty():
 		want = Vector2.ZERO        # holds still while men climb in
-	if deflate == "deflating" or deflate == "refilling":
-		want = Vector2.ZERO
 	if self_wind_t > 0.0:
 		want = Vector2.ZERO        # a Winder cranking its own spring
 	if tongue_stage != "":
@@ -3868,7 +3808,7 @@ func _tick_unit(delta: float) -> void:
 		if kind == "mist_toad":
 			extra += ToadHop.draw_key(self) * 1000000     # (its shadow goes with the hopping body)
 		var key := Vector4i(int(selected) + (2 if carrying > 0 else 0) + (4 if cross_t > 0.0 else 0) + (8 if work == "feeding" else 0) + (16 if carry_empty else 0) + (32 if cocoon > 0 else 0) + kills * 64,
-			int(hp) + int(gas) * 10000, int(wind * 40.0) + (int(carry_t * 4.0) * 100 if carrying > 0 else 0) if _k_fac == "clockwork" else int(powder * 2.0) + (1000 if supplying else 0),
+			int(hp), int(wind * 40.0) + (int(carry_t * 4.0) * 100 if carrying > 0 else 0) if _k_fac == "clockwork" else int(powder * 2.0) + (1000 if supplying else 0),
 			int(max_hp) + extra + (int(reload_frac() * 16.0) + 17 * int(tesla_t * 4.0) + 850 * TESLA_MODES.find(tesla_mode)) * 10000 if has_attack() else int(max_hp) + extra)
 		if key != _draw_key:
 			_draw_key = key
@@ -3897,8 +3837,6 @@ func _tesla(want: Vector2, delta: float) -> Vector2:
 			tesla_t -= delta
 			if tesla_t <= 0.0:
 				tesla_mode = "deployed" if tesla_mode == "deploying" else "packed"
-				if kind == "spore_mother":
-					game.swamp_dirty = true
 			return Vector2.ZERO
 		"deployed":
 			if _k_nb:
@@ -3948,11 +3886,6 @@ func _range() -> float:
 		return CwUnits.range_of(self)
 	if kind == Defs.OWL and target is Building:
 		return float(Defs.OWL_BOMB["range"])     # (the bomb: it comes right up to the building's edge to let it fall)
-	if kind == "bloater":
-		# holding its gas, or about to pop anyway: it goes in to burst (out of gas it
-		# deflates instead, and can't attack at all until it has filled up again)
-		if mode == "hold" or hp < max_hp * 0.35:
-			return float(Defs.BLOAT["reach"])
 	if mode == "bayonet":
 		return Defs.BAYONET["range"]
 	if mode == "canister":
@@ -4177,7 +4110,7 @@ func _arrived() -> bool:
 
 
 func _move(want: Vector2, delta: float) -> void:
-	if work == "feeding" or work == "morphing" or (_k_nb and tesla_mode != "packed"):
+	if work == "feeding" or (_k_nb and tesla_mode != "packed"):
 		velocity = Vector2.ZERO      # (a new-Brood creature rooting or rooted stands in its own footprint: it never slides)
 		return
 	# neighbours only nudge each other: a unit on the move works it out every other tick, one
@@ -4762,7 +4695,7 @@ func _strike(e: Entity) -> void:
 	# aimed at a spot (round shot, shells, spit blobs) land wide; the others fly off into the murk.
 	var wide := Vector2.ZERO
 	if mode != "bayonet" and _range() >= 100.0 and game.fog_blinds(self, e) and randf() < float(Defs.FOG["miss"]):
-		if (kind == "cannon" and mode != "canister") or kind == "mortar" or kind == "spore_mother":
+		if (kind == "cannon" and mode != "canister") or kind == "mortar":
 			wide = Vector2.from_angle(randf() * TAU) * randf_range(55.0, 95.0)
 			game.fog_miss_note(e)
 		else:
@@ -4787,8 +4720,6 @@ func _strike(e: Entity) -> void:
 			game.tesla_zap(self, e, dmg)
 		"spitter", BroodNew.DILO:
 			game.acid_shot(self, e, dmg)       # (the Dilophosaurus: a big venom glob, a strong Spitter's)
-		"spore_mother":
-			game.blob_shot(self, e.center() + Vector2(0, 12) + wide, dmg)
 		"skywing":
 			if sky == "air":
 				# a volley of spines at a flyer (a braced Bulwark catches them for the men behind it)
@@ -4826,14 +4757,6 @@ func _strike(e: Entity) -> void:
 			e.take_damage(dmg, self, BLOW_RANGED)
 			game._zap_visual(center() + Vector2(0, 6), e.center(), false, true)
 			Sfx.play_any(["combat/tesla_attack", "zap"], position)
-		"bloater":
-			if _range() > float(Defs.BLOAT["reach"]):
-				# spit a glob of acid (uses gas)
-				gas -= float(Defs.BLOAT["spit_cost"])
-				game.acid_shot(self, e, dmg)
-			else:
-				game.bloat_burst(self)
-				die()
 		"stormcaller":
 			# a short zap from the forked hands (one target: a shot, not a chain)
 			e.take_damage(dmg, self, BLOW_RANGED)
@@ -4953,7 +4876,7 @@ func _k_worker_nb() -> bool:
 	return kind == "grub" and BroodNew.on(game, team)
 
 
-## Labourers and Winders stand at their post; grubs haul food from the pit to a Hive.
+## Labourers and Winders stand at their post; grubs carry food from a Rootmaw (BroodNew.grub_tick).
 var _barren_t := 0.0
 var _barren_seen := false
 var _barren_site: Building = null
@@ -4990,8 +4913,6 @@ func _gather(delta: float) -> Vector2:
 		return Vector2.ZERO
 	if site.haul_cap() > 0:
 		return _hauler(site, delta)
-	if kind == "grub":
-		return _haul(site, delta)
 	if kind == "winder" and site.d.has("battery"):
 		return _haul_battery(site, delta)
 	if work == "manning" and auto_repair and _fix_nearby(delta):
@@ -5561,8 +5482,8 @@ func _haul_battery(src: Building, delta: float) -> Vector2:
 	return _follow(delta)
 
 
-## Brood creature on SACRIFICE: walk (fly) to the nearest Brood Pen and be offered up there
-## for essence (Game.sacrifice). Grubs can't be: they're the workforce.
+## Brood creature on SACRIFICE: walk (fly) to the Brood Mother and be offered up there for spoils (Game.sacrifice).
+## Grubs can't be: they're the workforce.
 func can_sacrifice() -> bool:
 	return Game.sacrifice_value(kind) > 0 and aboard == null and not off_field
 
@@ -5576,7 +5497,7 @@ func cmd_sacrifice() -> void:
 	target = null
 	order_target = game.offer_place(position, team)
 	if order_target == null:
-		game.tell(team, "No Brood Mother to offer them to." if BroodNew.on(game, team) else "No Brood Pen to offer them at.")
+		game.tell(team, "No Brood Mother to offer them to.")
 		cmd_stop()
 
 
@@ -5604,7 +5525,7 @@ func _sacrifice(delta: float) -> Vector2:
 
 
 ## Grub on HARVEST: take the bodies of the fallen (friend or foe) near it, wrap each in a
-## cocoon and carry it to the nearest Hive for essence; then come back to where it was.
+## cocoon and carry it to the Brood Mother for spoils; then come back to where it was.
 var harvest_home := Vector2.ZERO
 var _corpse: Unit = null
 
@@ -5622,10 +5543,10 @@ func cmd_harvest() -> void:
 
 func _harvest(delta: float) -> Vector2:
 	if cocoon > 0:
-		var hive: Entity = game.dropoff_ent(position, team)
-		if hive == null:
+		var mother: Entity = game.dropoff_ent(position, team)
+		if mother == null:
 			return Vector2.ZERO
-		if hive.edge_distance(position) < radius + 17.0:
+		if mother.edge_distance(position) < radius + 17.0:
 			game.add_res2(team, cocoon)
 			if team == game.human:
 				game.float_text(position + Vector2(0, -26), "+%s spoils" % Game.essence_text(cocoon), Color(0.8, 0.5, 1.0))
@@ -5634,7 +5555,7 @@ func _harvest(delta: float) -> Vector2:
 			_request_path(harvest_home)
 			return Vector2.ZERO
 		if (path.is_empty() or path_i >= path.size()) and not path_pending:
-			_request_path(game.approach_point(hive, position))
+			_request_path(game.approach_point(mother, position))
 		return _follow(delta)
 	if _corpse == null or not is_instance_valid(_corpse) or not game.corpses.has(_corpse):
 		_corpse = null
@@ -5671,49 +5592,6 @@ func _harvest(delta: float) -> Vector2:
 		return Vector2.ZERO
 	if (path.is_empty() or path_i >= path.size()) and not path_pending:
 		_request_path(_corpse.position)
-	return _follow(delta)
-
-
-func _haul(pit: Building, delta: float) -> Vector2:
-	match work:
-		"feeding":
-			facing = (pit.center() - position).normalized()
-			work_t -= delta
-			if work_t <= 0.0:
-				load_f = game.pit_load(pit)
-				carrying = maxi(1, int(round(load_f)))
-				work = "to_hall"
-				path = PackedVector2Array()
-			return Vector2.ZERO
-		"to_hall":
-			var hive := game.dropoff_hall(pit.center(), team)
-			if hive == null:
-				return Vector2.ZERO
-			if hive.edge_distance(position) < radius + 17.0:
-				if load_f > 0.0:
-					game.add_gold_f(team, load_f)
-				else:
-					game.add_gold(team, carrying)     # (a load from an older save)
-				if carrying > 0:
-					game.own_float(team, position + Vector2(0, -26), "+%d" % carrying, Color(0.75, 1.0, 0.4))
-				if team == game.human and carrying > 0:
-					Sfx.play("work/grub_deliver", position, -6.0)
-				carrying = 0
-				load_f = 0.0
-				work = "to_site"
-				path = PackedVector2Array()
-				return Vector2.ZERO
-			if (path.is_empty() or path_i >= path.size()) and not path_pending:
-				_request_path(game.approach_point(hive, position))
-			return _follow(delta)
-	work = "to_site"
-	if pit.edge_distance(position) < radius + 16.0:
-		work = "feeding"
-		work_t = Defs.PIT_TIME
-		path = PackedVector2Array()
-		return Vector2.ZERO
-	if (path.is_empty() or path_i >= path.size()) and not path_pending:
-		_request_path(game.approach_point(pit, position))
 	return _follow(delta)
 
 
@@ -6190,13 +6068,6 @@ func _release_patient() -> void:
 
 func _build(delta: float) -> Vector2:
 	var site := order_target as Building
-	if work == "morphing":
-		work_t -= delta
-		if work_t <= 0.0:
-			if site and is_instance_valid(site) and not site.dead:
-				site.seeded = true
-			game.consume_unit(self)
-		return Vector2.ZERO
 	if site == null or not is_instance_valid(site) or site.dead or site.built or (site.seeded and kind != "labourer"):
 		# a queued wall's next piece, then the next Shift-queued order
 		if _continue_line() or _next_order():
@@ -6251,13 +6122,6 @@ func _build(delta: float) -> Vector2:
 			_crank_until = game.clock + 1.2
 			if not (_continue_line() or _next_order()):
 				cmd_stop()
-			return Vector2.ZERO
-		if kind == "grub":
-			# The grub becomes the building.
-			work = "morphing"
-			work_t = 1.6
-			Sfx.play("burrow", position)
-			position = site.rect().get_center() + Vector2(0, site.rect().size.y * 0.3)
 			return Vector2.ZERO
 		work = "building"
 		site.add_progress(delta)
@@ -6472,7 +6336,7 @@ func die() -> void:
 # ------------------------------------------------------------------ animation
 
 ## This unit's sheet has an animation `a` (in any direction)? Else use `fallback`: new art
-## (a landed Skywing, a deflated Bloater) may not be in yet.
+## (a landed Skywing) may not be in yet.
 func _anim_or(a: String, fallback: String) -> String:
 	var frames: Dictionary = ArtData.UNITS[art]["frames"]
 	for dr in ["s", "se", "e", "ne", "n"]:
@@ -6488,8 +6352,6 @@ func _death_anim() -> String:
 		return "death_cocoon"
 	if kind == "skywing" and sky != "air" and sky != "to_land":
 		return _anim_or("gdeath", "death")
-	if kind == "bloater" and deflate != "":
-		return _anim_or("ddeath", "death")
 	if keg and ArtData.UNITS[art]["frames"].has("death_keg_e"):
 		return "death_keg"
 	return "death"
@@ -6586,9 +6448,7 @@ func _anim_name() -> String:
 			if cocoon > 0:
 				return "carry_cocoon" if moving else "idle_cocoon"
 			if work == "feeding":
-				return "harvest" if home_mine is Unit else "burrow"      # (the new Brood: at a Rootmaw's flank)
-			if work == "morphing":
-				return "morph"
+				return "harvest"      # (at a Rootmaw's flank)
 			if phase != "":
 				return "attack"
 		"raptor", "spitter":
@@ -6668,13 +6528,6 @@ func _anim_name() -> String:
 			if tesla_mode == "deployed":
 				return "attack" if phase != "" else "deployed"
 			return "walk" if moving else "idle"
-		"spore_mother":
-			if tesla_mode == "deploying" or tesla_mode == "packing":
-				return "deploy"
-			if phase == "cast" or (tesla_mode == "deployed" and phase != ""):
-				return "fire"
-			if tesla_mode == "deployed":
-				return "deployed"
 		"mist_toad":
 			if tongue_stage == "lash" or tongue_stage == "pull" or tongue_stage == "recoil":
 				return _anim_or("tongue", "attack")
@@ -6698,16 +6551,6 @@ func _anim_name() -> String:
 			# a horse left to itself grazes (head down) most of the time it stands
 			if not moving and leader == null and into == null and (int(_bob_t / 3.0) + get_instance_id()) % 3 != 0:
 				return _anim_or("graze", "idle")
-		"bloater":
-			match deflate:
-				"deflating":
-					return _anim_or("deflate", "idle")
-				"refilling":
-					return _anim_or("refill", "idle")
-				"flat":
-					return _anim_or("dwalk", "walk" if moving else "idle")
-			if phase != "":
-				return "attack"
 		"ornithopter", "clock_soldier", "netter":
 			if phase != "":
 				return "attack"          # (the Netter's recoil)
@@ -6906,7 +6749,7 @@ func _animate(delta: float) -> void:
 			fps = 2.0 if not Defs.FLYER.has(kind) else float(Defs.FLYER[kind]["flap"]) * 0.85     # (a flyer flaps in place)
 			if kind == "skywing":
 				fps = SKYWING_HOVER_FPS
-		"death", "death_cocoon", "gdeath", "ddeath", "death_keg":
+		"death", "death_cocoon", "gdeath", "death_keg":
 			fps = 7.0
 			loop = false
 		"gidle":
@@ -6916,9 +6759,6 @@ func _animate(delta: float) -> void:
 			loop = false
 		"land":
 			fps = float(n) / Defs.SKYWING_SWITCH
-			loop = false
-		"deflate", "refill":
-			fps = float(n) / float(Defs.DEFLATE["anim"])
 			loop = false
 		"idle_keg":
 			fps = 0.75 * float(n)     # (one breath takes 1.3 s whether the view has 4 frames or 2)
@@ -6939,10 +6779,7 @@ func _animate(delta: float) -> void:
 			fps = float(n) / (float(Defs.PISTOL["aim"]) + 0.35)
 			loop = false
 		"aim", "fire", "aimup", "fireup", "thrust", "brace", "attack", "melee", "attack_up", "bomb", "attack_r", "attack_l":
-			fps = 6.0 if kind == "spore_mother" else 9.0
-			loop = false
-		"burrow":
-			fps = 7.0
+			fps = 9.0
 			loop = false
 		"harvest":
 			fps = float(n) / Defs.PIT_TIME      # (a grub at a Rootmaw's flank: the food comes out, it holds it)
@@ -6982,7 +6819,7 @@ func _animate(delta: float) -> void:
 			fps = 10.0
 			loop = false
 		"deployed":
-			fps = 6.0 if kind != "spore_mother" else 3.0
+			fps = 6.0
 		"cast", "fog":
 			fps = float(n) / maxf(phase_t + 0.05, 0.3) if phase == "cast" else 8.0
 			loop = false
@@ -7092,9 +6929,6 @@ func _animate(delta: float) -> void:
 		sprite.position = _hop_off.round()      # (held on the ground frames, carried in the air: ToadHop.track every tick)
 	elif kind != "cannon":
 		sprite.position = Vector2.ZERO
-	# Grubs at the pit: gnaw in a loop on the last frames of the burrow.
-	if kind == "grub" and anim == "burrow" and n > 3:
-		sprite.frame = clampi(2 + int(_bob_t * 6.0) % (n - 2), 0, sprite.hframes - 1)
 	sprite.scale.y = float(d.get("art_scale", 1.0))
 	if kind == "cannon" and anim == "walk" and velocity.length() < 10.0:
 		sprite.frame = 0        # the horse stands still
@@ -7679,11 +7513,6 @@ func _draw_unit() -> void:
 			draw_rect(Rect2(-bw * 0.5, ry, bw, 2).grow(0.5), Color(0, 0, 0, 0.6))
 			draw_rect(Rect2(-bw * 0.5, ry, bw * clampf(rf, 0.0, 1.0), 2), rcol)
 			gy += 3.5
-		if kind == "bloater" and gas < 99.5:
-			# its gas, only while the sac isn't full (sickly yellow-green; dimmer while deflated)
-			draw_rect(Rect2(-bw * 0.5, gy, bw, 2).grow(0.5), Color(0, 0, 0, 0.6))
-			draw_rect(Rect2(-bw * 0.5, gy, bw * clampf(gas / 100.0, 0.0, 1.0), 2),
-				Color(0.5, 0.56, 0.2) if deflate != "" else Color(0.72, 0.8, 0.2))
 	if work == "feeding":
 		return
 	if topter_bat != "":
