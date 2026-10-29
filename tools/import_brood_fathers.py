@@ -44,7 +44,7 @@ R = ibn.R
 DIRS = ["s", "e", "ne", "n"]
 # south-east walk (fly) width in game px: the Dilophosaurus lean, smaller than the Tyrannosaur (142: a Barracks); the
 # Pterodactyl's wingspan a little wider than the Tyrannosaur
-TARGET_W = {"dilophosaurus": 96, "pterodactyl": 150}
+TARGET_W = {"dilophosaurus": 112, "pterodactyl": 150}
 # the parts of a nest frame left as drawn (the red eggs and the fire are not team colour): fractions of the frame
 NEST_KEEP = {"dilophosaurus": [(0.25, 0.62, 1.0, 1.0)], "pterodactyl": [(0.55, 0.62, 1.0, 1.0), (0.66, 0.4, 1.0, 0.75)]}
 # the concepts (x0, y0, x1, y1 on the sheet): the Pterodactyl's flying figure (scale) and landed fertilising figure;
@@ -55,6 +55,33 @@ PT_LAND_BOX = (660, 110, 1264, 500)
 PT_HEAD = (470, 230, 640, 400)
 DI_CONCEPT = "dilophosaurus_concept_composed.png"
 DI_HEAD = (420, 90, 620, 290)
+# the Dilophosaurus' spit sheets by direction: E is the owner's own E sheet (its stream falls down-right; the second
+# south-east try, dilophosaurus_spit_se_v2_chatgpt.png, whose stream runs flat, is not used: SE keeps row 2 of the
+# walk/spit sheet, the owner's "good" one); NE and N are the owner's photos of the sheets with his RED PEN CIRCLE over
+# frame 3 (the mouth at a hallucinated angle): PEN_BOX is the circle's box (x0, y0, x1, y1 on the sheet), painted over
+# with the background before the frames are cut, so no pen pixel reaches a frame, and frame 3 (inside it) is gone
+DI_SPIT = {"ne": "dilophosaurus_spit_ne_marked_chatgpt.png", "n": "dilophosaurus_spit_n_marked_chatgpt.png"}
+# (each sheet: the circle's box, then frame 3's legs and tail below it, kept clear of frame 4's tail)
+PEN_BOX = {"dilophosaurus_spit_ne_marked_chatgpt.png": [(688, 60, 1028, 400), (640, 400, 962, 667)],
+           "dilophosaurus_spit_n_marked_chatgpt.png": [(605, 25, 1000, 410), (700, 410, 965, 667)]}
+ibn.JPEG_SHEETS |= set(PEN_BOX)        # (photos: softer, noisy; cleaned as the turtle's JPEG walks)
+_load = ia.load
+
+
+def _load_pen(path):
+    """ia.load, with the owner's pen circle painted out (PEN_BOX) in the background colour."""
+    px = _load(path)
+    for f, boxes in PEN_BOX.items():
+        if path.endswith(f):
+            px = px.copy()
+            rgb = px[..., :3].astype(int)
+            border = np.concatenate([rgb[:4].reshape(-1, 3), rgb[-4:].reshape(-1, 3)])
+            for x0, y0, x1, y1 in boxes:
+                px[y0:y1, x0:x1, :3] = np.median(border, 0).astype(px.dtype)
+    return px
+
+
+ia.load = _load_pen
 
 
 def have(f):
@@ -76,7 +103,9 @@ def one_row(f):
     return [ia.cutout(px, s) for s in sprites]
 
 
-def shrink_all(imgs, sc, keep=None):
+def shrink_all(imgs, sc, keep=None, jpeg=False):
+    if jpeg:
+        return [ibn.snap_jpeg(ia.shrink(im, sc)) for im in imgs]
     if keep:
         return [ibn._snap_body(ia.shrink(im, sc), keep) for im in imgs]
     return [ia.snap_team(ia.shrink(im, sc)) for im in imgs]
@@ -138,8 +167,21 @@ def dilophosaurus(stand_ins):
     # the spit: scaled so its first (standing) frame is as tall as the walk's first
     sp = ws[1]
     small[("attack", "se")] = shrink_all(sp, H / sp[0].shape[0])
-    dirs_from(small, base, "dilophosaurus_walk", "walk", H)
-    dirs_from(small, base, "dilophosaurus_spit", "attack", H)
+    # the other directions (one row of 6 each): the walks; the spits (NE and N: the owner's marked sheets, frame 3 dropped)
+    for d in DIRS:
+        f = f"dilophosaurus_walk_{d}_chatgpt.png"
+        if have(f):
+            fr = one_row(f)
+            small[("walk", d)] = shrink_all(fr, H / fr[0].shape[0], jpeg=f in ibn.JPEG_SHEETS)
+        f = DI_SPIT.get(d, f"dilophosaurus_spit_{d}_chatgpt.png")
+        if have(f):
+            fr = one_row(f)
+            sc = H / fr[0].shape[0]
+            if f in PEN_BOX:
+                # (frame 3, under the owner's pen circle, is dropped; frame 2 is held for two steps so the spit keeps its
+                # timing and its release stays on the stream frame, the 4th)
+                fr = [fr[0], fr[1], fr[1]] + fr[2:]
+            small[("attack", d)] = shrink_all(fr, sc, jpeg=f in ibn.JPEG_SHEETS)
     for d in DIRS:
         if ("walk", d) not in small:
             stand_ins.append(f"dilophosaurus walk {d.upper()}: the south-east walk (game fallback) until dilophosaurus_walk_{d}_chatgpt.png")

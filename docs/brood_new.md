@@ -31,7 +31,7 @@ Where the decisions come from: docs/idea_brood_mobile_buildings.md (the owner's 
 - The grubs have their new harvesting animation at the flank.
 - UPROOT spills the Rootmaw's food as a pile on the ground. Grubs can still collect it. It rots, 0.6 a second. The Rootmaw walks off thin and quick.
 - HAUL uproots it full. It walks at half speed with its food. Rooted again, it keeps it. Killed while hauling, all its food bursts out as a pile. (Since 0.15.14 a move order never gets a rooted creature up: only UPROOT and HAUL do.)
-- The Tyrannosaur is the father of the ground warriors: Raptors, Brutes, Spore Mothers and Mist Toads.
+- THREE FATHERS, each fathering his own line (the owner, 2026-10-29 11:10; see "The three fathers" below): the Tyrannosaur (Raptors, Brutes), the Dilophosaurus (Spitters, Mist Toads) and the Pterodactyl (Skywings). What is said of the Tyrannosaur below holds for each father and his line.
 - The Tyrannosaur ROOTS (the owner, 15:45): rooted he is the Brood's barracks. He settles on a nest: the owner's sheet tyrannosaur_nest_se_chatgpt.png (rooting 5, a fertilising loop 6, uprooting 5), scaled so his standing first frame is as tall as his south-east walk (the same body size), every frame lined up on his green body and its feet, not on the nest (the last uprooting frame stands beside the empty mud ring). The loop's six frames hardly differ, so a light glow and flicker on the breath and eggs runs on top. Rooted he gets the rooted armour like the others; uprooted he walks and fights as before. A warrior's egg can only be laid while he is ROOTED within 7 tiles of the Mother.
 - Her warrior eggs roll into his nest (BroodNew.nest_point: they are the red eggs drawn there, hidden until they hatch). Over him a count like a Barracks' queue ("3 eggs") and a bar for the first: its breath, then its incubation. He fertilises them ALL AT ONCE (the owner, 22:42: 1.5 s for the whole nest, every father the same; the breath is in his picture, no code mist), they incubate and hatch in the nest. Warrior eggs left on the ground near him (laid before he rooted) roll in too. When he gets up, the eggs in his nest lie on the ground; never fertilised in 25 s, they hatch as grubs (the difference paid back). The computer walks him to a spot beside its Mother (three quarters of his reach out, clear of her nest) and roots him there; rooted too far from her, he gets up and follows; rooted he is not sent to defend (he bites from his nest).
 - An egg he does not reach in 25 seconds hatches as a grub. The price difference is paid back.
@@ -89,6 +89,51 @@ The owner's phone screenshot of the rooted Mother, selected: the green rectangle
 
 For the owner to know: the Mound Turtle's 3x3 footprint is much wider and deeper than its drawn shell (the art is about 80x56 px on a 96x96 px footprint): with the shell on the bottom edge, its top third is empty ground (the size was chosen to close a 3-wide ramp).
 
+## The three fathers (0.16.0, the owner 2026-10-29 11:10)
+
+The owner's FATHER LINES (docs/idea_brood_mobile_buildings.md, 21:45 and 2026-10-29 11:10). Code: no father is a special case any more: Defs.NB "lines" (each father and his warriors, in order), "father_stage" (the Mother's stage that unlocks him), "nest_at" (where the eggs lie in his nest), "fp" and "nest_y" (his rooted footprint and art); BroodNew.FATHERS, is_father, father(g, t, kind), father_near(g, t, kind). Test: tools/test_brood_new.gd section 18. Art: tools/import_brood_fathers.py. Pictures: docs/shots/brood_fathers/ (tools/shot_brood_structures.gd with "fathers").
+
+| Father | Unlocked | His line | Made from |
+| --- | --- | --- | --- |
+| Tyrannosaur | from the start | Raptors, Brutes | a grub (BUILD) |
+| Dilophosaurus | the Mother at stage 2 | Spitters, Mist Toads | a grub (BUILD) |
+| Pterodactyl | the Mother at stage 3 | Skywings (the Bloater's replacement later) | a grub (BUILD) |
+
+- ONE OF EACH at a time; a grub on its way to turn into one, and its cocoon, count. All come from GRUBS (the grub's BUILD menu, as the Tyrannosaur). A father not yet unlocked is greyed on the menu with the reason: "Needs the Brood Mother at stage 2." (stage 3 for the Pterodactyl). One alive: "Only one Dilophosaurus at a time."
+- THE MOTHER'S CARD offers every line (grubs, Raptors, Brutes, Spitters, Mist Toads, Skywings). A warrior's egg is laid only with ITS father rooted beside her; the refusal names him: "Needs the Dilophosaurus rooted beside the Brood Mother."
+- EACH LINE'S EGGS GO TO ITS FATHER'S NEST: a Spitter's egg rolls into the Dilophosaurus' nest, a Skywing's into the Pterodactyl's, a Raptor's into the Tyrannosaur's. Each father fertilises ALL the eggs in his nest at once (1.5 s, the owner 22:42), they incubate and hatch there and walk (or fly) to his rally point. Eggs of his line lying near him roll in when he roots; he never takes another line's eggs. Unfertilised in 25 s: a grub (the difference paid back), as before.
+- PHEROMONES: each father within his reach of her adds +20% to her laying; they stack (all three: +60%). Her card's levers name a lone father ("Dilophosaurus near") or count them ("3 fathers").
+- THE FATHER RANGE ring shows for whichever father is selected or being placed (or a grub on its way to turn into one), and for the Mother.
+- THE TOAD only staggers every father (Defs "father" flag, and TONGUE "no_pull"): it never pulls one.
+- THE DILOPHOSAURUS roots on a nest beside the Mother like the Tyrannosaur (3x3 footprint, smaller than his 4x3). Uprooted he walks and SPITS venom from afar: a big glob of acid (the Spitter's shot, Game.acid_shot), which also strips armour (acid 4 s) and reaches flyers.
+- THE PTERODACTYL is a FLYER while uprooted: he flies straight over cliffs and water, and attacks with a DIVE (a bite) on ground and air units alike. ROOT: the ghost on the grid as for every rooted creature; he flies there and LANDS on his nest (4x3 footprint): from the moment he starts landing until he has taken off again he is a GROUND STRUCTURE (BroodNew.set_sky swaps his kind's entry for a grounded copy, as a landed Skywing's): anything that hits the ground hits him, his footprint blocks the way, he is drawn in the building layer. UPROOT: he takes off and flies again (his ground free).
+- THE COMPUTER (scripts/ai_brood_new.gd): grows the Mother as before; makes the Tyrannosaur early, the Dilophosaurus once she is at stage 2 and the Pterodactyl at stage 3 (one at a time, from grubs, each nested beside her clear of the others: 24 spots on 5 rings of his reach); gets every father up to fight an attack at her and roots him again when it is calm; lays a mix by the fathers rooted beside her (AIBroodNew._nb_warrior): Raptors as the base and a Brute now and then (Tyrannosaur), Spitters about one egg in three behind them and a Mist Toad per 12 army supply, up to 3 (Dilophosaurus), Skywings to match the enemy's flyers or one egg in five (Pterodactyl). On Normal and up its Toads cast FOG and TONGUE and its Skywings land and take off, with the old Brood computer's own rules (AI._spells, AI._skywings).
+
+### Their numbers (Claude's choice, for the owner to confirm)
+
+| | Tyrannosaur (as before) | Dilophosaurus | Pterodactyl |
+| --- | --- | --- | --- |
+| Health, armour | 1,000, 2 | 650, 1 | 700, 1 |
+| Speed | 64 (walks) | 78 (walks) | 110 (flies) |
+| Attack | bite 42 every 1.9 s (22 a second), melee | venom 20 every 1.6 s (12.5 a second) + acid 4 s, range 140, ground and air | dive bite 30 every 1.7 s (17.6 a second), melee, ground and air |
+| Cost | 200 food (+ the grub's 50) | 150 food, 25 essence (+ the grub) | 200 food, 50 essence (+ the grub) |
+| Morph time | 35 s | 30 s | 40 s |
+| Supply | 4 | 4 | 4 |
+| Rooted footprint | 4x3 | 3x3 | 4x3 |
+
+Why (docs/design_principles.md):
+- The Dilophosaurus is "a strong Spitter": a Spitter egg (two bodies, 70 health each) spits 8 every 2.0 s each, 8 a second for the egg, at 150 range. He spits 12.5 a second at 140 (a little shorter than his children, so they shoot over him) with 650 health: about a Spitter egg and a half of damage on a body ten times as hard, but a single target that clumps nothing and is slower to replace. Less damage than the Tyrannosaur (22 a second), as a ranged unit should (soft counter: close in on him).
+- The Pterodactyl's dive is between the two (17.6 a second): flying over cliffs makes him strong, so his damage is not the highest; the Crown's canister and flyers, the Clockwork's anti-air answer him in the air (telegraphed: he must land to father, 2.5 s, and is then a ground target for everyone).
+- Price and time: lower than the Tyrannosaur for the smaller Dilophosaurus (150, 30 s), the same as him for the Pterodactyl (200, 40 s: the old Roost cost the old Brood about as much), and essence for both (25, 50): essence comes from bodies and offerings, exposed income, so the late fathers are not a safe bank win (anti-snowball, section 2). They are also gated by her stages (stage 2: 300 food, 45 s; stage 3: 500 food, 75 essence, 60 s), as the old Warren and Broodmound gated the old tech.
+- The single point of failure stays soft: a dead father stops only his own line; another can be grown from a grub at once; fertilised eggs still hatch; unfertilised ones hatch as grubs (paid back).
+- Supply 4 each, as the Tyrannosaur: three fathers are 12 supply of army that also fights.
+
+### The art (and its stand-ins)
+
+- DILOPHOSAURUS: every direction is the owner's (walks and spits S, SE, E, NE, N; west mirrored), the nest sheet's rooting, uprooting and death rows, the good fertilising loop (dilophosaurus_fertilise_se_v2_chatgpt.png), his portrait. The NE and N spits drop the owner's red-marked frame 3 (frame 2 held twice instead). Details: docs/art_style_inconsistency.md "The fathers' stand-ins".
+- PTERODACTYL: the SE fly (frames 1-4 of the v3 sheet) and the SE dive; STAND-INS until the owner's sheets come: the other directions (the game shows the SE ones), the rooted look (the concept's landed fertilising figure, with the code breathing and glow; landing and take-off cross-faded), the death (the dive's plunge frames), the portrait (a crop of the concept). tools/import_brood_fathers.py picks up pterodactyl_fly_{s,e,ne,n}_chatgpt.png, pterodactyl_dive_{s,e,ne,n}_chatgpt.png, pterodactyl_nest_se_v2_chatgpt.png and pterodactyl_portrait_chatgpt.png by name when they land (re-run it; with the nest redo, copy the nest numbers it prints into Defs.NB).
+- SKYWING: unchanged for now.
+
 ## The numbers
 
 - Brood Mother: 2,400 health, armour 1, speed 24, paw 40 damage every 2.4 s. Gives 16 supply, as the old Burrow.
@@ -104,9 +149,9 @@ For the owner to know: the Mound Turtle's 3x3 footprint is much wider and deeper
 
 - Supply: decided by the owner: the Mound Turtle. The Mother gives 16 (the old Burrow's), each rooted Mound Turtle 12, up to 200. Moving a turtle costs its supply while it walks.
 - Essence and sacrifice: kept. Bodies and offerings go to the Mother.
-- The old buildings' roles (the owner's, 13:20 and 13:25): the Burrow is the Mother, the Feeding Pit the Rootmaw, the Clutch Mound the Mound Turtle, the Spawning Den and Gorge Pit the Tyrannosaur, the Roost the Pterodactyl (later). The Brood Pen has no creature: SACRIFICE is at the Mother. Burrow upgrades: none; the Mother holds 10 eggs.
+- The old buildings' roles (the owner's, 13:20 and 13:25): the Burrow is the Mother, the Feeding Pit the Rootmaw, the Clutch Mound the Mound Turtle, the Spawning Den and Gorge Pit the Tyrannosaur, the Roost the Pterodactyl (0.16.0). The Brood Pen has no creature: SACRIFICE is at the Mother. Burrow upgrades: none; the Mother holds 10 eggs.
 - Swamp (the owner's rules, 13:34 and 13:40): only round the rooted Mother and Mound Turtles. A Rootmaw needs it to root and feed. It still makes the Brood faster and heals it.
-- Not in the new Brood yet: Spitters (their father comes later), Bloaters and Skywings (the Pterodactyl comes later). The Mother's card does not offer them.
+- Not in the new Brood: the Bloater (removed, the owner 21:45; its replacement comes later), the Spore Mother and the Stormcaller (retired, 2026-10-29).
 - Research: none yet. The old Brood's upgrades lived in buildings.
 - Unfertilised warriors' eggs: they wait 25 seconds for the father, then hatch as grubs.
 - The Mother can be uprooted and walked. The computer does it only to fight off an attack at her nest.
@@ -118,7 +163,7 @@ For the owner to know: the Mound Turtle's 3x3 footprint is much wider and deeper
 ## What is missing
 
 - Online play: the faction is not in the online lobby yet. The game already sends the new state, so it should be a small step.
-- The other fathers: the Pterodactyl and the Spitter father.
+- The Bloater's replacement in the Pterodactyl's line (to be designed); the Skywing's redesign as a small olive pterosaur (art).
 - Research and upgrades for the new Brood.
 - The computer is simple. It does not move the Mother, does not haul food, does not close its ramp with a turtle, does not make hidden bases, does not use essence for much, and does not scout. Its economy is slow in the first five minutes.
 - Done in code for now: the egg's red tint once fertilised, the egg's fall; every rooted creature moves (a rooted creature is a building, the owner, 15:45): a still rooted frame (the Rootmaw's full stage 6) breathes (a slow 2% squash and stretch about the feet, 2.6 s), and the glowing parts (the Mother's and the Rootmaw's yellow-green eggs and food, the Tyrannosaur's fire and red eggs) pulse added on (glow_<strip> masks made by the importer; his fire flickers). The Mother's rooted loop is her sheet's breathing row (4 frames); the turtle's its loop row; the Tyrannosaur's and the Rootmaw's are the owner's sheets. Listed in docs/art_style_inconsistency.md. The egg and the food pile are the owner's sheets; the pile shows the frame that matches what is left and what has rotted. (The Mother's rooted-swipe sheet, brood_mother_rooted_attack_se_REJECTED.png, is not used: she cannot attack rooted.)

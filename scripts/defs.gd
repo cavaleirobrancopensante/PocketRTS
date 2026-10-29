@@ -1879,19 +1879,19 @@ const NB := {
 	"lines": {"tyrannosaur": ["raptor", "brute"], "dilophosaurus": ["spitter", "mist_toad"], "pterodactyl": ["skywing"]},
 	"father_stage": {"tyrannosaur": 0, "dilophosaurus": 1, "pterodactyl": 2},
 	# where the eggs in each father's nest lie, from his feet (art px, measured by the importers on his rooted frame)
-	"nest_at": {"tyrannosaur": [26, 2], "dilophosaurus": [27, 1], "pterodactyl": [58, -15]},
+	"nest_at": {"tyrannosaur": [26, 2], "dilophosaurus": [23, 3], "pterodactyl": [58, -15]},
 	# ROOTED = A BUILDING (the owner's playtest of 0.15.13, 19:19; scripts/brood_root.gd): the footprint each creature
 	# takes on the grid while rooted (tiles wide, tiles deep) and where its middle lies from the creature's feet (px).
 	# The owner's sizes: the Rootmaw a bit bigger than a Cottage (2x2), the Mother about the Clocktower's gear ring (her
 	# nest's ground; it grows with her stages), the Tyrannosaur a Barracks (4x3), the turtle about a Clutch Mound but
 	# wide enough to close a 3-wide ramp either way.
 	"fp": {"brood_mother": [9, 4, 0, -40], "rootmaw": [3, 2, 0, -24], "tyrannosaur": [4, 3, 8, -16], "mound_turtle": [3, 3, 0, -24],
-		"dilophosaurus": [3, 3, 0, -20], "pterodactyl": [4, 3, 24, -39]},
+		"dilophosaurus": [3, 3, 0, -21], "pterodactyl": [4, 3, 24, -39]},
 	# THE ROOTED ART SITS ON ITS FOOTPRINT (the owner, 2026-10-29): where the bottom of the rooted picture (her nest's
 	# rubble, the turtle's mud, the Tyrannosaur's nest) lies from the creature's feet in its sheet (art px, measured on
 	# the rooted strips: the lowest row a sixth as wide as the picture); rooted, the pictures are drawn that much lower
 	# (BroodRoot.drop) so that bottom touches the footprint's bottom edge, as a building stands on its tiles.
-	"nest_y": {"brood_mother": -8, "rootmaw": -1, "tyrannosaur": 26, "mound_turtle": 0, "dilophosaurus": 22, "pterodactyl": 3},
+	"nest_y": {"brood_mother": -8, "rootmaw": -1, "tyrannosaur": 26, "mound_turtle": 0, "dilophosaurus": 21, "pterodactyl": 3},
 }
 
 

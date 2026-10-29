@@ -4574,7 +4574,7 @@ func _engage(e: Entity, delta: float, may_move: bool) -> Vector2:
 			return Vector2.ZERO
 		if tesla_mode != "packed":
 			return Vector2.ZERO
-	elif deploys() and (dist > rng or dist < min_r) and phase == "":
+	elif deploys() and not _k_nb and (dist > rng or dist < min_r) and phase == "":
 		target = null         # set-up guns don't chase
 		return Vector2.ZERO
 	if phase != "":

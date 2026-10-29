@@ -1077,7 +1077,7 @@ func _rooted_art(q: Unit) -> void:
 		check(fr != null and u.sprite.get_parent() == srt and fr.get_index() < u.sprite.get_index(), "    its selection frame is drawn under its pictures")
 	check(absf(BroodRoot.drop_for(BroodNew.TURTLE) - BroodRoot.drop(tu)) < 0.5 and absf(BroodRoot.drop_for(BroodNew.FATHER) - BroodRoot.drop(f)) < 0.5,
 		"    the ROOT ghost draws the rooted picture as low (%.0f, %.0f px)" % [BroodRoot.drop_for(BroodNew.TURTLE), BroodRoot.drop_for(BroodNew.FATHER)])
-	check(BroodNew.nest_point(f).distance_to(f.position + BroodNew.NEST_AT + Vector2(0, BroodRoot.drop(f))) < 0.5, "    his nest point moved with his nest's picture")
+	check(BroodNew.nest_point(f).distance_to(f.position + BroodNew.nest_at(f.kind) + Vector2(0, BroodRoot.drop(f))) < 0.5, "    his nest point moved with his nest's picture")
 	# the Mother at stage 3: her bigger footprint, her art on its bottom edge
 	var st0 := BroodNew.stage(q)
 	for u in made:
@@ -1123,12 +1123,19 @@ func _fathers(q: Unit, p: Dictionary) -> void:
 	for gr in mine("grub"):
 		gr.auto_work = false
 		gr.cmd_stop()
-	for k in ["raptor", "brute", "mist_toad", "spitter", "skywing", BroodNew.EGG, BroodNew.FATHER, BroodNew.DILO, BroodNew.PTERO, BroodNew.TURTLE]:
+	for k in ["raptor", "brute", "mist_toad", "spitter", "skywing", BroodNew.EGG, BroodNew.FATHER, BroodNew.DILO, BroodNew.PTERO]:
 		for u in mine(k):
 			g.consume_unit(u)
 	while mine("grub").size() < 4:
 		g._add_unit("grub", 0, spot_near(q.position, 12.0))
 	await wait(0.3)
+	for i in 4:
+		if int(p["cap"]) - g.supply_used(0) >= 32:
+			break
+		# (room for three fathers and their eggs: Mound Turtles rooted out of their way)
+		var tu: Unit = BroodRoot.cocoon(g, 0, BroodNew.TURTLE, free_spot(BroodNew.TURTLE, q.position, 13.0 + 3.0 * i))
+		tu.nb["coc"] = BroodRoot.cocoon_time(tu) - 0.05
+		await wait(0.4)
 	# the lines
 	check(BroodNew.father_of("raptor") == BroodNew.FATHER and BroodNew.father_of("brute") == BroodNew.FATHER
 		and BroodNew.father_of("spitter") == BroodNew.DILO and BroodNew.father_of("mist_toad") == BroodNew.DILO
@@ -1158,7 +1165,7 @@ func _fathers(q: Unit, p: Dictionary) -> void:
 		"    no father: the refusals name each line's father (%s | %s | %s)" % [w_r, w_s, w_k])
 	# made from grubs: each walks to a spot beside her and morphs; one of each (the grub on its way counts)
 	var made := {}
-	var ang := {BroodNew.FATHER: 0.5, BroodNew.DILO: 2.6, BroodNew.PTERO: 4.4}
+	var ang := {BroodNew.FATHER: 0.3, BroodNew.DILO: 2.8, BroodNew.PTERO: 1.57}
 	for fk in [BroodNew.FATHER, BroodNew.DILO, BroodNew.PTERO]:
 		var spot := _father_spot(q, fk, float(ang[fk]))
 		var gr: Unit = mine("grub").filter(func(u) -> bool: return u.order != "nb_morph")[0]
@@ -1167,7 +1174,7 @@ func _fathers(q: Unit, p: Dictionary) -> void:
 		check(BroodRoot.morph_problem(g, 0, fk).begins_with("Only one"), "    a grub on its way to turn into a %s: one at a time (%s)" % [Defs.UNITS[fk]["name"], BroodRoot.morph_problem(g, 0, fk)])
 		var cocooned: bool = await wait_for(func() -> bool: return mine(fk).size() == 1, 25.0)
 		if not cocooned:
-			check(false, "    the grub never turned into a %s (spot %s: %s)" % [fk, str(spot), BroodRoot.place_problem(g, 0, fk, spot, gr)])
+			check(false, "    the grub never turned into a %s (spot %s: %s %s; supply %d of %d)" % [fk, str(spot), BroodRoot.place_problem(g, 0, fk, spot, gr), BroodRoot.morph_problem(g, 0, fk, gr), g.supply_used(0), int(p["cap"])])
 			continue
 		var c: Unit = mine(fk)[0]
 		c.nb["coc"] = BroodRoot.cocoon_time(c) - 0.3          # (the morph's time is the father's own: not waited out here)
@@ -1180,9 +1187,9 @@ func _fathers(q: Unit, p: Dictionary) -> void:
 	var di: Unit = made[BroodNew.DILO]
 	var pt: Unit = made[BroodNew.PTERO]
 	# the Pterodactyl rooted: a ground structure
-	var shooter: Unit = g._add_unit("musketeer", 1, pt.position + Vector2(0, 200))
+	var shooter: Unit = g._add_unit("raptor", 1, pt.position + Vector2(0, 200))          # (a ground-only biter: no anti-air)
 	var cell_solid: bool = g.solid[g.idx(g.cell_of(BroodRoot.rect_of(pt).get_center()))] != 0
-	check(not pt.is_air() and shooter.can_hit(pt) and cell_solid, "    the Pterodactyl rooted is a ground structure: a Musketeer can shoot it, its footprint solid (air %s)" % pt.is_air())
+	check(not pt.is_air() and shooter.can_hit(pt) and cell_solid, "    the Pterodactyl rooted is a ground structure: an enemy Raptor (ground only) can bite it, its footprint solid (air %s)" % pt.is_air())
 	# pheromones stack
 	var lr: Array = BroodNew.lay_rate(g, q)
 	check(int(lr[2]) == 3 and absf(float(lr[0]) - float(lr[1]) * (1.0 + 3.0 * float(Defs.NB["father_rate"]) + float(Defs.NB["expansion_rate"]) * int(lr[3]))) < 0.001,
@@ -1222,8 +1229,8 @@ func _fathers(q: Unit, p: Dictionary) -> void:
 	var up: bool = await wait_for(func() -> bool: return pt.tesla_mode == "packed", float(Defs.NB["father_switch"]) + 2.0)
 	await wait(0.1)
 	check(up and pt.is_air() and not shooter.can_hit(pt) and not BroodRoot.has_fp(pt) and g.solid[g.idx(g.cell_of(home))] == 0,
-		"    UPROOT: the Pterodactyl takes off: a flyer (the Musketeer can't hit it), his ground free")
-	var spot2 := _father_spot(q, BroodNew.PTERO, 4.4 + PI)
+		"    UPROOT: the Pterodactyl takes off: a flyer (the Raptor can not reach it), his ground free")
+	var spot2 := _father_spot(q, BroodNew.PTERO, 2.2)
 	pt.give({"o": "nb_root", "p": spot2})
 	var landed: bool = await wait_for(func() -> bool: return pt.tesla_mode == "deployed", 20.0)
 	check(landed and not pt.is_air() and pt.position.distance_to(spot2) < 2.0, "    ROOT: he flies to the spot and lands on his nest there (air %s, %.0f px off)" % [pt.is_air(), pt.position.distance_to(spot2)])

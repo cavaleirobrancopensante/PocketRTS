@@ -104,8 +104,8 @@ func _nb_morphs(q: Unit) -> void:
 	var k := ""
 	if _nb_short():
 		k = BroodNew.TURTLE
-	elif BroodNew.count_of(game, team, BroodNew.FATHER) == 0 and (grubs >= (6 if rush else 9) or game.clock > (40.0 if rush else 80.0)) and maws >= 2:
-		k = BroodNew.FATHER
+	elif BroodNew.count_of(game, team, BroodNew.FATHERS[0]) == 0 and (grubs >= (6 if rush else 9) or game.clock > (40.0 if rush else 80.0)) and maws >= 2:
+		k = BroodNew.FATHERS[0]         # (the first father, from the start)
 	elif _nb_next_father(q) != "":
 		k = _nb_next_father(q)
 	elif maws < _nb_wanted_maws() and (maws < 2 or int(game.players[team]["gold"]) >= 120):

@@ -486,7 +486,12 @@ func _fathers() -> void:
 	g.swamp_dirty = true
 	await wait(0.3)
 	var made := {}
-	var ang := {BroodNew.FATHER: 0.6, BroodNew.DILO: 2.4, BroodNew.PTERO: -0.9}
+	# (supply for the eggs: two Mound Turtles rooted out of the way, east of her)
+	for i in 2:
+		var tu: Unit = BroodRoot.cocoon(g, 0, BroodNew.TURTLE, spot(BroodNew.TURTLE, q.position + Vector2(16.0 * Defs.TILE, 0.0), 2.0 + 4.0 * i))
+		tu.nb["coc"] = BroodRoot.cocoon_time(tu) - 0.05
+	await wait(0.3)
+	var ang := {BroodNew.FATHER: -0.2, BroodNew.DILO: 2.0, BroodNew.PTERO: 0.8}
 	for fk in BroodNew.FATHERS:
 		var c: Unit = BroodRoot.cocoon(g, 0, fk, father_spot(q, fk, float(ang[fk])))
 		c.nb["coc"] = BroodRoot.cocoon_time(c) - 0.05
@@ -498,10 +503,12 @@ func _fathers() -> void:
 		if w != "":
 			print("lay %s: %s" % [k, w])
 	await wait(0.6)
-	g.set_selection([q])
-	g.camera.position = q.position + Vector2(0, -10)
-	g.camera.zoom = Vector2(0.85, 0.85)
+	g.set_selection([])
+	g.camera.position = q.position + Vector2(30, 70)
+	g.camera.zoom = Vector2(0.8, 0.8)
 	await _snap("fathers_rooted", 0.6)
+	g.set_selection([q])
+	await _snap("fathers_rooted_ring", 0.6)
 	g.set_selection([])
 	for fk in BroodNew.FATHERS:
 		var f: Unit = made[fk]
@@ -511,8 +518,8 @@ func _fathers() -> void:
 		await _snap("nest_%s" % fk, 0.5)
 	g.set_selection([])
 	await wait(float(Defs.NB["fert_time"]) + 0.3)
-	g.camera.position = q.position + Vector2(0, -10)
-	g.camera.zoom = Vector2(0.85, 0.85)
+	g.camera.position = q.position + Vector2(30, 70)
+	g.camera.zoom = Vector2(0.8, 0.8)
 	await _snap("fathers_rooted_fertilised", 0.4)
 	# the Pterodactyl takes off and flies; dives on a Musketeer
 	var pt: Unit = made[BroodNew.PTERO]
@@ -532,7 +539,7 @@ func _fathers() -> void:
 	foe.cmd_stop()
 	pt.cmd_attack(foe)
 	var dived := false
-	for i in 120:
+	for i in 400:
 		await physics_frame
 		if pt.anim == "attack" and pt.sprite.frame >= 2:
 			dived = true
