@@ -3,6 +3,9 @@ shader_type canvas_item;
 uniform vec4 team : source_color = vec4(1.0, 0.0, 0.0, 1.0);
 uniform float flash = 0.0;
 uniform vec3 tint = vec3(1.0);   // e.g. a powered-down construct goes cold grey
+// a faint colour washed over the picture at its own brightness (a Sire's eggs: scripts/brood_new.gd egg_wash):
+// rgb the colour, a how much (0: none)
+uniform vec4 wash = vec4(1.0, 1.0, 1.0, 0.0);
 
 // Horse coats (tools/import_horse_coats.py): a mask beside each horse strip says which pixels
 // are the horse (R), where a spotted coat has a patch (G) and the pixel's tone (B); the
@@ -90,6 +93,11 @@ void fragment() {
 				o = mix(o, vet_skin(vet_level, vm.g), smoothstep(0.035, 0.10, l));
 			}
 		}
+	}
+	if (wash.a > 0.0) {
+		vec3 lw = vec3(0.299, 0.587, 0.114);
+		vec3 wc = min(wash.rgb * (dot(o, lw) / max(dot(wash.rgb, lw), 0.05)), vec3(1.0));
+		o = mix(o, mix(wc, wash.rgb, 0.3), wash.a);
 	}
 	o = mix(o, vec3(1.0), flash);
 	float a = c.a;

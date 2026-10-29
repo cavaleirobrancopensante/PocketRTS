@@ -3270,6 +3270,8 @@ func _draw_panel(font: Font) -> void:
 		nb_prog = {}
 		if e is Unit and (e as Unit)._k_nb and (e.team == game.human or game.spectating()):
 			nb_prog = BroodNew.progress(game, e as Unit)
+		elif e is Unit and (e as Unit)._k_nb and BroodResearch.busy(e as Unit) and BroodResearch.shown_to(game, e as Unit):
+			nb_prog = BroodResearch.progress(e as Unit)        # (an ally's Sire: what he researches; an enemy's: nothing)
 		if not nb_prog.is_empty():
 			# THE BROOD'S PROGRESS (the owner, 21:41): in the card's text line, as a building's work in hand: its label,
 			# the time left and a wide bar (the about text is in the tooltip)

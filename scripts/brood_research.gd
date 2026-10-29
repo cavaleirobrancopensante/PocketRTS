@@ -276,6 +276,15 @@ static func done(g: Game, t: int, key: String) -> void:
 		g.mlog.add("%s researched %s" % [g.mlog.who(t), info["name"]])
 
 
+## WHO SEES WHAT IT RESEARCHES (the owner, 2026-10-29 20:09): its own side and its allies, and a spectator (watching
+## computers play), as with the other overlays. An enemy sees only his production loop (the
+## Sire's fertilising animation keeps playing): no bar, no label, nothing on his card, no tooltip, nothing on the map.
+static func shown_to(g: Game, u: Unit) -> bool:
+	if g == null or u == null:
+		return false
+	return g.demo or g.spectating() or g.allied(u.team, g.human)
+
+
 ## Its progress for the bar and the card (BroodNew.progress), {} when none.
 static func progress(u: Unit) -> Dictionary:
 	var key := current(u)

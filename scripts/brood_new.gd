@@ -404,6 +404,23 @@ const BAR_HATCH := Color(0.4, 0.75, 1.0)       # (blue: a unit in training)
 const BAR_WAIT := Color(1.0, 0.6, 0.35)
 
 
+## The bar and label drawn over a rooted creature in the world for this viewer ({} for none): her growing, rooting and
+## uprooting to its own side (and spectators); RESEARCHING to its own side, its allies and spectators, never to an enemy
+## (the owner, 2026-10-29 20:09: an enemy sees only the Sire's production loop, not what he researches).
+static func bar_over(g: Game, u: Unit) -> Dictionary:
+	if not ROOTERS.has(u.kind) or u.nb.has("coc"):
+		return {}
+	var mine := u.team == g.human or g.demo or g.spectating()
+	var pg := progress(g, u)
+	if pg.is_empty():
+		return {}
+	if pg["col"] == BroodResearch.BAR:
+		return pg if BroodResearch.shown_to(g, u) else {}
+	if mine and (pg["col"] == BAR_GROW or pg["col"] == BAR_ROOT):
+		return pg
+	return {}
+
+
 static func progress(g: Game, u: Unit) -> Dictionary:
 	if u.dead:
 		return {}
@@ -653,10 +670,33 @@ static func egg_time(k: String) -> float:
 	return float(Defs.UNITS[k]["time"])
 
 
+## THE SIRES' EGGS (the owner, 2026-10-29 20:09): how much of his lure's faint colour an egg wears, 0..1: an egg of a
+## Sire's line takes it as he breathes on it (fertilised: all of it, until it hatches), and lying in his nest at least
+## Defs.NB "egg_nest" of it; a grub egg, or a warrior egg not yet in his nest, keeps its own colour (0). The hatching
+## shell is plain again.
+static func egg_tint(e: Unit) -> float:
+	if e.nb.has("out"):
+		return 0.0
+	var fe := int(e.nb.get("fert", 0))
+	if fe == 0 or father_of(String(e.nb.get("k", "grub"))) == "":
+		return 0.0
+	if fe == 2:
+		return 1.0
+	var r := clampf(float(e.nb.get("redden", 0.0)), 0.0, 1.0)
+	if bool(e.nb.get("nest", false)):
+		r = maxf(r, float(Defs.NB["egg_nest"]))
+	return r
+
+
+## The faint colour of a young kind's Sire line's eggs (Defs.NB "egg_col"; white for a kind with no Sire).
+static func egg_col(k: String) -> Color:
+	var a: Array = (Defs.NB["egg_col"] as Dictionary).get(father_of(k), [1.0, 1.0, 1.0])
+	return Color(float(a[0]), float(a[1]), float(a[2]))
+
+
 ## The hatching's two halves: HATCH_IN s before the creature comes out the egg cracks (the sheet's first hatch frames),
 ## then the creature stands on the open shell, which breaks apart and goes after HATCH_OUT s.
 const HATCH_IN := 0.8
-const RED_EGG := Vector3(1.75, 0.42, 0.26)      # (the shader tint of a fertilised egg: a strong red the yellow-green sheet turns into)
 const HATCH_OUT := 0.9
 
 
@@ -1487,12 +1527,13 @@ static func animate(u: Unit, n: int) -> void:
 				s.scale = Vector2.ONE * lerpf(1.0, LAY_EGG_BIG * float(u.nb.get("big", 1.0)), k2)       # (as big as her frame drew it, shrinking as it rolls out)
 		elif u.nb.has("hold"):
 			s.scale = Vector2.ONE
-		# a fertilised egg glows red-gold (code; the sheet's egg is the waiting yellow-green one)
-		# (it reddens under the father's breath, then stays red until it hatches)
-		var red := 0.0 if u.nb.has("out") else (1.0 if int(u.nb.get("fert", 0)) == 2 else float(u.nb.get("redden", 0.0)))
-		if absf(red - float(u.nb.get("tinted", 0.0))) > 0.04:
+		# A SIRE'S EGG TAKES HIS LURE'S COLOUR, FAINTLY (the owner, 20:09; code, the sheet's egg is the plain
+		# yellow-green one): it takes it as he breathes on it, and keeps it until it hatches (egg_tint)
+		var red := egg_tint(u)
+		if absf(red - float(u.nb.get("tinted", 0.0))) > 0.04 or (red == 0.0) != (float(u.nb.get("tinted", 0.0)) == 0.0):
 			u.nb["tinted"] = red
-			(s.material as ShaderMaterial).set_shader_parameter("tint", Vector3.ONE.lerp(RED_EGG, red))
+			var ec := egg_col(String(u.nb.get("k", "grub")))
+			(s.material as ShaderMaterial).set_shader_parameter("wash", Color(ec, float(Defs.NB["egg_wash"]) * red))
 	# HAUL without its own sheet yet: the walk, the body swollen (code; docs/art_style_inconsistency.md)
 	if u.kind == MAW and u.tesla_mode == "packed" and not ArtData.UNITS[MAW]["frames"].has("haul_se"):
 		var f3 := clampf(float(u.nb.get("food", 0.0)) / float(Defs.NB["maw_cap"]), 0.0, 1.0)
@@ -1671,10 +1712,11 @@ static func draw(u: Unit, top: float) -> void:
 			u.draw_circle(rp - u.position, 4.5, Color(0.4, 1, 0.4, 0.95))
 			u.draw_line(rp - u.position, rp - u.position + Vector2(0, -18), Color(0.4, 1, 0.4, 0.95), 2.0)
 			u.draw_colored_polygon(PackedVector2Array([rp - u.position + Vector2(0, -18), rp - u.position + Vector2(11, -14), rp - u.position + Vector2(0, -10)]), Color(0.4, 1, 0.4, 0.95))
-	if mine and ROOTERS.has(u.kind) and not u.nb.has("coc"):
-		# her GROWING (as a hall's upgrade: a violet bar and its label), ROOTING / UPROOTING: a bar over it
-		var pg := progress(g, u)
-		if not pg.is_empty() and (pg["col"] == BAR_GROW or pg["col"] == BAR_ROOT or pg["col"] == BroodResearch.BAR):      # (the father's nest and the eggs have their own)
+	if ROOTERS.has(u.kind) and not u.nb.has("coc"):
+		# her GROWING (as a hall's upgrade: a violet bar and its label), ROOTING / UPROOTING: a bar over it; RESEARCHING
+		# only to its own side and allies (an enemy sees only his loop: the owner, 20:09)
+		var pg := bar_over(g, u)
+		if not pg.is_empty():      # (the father's nest and the eggs have their own)
 			var font3 := ThemeDB.fallback_font
 			var bw3 := maxf(60.0, u.radius * 2.0)
 			var y3 := top - 26.0 if u.kind == QUEEN else top - 10.0

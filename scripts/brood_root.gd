@@ -564,7 +564,7 @@ static func layer(u: Unit) -> void:
 			fpn.draw.connect(_draw_frame.bind(u, fpn))
 			srt.add_child(fpn)
 		srt.position = Vector2(0.0, dy)
-		for n in [u.sprite, u.get_node_or_null("Glow"), u.get_node_or_null("Xf"), u.get_node_or_null(COC), u.get_node_or_null(PUFF)]:
+		for n in [u.sprite, u.get_node_or_null("Glow"), u.get_node_or_null("Xf"), u.get_node_or_null(COC), u.get_node_or_null(PUFF), u.get_node_or_null(FLY)]:
 			if n != null and n.get_parent() != srt:
 				n.reparent(srt, false)
 		u.sprite.position.y -= dy        # (Unit._animate put it at the feet: under the node it is drawn there again)
@@ -785,7 +785,7 @@ static func cocoon_look(u: Unit) -> void:
 
 ## THE SIRE LURES (the owner, 2026-10-29 18:03-18:31; docs/sire_lure.md): a grub must not turn into a grown Sire. It
 ## roots and swells into a LURE, a living pheromone gland (one kind per Sire: the Tyrant's red and spiked, the Venom's
-## yellow-green, the Storm's with a crest-fin and a blue haze). Ripe, the Sire ARRIVES as part of its animation (in the
+## yellow-green, the Storm's with a crest-fin and a storm-cloud white haze: no blue, the owner 20:09). Ripe, the Sire ARRIVES as part of its animation (in the
 ## lore from the wild pack; in the game no walk across the map), EATS it and is yours, nesting where it was.
 ## The game's side is the cocoon's (the Sire is there from the start, in_cocoon, his footprint taken, his health growing,
 ## "coc" counting up to his own time): so the one-of-each limit, the Mother's stage, saves, replays and the online
@@ -808,9 +808,23 @@ static func is_lure(u: Unit) -> bool:
 ## [grow, arrive, settle] s of a Sire's lure: together his own time (Defs.UNITS[k] "time", the cocoon's).
 static func lure_times(k: String) -> Array:
 	var tt := BroodNew.egg_time(k)
-	var ar := minf(float(Defs.NB["lure_arrive"]), tt * 0.3)
+	var ar := minf(float(Defs.NB["lure_arrive"]), tt * 0.3) + fly_time(k)
 	var se := minf(float(Defs.NB["lure_settle"]), tt * 0.15)
 	return [maxf(0.0, tt - ar - se), ar, se]
+
+
+## THE STORM SIRE FLIES IN (the owner, 2026-10-29 20:09): the seconds of flight at the start of his arrival (Defs.NB
+## "lure_fly"; 0 for a Sire who walks in), taken out of the ripe lure's pulsing (his total time stays his own).
+static func fly_time(k: String) -> float:
+	var f: Dictionary = (Defs.NB["lure_fly"] as Dictionary).get(k, {})
+	return minf(float(f.get("time", 0.0)), BroodNew.egg_time(k) * 0.1) if not f.is_empty() else 0.0
+
+
+## Is he still in the air, flying in to his lure (his own flying frames, before the arrival sheet's dive)?
+static func flying_in(u: Unit) -> bool:
+	if lure_phase(u) != "arrive":
+		return false
+	return float(u.nb["coc"]) - float(lure_times(u.kind)[0]) < fly_time(u.kind)
 
 
 ## "grow", "arrive", "settle", or "" (not a lure).
@@ -876,6 +890,10 @@ static func lure_look(u: Unit) -> void:
 		if pf != null:
 			pf.queue_free()
 			pf.get_parent().remove_child(pf)
+		var fl := _pic(u, FLY)
+		if fl != null:
+			fl.queue_free()
+			fl.get_parent().remove_child(fl)
 		return
 	if cs == null:
 		cs = Sprite2D.new()
@@ -920,9 +938,15 @@ static func lure_look(u: Unit) -> void:
 	var fi := 0
 	var bright := 1.0
 	var puff := 0.0
+	var flying := ph == "arrive" and flying_in(u)
+	var fly_f := -1.0          # (0..1 through his flight in; -1: not flying)
+	var sh_f := -1.0           # (his air shadow in the sheet's dive frames: 0 at frame 3 .. 1 landed)
+	if flying:
+		fly_f = clampf((el - float(lt[0])) / maxf(fly_time(u.kind), 0.01), 0.0, 1.0)
+		ph = "grow"            # (the lure below him still ripe and pulsing)
 	match ph:
 		"grow":
-			var gf := el / maxf(float(lt[0]), 0.01)
+			var gf := el / maxf(float(lt[0]), 0.01) if not flying else 1.0
 			if gf < RIPE_AT:
 				tex = "grow_se"
 				var sf := gf / RIPE_AT
@@ -930,17 +954,23 @@ static func lure_look(u: Unit) -> void:
 				g = Vector2.ONE * lerpf(0.45, 1.0, clampf(sf * 1.25, 0.0, 1.0))      # (from about a grub's size)
 				puff = clampf((sf - 0.5) * 2.0, 0.0, 1.0) * 0.6
 			else:
-				var ck := el - float(lt[0]) * RIPE_AT
+				var ck := el - (float(lt[0]) * RIPE_AT if not flying else 0.0)
 				var b := sin(ck * TAU / 1.6)
 				g = Vector2(1.0 - 0.015 * b, 1.0 + 0.035 * b)        # (ripe: it breathes)
 				bright = 1.0 + 0.14 * maxf(0.0, b)
 				puff = 1.0
 		"arrive":
 			tex = "arrive_se"
-			fi = clampi(int((el - float(lt[0])) / maxf(float(lt[1]), 0.01) * 12.0), 0, 11)
+			# (the Storm Sire: after his flight, the sheet from its frame 3: dive, brake, land, eat, stand)
+			var f0 := int((Defs.NB["lure_arrive_from"] as Dictionary).get(u.kind, 0))
+			var fl := fly_time(u.kind)
+			var af := (el - float(lt[0]) - fl) / maxf(float(lt[1]) - fl, 0.01)
+			fi = clampi(f0 + int(af * float(12 - f0)), f0, 11)
+			if fl > 0.0 and fi <= 5:
+				sh_f = clampf(af * float(12 - f0) / float(6 - f0), 0.0, 1.0)
 			if fi >= 6:
 				ks = 1.0 - float(fi - 5) / 6.0
-			puff = clampf(1.0 - float(fi) / 3.0, 0.0, 1.0)
+			puff = clampf(1.0 - float(fi - f0) / 3.0, 0.0, 1.0)
 		"settle":
 			tex = "arrive_se"
 			fi = 11
@@ -965,6 +995,81 @@ static func lure_look(u: Unit) -> void:
 		pf.set_meta("g", ground)
 		pf.set_meta("p", puff)
 		pf.queue_redraw()
+	_fly_look(u, cs, ground, fly_f, sh_f)
+
+
+## THE STORM SIRE FLIES IN (the owner, 2026-10-29 20:09; Defs.NB "lure_fly"): before the arrival sheet's dive he is
+## drawn in the air with his own flying frames (walk_se) and his air shadow, gliding down from a few tiles away (up and
+## to the left, as the sheet's frame 3 has him) to where the sheet's frame 3 draws him; then the sheet's frames 3-6
+## (dive, brake, land) take over, his shadow sliding in under him and fading as he lands. A child of the creature,
+## so the fog hides it with him.
+const FLY := "NbFly"
+
+
+static func _fly_look(u: Unit, cs: Sprite2D, ground: Vector2, fly_f: float, sh_f: float) -> void:
+	var fn := _pic(u, FLY) as Node2D
+	if fly_f < 0.0 and sh_f < 0.0:
+		if fn != null:
+			fn.visible = false
+		return
+	var info: Dictionary = (Defs.NB["lure_fly"] as Dictionary)[u.kind]
+	if fn == null:
+		fn = Node2D.new()
+		fn.name = FLY
+		fn.draw.connect(_draw_fly_shadow.bind(fn))         # (his shadow, on the ground under the lure's picture)
+		var bs := Sprite2D.new()
+		bs.name = "Body"
+		bs.centered = false
+		bs.z_index = 3          # (his body over the lure, the eggs and the creatures by it: he is in the air)
+		bs.material = cs.material           # (the lure's copy of his team shader: no strip masks)
+		fn.add_child(bs)
+		pic_parent(u).add_child(fn)
+		pic_parent(u).move_child(fn, cs.get_index())
+	fn.visible = true
+	var bs := fn.get_node("Body") as Sprite2D
+	var ask := float(u.d.get("art_scale", 1.0))
+	var sh_end := ground + _v2(info["shadow"]) * ask
+	var sh := sh_end
+	var a := 1.0
+	if fly_f >= 0.0:
+		# in the air: a glide easing out (slowing as he comes down), sinking from "alt" to the sheet's frame 3
+		var e := 1.0 - pow(1.0 - fly_f, 2.0)
+		var anc_end := cs.position + _v2(info["to"]) * ask       # (the sheet's anchor: where frame 3 draws him)
+		var alt_end := sh_end.y - anc_end.y
+		sh = sh_end + _v2(info["from"]) * ask * (1.0 - e)
+		var alt := lerpf(float(info["alt"]) * ask, alt_end, e)
+		var k := lerpf(1.0, float(info["k"]), e) * ask
+		var bt := Game.tex("res://assets/units/%s/walk_se.png" % u.kind)
+		if bs.texture != bt:
+			bs.texture = bt
+			bs.hframes = int(ArtData.UNITS[u.kind]["frames"].get("walk_se", 1))
+		var ai: Dictionary = ArtData.UNITS[u.kind]
+		bs.offset = -(ai["anchor"] as Vector2)
+		bs.frame = int(u._bob_t * 7.0 * (1.2 - 0.6 * e)) % bs.hframes       # (his wingbeats, slowing into the glide)
+		bs.scale = Vector2.ONE * k
+		bs.position = Vector2(sh.x + (anc_end.x - sh_end.x), sh.y - alt)
+		bs.visible = true
+		a = 0.25 + 0.3 * (1.0 - clampf((alt - 20.0) / 160.0, 0.0, 0.6))
+	else:
+		# the sheet's dive, brake and land: only his shadow here, sliding in under him and fading as he lands
+		bs.visible = false
+		sh = sh_end.lerp(ground, sh_f)
+		a = 0.4 * (1.0 - sh_f)
+	fn.set_meta("sh", sh)
+	fn.set_meta("a", a)
+	fn.set_meta("r", float(u.radius + 2.0) * (1.0 - 0.35 * (1.0 - clampf(sh_f if sh_f >= 0.0 else fly_f, 0.0, 1.0))) * ask)
+	fn.queue_redraw()
+
+
+static func _v2(a) -> Vector2:
+	return Vector2(float(a[0]), float(a[1]))
+
+
+static func _draw_fly_shadow(n: Node2D) -> void:
+	var sh: Vector2 = n.get_meta("sh", Vector2.ZERO)
+	n.draw_set_transform(sh, 0.0, Vector2(1.0, 0.45))
+	n.draw_circle(Vector2.ZERO, float(n.get_meta("r", 20.0)), Color(0, 0, 0, float(n.get_meta("a", 0.3))))
+	n.draw_set_transform(Vector2.ZERO)
 
 
 ## The lure's haze in code (as well as the sheet's): soft puffs in its colour rising from its top and fading.
@@ -995,6 +1100,9 @@ static func lure_dead(u: Unit) -> void:
 	var pf := _pic(u, PUFF) as Node2D
 	if pf != null:
 		pf.visible = false
+	var fl := _pic(u, FLY) as Node2D
+	if fl != null:
+		fl.visible = false          # (shot down as he flew in: the lure bursts, he is gone)
 	if cs == null:
 		return
 	if lure_phase(u) == "grow":
