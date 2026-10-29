@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.15.22", "items": [
+		"THE DISMOUNTED CUIRASSIER, ALL NEW: his sword attack and his death are now the designer's new drawings too, in every direction. From his guard he raises the sword, swings it down, the blow lands on the slash (a white trail), he follows through and comes back to guard; when he falls he staggers, drops his sword, sinks to his knees and lies still with his helmet off beside him, and that is the body that stays. The blow and its damage now come exactly on the slash frame, in a match, in the ANIMATION VIEWER and in the Barracks drill.",
+		"THE DISMOUNTED CUIRASSIER IS BIGGER: every picture of him on foot (standing, walking, aiming, firing, the sword and the death) is drawn about 10% bigger, as tall as the old drawing was with its plume, so he no longer looks smaller than the Musketeer. His pistol smoke starts at his raised hand, in a match and at the Barracks.",
+	]},
 	{"v": "0.15.21", "items": [
 		"TWO NEW STAT ICONS on the unit card, from the designer's sheet: BONUS VS LIGHT (a sword striking a cloth tunic, on the Pendulum) and DAMAGE A SECOND (an hourglass with a blood drop), which takes the place of the letters DPS.",
 		"THE DISMOUNTED CUIRASSIER, NEW ART: in every direction, the Armoured Officer on foot is the designer's new drawing, made to match the mounted Cuirassier: steel helmet and breastplate, white sleeves, sash and breeches in the team colour, the same size in every view. He stands with 4 frames, walks with 6 (at the same pace as before), and his pistol shot raises the pistol, aims, fires with a flash as the ball leaves, then lowers it; the smoke of an Officer's shot on foot now comes from his hand, not his feet. His sabre and his fall are the old drawing until they are redrawn.",
