@@ -8,7 +8,7 @@ extends AI
 ##    passes the same ROOT placement checks as the player's ghost (BroodRoot.place_problem) and keeps the ramps clear;
 ##  - a spent Rootmaw is uprooted (it spills what little it holds) and walked to new ground (ROOT like BUILD);
 ##  - grubs: enough to crew the rooted Rootmaws (idle grubs find work by themselves, Unit WORK);
-##  - warriors: Raptors, a Brute now and then (essence from SACRIFICE is not used yet), laid while the father is near;
+##  - warriors: Raptors, Spitters (about one egg in three), a Brute now and then (essence from SACRIFICE is not used yet), laid while the father is near;
 ##  - waves: the army attack-moves to the nearest enemy once it is big enough (the strategy's wave size, growing), falls
 ##    back to the Mother when it is cut down; anything near the Mother is fought by everything, the father too.
 ## No cheating: it goes for the enemy's starting spot and what it meets on the way.
@@ -300,6 +300,9 @@ func _nb_lay(q: Unit) -> void:
 	elif BroodNew.father_near(game, team) and not (saving and gold < 250):
 		var essence := float(game.players[team]["res2"])
 		k = "brute" if essence >= 20.0 and gold >= 180 and randi() % 3 == 0 else "raptor"
+		# Spitters behind the Raptors (the owner, 2026-10-29: they're in the new Brood too): about one in three warrior eggs
+		if k == "raptor" and essence >= 5.0 and gold >= 120 and BroodNew.count_of(game, team, "spitter") * 3 < BroodNew.count_of(game, team, "raptor"):
+			k = "spitter"
 	if k == "" or BroodNew.lay_problem(game, q, k) != "":
 		if k != "grub" and grubs < want_grubs and BroodNew.lay_problem(game, q, "grub") == "":
 			k = "grub"

@@ -1153,7 +1153,7 @@ const UNITS := {
 		"name": "Tyrannosaur", "hp": 1000, "armor": 2, "speed": 64, "cost": 200, "time": 35.0, "supply": 4,
 		"sight": 9, "range": 40, "damage": 42, "cooldown": 1.9, "aim": 0.35, "radius": 30, "from": "brood_mother",
 		"building_bonus": 1.4, "faction": "brood", "new_brood": true, "father": true,
-		"about": "A FATHER: standing still near the Brood Mother, it breathes on her warrior eggs (Raptors, Brutes, Spore Mothers, Mist Toads) to fertilise them; an egg it doesn't reach in time hatches as a grub. Only one at a time. A terrible biter, but away from her no warriors are fathered.",
+		"about": "A FATHER: standing still near the Brood Mother, it breathes on her warrior eggs (Raptors, Brutes, Spitters, Mist Toads) to fertilise them; an egg it doesn't reach in time hatches as a grub. Only one at a time. A terrible biter, but away from her no warriors are fathered.",
 	},
 	"brood_egg": {
 		"tags": ["light"],
@@ -1860,7 +1860,7 @@ const NB := {
 	"pile_rot": 0.6,                             # food a pile loses a second
 	# the fathers and the warriors they father; the others wait for their fathers (a Pterodactyl for the fliers, a
 	# Spitter father): not in the new Brood yet
-	"lines": {"tyrannosaur": ["raptor", "brute", "spore_mother", "mist_toad"]},
+	"lines": {"tyrannosaur": ["raptor", "brute", "spitter", "mist_toad"]},      # (Spitters too, the owner 2026-10-29, until the Spitter father; the Spore Mother is retired)
 	# ROOTED = A BUILDING (the owner's playtest of 0.15.13, 19:19; scripts/brood_root.gd): the footprint each creature
 	# takes on the grid while rooted (tiles wide, tiles deep) and where its middle lies from the creature's feet (px).
 	# The owner's sizes: the Rootmaw a bit bigger than a Cottage (2x2), the Mother about the Clocktower's gear ring (her
@@ -1872,7 +1872,7 @@ const NB := {
 	# the rooted strips: the lowest row a sixth as wide as the picture); rooted, the pictures are drawn that much lower
 	# (BroodRoot.drop) so that bottom touches the footprint's bottom edge, as a building stands on its tiles.
 	"nest_y": {"brood_mother": -8, "rootmaw": -1, "tyrannosaur": 26, "mound_turtle": 0},
-	"later": {"spitter": "the Spitter father", "bloater": "the Pterodactyl", "skywing": "the Pterodactyl"},
+	"later": {"bloater": "the Pterodactyl", "skywing": "the Pterodactyl"},
 }
 
 

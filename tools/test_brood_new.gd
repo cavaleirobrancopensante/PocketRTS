@@ -173,6 +173,8 @@ func _run() -> void:
 	p["gold"] = 2000
 	p["res2"] = 200.0
 	check(BroodNew.lay_problem(g, q, "raptor").contains("Tyrannosaur"), "3. no father: a Raptor's egg is refused (%s)" % BroodNew.lay_problem(g, q, "raptor"))
+	check(BroodNew.lay_problem(g, q, "spitter").contains("Tyrannosaur"), "   a Spitter's egg is in the new Brood too, fathered by the Tyrannosaur (%s)" % BroodNew.lay_problem(g, q, "spitter"))
+	check(not BroodNew.hatch_list().has("spore_mother") and BroodNew.hatch_list().has("spitter"), "   on her card: Spitters, not the retired Spore Mother")
 	var far := spot_near(q.position, 20.0)
 	var f: Unit = g._add_unit(BroodNew.FATHER, 0, far)
 	await wait(0.3)
