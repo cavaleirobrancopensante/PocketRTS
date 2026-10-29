@@ -28,8 +28,10 @@ SHEETS
     dropped, frame 2 held twice), death 5; brood_mother_stage<N>_se_nest_chatgpt.png: rooting 5, rooted loop 4 (stage 3:
     5), laying 6, uprooting 5. brood_mother_stage<N>_<d>_walk_swipe_chatgpt.png (d = s, e, ne, n; 0.20.2): walk 6,
     swipe 6, each view at her stage-1 body in that view (mother_views); the north swipes drop frame 4 (MOTHER_DROP).
-Portraits: the owner's <kind>_portrait_chatgpt.png when it comes; until then a crop of the concept's head
-(young_tyrant_concept_chatgpt.png, venom_challenger_concept_chatgpt.png: a JPEG screenshot).
+Portraits: the owner's <kind>_portrait_chatgpt.png (in since 0.21.1); without it a crop of the concept's head
+(young_tyrant_concept_chatgpt.png, venom_challenger_concept_chatgpt.png: a JPEG screenshot). The Mother's stages:
+brood_mother_stage<N>_portrait_chatgpt.png -> assets/icons/brood_mother_<N>.png (her card shows the icon of her art key,
+which BroodMature switches as she grows; stage 1 keeps brood_mother.png). --portraits cuts only the portraits.
 Prints, for Defs.NB / BroodMature: each stage's rooted art bottom from her feet (nest_y) and where her last laying frame
 draws the new egg (lay_egg).
 """
@@ -406,12 +408,26 @@ def portrait(kind, stand_ins):
     stand_ins.append(f"{kind} portrait: a crop of the concept's head until {f}")
 
 
+def mother_portrait(name, stand_ins):
+    f = f"brood_mother_stage{name[-1]}_portrait_chatgpt.png"
+    if have(f):
+        ibn.PORTRAIT[name] = f
+        ibn.portrait(name)
+    else:
+        stand_ins.append(f"{name} portrait: her stage-1 portrait until {f}")
+
+
 def main():
     contact_dir = sys.argv[sys.argv.index("--contact") + 1] if "--contact" in sys.argv else ""
     only = sys.argv[sys.argv.index("--only") + 1] if "--only" in sys.argv else ""
     stand_ins = []
     data = {}
     todo = ["tyrant_challenger", "venom_challenger", "brood_mother_2", "brood_mother_3"]
+    if "--portraits" in sys.argv:
+        for name in todo:
+            (mother_portrait if name.startswith("brood_mother") else portrait)(name, stand_ins)
+        print("portraits cut", stand_ins)
+        return
     for name in todo:
         if only and name != only:
             continue
@@ -427,8 +443,7 @@ def main():
             small = mother_stage(int(name[-1]), s1, stand_ins)
         ibn.assemble(name, small, data)
         ibn.write_entry(name, data[name])
-        if not name.startswith("brood_mother"):
-            portrait(name, stand_ins)
+        (mother_portrait if name.startswith("brood_mother") else portrait)(name, stand_ins)
         if contact_dir:
             ibn.contact(contact_dir, name, small)
     print("stand-ins:" if stand_ins else "no stand-ins")

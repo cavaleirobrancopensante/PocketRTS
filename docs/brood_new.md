@@ -61,7 +61,7 @@ Also in 0.15.14 (the coordinator's fix from the round-2 games, docs/brood_new_pl
 
 For the owner to know:
 - The Mother's footprint: 9x4 at stage 1 is a little narrower than her drawn nest (about 11 tiles of rubble); wider would leave the Tyrannosaur no room to nest beside her within his 7-tile range except north and south of her. Easy to change (Defs.NB "fp").
-- The cocoon is a stand-in (the old Brood's construction mound). A drawn cocoon per creature would look better.
+- The cocoon is the owner's drawing since 0.21.1 (docs/brood_anims.md).
 - Paying on arrival (as the request said): a grub sent off can find the food spent meanwhile; it says why and stops.
 
 ## The owner's playtest of 0.15.14 (0.15.16)

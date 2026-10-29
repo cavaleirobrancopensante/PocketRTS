@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.21.2", "items": [
+		"ART: THE GRUB'S COCOON is the designer's drawing now. A grub turning into a Rootmaw or a Mound Turtle fades into a small scaly case on the earth, the case grows to full size, glows, shakes and cracks, splits open as the creature comes out, and its empty broken shell stays on the ground a moment.",
+		"ART: THE MOULT is drawn now. A young Spitter, Raptor or Hatchling maturing turns south-east, hunches and greys, a stone-grey shell closes round it and swells, glows, shakes, cracks and splits, and the Challenger steps out grey and regains its colour; the broken shell and the shed skin stay on the ground a moment. A Hatchling comes down to the ground for it and its Storm Challenger rises out of the shell into the air.",
+		"ART: the designer's portraits for the Spitter, the Venom Challenger and the Tyrant Challenger, and for the Brood Mother at stages 2 and 3: her card shows the portrait of her current stage.",
+	]},
 	{"v": "0.21.1", "items": [
 		"THE BROOD MOTHER'S STAGES IN EVERY DIRECTION: at stage 2 and stage 3 she now walks and swipes with her own pictures facing south, east, north-east and north too (and the west views, mirrored), no longer her stage-1 frames made bigger. She keeps her size as she turns and grows only by her stage.",
 		"Her swipe from behind (north) no longer shows an odd frame of her tail and a burst of earth: her claw stays raised a moment longer and comes down as the blow lands.",

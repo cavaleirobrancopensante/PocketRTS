@@ -112,6 +112,7 @@ static func start(u: Unit) -> void:
 	u.phase = ""
 	u.velocity = Vector2.ZERO
 	u.moult_t = 0.0
+	u.facing = BroodNew.SE          # (the moult is drawn facing south-east: scripts/moult_look.gd)
 	if u.visible and g.view_rect.has_point(u.position):
 		Sfx.play_any(["hatch", "work/grub_deliver"], u.position, -6.0)
 
@@ -133,6 +134,7 @@ static func tick(u: Unit, delta: float) -> void:
 	u.cmd_stop()
 	if u.sprite:
 		u.sprite.self_modulate = Color.WHITE
+		MoultLook.finish(u)         # (the empty shell and the shed skin left on the ground)
 	if u.visible and g.view_rect.has_point(u.position):
 		g.spawn_effect("acid_splash", u.position + Vector2(0, -8), 0.9)
 		Sfx.play_any(["brood/mature_" + u.kind, "hatch", "roar"], u.position, -6.0)
@@ -148,13 +150,17 @@ static func frac(u: Unit) -> float:
 	return clampf(u.moult_t / float(Defs.NB["moult"]), 0.0, 1.0) if u.moult_t >= 0.0 else 0.0
 
 
-## THE MOULT'S LOOK (code until the owner's moult art; docs/art_style_inconsistency.md): the young one still, its skin
-## shimmering pale green-gold (Unit._animate: BroodMature.look), a cocoon-like glow of slime round it that thickens and
-## splits at the end, and a bar over it.
+## THE MOULT'S LOOK: the drawn moult (scripts/moult_look.gd: the young one hunches and greys, a shell closes round it,
+## cracks and splits, the Challenger steps out, the shell and the shed skin stay a moment) and a bar over it. Without the
+## moult art (MoultLook.has_art) the old code look: the young one still, its skin shimmering pale green-gold, a glow of
+## slime round it that thickens and splits at the end.
 static func look(u: Unit) -> void:
 	if u.sprite == null:
 		return
 	if u.moult_t < 0.0:
+		return
+	if MoultLook.has_art(u):
+		MoultLook.look(u)
 		return
 	var p := frac(u)
 	var w := 0.5 + 0.5 * sin(u.moult_t * 7.0 + float(u.serial))
@@ -165,6 +171,9 @@ static func look(u: Unit) -> void:
 
 static func draw(u: Unit, top: float, bw: float) -> void:
 	var p := frac(u)
+	if MoultLook.has_art(u):
+		_bar(u, top, bw, p)
+		return
 	var t := u.moult_t
 	var r := u.radius + 6.0
 	# the slime round it: a soft glowing shell that swells as it moults, its rim shimmering
@@ -181,6 +190,10 @@ static func draw(u: Unit, top: float, bw: float) -> void:
 			var d := Vector2.from_angle(float(i) * TAU / 4.0 + 0.4) * r
 			u.draw_line(d * 0.2, d * (0.2 + 0.8 * c), Color(1.0, 1.0, 0.7, 0.8), 1.5)
 	u.draw_set_transform(Vector2.ZERO)
+	_bar(u, top, bw, p)
+
+
+static func _bar(u: Unit, top: float, bw: float, p: float) -> void:
 	var y := top - 7.0
 	u.draw_rect(Rect2(-bw * 0.5, y, bw, 3).grow(0.5), Color(0, 0, 0, 0.7))
 	u.draw_rect(Rect2(-bw * 0.5, y, bw * p, 3), Color(0.75, 1.0, 0.35))
