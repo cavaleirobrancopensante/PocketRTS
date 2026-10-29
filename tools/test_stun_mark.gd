@@ -72,19 +72,21 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	var at := open_spot(g, 0)
-	# ---- a Mist Toad's TONGUE: a Field Cannon (4 supply: not "heavy", TONGUE "heavy" is 5) is pulled, stunned
+	# ---- a Mist Toad's TONGUE on a Field Cannon: only STAGGERED (TONGUE "no_pull": the owner, 2026-10-29), stunned
+	# TONGUE "stagger" s; a Musketeer (light) is pulled, stunned for the pull and after
 	var toad := tough(g._add_unit("mist_toad", 1, at + Vector2(0, 150)))
 	var gun := tough(g._add_unit("cannon", 0, at))
-	var pull := float(Defs.TONGUE["pull"]) + float(Defs.TONGUE["after"])
+	var pull := float(Defs.TONGUE["stagger"])
+	var gun_at := gun.position
 	toad.charge = 200.0
 	toad.cmd_tongue(gun)
 	var waited := 0.0
 	while gun.stun_left() <= 0.0 and waited < 8.0:
 		await step(g, 1.0 / 30.0)
 		waited += 1.0 / 30.0
-	check("the tongue pulls the cannon, stunned", gun.stun_left() > 0.0 and g.stun_layer.marked.has(gun), "%.1f s in" % waited)
+	check("the tongue staggers the cannon (not pulled), stunned", gun.stun_left() > 0.0 and g.stun_layer.marked.has(gun) and gun.position.distance_to(gun_at) < 20.0, "%.1f s in, moved %.0f px" % [waited, gun.position.distance_to(gun_at)])
 	var shown := await mark_time(g, gun)
-	check("its stars show for the pull and after, %.1f s" % pull, absf(shown - pull) < 0.12, "%.2f s" % shown)
+	check("its stars show for the stagger, %.1f s" % pull, absf(shown - pull) < 0.12, "%.2f s" % shown)
 	await step(g, 0.2)
 	check("and go after it", not g.stun_layer.marked.has(gun) and gun.stun_left() == 0.0)
 	gun.position = at + Vector2(-400, 0)
@@ -99,7 +101,8 @@ func _run() -> void:
 		waited += 1.0 / 30.0
 	check("the tongue pulls the Musketeer, stunned", man.stun_left() > 0.0 and g.stun_layer.marked.has(man), "%.1f s in" % waited)
 	shown = await mark_time(g, man)
-	check("his stars show for the pull and after, %.1f s" % pull, absf(shown - pull) < 0.12, "%.2f s" % shown)
+	var mpull := float(Defs.TONGUE["pull"]) + float(Defs.TONGUE["after"])
+	check("his stars show for the pull and after, %.1f s" % mpull, absf(shown - mpull) < 0.12, "%.2f s" % shown)
 	toad.position = at + Vector2(400, 300)
 	toad.cmd_stop()
 	# ---- a Cavalry CHARGE knocks a Musketeer down
