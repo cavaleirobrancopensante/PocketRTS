@@ -6594,6 +6594,11 @@ func entity_at(p: Vector2, _any := true) -> Entity:
 				nbest = u
 	if nbest != null:
 		return nbest
+	if net_cmd_team < 0:
+		# a click on a worker label ("FARMERS 3/8", drawn over everything) picks its building, even over another's drawing
+		var lab := WorkerLabels.at(self, p)
+		if lab != null:
+			return lab
 	for b in buildings:
 		if hidden_ghost(b, who) or not shown_to_commander(b):
 			continue                  # (both tests below need it on show to whoever gave the order)
@@ -6603,8 +6608,6 @@ func entity_at(p: Vector2, _any := true) -> Entity:
 			var sr: Rect2 = b.sprite_rect()
 			if sr.grow(-6).has_point(p):
 				return b
-	if net_cmd_team < 0:
-		return WorkerLabels.at(self, p)       # (a click on a building's worker label selects the building)
 	return null
 
 
@@ -8299,8 +8302,8 @@ func team_requests(t: int) -> Array:
 	return out
 
 
-## Powder Wagons on SUPPLY (out of reach of a filling building) with room for more kegs than
-## are already on the way, and dry Field Cannons / Mortars that cannot limber (on HOLD, or no
+## Powder Wagons on SUPPLY (out of reach of a filling building) whose powder use calls for more kegs than are already
+## on the way (WorkerLabels.wagon_need; the owner, 2026-10-29: no limit of kegs in flight but the wagon's room), and dry Field Cannons / Mortars that cannot limber (on HOLD, or no
 ## horse) and so cannot drive to a refill; the powder bank must have a keg's worth.
 func keg_requests(t: int) -> Array:
 	var out: Array = []
@@ -8318,7 +8321,11 @@ func keg_requests(t: int) -> Array:
 		if w.kind == "powder_wagon":
 			if not w.supplying or w._powder_building() != null:
 				continue
-			var n := mini(int(Defs.HAUL["kegs"]) - flying, int((w.max_powder() - w.powder) / shots) - flying)
+			# as many kegs on the way as its powder use calls for (WorkerLabels.wagon_need: kegs a second x the round trip,
+			# at least 1), never more than it has room for (its store less what is in it and on the way)
+			var room := int((w.max_powder() - w.powder) / shots) - flying
+			var want := maxi(1, ceili(float(WorkerLabels.wagon_need(self, w)["want"]) - 0.05))
+			var n := mini(room, want - flying)
 			if n > 0:
 				out.append({"key": "k%d" % w.get_instance_id(), "k": "keg", "wagon": w, "n": n})
 		elif w.needs_keg() and flying == 0:
@@ -8328,12 +8335,12 @@ func keg_requests(t: int) -> Array:
 
 var _haul_t := 0.0
 var _haul_seen := {}                # request key -> clock it first appeared (oldest is served first)
-var worker_label_state := {}        # the haulers' need on the Town Hall labels (WorkerLabels: wagons' powder use, the smoothed numbers)
+var worker_label_state := {}        # the haulers' need (WorkerLabels: the wagons' powder use, read by keg_requests; the labels' smoothed numbers)
 
 
 ## Every Defs.HAUL.scan s: give the free haulers of each side the requests of its base.
 func haul_dispatch(delta: float) -> void:
-	WorkerLabels.tick(self, delta)        # (the HAULERS label's need: display only)
+	WorkerLabels.tick(self, delta)        # (the wagons' powder use and the haulers' need: the kegs sent below, the HAULERS label)
 	_haul_t -= delta
 	if _haul_t > 0.0:
 		return

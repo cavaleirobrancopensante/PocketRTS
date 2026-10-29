@@ -107,8 +107,11 @@ const WAGON := {"store": 120, "fill": 8.0, "per_powder": 2.0, "keg": 30, "keg_lo
 ## where the Horse Breeder spawns it to that building and hitched; a Powder Wagon on SUPPLY
 ## gets kegs from a Powder Mill; a gun or wagon with `team_want` horses gets spare ones.
 ## `scan` s between dispatches; `batch` tiles: other ready horses that close to the first one
-## are led along (with no hauler free the recruit / gun fetches its horse by itself at once); `reach` px to count as arrived; `kegs` kegs on the way to one wagon at a time.
-const HAUL := {"horses": 4, "scan": 0.5, "batch": 8.0, "reach": 30.0, "kegs": 2}
+## are led along (with no hauler free the recruit / gun fetches its horse by itself at once); `reach` px to count as arrived.
+## Kegs to a wagon: as many on the way at once as its powder use calls for (WorkerLabels.wagon_need: kegs a second x the
+## round trip from the Mill), only capped by its room (WAGON store); the old limit of 2 kegs in flight ("kegs") was
+## removed (the owner, 2026-10-29).
+const HAUL := {"horses": 4, "scan": 0.5, "batch": 8.0, "reach": 30.0}
 ## Observation Balloon's powder store: `store` musket shots (full when it's rigged). The
 ## Musketeers in its basket top up from it (POWDER.refill shots a second). Hovering still within
 ## `reach` tiles of a Powder Wagon with powder left, or of a finished POWDER.from building, with

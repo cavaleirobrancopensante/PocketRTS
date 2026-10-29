@@ -7,6 +7,7 @@ extends SceneTree
 ##  2. HAULERS reads assigned / needed (the owner's rule): 0 with nothing to haul; a near wagon at low use 1; a far wagon
 ##     at heavy use several (2: the kegs-in-flight limit); a Horse Breeder +1; smoothed; capped at the hall's 6; the
 ##     colours (grey 0/0, white under, green at, orange over);
+##  2b. the game rule: a far wagon under heavy use gets more than 2 kegs on the way at once, never more than its room;
 ##  3. resting the mouse on a label gives the label's tooltip (HUD._hover_at -> _tip_of) and a click there still
 ##     picks the building (Game.entity_at).
 ## Prints PASS / FAIL lines and "worker_labels: N failures".
@@ -99,9 +100,9 @@ func _check_label(e: Entity, word: String, what: String) -> void:
 		var L: Dictionary = WorkerLabels.layout(g, e)
 		var tp: Dictionary = WorkerLabels.tip(g, e)
 		var wd := String(L.get("word", ""))
-		var ok_word := wd == (word if code == "en" else Loc.t(word)) and wd != "" and (code == "en" or wd != word)
+		var ok_word: bool = wd == (word if code == "en" else Loc.t(word)) and wd != "" and (code == "en" or wd != word)
 		var body := String(tp.get("body", ""))
-		var ok_tip := String(tp.get("title", "")) != "" and body.length() > 30
+		var ok_tip: bool = String(tp.get("title", "")) != "" and body.length() > 30
 		if code != "en":
 			Loc.set_lang("en")
 			var en_body := String(WorkerLabels.tip(g, e).get("body", ""))
@@ -148,22 +149,22 @@ func _run() -> void:
 	far.powder_out = 300.0
 	WorkerLabels.update(g, true)
 	var wf: Dictionary = WorkerLabels.wagon_need(g, far)
-	check(WorkerLabels.hauler_need(g, hall) == int(Defs.HAUL["kegs"]) and float(wf["want"]) > 3.0,
-		"a far wagon at heavy use: %d (it would take %.1f, but only %d kegs go to one wagon at a time; %.1f tiles, trip %.1f s, a keg every %.1f s)" % [
-			WorkerLabels.hauler_need(g, hall), wf["want"], int(Defs.HAUL["kegs"]), wf["dist"], wf["trip"], 1.0 / float(wf["rate"])])
+	check(WorkerLabels.hauler_need(g, hall) == int(WorkerLabels.store_kegs()) and float(wf["want"]) > 3.0,
+		"a far wagon at heavy use: %d (it would take %.1f, capped at the %d kegs its store holds; %.1f tiles, trip %.1f s, a keg every %.1f s)" % [
+			WorkerLabels.hauler_need(g, hall), wf["want"], int(WorkerLabels.store_kegs()), wf["dist"], wf["trip"], 1.0 / float(wf["rate"])])
 	var br := _put(crown, "horse_breeder")
 	WorkerLabels.update(g, true)
-	check(br != null and WorkerLabels.hauler_need(g, hall) == int(Defs.HAUL["kegs"]) + 1, "  and a Horse Breeder: +1 (%d)" % WorkerLabels.hauler_need(g, hall))
+	check(br != null and WorkerLabels.hauler_need(g, hall) == int(WorkerLabels.store_kegs()) + 1, "  and a Horse Breeder: +1 (%d)" % WorkerLabels.hauler_need(g, hall))
 	Loc.set_lang("en")
 	var hint := String(WorkerLabels.tip(g, hall).get("hint", ""))
-	check(hint.begins_with("Needed %d: 1 for the Horse Breeder(s); %d for powder: 1 wagon(s) about" % [int(Defs.HAUL["kegs"]) + 1, int(Defs.HAUL["kegs"])]), "  the tooltip explains the parts: %s" % hint)
+	check(hint.begins_with("Needed %d: 1 for the Horse Breeder(s); %d for powder: 1 wagon(s) about" % [int(WorkerLabels.store_kegs()) + 1, int(WorkerLabels.store_kegs())]), "  the tooltip explains the parts: %s" % hint)
 	# smoothing: the far wagon goes quiet; the number holds for a few updates, then falls
 	WorkerLabels._st(g)["use"][far.get_instance_id()] = [[g.clock - 25.0, far.powder_out]]
 	var seen: Array = []
 	for i in WorkerLabels.DROP_AFTER + 1:
 		WorkerLabels.update(g)
 		seen.append(WorkerLabels.hauler_need(g, hall))
-	check(seen[0] == int(Defs.HAUL["kegs"]) + 1 and seen.back() == 1, "  smoothed: a quiet wagon's haulers stay counted for %d updates (%s), then drop" % [WorkerLabels.DROP_AFTER, seen])
+	check(seen[0] == int(WorkerLabels.store_kegs()) + 1 and seen.back() == 1, "  smoothed: a quiet wagon's haulers stay counted for %d updates (%s), then drop" % [WorkerLabels.DROP_AFTER, seen])
 	for i in 6:
 		_put(crown, "horse_breeder")
 	WorkerLabels.update(g, true)
@@ -180,6 +181,37 @@ func _run() -> void:
 	var hl: Dictionary = WorkerLabels.layout(g, hall)
 	check(String(hl["count"]) == "%d/6" % hall.haulers().size() and hall.haulers().size() == 2, "two haulers assigned: HAULERS %s" % hl["count"])
 	check(String(WorkerLabels.tip(g, hall)["stats"]).contains("of 2 free"), "  the tooltip says how many are free (%s)" % WorkerLabels.tip(g, hall)["stats"])
+
+	# --- 2b. THE GAME RULE (the owner, 08:00): no limit of kegs in flight but the wagon's room. Six haulers; the far
+	# wagon, empty and under heavy use, gets more than 2 kegs on the way at once; a nearly full one never more than its room.
+	for i in 4:
+		var lb: Unit = g._add_unit("labourer", crown, hall.center() + Vector2(-40 + 20 * i, 90))
+		lb.cmd_gather(hall)
+	var full: Unit = g._add_unit("powder_wagon", crown, far.position + Vector2(0, 90))
+	full.supplying = true
+	full.powder = float(Defs.WAGON["store"]) - float(Defs.WAGON["keg"]) - 5.0      # (room for one keg)
+	far.powder = 0.0
+	g.players[crown]["res2"] = 2000.0
+	var most_far := 0
+	var over := false
+	for k in 8:
+		for wg in [far, full]:
+			WorkerLabels._st(g)["use"][wg.get_instance_id()] = [[g.clock - 25.0, wg.powder_out - 300.0]]   # (heavy use, kept up)
+		await wait(0.5)
+		for wg in [far, full]:
+			var fl: int = g.haulers_of(crown).filter(func(u: Unit) -> bool: return String(u.haul_job.get("k", "")) == "keg" and u.haul_job.get("wagon") == wg).size()
+			if wg == far:
+				most_far = maxi(most_far, fl)
+			if wg.powder + fl * float(Defs.WAGON["keg"]) > float(Defs.WAGON["store"]) + 0.01:
+				over = true
+	print("  haulers %d; kegs on the way to the far wagon at most %d" % [g.haulers_of(crown).size(), most_far])
+	check(most_far > 2 and most_far <= int(WorkerLabels.store_kegs()), "a far wagon under heavy use gets more than 2 kegs on the way at once (%d)" % most_far)
+	check(not over, "  and no wagon ever has more on the way than it has room for")
+	for wg in [far, full, near]:
+		wg.supplying = false
+	for u in g.haulers_of(crown):
+		u.haul_job = {}
+		u.keg = false
 
 	# --- 1. every crewed kind of every faction
 	_check_label(hall, "HAULERS", "Crown Town Hall")
@@ -248,7 +280,8 @@ func _run() -> void:
 	check(c.has("lab") and c["lab"] == hall and float(c["delay"]) <= 0.6, "hovering the label: its tooltip is due after %.1f s" % float(c.get("delay", -1.0)))
 	var tp: Dictionary = hud._tip_of(c) if not c.is_empty() else {}
 	check(String(tp.get("title", "")).begins_with("Haulers"), "  and it is the haulers' tooltip (%s)" % tp.get("title", ""))
-	check(g.entity_at(w) == hall, "a click on the label still picks the Town Hall")
+	var picked = g.entity_at(w)
+	check(picked == hall, "a click on the label still picks the Town Hall (%s)" % (picked.kind if picked else "nothing"))
 	check(hud.show_label_tip(hall, sp / float(hud.ui_scale)) and not hud._tip.is_empty(), "a long press on a phone shows the same tooltip (show_label_tip)")
 
 	print("worker_labels: %d failures" % fails)
