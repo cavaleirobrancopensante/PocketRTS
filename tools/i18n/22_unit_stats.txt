@@ -417,9 +417,9 @@ es Cada golpe echa atrás al enemigo.
 pt Ela só atira enraizada; andando não pode atacar.
 es Solo dispara arraigada; caminando no puede atacar.
 
-> Spell: a cloud that heals the Brood (%d essence, every %d s).
-pt Feitiço: uma nuvem que cura a Ninhada (%d de essência, a cada %d s).
-es Hechizo: una nube que cura a la Camada (%d de esencia, cada %d s).
+> Spell: a cloud that heals the Brood (%d spoils, every %d s).
+pt Feitiço: uma nuvem que cura a Ninhada (%d espólios, a cada %d s).
+es Hechizo: una nube que cura a la Camada (%d de botín, cada %d s).
 
 > Every spit uses %d gas; out of gas it deflates and cannot attack.
 pt Cada cuspe gasta %d de gás; sem gás ele murcha e não pode atacar.

@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.16.2", "items": [
+		"SPOILS: the Brood's second resource is now called SPOILS (it was essence): spoils of war, from any body or wreck, flesh or metal, and from SACRIFICE. The top bar, costs and refusals (\"Not enough spoils.\", also spoken), help pages, harvest and sacrifice texts, floating numbers and the match log say it, for the old and the new Brood. Nothing else changes.",
+	]},
 	{"v": "0.16.1", "items": [
 		"THE VENOM SIRE'S PICTURES: the pictures that go with 0.16.0's numbers (his frames lined up on his feet, not on the venom's lowest drop, so he no longer floats over his shadow while he spits). 0.16.0 shipped with the previous cut.",
 	]},

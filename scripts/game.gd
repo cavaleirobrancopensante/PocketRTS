@@ -5425,7 +5425,7 @@ func sacrifice(u: Unit, pen: Entity) -> void:
 		fx.z_index = 4
 		Sfx.play("work/midden_essence", pen.center(), -4.0)
 	if u.team == human:
-		float_text(pen.center() + Vector2(0, -34), "+%d essence" % ess, Color(0.8, 0.5, 1.0))
+		float_text(pen.center() + Vector2(0, -34), "+%d spoils" % ess, Color(0.8, 0.5, 1.0))
 	if pen is Unit and (pen as Unit).kind == BroodNew.QUEEN:
 		BroodNew.devour(pen, u)          # (the new Brood: the Mother devours it, a swipe)
 	consume_unit(u)
@@ -7613,7 +7613,7 @@ func spell_problem(u: Unit, spell: String) -> String:
 		if u.spell_cd > 0.0:
 			return "Miasma isn't ready yet (%ds)." % int(ceil(u.spell_cd))
 		if float(players[u.team]["res2"]) < float(Defs.MIASMA["cost2"]):
-			return "Not enough essence."
+			return "Not enough spoils."
 	return ""
 
 

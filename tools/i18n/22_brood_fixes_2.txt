@@ -2,9 +2,9 @@
 # own text, the build menu, the progress bars, the alerts, and the 0.15.14 labels that were still in English (the
 # ROOT ghost's reasons, the egg and cocoon labels, the father range).
 
-> Carries food from Rootmaws (and food piles) to the Brood Mother: the farther the trip, the more it pays. BUILD (B): it turns into a Rootmaw, a Mound Turtle or a father where you pick (the grub is used up). HARVEST: it wraps bodies and carries them to her as essence.
-pt Leva comida dos Bocarraízes (e dos montes de comida) para a Mãe da Ninhada: quanto mais longa a viagem, mais ela rende. CONSTRUIR (B): vira um Bocarraiz, uma Tartaruga-Montículo ou um pai onde você escolher (a larva é gasta). COLHER: embrulha corpos e os leva a ela como essência.
-es Lleva comida de los Bocarraíces (y de los montones de comida) a la Madre de la Camada: cuanto más largo el viaje, más rinde. CONSTRUIR (B): se convierte en un Bocarraíz, una Tortuga Montículo o un padre donde elijas (la larva se gasta). RECOGER: envuelve cuerpos y se los lleva como esencia.
+> Carries food from Rootmaws (and food piles) to the Brood Mother: the farther the trip, the more it pays. BUILD (B): it turns into a Rootmaw, a Mound Turtle or a father where you pick (the grub is used up). HARVEST: it wraps bodies and carries them to her as spoils.
+pt Leva comida dos Bocarraízes (e dos montes de comida) para a Mãe da Ninhada: quanto mais longa a viagem, mais ela rende. CONSTRUIR (B): vira um Bocarraiz, uma Tartaruga-Montículo ou um pai onde você escolher (a larva é gasta). COLHER: embrulha corpos e os leva a ela como espólios.
+es Lleva comida de los Bocarraíces (y de los montones de comida) a la Madre de la Camada: cuanto más largo el viaje, más rinde. CONSTRUIR (B): se convierte en un Bocarraíz, una Tortuga Montículo o un padre donde elijas (la larva se gasta). RECOGER: envuelve cuerpos y se los lleva como botín.
 
 > Carries food from Rootmaws and food piles to the Brood Mother (longer trips pay more). BUILD turns it into a Rootmaw, a Mound Turtle or a father.
 pt Leva comida dos Bocarraízes e dos montes de comida para a Mãe da Ninhada (viagens mais longas rendem mais). CONSTRUIR a transforma em um Bocarraiz, uma Tartaruga-Montículo ou um pai.
@@ -22,21 +22,21 @@ es Construir
 pt Colher
 es Recoger
 
-> The grubs wrap every body nearby (friend or foe) in a cocoon and carry it to the Brood Mother as essence. Bodies rot after 2 minutes.
-pt As larvas embrulham cada corpo por perto (amigo ou inimigo) num casulo e o levam à Mãe da Ninhada como essência. Os corpos apodrecem depois de 2 minutos.
-es Las larvas envuelven cada cuerpo cercano (amigo o enemigo) en un capullo y lo llevan a la Madre de la Camada como esencia. Los cuerpos se pudren tras 2 minutos.
+> The grubs wrap every body nearby (friend or foe) in a cocoon and carry it to the Brood Mother as spoils. Bodies rot after 2 minutes.
+pt As larvas embrulham cada corpo por perto (amigo ou inimigo) num casulo e o levam à Mãe da Ninhada como espólios. Os corpos apodrecem depois de 2 minutos.
+es Las larvas envuelven cada cuerpo cercano (amigo o enemigo) en un capullo y lo llevan a la Madre de la Camada como botín. Los cuerpos se pudren tras 2 minutos.
 
 > Sacrifice
 pt Sacrificar
 es Sacrificar
 
-> The selected creatures (not grubs) walk to the Brood Mother and she devours them: essence for each, and one egg at once if her clutch has room.
-pt As criaturas selecionadas (não as larvas) vão até a Mãe da Ninhada e ela as devora: essência por cada uma, e um ovo na hora se a sua ninhada tiver espaço.
-es Las criaturas seleccionadas (no las larvas) van hasta la Madre de la Camada y ella las devora: esencia por cada una, y un huevo al instante si su puesta tiene sitio.
+> The selected creatures (not grubs) walk to the Brood Mother and she devours them: spoils for each, and one egg at once if her clutch has room.
+pt As criaturas selecionadas (não as larvas) vão até a Mãe da Ninhada e ela as devora: espólios por cada uma, e um ovo na hora se a sua ninhada tiver espaço.
+es Las criaturas seleccionadas (no las larvas) van hasta la Madre de la Camada y ella las devora: botín por cada una, y un huevo al instante si su puesta tiene sitio.
 
-> %d offered up: they go to the Brood Mother to be devoured (+%d essence).
-pt %d oferecidas: vão até a Mãe da Ninhada para serem devoradas (+%d essência).
-es %d ofrecidas: van a la Madre de la Camada para ser devoradas (+%d esencia).
+> %d offered up: they go to the Brood Mother to be devoured (+%d spoils).
+pt %d oferecidas: vão até a Mãe da Ninhada para serem devoradas (+%d espólios).
+es %d ofrecidas: van a la Madre de la Camada para ser devoradas (+%d de botín).
 
 > No Brood Mother to offer them to.
 pt Não há Mãe da Ninhada a quem oferecê-las.
@@ -362,9 +362,9 @@ es La larva no puede llegar a ese punto.
 pt Um %s saiu do casulo, enraizado.
 es Un %s ha salido de su capullo, arraigado.
 
-> THE NEW BROOD (an experiment: pick "The Brood (new, experiment)" in the skirmish setup) has no buildings, only creatures. The Brood Mother is its heart: kill her and that side is out. Only she lays eggs, walking or rooted. Grubs carry food to her from the Rootmaws, swamp lizards that root on fresh ground on your swamp and drink it (the farther from her, the more a trip pays). A grub's BUILD (B) turns it into a Rootmaw, a Mound Turtle (supply and swamp; rooted 15 tiles or more from her it makes her lay faster) or the Tyrannosaur, the father of the warriors: rooted beside her he fertilises her warrior eggs in his nest. Rooted creatures are the new Brood's buildings: armour, a footprint on the ground, a rally point, and they do not attack; UPROOT gets one up. GROW her, rooted, for more eggs and faster laying. The fallen (HARVEST) and the creatures offered up (SACRIFICE) go to her as essence.
-pt A NOVA NINHADA (um experimento: escolha "A Ninhada (nova, experimento)" na preparação da escaramuça) não tem construções, só criaturas. A Mãe da Ninhada é o coração dela: mate-a e aquele lado está fora. Só ela põe ovos, andando ou enraizada. As larvas levam comida para ela dos Bocarraízes, lagartos do pântano que enraízam em chão fresco no seu pântano e o bebem (quanto mais longe dela, mais rende uma viagem). O CONSTRUIR (B) de uma larva a transforma num Bocarraiz, numa Tartaruga-Montículo (suprimento e pântano; enraizada a 15 quadrados ou mais dela, faz ela pôr mais rápido) ou no Tiranossauro, o pai dos guerreiros: enraizado ao lado dela, ele fertiliza os ovos de guerreiro dela no seu ninho. As criaturas enraizadas são as construções da nova Ninhada: armadura, uma área no chão, um ponto de encontro, e elas não atacam; DESENRAIZAR levanta uma. Faça-a CRESCER, enraizada, para mais ovos e postura mais rápida. Os caídos (COLHER) e as criaturas oferecidas (SACRIFICAR) vão para ela como essência.
-es LA NUEVA NIDADA (un experimento: elige "La Nidada (nueva, experimento)" al preparar la escaramuza) no tiene edificios, solo criaturas. La Madre de la Camada es su corazón: mátala y ese bando queda fuera. Solo ella pone huevos, caminando o arraigada. Las larvas le llevan comida de los Bocarraíces, lagartos del pantano que arraigan en suelo fresco de tu pantano y lo beben (cuanto más lejos de ella, más rinde un viaje). El CONSTRUIR (B) de una larva la convierte en un Bocarraíz, una Tortuga Montículo (suministro y pantano; arraigada a 15 casillas o más de ella, la hace poner más rápido) o el Tiranosaurio, el padre de los guerreros: arraigado a su lado, fertiliza sus huevos de guerrero en su nido. Las criaturas arraigadas son los edificios de la nueva Nidada: armadura, una planta en el suelo, un punto de reunión, y no atacan; DESARRAIGAR levanta una. Hazla CRECER, arraigada, para más huevos y una puesta más rápida. Los caídos (RECOGER) y las criaturas ofrecidas (SACRIFICAR) van a ella como esencia.
+> THE NEW BROOD (an experiment: pick "The Brood (new, experiment)" in the skirmish setup) has no buildings, only creatures. The Brood Mother is its heart: kill her and that side is out. Only she lays eggs, walking or rooted. Grubs carry food to her from the Rootmaws, swamp lizards that root on fresh ground on your swamp and drink it (the farther from her, the more a trip pays). A grub's BUILD (B) turns it into a Rootmaw, a Mound Turtle (supply and swamp; rooted 15 tiles or more from her it makes her lay faster) or the Tyrannosaur, the father of the warriors: rooted beside her he fertilises her warrior eggs in his nest. Rooted creatures are the new Brood's buildings: armour, a footprint on the ground, a rally point, and they do not attack; UPROOT gets one up. GROW her, rooted, for more eggs and faster laying. The fallen (HARVEST) and the creatures offered up (SACRIFICE) go to her as spoils.
+pt A NOVA NINHADA (um experimento: escolha "A Ninhada (nova, experimento)" na preparação da escaramuça) não tem construções, só criaturas. A Mãe da Ninhada é o coração dela: mate-a e aquele lado está fora. Só ela põe ovos, andando ou enraizada. As larvas levam comida para ela dos Bocarraízes, lagartos do pântano que enraízam em chão fresco no seu pântano e o bebem (quanto mais longe dela, mais rende uma viagem). O CONSTRUIR (B) de uma larva a transforma num Bocarraiz, numa Tartaruga-Montículo (suprimento e pântano; enraizada a 15 quadrados ou mais dela, faz ela pôr mais rápido) ou no Tiranossauro, o pai dos guerreiros: enraizado ao lado dela, ele fertiliza os ovos de guerreiro dela no seu ninho. As criaturas enraizadas são as construções da nova Ninhada: armadura, uma área no chão, um ponto de encontro, e elas não atacam; DESENRAIZAR levanta uma. Faça-a CRESCER, enraizada, para mais ovos e postura mais rápida. Os caídos (COLHER) e as criaturas oferecidas (SACRIFICAR) vão para ela como espólios.
+es LA NUEVA NIDADA (un experimento: elige "La Nidada (nueva, experimento)" al preparar la escaramuza) no tiene edificios, solo criaturas. La Madre de la Camada es su corazón: mátala y ese bando queda fuera. Solo ella pone huevos, caminando o arraigada. Las larvas le llevan comida de los Bocarraíces, lagartos del pantano que arraigan en suelo fresco de tu pantano y lo beben (cuanto más lejos de ella, más rinde un viaje). El CONSTRUIR (B) de una larva la convierte en un Bocarraíz, una Tortuga Montículo (suministro y pantano; arraigada a 15 casillas o más de ella, la hace poner más rápido) o el Tiranosaurio, el padre de los guerreros: arraigado a su lado, fertiliza sus huevos de guerrero en su nido. Las criaturas arraigadas son los edificios de la nueva Nidada: armadura, una planta en el suelo, un punto de reunión, y no atacan; DESARRAIGAR levanta una. Hazla CRECER, arraigada, para más huevos y una puesta más rápida. Los caídos (RECOGER) y las criaturas ofrecidas (SACRIFICAR) van a ella como botín.
 
 # the expansion spots' labels (every faction that shows them), the Rootmaw's ground warnings
 
