@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.15.24", "items": [
+		"THE STUN MARK: a stunned unit shows a little ring of stars spinning over its head while the stun lasts, for everyone who can see it (online and in replays too). It fades in fast and fades out over the stun's last 0.2 s, and the unit card says STUNNED with the seconds left. Only real stuns show it: a Mist Toad's tongue (a pulled unit 0.9 s, a staggered one 1 s) and a Cavalry charge's knock (0.6 s). A heavy unit's short charge knock (0.24 s) shows none, nor does a run-down construct; a unit caught in a Netter's net shows its net, not stars.",
+		"THE MIST TOAD'S TONGUE: it can now tongue FLYING units too. A pulled flyer is dragged through the air to just over the Toad and stays in the air; the crosshair, the 3 s windup and the ways to break it work as on the ground. Heavy flyers are only staggered, like heavy ground units. The computer's Toads go for Balloons, Ornithopters and Skywings too.",
+		"THE MIST TOAD'S TONGUE can never pull the Brood Mother or a father (the Tyrannosaur): they are only staggered, stunned 1 s with the stun mark. The Field Cannon is still pulled for now.",
+	]},
 	{"v": "0.15.23", "items": [
 		"EXPANSION SPOTS: a spot disappears as soon as a hall, any building, or a rooted Mound Turtle or Brood Mother touches its tinted tiles, and stays while they are completely off it. Every shown spot reads \"OPTIMAL EXPANSION SPOT\".",
 	]},

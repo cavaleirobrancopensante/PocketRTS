@@ -1,4 +1,4 @@
-# The stun mark (0.15.23)
+# The stun mark (0.15.24)
 
 The owner, 2026-10-29: "How long does the staggered effect last? We should get that common stun effect: a spinning thing
 on top of the unit's head."
