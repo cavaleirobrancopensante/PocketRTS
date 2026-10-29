@@ -26,6 +26,6 @@ es Haz clic en el punto a atacar, o arrastra una línea para repartir: siguen ha
 pt Nenhum deles pode atacar o chão.
 es Ninguno de ellos puede atacar el suelo.
 
-> +%s essence
-pt +%s de essência
-es +%s de esencia
+> +%s spoils
+pt +%s espólios
+es +%s de botín

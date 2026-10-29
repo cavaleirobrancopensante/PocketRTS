@@ -1041,12 +1041,12 @@ func _build_card() -> Array:
 					toast("Workers go back to work on their own." if not auto else "Automatic work off: these workers wait for orders."), true, "", ""])
 			if units.any(func(u: Unit) -> bool: return u.kind == "grub"):
 				if BroodNew.on(game, game.human):
-					_tip_for["HARVEST"] = ["Harvest", "The grubs wrap every body nearby (friend or foe) in a cocoon and carry it to the Brood Mother as essence. Bodies rot after 2 minutes."]
+					_tip_for["HARVEST"] = ["Harvest", "The grubs wrap every body nearby (friend or foe) in a cocoon and carry it to the Brood Mother as spoils. Bodies rot after 2 minutes."]
 				list.append(["ab_harvest", "HARVEST", func() -> void:
 					for u in game.selected_units():
 						if u.kind == "grub":
 							u.cmd_harvest()
-					toast("Harvesting: these grubs gather the fallen around here and carry them home as essence."), true, "", ""])
+					toast("Harvesting: these grubs gather the fallen around here and carry them home as spoils."), true, "", ""])
 		# Brood: offer the selected creatures up at the nearest Brood Pen for essence
 		var offer := units.filter(func(u: Unit) -> bool: return u.can_sacrifice())
 		if not offer.is_empty():
@@ -1055,14 +1055,14 @@ func _build_card() -> Array:
 			for u in offer:
 				ess += Game.sacrifice_value(u.kind)
 			if BroodNew.on(game, game.human):
-				_tip_for["SACRIFICE"] = ["Sacrifice", "The selected creatures (not grubs) walk to the Brood Mother and she devours them: essence for each, and one egg at once if her clutch has room."]
+				_tip_for["SACRIFICE"] = ["Sacrifice", "The selected creatures (not grubs) walk to the Brood Mother and she devours them: spoils for each, and one egg at once if her clutch has room."]
 			list.append(["ab_sacrifice", "SACRIFICE", func() -> void:
 				var n := 0
 				for u in game.selected_units():
 					if u.can_sacrifice():
 						u.cmd_sacrifice()
 						n += 1
-				toast(("%d offered up: they go to the Brood Mother to be devoured (+%d essence)." if BroodNew.on(game, game.human) else "%d offered up: they go to the nearest Brood Pen (+%d essence).") % [n, ess]), has_pen, "Needs a Brood Pen." if not BroodNew.on(game, game.human) else "Needs the Brood Mother.", "+%d" % ess])
+				toast(("%d offered up: they go to the Brood Mother to be devoured (+%d spoils)." if BroodNew.on(game, game.human) else "%d offered up: they go to the nearest Brood Pen (+%d spoils).") % [n, ess]), has_pen, "Needs a Brood Pen." if not BroodNew.on(game, game.human) else "Needs the Brood Mother.", "+%d" % ess])
 		_nb_buttons(list, units)          # (the new Brood: the Mother's eggs, ROOT / UPROOT / HAUL)
 		for dk in ["cannon", "mortar", "tesla_cart", "spore_mother"]:
 			var kk: String = dk
@@ -1564,7 +1564,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 		var why := "" if ok else "Miasma isn't ready yet."
 		if float(game.players[game.human]["res2"]) < float(Defs.MIASMA["cost2"]):
 			ok = false
-			why = "Not enough essence."
+			why = "Not enough spoils."
 		list.append(["ab_miasma", "MIASMA", func() -> void:
 			controls.mode = "cast"
 			controls.cast_spell = "miasma", ok, why, ""])
@@ -2526,7 +2526,7 @@ func _res_pills(font: Font, t: int, x: float) -> float:
 func _res_line(t: int) -> String:
 	var pl: Dictionary = game.players[t]
 	var fac := game.faction_of(t)
-	var names: Array = {"crown": ["gold", "powder"], "brood": ["biomass", "essence"], "clockwork": ["cogs", "tension"] if Defs.gear_mode else ["ore", "energy"]}[fac]
+	var names: Array = {"crown": ["gold", "powder"], "brood": ["biomass", "spoils"], "clockwork": ["cogs", "tension"] if Defs.gear_mode else ["ore", "energy"]}[fac]
 	var r2: int = int(game.energy[t]) if fac == "clockwork" else int(pl["res2"])
 	if fac == "clockwork" and Defs.gear_mode:
 		r2 = int(float(pl.get("tension", 0.0)))
@@ -3160,7 +3160,7 @@ func _draw_panel(font: Font) -> void:
 					int(round(Defs.battery_charge(blue, 0.0) * float(Defs.BATTERY["ore"]) * q)), int(Defs.BATTERY["fresh"]), int(round(float(bi["decay"]) * 100)),
 					" · ore spent: a quarter" if ol <= 0.0 else (" · ore running low" if ol < Defs.SOIL_LOW else "")]
 			elif bb.kind == "brood_pen":
-				info = "SACRIFICE Brood creatures here: %d%% of their biomass as essence (a Raptor: %d)." % [int(round(Defs.SACRIFICE * 100.0)), Game.sacrifice_value("raptor")]
+				info = "SACRIFICE Brood creatures here: %d%% of their biomass as spoils (a Raptor: %d)." % [int(round(Defs.SACRIFICE * 100.0)), Game.sacrifice_value("raptor")]
 			elif bb.uses_eggs() and (e.team == game.human or game.demo):
 				var nxt := "" if bb.eggs >= bb.eggs_max() else "  (next in %ds)" % int(ceil(Defs.EGG_TIME - bb.egg_t))
 				info = "Eggs: %d / %d%s" % [bb.eggs, bb.eggs_max(), nxt]
@@ -3802,14 +3802,14 @@ const CMD_TIPS := {
 	"PACK": "Pack it up to move (3 s). It can't fire while packed.",
 	"CANISTER": "Short range, a cone of musket balls: big damage, +50% against Light units, and it hits flyers.",
 	"ROUND SHOT": "The longest range in the game. The ball ploughs through a line of men, YOUR OWN TOO, and smashes buildings. Can't hit flyers.",
-	"HARVEST": "The grubs wrap every body nearby (friend or foe) in a cocoon and carry it to a Burrow (or Warren, Broodmound) as essence. Bodies rot after 2 minutes.",
-	"SACRIFICE": "The selected creatures (not grubs) go to the nearest Brood Pen and are offered up: 12% of their biomass cost as essence.",
+	"HARVEST": "The grubs wrap every body nearby (friend or foe) in a cocoon and carry it to a Burrow (or Warren, Broodmound) as spoils. Bodies rot after 2 minutes.",
+	"SACRIFICE": "The selected creatures (not grubs) go to the nearest Brood Pen and are offered up: 12% of their biomass cost as spoils.",
 	"HOLD GAS": "Stop spitting and keep the sac full: the Bloater drifts in and bursts as a huge acid bomb.",
 	"HOLD FIRE": "Pistols (glowing = on): Horsemen, Cuirassiers and Officers keep their one pistol shot and fight with the sabre only, until you turn it off. (HOLD is still stand-ground.)",
 	"SPIT": "Lob acid from range. Every glob uses gas, so the final burst gets smaller.",
 	"FOG": "50 energy: a fog bank on a spot for 12 s. Shots fired from or into it miss half the time (yours too); units inside see 2 tiles.",
 	"TONGUE": "75 energy: mark an enemy on the ground for 3 s, then drag it to the Toad's feet. Heavy engines are only staggered.",
-	"MIASMA": "30 essence: a green cloud for 8 s. Brood inside heal up to 30% of their health. Then 18 s to recover.",
+	"MIASMA": "30 spoils: a green cloud for 8 s. Brood inside heal up to 30% of their health. Then 18 s to recover.",
 	"ROOT": "Dig in (2.5 s): she lobs splashing spit blobs and spreads swamp, but can't move.",
 	"UPROOT": "Walk again (2.5 s). Walking, she can't attack.",
 	"LAND": "Land (1.2 s) to bite ground units. Landed, anything can hit it, and it can't touch flyers.",

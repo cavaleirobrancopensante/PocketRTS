@@ -134,17 +134,17 @@ es Trabajo automático desactivado: estos trabajadores esperan órdenes.
 pt COLHER
 es RECOGER
 
-> Harvesting: these grubs gather the fallen around here and carry them home as essence.
-pt Colheita: estas larvas recolhem os caídos por aqui e os levam para casa como essência.
-es Recolección: estas larvas reúnen a los caídos de la zona y los llevan a casa como esencia.
+> Harvesting: these grubs gather the fallen around here and carry them home as spoils.
+pt Colheita: estas larvas recolhem os caídos por aqui e os levam para casa como espólios.
+es Recolección: estas larvas reúnen a los caídos de la zona y los llevan a casa como botín.
 
 > SACRIFICE
 pt SACRIFICAR
 es SACRIFICAR
 
-> %d offered up: they go to the nearest Brood Pen (+%d essence).
-pt %d oferecidos: vão ao Cercado da Ninhada mais próximo (+%d de essência).
-es %d ofrecidos: van al Corral de la Nidada más cercano (+%d de esencia).
+> %d offered up: they go to the nearest Brood Pen (+%d spoils).
+pt %d oferecidos: vão ao Cercado da Ninhada mais próximo (+%d espólios).
+es %d ofrecidos: van al Corral de la Nidada más cercano (+%d de botín).
 
 > Needs a Brood Pen.
 pt Precisa de um Cercado da Ninhada.
@@ -370,9 +370,9 @@ es Carga insuficiente: recarga dentro de un campo del Mecanismo.
 pt O Miasma ainda não está pronto.
 es El Miasma aún no está listo.
 
-> Not enough essence.
-pt Essência insuficiente.
-es No hay suficiente esencia.
+> Not enough spoils.
+pt Espólios insuficientes.
+es No hay suficiente botín.
 
 > MIASMA
 pt MIASMA
@@ -1206,9 +1206,9 @@ es mineral agotado: un cuarto
 pt minério acabando
 es mineral agotándose
 
-> SACRIFICE Brood creatures here: %d%% of their biomass as essence (a Raptor: %d).
-pt SACRIFICAR criaturas da Ninhada aqui: %d%% do seu custo em biomassa como essência (um Raptor: %d).
-es SACRIFICA aquí criaturas de la Nidada: el %d%% de su coste en biomasa como esencia (un Raptor: %d).
+> SACRIFICE Brood creatures here: %d%% of their biomass as spoils (a Raptor: %d).
+pt SACRIFICAR criaturas da Ninhada aqui: %d%% do seu custo em biomassa como espólios (um Raptor: %d).
+es SACRIFICA aquí criaturas de la Nidada: el %d%% de su coste en biomasa como botín (un Raptor: %d).
 
 > (next in %ds)
 pt (próximo em %ds)
@@ -1410,13 +1410,13 @@ es Corto alcance, un cono de balas de mosquete: mucho daño, +50% contra unidade
 pt O maior alcance do jogo. A bala atravessa uma fila de homens, OS SEUS TAMBÉM, e destrói prédios. Não acerta voadores.
 es El mayor alcance del juego. La bala atraviesa una fila de hombres, LOS TUYOS TAMBIÉN, y destroza edificios. No alcanza a voladores.
 
-> The grubs wrap every body nearby (friend or foe) in a cocoon and carry it to a Burrow (or Warren, Broodmound) as essence. Bodies rot after 2 minutes.
-pt As larvas envolvem todo corpo por perto (amigo ou inimigo) num casulo e o levam a uma Toca (ou Galeria, Montículo da Ninhada) como essência. Corpos apodrecem após 2 minutos.
-es Las larvas envuelven en un capullo todo cuerpo cercano (amigo o enemigo) y lo llevan a una Madriguera (o Conejera, Montículo de la Nidada) como esencia. Los cuerpos se pudren tras 2 minutos.
+> The grubs wrap every body nearby (friend or foe) in a cocoon and carry it to a Burrow (or Warren, Broodmound) as spoils. Bodies rot after 2 minutes.
+pt As larvas envolvem todo corpo por perto (amigo ou inimigo) num casulo e o levam a uma Toca (ou Galeria, Montículo da Ninhada) como espólios. Corpos apodrecem após 2 minutos.
+es Las larvas envuelven en un capullo todo cuerpo cercano (amigo o enemigo) y lo llevan a una Madriguera (o Conejera, Montículo de la Nidada) como botín. Los cuerpos se pudren tras 2 minutos.
 
-> The selected creatures (not grubs) go to the nearest Brood Pen and are offered up: 12% of their biomass cost as essence.
-pt As criaturas selecionadas (menos larvas) vão ao Cercado da Ninhada mais próximo e são oferecidas: 12% do custo em biomassa como essência.
-es Las criaturas seleccionadas (menos las larvas) van al Corral de la Nidada más cercano y son ofrecidas: el 12% de su coste en biomasa como esencia.
+> The selected creatures (not grubs) go to the nearest Brood Pen and are offered up: 12% of their biomass cost as spoils.
+pt As criaturas selecionadas (menos larvas) vão ao Cercado da Ninhada mais próximo e são oferecidas: 12% do custo em biomassa como espólios.
+es Las criaturas seleccionadas (menos las larvas) van al Corral de la Nidada más cercano y son ofrecidas: el 12% de su coste en biomasa como botín.
 
 > Stop spitting and keep the sac full: the Bloater drifts in and bursts as a huge acid bomb.
 pt Para de cuspir e mantém o saco cheio: o Inchador flutua até lá e explode como uma enorme bomba de ácido.
@@ -1438,9 +1438,9 @@ es 50 de energía: un banco de niebla en un punto durante 12 s. Los disparos des
 pt 75 de energia: marca um inimigo no chão por 3 s e depois o arrasta até os pés do Sapo. Máquinas pesadas só cambaleiam.
 es 75 de energía: marca a un enemigo en tierra durante 3 s y luego lo arrastra hasta los pies del Sapo. Las máquinas pesadas solo se tambalean.
 
-> 30 essence: a green cloud for 8 s. Brood inside heal up to 30% of their health. Then 18 s to recover.
-pt 30 de essência: uma nuvem verde por 8 s. A Ninhada dentro cura até 30% da vida. Depois, 18 s para se recuperar.
-es 30 de esencia: una nube verde durante 8 s. La Nidada dentro cura hasta el 30% de su salud. Luego 18 s para recuperarse.
+> 30 spoils: a green cloud for 8 s. Brood inside heal up to 30% of their health. Then 18 s to recover.
+pt 30 espólios: uma nuvem verde por 8 s. A Ninhada dentro cura até 30% da vida. Depois, 18 s para se recuperar.
+es 30 de botín: una nube verde durante 8 s. La Nidada dentro cura hasta el 30% de su salud. Luego 18 s para recuperarse.
 
 > Dig in (2.5 s): she lobs splashing spit blobs and spreads swamp, but can't move.
 pt Cava-se (2,5 s): lança bolas de cuspe com dano em área e espalha pântano, mas não pode se mover.
@@ -1726,9 +1726,9 @@ es oro
 pt pólvora
 es pólvora
 
-> essence
-pt essência
-es esencia
+> spoils
+pt espólios
+es botín
 
 > biomass
 pt biomassa
@@ -1746,9 +1746,9 @@ es %d de oro
 pt %d de pólvora
 es %d de pólvora
 
-> %d essence
-pt %d de essência
-es %d de esencia
+> %d spoils
+pt %d espólios
+es %d de botín
 
 > %d biomass
 pt %d de biomassa
@@ -1858,9 +1858,9 @@ es no se pudo llegar
 pt ninguém vinha iniciá-lo
 es nadie venía a empezarlo
 
-> +%d essence
-pt +%d de essência
-es +%d de esencia
+> +%d spoils
+pt +%d espólios
+es +%d de botín
 
 > Research Armour at the Armoury first.
 pt Pesquise Armadura no Arsenal primeiro.
