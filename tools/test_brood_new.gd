@@ -23,6 +23,9 @@ extends SceneTree
 ##     her first), the Tyrannosaur fertilising till the last egg hatched, eggs on the nearest empty spot (boxed in: on a
 ##     creature, on top; the hatchling walks out through its own side's creatures to the rally), her GROWING bar on the
 ##     HUD and STOP GROWING, the other progress (egg, cocoon, uprooting)
+##  17. THE ROOTED ART ON ITS FOOTPRINT (the owner, 2026-10-29): each rooted creature's drawn bottom on its footprint's
+##     bottom edge (the Mother at stages 1 and 3), the selection frame under its pictures, no jump when it roots (the
+##     drop eased over the rooting frames), the father's nest point and the ghost's picture moved with the art
 ## Prints PASS / FAIL lines and "brood_new: N failures".
 var main: Node
 var t := 0.0
@@ -502,6 +505,7 @@ func _run() -> void:
 	g.consume_unit(nb_fx)
 	await _rooted_is_a_building(q, p)
 	await _fixes_2(q, p)
+	await _rooted_art(q)
 	# 8. killing the Mother loses
 	q.take_damage(999999.0, null)
 	var out: bool = await wait_for(func() -> bool: return bool(g.eliminated[0]), 3.0)
@@ -1006,6 +1010,87 @@ func _boxed(q: Unit, p: Dictionary, f: Unit) -> void:
 	for u in box:
 		g.consume_unit(u)
 	BroodRoot.set_rally(q, Vector2.INF)
+	await wait(0.3)
+
+
+## 17. THE ROOTED ART ON ITS FOOTPRINT (the owner, 2026-10-29; BroodRoot.drop, Defs.NB "nest_y")
+func _rooted_art(q: Unit) -> void:
+	var T := Defs.TILE
+	g.set_selection([])
+	if q.tesla_mode == "packed":
+		q.cmd_deploy()
+	await wait_for(func() -> bool: return q.tesla_mode == "deployed", 8.0)
+	var made: Array = []
+	var f: Unit = BroodNew.father(g, 0)
+	if f == null:
+		f = g._add_unit(BroodNew.FATHER, 0, free_spot(BroodNew.FATHER, q.position, 5.5))
+		made.append(f)
+	if not BroodNew.rooted(f):
+		f.position = free_spot(BroodNew.FATHER, q.position, 5.5, f)
+		g.note_move(f)
+		f.cmd_deploy()
+	var tu: Unit = g._add_unit(BroodNew.TURTLE, 0, free_spot(BroodNew.TURTLE, q.position, 13.0))
+	made.append(tu)
+	var mw: Unit = g._add_unit(BroodNew.MAW, 0, free_spot(BroodNew.MAW, q.position, 12.0))
+	made.append(mw)
+	# no jump as the turtle roots: its picture's feet before and on the first rooting step (on screen: it animates)
+	g.camera.position = tu.position
+	await wait(0.3)
+	var before := tu.sprite.global_position.y - tu.position.y
+	tu.cmd_deploy()
+	mw.cmd_deploy()
+	var first := INF
+	var mid := -1.0
+	var sw := tu.switch_time()
+	for i in 400:
+		await physics_frame
+		if tu.tesla_mode == "deploying" and first == INF and tu.anim == "root":
+			first = tu.sprite.global_position.y - tu.position.y
+		if tu.tesla_mode == "deploying" and mid < 0.0 and tu.tesla_t < sw * 0.5:
+			mid = BroodRoot.art_dy(tu)
+		if tu.tesla_mode == "deployed" and BroodNew.rooted(f) and mw.tesla_mode == "deployed":
+			break
+	await wait(0.5)
+	var full := BroodRoot.drop(tu)
+	check(absf(before) < 0.5 and first != INF and absf(first - before) < 3.0 and mid > 1.0 and mid < full - 1.0 and absf(tu.sprite.global_position.y - tu.position.y - full) < 0.5,
+		"17. a Mound Turtle rooting: no jump (feet %.1f px walking, %.1f on the first rooting frame), the drop eased (%.1f half way), %.1f px rooted" % [before, first, mid, full])
+	for u in [q, f, tu, mw]:
+		g.camera.position = u.position
+		await wait(0.3)
+		var r: Rect2 = BroodRoot.rect_of(u) if BroodRoot.has_fp(u) else Rect2()
+		var br: Rect2 = BroodRoot.body_rect(u)
+		var sc: float = BroodRoot.scale_of(u)
+		check(BroodRoot.has_fp(u) and br.end.y >= r.end.y - 4.0 and br.end.y <= r.end.y + 14.0 * sc,
+			"    the %s's drawn bottom on its footprint's bottom edge (%.0f px from it; the drop %.0f px)" % [u.d["name"], br.end.y - r.end.y, BroodRoot.drop(u)])
+		var srt: Node = u.get_node_or_null(BroodRoot.SORT)
+		var fr: Node = srt.get_node_or_null(BroodRoot.FP_NODE) if srt else null
+		check(fr != null and u.sprite.get_parent() == srt and fr.get_index() < u.sprite.get_index(), "    its selection frame is drawn under its pictures")
+	check(absf(BroodRoot.drop_for(BroodNew.TURTLE) - BroodRoot.drop(tu)) < 0.5 and absf(BroodRoot.drop_for(BroodNew.FATHER) - BroodRoot.drop(f)) < 0.5,
+		"    the ROOT ghost draws the rooted picture as low (%.0f, %.0f px)" % [BroodRoot.drop_for(BroodNew.TURTLE), BroodRoot.drop_for(BroodNew.FATHER)])
+	check(BroodNew.nest_point(f).distance_to(f.position + BroodNew.NEST_AT + Vector2(0, BroodRoot.drop(f))) < 0.5, "    his nest point moved with his nest's picture")
+	# the Mother at stage 3: her bigger footprint, her art on its bottom edge
+	var st0 := BroodNew.stage(q)
+	for u in made:
+		if u != f:
+			g.consume_unit(u)
+	if made.has(f):
+		g.consume_unit(f)
+	else:
+		f.cmd_uproot(false)
+		await wait_for(func() -> bool: return f.tesla_mode == "packed", 6.0)
+		f.position = spot_near(q.position, 20.0)
+		g.note_move(f)
+	q.nb["stage"] = 2
+	BroodNew.apply_stage(q)
+	BroodRoot.footprint_on(g, q)
+	g.camera.position = q.position
+	await wait(0.5)
+	var r3 := BroodRoot.rect_of(q)
+	var b3 := BroodRoot.body_rect(q)
+	check(b3.end.y >= r3.end.y - 4.0 and b3.end.y <= r3.end.y + 14.0 * 1.3, "    the Mother at stage 3 (%dx%d tiles): her drawn bottom %.0f px from her footprint's bottom edge" % [int(r3.size.x / T), int(r3.size.y / T), b3.end.y - r3.end.y])
+	q.nb["stage"] = st0
+	BroodNew.apply_stage(q)
+	BroodRoot.footprint_on(g, q)
 	await wait(0.3)
 
 

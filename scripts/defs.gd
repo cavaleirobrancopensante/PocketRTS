@@ -1867,6 +1867,11 @@ const NB := {
 	# nest's ground; it grows with her stages), the Tyrannosaur a Barracks (4x3), the turtle about a Clutch Mound but
 	# wide enough to close a 3-wide ramp either way.
 	"fp": {"brood_mother": [9, 4, 0, -40], "rootmaw": [3, 2, 0, -24], "tyrannosaur": [4, 3, 8, -16], "mound_turtle": [3, 3, 0, -24]},
+	# THE ROOTED ART SITS ON ITS FOOTPRINT (the owner, 2026-10-29): where the bottom of the rooted picture (her nest's
+	# rubble, the turtle's mud, the Tyrannosaur's nest) lies from the creature's feet in its sheet (art px, measured on
+	# the rooted strips: the lowest row a sixth as wide as the picture); rooted, the pictures are drawn that much lower
+	# (BroodRoot.drop) so that bottom touches the footprint's bottom edge, as a building stands on its tiles.
+	"nest_y": {"brood_mother": -8, "rootmaw": -1, "tyrannosaur": 26, "mound_turtle": 0},
 	"later": {"spitter": "the Spitter father", "bloater": "the Pterodactyl", "skywing": "the Pterodactyl"},
 }
 

@@ -10462,6 +10462,8 @@ func _draw_hover() -> void:
 	if e.team >= 0:
 		col = Color(1.0, 0.3, 0.25) if hostile(human, e.team) else Color(0.4, 1.0, 0.4)
 	var pulse := 0.75 + 0.25 * sin(clock * 8.0)
+	if e is Unit and (e as Unit)._k_nb and (e as Unit).nb.has("fpx") and (e as Unit).get_node_or_null(BroodRoot.SORT + "/" + BroodRoot.FP_NODE) != null:
+		return          # (a rooted new-Brood creature: its building's frame is drawn under its pictures, BroodRoot._draw_frame)
 	if e is Unit and not ((e as Unit)._k_nb and (e as Unit).nb.has("fpx")):      # (a rooted new-Brood creature: a building's frame)
 		var r: float = (e as Unit).radius
 		overlay.draw_set_transform(e.position, 0.0, Vector2(1.0, 0.45))

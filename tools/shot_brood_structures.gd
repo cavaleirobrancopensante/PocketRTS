@@ -22,6 +22,10 @@ extends SceneTree
 ## father_eggs.png       the Tyrannosaur still fertilising with warrior eggs in his nest
 ## boxed_mother.png      the Mother boxed in by her rooted creatures: her eggs laid on them, drawn on top
 ## mother_growing.png    the Mother GROWING: the bar over her and on her card, STOP GROWING
+## With a second argument "align<prefix>" (the rooted art on its footprint, 2026-10-29; docs/shots/rooted_align/):
+##   xvfb-run -a godot ... --script res://tools/shot_brood_structures.gd -- <outdir> alignafter_
+## <prefix>mother_stage1(_close).png, mother_stage3(_close).png  the Mother selected (her footprint's frame)
+## <prefix>mother_hover.png  the pointer over her: the hover corners; tyrannosaur, mound_turtle, rootmaw, cocoon.png
 var main: Node
 var g
 var out := ""
@@ -89,6 +93,11 @@ func spot(k: String, p: Vector2, tiles: float, swamp := true) -> Vector2:
 func _run() -> void:
 	if mode == "fixes2":
 		await _fixes2()
+		print("shots done")
+		quit(0)
+		return
+	if mode.begins_with("align"):
+		await _align(mode.trim_prefix("align"))
 		print("shots done")
 		quit(0)
 		return
@@ -189,6 +198,69 @@ func _run() -> void:
 			await _snap("morph_%d" % i, 0.05)
 	print("shots done")
 	quit(0)
+
+
+## The rooted art on its footprint (the owner, 2026-10-29; docs/brood_new.md "Rooted art on its footprint"): each rooted
+## creature selected, the Mother at stages 1 and 3 (as his phone screenshot), with a prefix ("before_" / "after_").
+func _align(pre: String) -> void:
+	await wait(2.5)
+	var q: Unit = BroodNew.queen(g, 0)
+	var maw: Unit = mine(BroodNew.MAW)[0]
+	g.players[0]["gold"] = 5000
+	g.players[0]["res2"] = 400.0
+	for gr in mine("grub"):
+		gr.auto_work = false
+		gr.cmd_stop()
+		gr.position = q.position + Vector2(randf_range(-260, 260), 15.0 * Defs.TILE)
+		g.note_move(gr)
+	await wait(0.3)
+	g.set_selection([q])
+	g.camera.position = q.position + Vector2(0, 40)
+	g.camera.zoom = Vector2(1.3, 1.3)
+	await _snap(pre + "mother_stage1", 1.0)
+	# the pointer over her (not selected): the hover frame's corners
+	g.set_selection([])
+	root.warp_mouse(Vector2(800, 250))
+	await _snap(pre + "mother_hover", 0.8)
+	root.warp_mouse(Vector2(5, 5))
+	g.set_selection([q])
+	# her nest from close by, the bottom edge
+	g.camera.position = q.position + Vector2(-120, 30)
+	g.camera.zoom = Vector2(3.0, 3.0)
+	await _snap(pre + "mother_stage1_close", 0.6)
+	# the Tyrannosaur, a Mound Turtle and a cocoon round her
+	var f: Unit = g._add_unit(BroodNew.FATHER, 0, spot(BroodNew.FATHER, q.position, 5.5))
+	f.facing = BroodNew.SE
+	f.cmd_deploy()
+	var tu := BroodRoot.cocoon(g, 0, BroodNew.TURTLE, spot(BroodNew.TURTLE, q.position, 12.0))
+	tu.nb.erase("coc")
+	var cc := BroodRoot.cocoon(g, 0, BroodNew.TURTLE, spot(BroodNew.TURTLE, q.position, 16.0))
+	BroodNew.recount(g, 0)
+	await wait(4.0)
+	for u in [f, tu, maw]:
+		g.set_selection([u])
+		g.camera.position = u.position + Vector2(0, 30)
+		g.camera.zoom = Vector2(2.6, 2.6) if u != f else Vector2(2.0, 2.0)
+		await _snap(pre + String(u.kind), 0.8)
+	g.set_selection([cc])
+	g.camera.position = cc.position + Vector2(0, 30)
+	g.camera.zoom = Vector2(2.6, 2.6)
+	await _snap(pre + "cocoon", 0.6)
+	# the Mother at stage 3 (the Tyrannosaur out of her bigger nest's way)
+	g.set_selection([])
+	g.consume_unit(f)
+	q.nb["stage"] = 2
+	BroodNew.apply_stage(q)
+	BroodRoot.footprint_on(g, q)
+	await wait(0.5)
+	g.set_selection([q])
+	g.camera.position = q.position + Vector2(0, 60)
+	g.camera.zoom = Vector2(1.0, 1.0)
+	await _snap(pre + "mother_stage3", 1.0)
+	g.camera.position = q.position + Vector2(-140, 30)
+	g.camera.zoom = Vector2(2.6, 2.6)
+	await _snap(pre + "mother_stage3_close", 0.6)
+	g.set_selection([])
 
 
 ## The owner's playtest of 0.15.14 (docs/brood_new.md): the pictures listed at the top.
