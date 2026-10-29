@@ -11,6 +11,7 @@ import numpy as np
 from scipy import ndimage
 R = 'art/redraws/'
 FAN_R = 80      # px (sheet): the fan's radius round its yellow centre
+FAN_K = float(sys.argv[3]) if len(sys.argv) > 3 else 0.7     # the fan's scale
 CUT = 34        # px: the coil tail's plain tip cut off before the fan goes on
 
 
@@ -59,12 +60,23 @@ for i in range(6):
     can = np.zeros((H + 2 * P, W + 2 * P, 4), np.uint8)
     can[P:P + H, P:P + W, :3] = cim.astype(np.uint8)
     can[P:P + H, P:P + W, 3] = body * 255
-    dy, dx = int(round(ey - jy)) + P, int(round(ex - jx)) + P
-    fy, fx = np.nonzero(fan)
-    ny, nx = fy + dy, fx + dx
-    ok = (ny >= 0) & (ny < H + 2 * P) & (nx >= 0) & (nx < W + 2 * P)
-    can[ny[ok], nx[ok], :3] = fim[fy[ok], fx[ok]].astype(np.uint8)
-    can[ny[ok], nx[ok], 3] = 255
+    # the two tries were drawn at different sizes: scale the fan to the coil tail, about its joint
+    # (FAN_K: the fan a little bigger than the hood, as in the concept; the fan try drew it about 1.4x too big)
+    k = FAN_K
+    ys0, xs0 = np.nonzero(fan)
+    fy0, fx0 = ys0.min(), xs0.min()
+    patch = np.zeros((ys0.max() - fy0 + 1, xs0.max() - fx0 + 1, 4), np.uint8)
+    patch[ys0 - fy0, xs0 - fx0, :3] = fim[ys0, xs0].astype(np.uint8)
+    patch[ys0 - fy0, xs0 - fx0, 3] = 255
+    pim = Image.fromarray(patch, 'RGBA')
+    pim = pim.resize((max(1, round(pim.width * k)), max(1, round(pim.height * k))), Image.LANCZOS)
+    # the joint inside the scaled patch
+    jpx, jpy = (jx - fx0) * k, (jy - fy0) * k
+    ox, oy = int(round(ex + P - jpx)), int(round(ey + P - jpy))
+    ci = Image.fromarray(can, 'RGBA')
+    ci.alpha_composite(pim, (ox, oy))
+    can = np.array(ci)
+    print('frame', i + 1, 'fan scale', round(k, 3))
     a = np.argwhere(can[..., 3] > 0)
     y0, x0 = a.min(0)
     y1, x1 = a.max(0)
