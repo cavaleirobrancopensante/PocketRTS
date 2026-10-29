@@ -6423,14 +6423,16 @@ func acid_shot(u: Unit, e: Entity, dmg: float) -> void:
 	s.launch(self, venom_glob(u), mouth, e.center(), 330.0)
 
 
-## The missile a venom spitter's glob flies as: the Spitter's own glob (the owner's east sheet, turned straight:
-## tools/import_spitter_redo.py), else the small acid ball (the Venom Challenger, the Venom Sire).
+## The missile a venom spitter's glob flies as: its own glob when it has one (the Spitter's and the Venom Challenger's,
+## from the owner's east sheets, turned straight: tools/import_spitter_redo.py, effects <kind>_glob), else the small
+## acid ball (the Venom Sire).
 func venom_glob(u: Unit) -> String:
-	return "spitter_glob" if u.kind == "spitter" and ArtData.EFFECTS.has("spitter_glob") else "acid_ball"
+	var own := u.kind + "_glob"
+	return own if ArtData.EFFECTS.has(own) else "acid_ball"
 
 
 func venom_glob_scale(u: Unit) -> float:
-	return 1.0 if venom_glob(u) == "spitter_glob" else 1.3
+	return 1.3 if venom_glob(u) == "acid_ball" else 1.0
 
 
 func cannon_shot(u: Unit, p: Vector2, dmg: float) -> void:

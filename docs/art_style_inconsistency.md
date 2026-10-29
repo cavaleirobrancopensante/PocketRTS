@@ -488,6 +488,7 @@ The stars circling over a stunned unit's head are drawn in code: one 15 px five-
 ## Young and mature (code and stand-ins, 0.17.0; docs/brood_new.md "Young and mature")
 
 - THE MOULT (code): a young Brood unit maturing is drawn still, its skin shimmering pale green-gold (sprite modulate), with a glowing slime shell round it that swells, rings rising and cracks at the end (BroodMature.look, BroodMature.draw). To redraw: a moult/cocoon strip per young kind (a Raptor, a Spitter).
-- THE VENOM CHALLENGER (stand-in): the Venom Sire's walk, spit and death at 80% until venom_challenger_<d>_chatgpt.png come; its portrait a crop of the owner's concept.
+- THE VENOM CHALLENGER: its own ChatGPT sheets since 0.18.1 (venom_challenger_<d>_chatgpt.png, tools/import_brood_mature.py via tools/import_spitter_redo.py; the Venom Sire stand-in is gone); its portrait is still a crop of the owner's concept. Its NE walk is stiff (little leg movement), as drawn.
+- THE SPITTER (0.18.1, docs/spitter_redo.md): the owner's ChatGPT sheets in every view (its painted portrait kept). Its glob missile (and the Venom Challenger's) is the glob of the east spit frame cut out and turned straight in code (assets/effects/<kind>_glob.png).
 - THE TYRANT CHALLENGER: the owner's sheets (young_tyrant_<d>_chatgpt.png); weak SE run legs and a weak N sheet, used as drawn; its portrait a crop of the concept.
 - THE BROOD MOTHER AT STAGES 2 AND 3: the owner's south-east sheets; her S, E, NE and N walks and swipes are her stage-1 frames scaled by the stage until those views are drawn.

@@ -52,6 +52,10 @@ TYRANT_H = 42.0
 # scale give an east walk about 1.75x the Spitter's length (101 px against 58), a young Sire still clearly smaller than
 # the Sire himself)
 VENOM_SCALE = 0.8
+# with the owner's own five sheets: the east walk's first frame this long, tail to snout (the Spitter 44, the Venom Sire
+# 125: "about twice a Spitter", the concept's middle size), and its glob missile's length
+VENOM_LEN = 88.0
+VENOM_GLOB_LEN = 22.0
 # concept heads for the stand-in portraits (x0, y0, x1, y1 on the sheet)
 HEADS = {"tyrant_challenger": ("young_tyrant_concept_chatgpt.png", (430, 300, 620, 490)),
          "venom_challenger": ("venom_challenger_concept_chatgpt.png", (695, 190, 875, 370))}
@@ -138,6 +142,15 @@ def venom_challenger(stand_ins):
     VENOM_SCALE (his walk, spit and death; not his nest)."""
     own = {d: f"venom_challenger_{d}_chatgpt.png" for d in DIRS if have(f"venom_challenger_{d}_chatgpt.png")}
     small = {}
+    if len(own) == len(DIRS):
+        # all five of the owner's sheets (2026-10-29): cut as the Spitter's (tools/import_spitter_redo.py): one scale, the
+        # east walk VENOM_LEN long; the glob out of spit frame 4 (the game flies its own), the east one straightened
+        # into its missile, assets/effects/venom_challenger_glob.png
+        import import_spitter_redo as isr
+        small, glob = isr.build("venom_challenger", VENOM_LEN)
+        isr.write_glob("venom_challenger", glob, VENOM_GLOB_LEN)
+        stand_ins.append("venom challenger NE walk: stiff (little leg movement), as drawn; every death ends side-on facing east")
+        return small
     if "se" in own:
         rows = rows_of(own["se"])
         sire_w = ibf.TARGET_W["dilophosaurus"] * VENOM_SCALE

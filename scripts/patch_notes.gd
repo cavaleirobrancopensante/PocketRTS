@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.18.1", "items": [
+		"THE SPITTER'S NEW LOOK: the Venom line's young, redrawn: a small lizard with only a tiny ruff, walking, spitting and dying in every direction (it had side views only). The ruff opens and the mouth gapes before each spit, and its glob of venom now flies as a straight, comet-like shot.",
+		"THE VENOM CHALLENGER'S OWN PICTURES: walking, spitting (its frill spreads wide) and dying in every direction, no longer the Venom Sire drawn smaller; its glob flies as its own straight shot too. The line reads small, medium, big: the Spitter, the Venom Challenger, the Venom Sire.",
+		"THE MIST TOAD keeps its own colours again, its details in the team colour (as before 0.18.0); only the Spitter, the Venom Challenger and the Venom Sire wear their scales in the team colour.",
+	]},
 	{"v": "0.18.0", "items": [
 		"THE BROOD IS NOW THE BROOD OF CREATURES: the experiment's Brood (the Brood Mother, the fathers, rooting) replaces the old one everywhere a faction is picked, and the \"(new, experiment)\" entry is gone. The old Brood's buildings (Burrow, Warren, Broodmound, Clutch Mound, Feeding Pit, Gorge Pit, Brood Pen, Roost), its Spore Mother and Bloater, its swamp and its old computer are removed.",
 		"OLD SAVES AND REPLAYS: a saved match or a replay with the old Brood in it can no longer be continued or watched; the game says so instead of failing. Ones with the experiment's Brood still work.",

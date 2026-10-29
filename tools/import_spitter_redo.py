@@ -37,10 +37,10 @@ import import_brood_mature as ibm  # noqa: E402
 
 DIRS = ["se", "s", "e", "ne", "n"]
 SPITTER_LEN = 44.0
-GLOB_GAP = 7            # sheet px: painted pixels farther than this from the creature are the glob and its drops
+GLOB_GAP = 5            # sheet px: out of this reach of the creature's core, a mostly-venom piece is the glob (or its stream, its drops)
+OPEN = 4                # sheet px: the opening that makes the core (cuts the thin stream off the mouth)
 SPIT_FRAME = 3          # (0-based) the frame the glob leaves the mouth: the game's shot comes on it (aim 0.35 s at 9 fps)
 GLOB_LEN = 16.0         # game px: the missile's length, glob and tail
-HEADS = ("venom_line_growth_concept_chatgpt.png", (205, 268, 365, 428))      # the young's head on the concept
 
 
 def rows_of(f):
@@ -69,8 +69,22 @@ def creature(im):
 def split_glob(im):
     """(the frame without the glob, the glob's own picture or None)."""
     a = im[..., 3] > 0
-    near = ndimage.binary_dilation(creature(im), iterations=GLOB_GAP)
-    glob = a & ~near
+    # the creature's core: its thin dark-outlined stream cut off (an opening), so the stream counts as the glob's; any
+    # piece left out of the core's reach that is mostly venom (the glob, its stream, its drops) goes, the rest (a thin
+    # tail tip, a claw) stays
+    core = ndimage.binary_opening(creature(im), iterations=OPEN)
+    lab, n = ndimage.label(core)
+    if n > 1:
+        core = lab == 1 + int(np.argmax(ndimage.sum(core, lab, range(1, n + 1))))
+    near = ndimage.binary_dilation(core, iterations=GLOB_GAP)
+    out_of = a & ~near
+    ven = ndimage.binary_dilation(ibm.venom(im), iterations=2)
+    lab, n = ndimage.label(out_of)
+    glob = np.zeros_like(a)
+    for i in range(1, n + 1):
+        m = lab == i
+        if (m & ven).sum() >= 0.3 * m.sum() or m.sum() < 40:      # (and loose specks: the glob's sparkles)
+            glob |= m
     if glob.sum() < 30:
         return im, None
     out = im.copy()
@@ -108,12 +122,14 @@ def straight(g):
     return rot[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
 
 
-def main():
-    contact_dir = sys.argv[sys.argv.index("--contact") + 1] if "--contact" in sys.argv else ""
-    sheets = {d: rows_of(f"spitter_{d}_chatgpt.png") for d in DIRS}
+def build(prefix, length):
+    """The five views of prefix_<d>_chatgpt.png at one scale (the east walk's first frame `length` game px long), the
+    glob out of every spit frame 4: (small, the east glob straightened or None). Also used by
+    tools/import_brood_mature.py for the Venom Challenger's own sheets."""
+    sheets = {d: rows_of(f"{prefix}_{d}_chatgpt.png") for d in DIRS}
     e0 = sheets["e"][0][0]
     xs = np.nonzero(creature(e0).any(0))[0]
-    sc = SPITTER_LEN / float(xs.max() - xs.min() + 1)
+    sc = length / float(xs.max() - xs.min() + 1)
     print(f"  scale {sc:.4f} (the east walk's first frame {xs.max() - xs.min() + 1} sheet px long)")
     small = {}
     glob = None
@@ -128,15 +144,27 @@ def main():
         small[("idle", d)] = small[("walk", d)][:1]
     ibn.FEET.clear()
     ibm.feet_all(small)
+    return small, glob
+
+
+def write_glob(kind, glob, glob_len):
+    """The missile assets/effects/<kind>_glob.png (ArtData.EFFECTS; Game.venom_glob uses it for that kind)."""
+    if glob is None:
+        return
+    gs = ia.shrink(glob, glob_len / glob.shape[1])
+    ia.save(ia.unteam(gs), f"{ia.OUT}/effects/{kind}_glob.png")
+    write_effect(f"{kind}_glob", gs.shape[1], gs.shape[0])
+    print(f"  {kind}_glob: {gs.shape[1]}x{gs.shape[0]}")
+
+
+def main():
+    contact_dir = sys.argv[sys.argv.index("--contact") + 1] if "--contact" in sys.argv else ""
+    small, glob = build("spitter", SPITTER_LEN)
     data = {}
     ibn.assemble("spitter", small, data)
     ibn.write_entry("spitter", data["spitter"])
-    if glob is not None:
-        gs = ia.shrink(glob, GLOB_LEN / glob.shape[1])
-        ia.save(ia.unteam(gs), f"{ia.OUT}/effects/spitter_glob.png")
-        write_effect("spitter_glob", gs.shape[1], gs.shape[0])
-        print(f"  spitter_glob: {gs.shape[1]}x{gs.shape[0]}")
-    portrait()
+    write_glob("spitter", glob, GLOB_LEN)
+    # (the card's portrait stays the painted one of round 11/13: already a young Spitter's head, no ruff)
     if contact_dir:
         ibn.contact(contact_dir, "spitter", small)
 
@@ -152,19 +180,6 @@ def write_effect(name, w, h):
     pat = re.compile(r'\t"' + name + r'": \{[^\n]*\n')
     body = pat.sub(lambda m: line, body) if pat.search(body) else body + line
     open(path, "w").write(src[:start] + body + src[end:])
-
-
-def portrait():
-    """The card's portrait: the young's head from the concept (a stand-in until a painted one comes)."""
-    src, (x0, y0, x1, y1) = HEADS
-    px = ia.load(ibn.R + src)
-    crop = px[y0:y1, x0:x1].astype(np.uint8)
-    img = Image.fromarray(crop).convert("RGB").resize((60, 60), Image.LANCZOS)
-    icon = np.zeros((64, 64, 4), np.uint8)
-    icon[..., :3] = (70, 74, 72)
-    icon[..., 3] = 255
-    icon[2:62, 2:62, :3] = np.array(img)
-    ia.save(ia.unteam(icon), f"{ia.OUT}/icons/spitter.png")
 
 
 if __name__ == "__main__":

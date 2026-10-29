@@ -370,7 +370,7 @@ const BASE_UNITS := {
 		"leap_e": 5,
 		"walk_e": 6,
 	}},
-	"spitter": {"cell": Vector2i(74, 70), "anchor": Vector2(37, 55), "frames": {
+	"spitter": {"cell": Vector2i(74, 65), "anchor": Vector2(37, 50), "frames": {
 		"attack_e": 6,
 		"attack_n": 6,
 		"attack_ne": 6,
@@ -1212,12 +1212,16 @@ const BASE_UNITS := {
 		"walk_s": 6,
 		"walk_se": 6,
 	}},
-	"venom_challenger": {"cell": Vector2i(142, 118), "anchor": Vector2(71, 91), "frames": {
+	"venom_challenger": {"cell": Vector2i(142, 132), "anchor": Vector2(71, 104), "frames": {
 		"attack_e": 6,
 		"attack_n": 6,
 		"attack_ne": 6,
 		"attack_s": 6,
 		"attack_se": 6,
+		"death_e": 5,
+		"death_n": 5,
+		"death_ne": 5,
+		"death_s": 5,
 		"death_se": 5,
 		"idle_e": 1,
 		"idle_n": 1,
@@ -1314,6 +1318,7 @@ const EFFECTS := {
 	# the Spring Ballista's screw bolt in flight, pointing right (tools/import_ballista.py, cut from its concept)
 	"ballista_bolt": {"frames": 1, "size": Vector2i(58, 24)},
 	"spitter_glob": {"frames": 1, "size": Vector2i(16, 8)},
+	"venom_challenger_glob": {"frames": 1, "size": Vector2i(22, 8)},
 }
 
 ## Clockwork battery backpacks (tools/make_packs.py - edit there, not here):
