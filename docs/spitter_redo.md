@@ -90,3 +90,8 @@ test_stun_mark (0 failures), test_anim_viewer: all pass.
 3. Should the Venom Sire get the same straight comet glob (from his own east spit frame) instead of the small acid ball?
 4. Redraws worth asking for: the Spitter's E and NE walks (more stride), and its S/SE/E first death frame (a side-view
    rear-up instead of the front-facing one).
+
+## Later: the venom belly (0.18.2)
+
+The colour swap these masks were made for was changed again: olive scales, spikes and frill in the team colour, the
+team colour on the belly and a flank stripe. docs/venom_belly.md.

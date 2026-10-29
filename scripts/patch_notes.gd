@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.18.2", "items": [
+		"THE VENOM LINE'S NEW COLOURS: the Spitter, the Venom Challenger and the Venom Sire keep their olive scales and wear the team colour on their spikes and frill (as the rest of the Brood), on their belly (throat, chest, belly and the underside of the tail) and on a stripe of scales along the middle of each flank. The whole body in the team colour was too much.",
+	]},
 	{"v": "0.18.1", "items": [
 		"THE SPITTER'S NEW LOOK: the Venom line's young, redrawn: a small lizard with only a tiny ruff, walking, spitting and dying in every direction (it had side views only). The ruff opens and the mouth gapes before each spit, and its glob of venom now flies as a straight, comet-like shot.",
 		"THE VENOM CHALLENGER'S OWN PICTURES: walking, spitting (its frill spreads wide) and dying in every direction, no longer the Venom Sire drawn smaller; its glob flies as its own straight shot too. The line reads small, medium, big: the Spitter, the Venom Challenger, the Venom Sire.",

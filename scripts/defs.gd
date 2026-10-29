@@ -1766,9 +1766,9 @@ const ROT := {"base": 0.2696, "double": 60.0}
 ## otherwise the ground. Units reaching under `ranged` px strike as melee. It goes on until another order.
 const GROUND := {"click": 1.5, "lane": 0.5, "near": 0.5, "ranged": 60.0, "scan": 0.5,
 	"not": ["netter"]}
-## THE VENOM LINE'S COLOURS (the owner, 2026-10-29 15:17): these creatures wear their SCALES in the team colour and
-## their spikes and frill in olive, the other way round from the rest of the Brood (shaders/team.gdshader venom_swap,
-## tools/import_venom_colours.py, VetLook). By art key: a stand-in drawn with another's frames goes by its own.
+## THE VENOM LINE'S COLOURS (the owner, 2026-10-29; since 0.18.2 docs/venom_belly.md): these creatures keep their
+## olive scales and wear the team colour on their spikes and frill (as the rest of the Brood), their BELLY and a STRIPE
+## along each flank (shaders/team.gdshader venom_swap, tools/import_venom_colours.py, VetLook). By art key: a stand-in drawn with another's frames goes by its own.
 ## Not the Mist Toad (owner, 2026-10-29: its own colours, details in the team colour, as before 0.18.0).
 const VENOM_SWAP := ["spitter", "venom_challenger", "dilophosaurus"]
 

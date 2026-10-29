@@ -6,7 +6,7 @@ class_name VetLook
 ## recolours through a mask per sprite strip: assets/units/trim_masks/<art>/ (written by
 ## tools/import_vet_trim.py) and assets/units/skin_masks/<art>/ (tools/import_vet_skin.py).
 ## A strip without a mask (workers, guns, Clockwork) shows nothing.
-## THE VENOM LINE (Defs.VENOM_SWAP: scales in the team colour, spikes and frill olive) has a second mask per strip,
+## THE VENOM LINE (Defs.VENOM_SWAP: the belly and a flank stripe in the team colour) has a second mask per strip,
 ## assets/units/venom_masks/<art>/ (tools/import_venom_colours.py), set here too.
 
 const STYLES := {"crown": 1, "brood": 2}
