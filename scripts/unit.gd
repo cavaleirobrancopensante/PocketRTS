@@ -4655,6 +4655,8 @@ func _attack_cycle(e: Entity, delta: float) -> void:
 		phase = "strike"
 		phase_t = _strike_time()
 		_strike(e)
+		if anim == "melee" and MELEE_HIT.has(_anim_art):
+			_anim_dt = maxf(_anim_dt, 0.1)       # (the slash frame shows on this tick, with the blow: not up to a 15 Hz step later)
 	elif phase == "strike" and phase_t <= 0.0:
 		phase = ""
 		cooldown = _cooldown()
@@ -6702,6 +6704,22 @@ const WALK_FPS_ART := {"musketeer": 12.0, "musketeer_armoured": 12.0, "dismounte
 ## had 8: tools/import_cuirassier_dismounted.py; 6 frames at 9 fps, a stride in 0.67 s as before).
 const WALK_CYCLE_ART := {"dismounted_armoured": 8}
 
+## Arts whose melee strip is timed to the blow: the frame (0-based) that shows the hit. The frames before it play
+## over the aim (Defs.BAYONET "aim"), the hit frame comes up as the blow lands (_strike) and the rest play over the
+## strike time (the dismounted Cuirassier's ChatGPT sword attack: guard, raised, coming down, the slash, follow-
+## through, back to guard; tools/import_cuirassier_dismounted.py). Other arts play their melee at 9 fps.
+const MELEE_HIT := {"dismounted_armoured": 3}
+
+
+## The frame of a blow-timed melee strip (MELEE_HIT) of n frames: in the aim, `p` of the way through it; in the
+## strike, `p` of the way through that.
+static func melee_frame(a: String, n: int, striking: bool, p: float) -> int:
+	var hit: int = mini(int(MELEE_HIT[a]), n - 1)
+	p = clampf(p, 0.0, 0.999)
+	if not striking:
+		return mini(int(p * hit), maxi(hit - 1, 0))
+	return mini(hit + int(p * (n - hit)), n - 1)
+
 
 ## Frames a second of art `a`'s walk strip at full speed.
 static func walk_fps_for(a: String) -> float:
@@ -6922,6 +6940,10 @@ func _animate(delta: float) -> void:
 			loop = false
 	if kind == "labourer" and not dead and _drive_labourer(delta, n):
 		pass
+	elif anim == "melee" and not dead and MELEE_HIT.has(_anim_art) and (phase == "aim" or phase == "strike"):
+		# (the blow lands on the slash frame: MELEE_HIT)
+		var span := _aim() if phase == "aim" else _strike_time()
+		frame_i = melee_frame(_anim_art, n, phase == "strike", 1.0 - phase_t / maxf(span, 0.01))
 	elif kind == "mist_toad" and anim == "walk" and not dead:
 		frame_i = ToadHop.frame(self, n)        # (one hop per ToadHop.HOP px walked)
 	elif kind == "winder" and beat_of(anim) != "":

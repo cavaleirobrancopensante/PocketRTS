@@ -6741,8 +6741,8 @@ func musket_shot(u: Unit, e: Entity, dmg: float, from := Vector2.INF) -> void:
 func pistol_shot(u: Unit, e: Entity, dmg: float) -> void:
 	var muzzle := u.center() + u.facing * 18.0 + Vector2(0, -16.0)
 	if not u.is_mounted():
-		# on foot: at his raised hand, where the drawn flash is (the Armoured Officer's fire strips: ~15 px out, 24 up)
-		muzzle = u.center() + u.facing * 15.0 + Vector2(0, -22.0)
+		# on foot: at his raised hand, where the drawn flash is (the Armoured Officer's fire strips: ~16 px out, 26 up)
+		muzzle = u.center() + u.facing * 16.0 + Vector2(0, -24.0)
 	musket_shot(u, e, dmg, muzzle)
 	if mlog and not _first_of.has("%d:pistol" % u.team):
 		_first_of["%d:pistol" % u.team] = true

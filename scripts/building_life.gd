@@ -77,7 +77,7 @@ const DRILL_ART := {
 const DRILL_MEN := {
 	"musketeer": {"act": "shoot", "art": "musketeer", "art_a": "musketeer_armoured", "muzzle": Vector2(22, -15),
 		"anims": [["aim_e", 0.25], ["fire_e", 0.15], ["reload_e", 0.2], ["idle_e", 0.35]]},
-	"dismounted": {"act": "shoot", "art": "dismounted", "art_a": "dismounted_armoured", "muzzle": Vector2(9, -14), "muzzle_a": Vector2(15, -24),
+	"dismounted": {"act": "shoot", "art": "dismounted", "art_a": "dismounted_armoured", "muzzle": Vector2(9, -14), "muzzle_a": Vector2(12, -19),
 		"anims": [["aim_e", 0.55], ["fire_e", 0.15], ["idle_e", 0.35]]},
 	"cuirassier": {"act": "sabre", "art": "horseman", "art_a": "cuirassier", "foot": "dismounted", "foot_a": "dismounted_armoured"},
 	"dragoon": {"act": "mount", "art": "dragoon", "art_a": "dragoon_armoured", "foot": "musketeer", "foot_a": "musketeer_armoured"},
@@ -495,7 +495,7 @@ func _drill_plan(key: String, armoured: bool) -> void:
 		# no prop to get on: the Officer on foot swings the sabre at the dummy
 		for k in int(DRILL_ART["swings"]):
 			t = _seg(foot, "idle_e", 0.2, PLACE_SABRE, t)
-			_ev(t + 0.12, EV_HIT)
+			_ev(t + 0.12 * int(Unit.MELEE_HIT.get(foot, 1)), EV_HIT)       # (on the slash frame)
 			t = _seg(foot, "melee_e", 0.12, PLACE_SABRE, t)
 		t = _seg(foot, "idle_e", 0.35, PLACE_SABRE, t, false, 0.0, true, true)
 	else:

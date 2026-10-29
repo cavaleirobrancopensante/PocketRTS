@@ -18,7 +18,6 @@ const NEEDS_ART := {
 	"musketeer": "front and back walks barely step",
 	"musketeer_armoured": "pasted legs, mixed style (prompt 16)",
 	"dismounted": "officer idle / aim / fire / death poses are code-made (prompts 10-13)",
-	"dismounted_armoured": "idle / walk / aim / fire are the new ChatGPT sheets; melee (sabre) and death are the old art",
 	"missionary": "cassock hides the legs: whole-figure walk redraw",
 	"windup_soldier": "walk legs are code-built, tiny sprite",
 	"winder": "wind / repair: the crank turning in his hands is code-drawn",
@@ -165,6 +164,24 @@ static func fps_for(a: String, an: String, n: int) -> float:
 		"mount":
 			fps = float(n) / 1.0
 	return maxf(fps, 0.5)
+
+
+## Is strip `an` of art `a` a melee timed to the blow (Unit.MELEE_HIT: the hit frame shows as the blow lands)?
+static func timed_melee(a: String, an: String) -> bool:
+	return an == "melee" and Unit.MELEE_HIT.has(a)
+
+
+## The frame of a blow-timed melee at `t` s into a loop of: the aim (Defs.BAYONET "aim"), the strike (0.35 s,
+## Unit._strike_time) and a short rest on the guard.
+static func melee_frame_at(a: String, n: int, t: float) -> int:
+	var aim := float(Defs.BAYONET["aim"])
+	var strike := 0.35
+	t = fmod(t, aim + strike + 0.3)
+	if t < aim:
+		return Unit.melee_frame(a, n, false, t / aim)
+	if t < aim + strike:
+		return Unit.melee_frame(a, n, true, (t - aim) / strike)
+	return n - 1
 
 
 ## Does art `a` play strip `an` on the Winder's clockwork beat (Unit.WINDER_BEAT) rather than at a frame rate?
@@ -660,6 +677,8 @@ func _refresh() -> void:
 		for s in Unit.WINDER_BEAT[Unit.beat_of(anim)].slice(0, n):
 			held.append("%.2f" % float(s))
 		pace = "on the beat (held %s s)" % " ".join(held)
+	elif timed_melee(art, anim):
+		pace = "timed to the blow: aim %.2f s, the hit on frame %d, strike 0.35 s" % [float(Defs.BAYONET["aim"]), int(Unit.MELEE_HIT[art]) + 1]
 	_info.text = "%s  /  %s  /  %s   ·   %d frames %s   ·   scale %.2f" % [art, anim, dir, n, pace, art_scale(art)]
 	if NEEDS_ART.has(art):
 		_info.text += "\nNEEDS ART: " + String(NEEDS_ART[art])
@@ -680,6 +699,9 @@ func _process(delta: float) -> void:
 	if on_beat(art, anim):
 		_t += delta                      # (seconds: the Winder's held frames, Unit.WINDER_BEAT, looped here)
 		frame = Unit.beat_frame(anim, _t, n, true)
+	elif timed_melee(art, anim):
+		_t += delta                      # (seconds: the aim, the blow and the strike, as Unit._animate times them)
+		frame = melee_frame_at(art, n, _t)
 	else:
 		_t += delta * fps_for(art, anim, n)
 		frame = int(_t) % n

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dkya16x8r5dvs"
-path="res://.godot/imported/melee_s.png-bcec2f86e92b1f659145af764176976c.ctex"
+uid="uid://daf61ux5l1iyq"
+path="res://.godot/imported/cuirassier_dismounted_melee_death_se_chatgpt.png-5805ec9570c10253108d11b4dc5380df.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/redraws/officer_white_src/dismounted_armoured/melee_s.png"
-dest_files=["res://.godot/imported/melee_s.png-bcec2f86e92b1f659145af764176976c.ctex"]
+source_file="res://art/redraws/cuirassier_dismounted_melee_death_se_chatgpt.png"
+dest_files=["res://.godot/imported/cuirassier_dismounted_melee_death_se_chatgpt.png-5805ec9570c10253108d11b4dc5380df.ctex"]
 
 [params]
 

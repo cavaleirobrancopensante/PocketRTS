@@ -124,9 +124,10 @@ def men():
             frames = [snap_team(shrink(f, MAN_SCALE, 0.4)) for f in strip_frames("assets/units/%s/%s.png" % (art, a), FOOT_CELL[0])]
             Image.fromarray(join(frames)).save("%s/%s.png" % (d, a))
         print("drill_%s: %s" % (art, ", ".join(anims)))
-    # where the muzzle flash is in the Officers' fire strip: the rightmost bright orange pixel of frame 2
+    # where the muzzle flash is in the Officers' fire strip: the rightmost bright orange pixel of the flash frame (the
+    # old Officer's frame 2; the Armoured Officer's ChatGPT strip fires on frame 1)
     for art in ("dismounted", "dismounted_armoured"):
-        f = strip_frames("assets/units/%s/fire_e.png" % art, FOOT_CELL[0])[1]
+        f = strip_frames("assets/units/%s/fire_e.png" % art, FOOT_CELL[0])[0 if art == "dismounted_armoured" else 1]
         r, g, b = f[..., 0].astype(int), f[..., 1].astype(int), f[..., 2].astype(int)
         m = (f[..., 3] > 0) & (r > 220) & (g > 110) & (g < 210) & (b < 110)
         ys, xs = np.where(m)
