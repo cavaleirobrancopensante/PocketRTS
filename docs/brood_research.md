@@ -1,6 +1,6 @@
 # The Brood's research (0.20.0)
 
-The owner's decisions: docs/brood_research_draft.md ("DECIDED (owner, 2026-10-29 18:59)") and docs/idea_brood_mobile_buildings.md (18:31). Code: scripts/brood_research.gd (BroodResearch), the data in Defs.RESEARCH (the `nb_*` keys, "at" = the creature), hooks in scripts/brood_new.gd, unit.gd, game.gd, ui/hud.gd, ai_brood_new.gd. Test: tools/test_brood_new.gd section 21. Pictures: docs/shots/brood_research/ (tools/shot_brood_research.gd). Icons: tools/make_brood_research_icons.py.
+The owner's decisions: docs/brood_research_draft.md ("DECIDED (owner, 2026-10-29 18:59)") and docs/idea_brood_mobile_buildings.md (18:31). Code: scripts/brood_research.gd (BroodResearch), the data in Defs.RESEARCH (the `nb_*` keys, "at" = the creature), hooks in scripts/brood_new.gd, unit.gd, game.gd, ui/hud.gd, ai_brood_new.gd. Test: tools/test_brood_new.gd section 21. Pictures: docs/shots/brood_research/ (tools/shot_brood_research.gd). Icons: the owner's ChatGPT drawings (0.20.2, art/ui/icons4/, tools/import_round14.py; the code-made placeholders of 0.20.0 are gone).
 
 ## How it works
 

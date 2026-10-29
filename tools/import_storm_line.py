@@ -27,8 +27,9 @@ SIZES (game px): one scale per creature for all five sheets (ChatGPT drew them a
 long, 21 tall) and CHALLENGER_W for a Storm Challenger: half the Storm Sire's (his first south-east fly frame 150 wide,
 tools/import_brood_fathers.py TARGET_W).
 
-PORTRAITS (stand-ins, docs/art_style_inconsistency.md): crops of the heads in the growth concept
-art/redraws/storm_line_growth_concept_chatgpt.png (the big Hatchling top left, the Challenger top middle).
+PORTRAITS: the owner's art/redraws/hatchling_portrait_chatgpt.png and storm_challenger_portrait_chatgpt.png (steel
+frame, cut as the Sires' portraits: tools/import_brood_new.py portrait); without them, crops of the heads in the growth
+concept art/redraws/storm_line_growth_concept_chatgpt.png (the big Hatchling top left, the Challenger top middle).
 
 Re-runnable: python3 -I tools/import_storm_line.py [--contact DIR] [--only hatchlings|storm_challenger]. Run after
 tools/anim_audit/fix_brood.py and before import_vet_skin.py (tools/rebuild_art.sh).
@@ -55,6 +56,7 @@ MARK_MAX = 0.03          # a loose piece under this share of the body's area, of
 NE_SWOOP = [(0, 0), (0, 1), (1, 2), (1, 3), (1, 4), (0, 0)]
 N_FLIP = [1, 2, 3]       # the Storm Challenger's N swoop frames flipped top to bottom
 CONCEPT = "storm_line_growth_concept_chatgpt.png"
+PORTRAIT = {"hatchlings": "hatchling_portrait_chatgpt.png", "storm_challenger": "storm_challenger_portrait_chatgpt.png"}
 HEADS = {"hatchlings": (132, 238, 246, 352), "storm_challenger": (768, 288, 888, 408)}
 
 
@@ -134,6 +136,12 @@ def build(kind, stand_ins):
 
 
 def portrait(kind, stand_ins):
+    f = PORTRAIT[kind]
+    if os.path.exists(R + f):
+        # the owner's framed portrait (steel frame, as the other Brood portraits): cut as the Sires' (ibn.portrait)
+        ibn.PORTRAIT[kind] = f
+        ibn.portrait(kind)
+        return
     px = ia.load(R + CONCEPT)
     x0, y0, x1, y1 = HEADS[kind]
     crop = px[y0:y1, x0:x1].astype(np.uint8)
@@ -143,7 +151,7 @@ def portrait(kind, stand_ins):
     icon[..., 3] = 255
     icon[2:62, 2:62, :3] = np.array(img)
     ia.save(ia.unteam(icon), f"{ia.OUT}/icons/{kind}.png")
-    stand_ins.append(f"{kind} portrait: a crop of the growth concept's head until {kind}_portrait_chatgpt.png")
+    stand_ins.append(f"{kind} portrait: a crop of the growth concept's head until {PORTRAIT[kind]}")
 
 
 def main():

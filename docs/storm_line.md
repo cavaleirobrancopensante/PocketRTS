@@ -91,8 +91,9 @@ The owner's frame check, as done:
   facing south), so the N swoop's flipped frames point the other way from its fly frames; a redraw of the N fly rows
   would make the view consistent.
 - Every death ends lying sideways facing east: accepted (the owner).
-- Portraits: crops of the growth concept's heads (stand-ins). The research icons nbr_clutch_hatchlings and nbr_updraft
-  (code placeholders) now use the Hatchling's and the Storm Challenger's portraits.
+- Portraits: the owner's framed portraits (art/redraws/hatchling_portrait_chatgpt.png, storm_challenger_portrait_chatgpt.png,
+  cut as the Sires'; each draws an extra wing, accepted for now, docs/art_style_inconsistency.md "COULD BE BETTER"); the
+  importer falls back to crops of the growth concept's heads without them.
 
 ## Sounds
 

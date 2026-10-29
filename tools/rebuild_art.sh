@@ -150,6 +150,8 @@ python3 tools/import_round13.py          # round 13 icons (art/ui/icons3/: Clock
                                          # Brood's own command icons in their frame, Crown commands, the Tension picture):
                                          # last of the icon passes (it replaces portraits written by import_winder_v2,
                                          # import_clock_soldier, import_cuckoo and the round 11 placeholders)
+python3 tools/import_round14.py          # round 14 icons (art/ui/icons4/: the Brood's research and the Sire lures, in the
+                                         # Brood's frame: after round 13)
 python3 tools/import_ballista.py         # the Spring Ballista (art/redraws/ballista_dirs.png: loaded / fired, S mirrored), its bolt
                                          # (from concepts/ballista_v1.png), the Winder's crew strips push_* / crank_* (art/redraws/
                                          # winder_crew_*: added to his art_data entry, so after import_winder_v2 and import_winder_carry),

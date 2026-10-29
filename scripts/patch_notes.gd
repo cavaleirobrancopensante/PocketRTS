@@ -10,7 +10,11 @@ const NOTES := [
 		"The SKYWING is retired: it was the Storm Sire's stand-in and is no longer laid. Skywings in older saves still fight, and a Skywing egg in an older save hatches Hatchlings.",
 		"The Storm Sire's BIGGER CLUTCH works now (Hatchlings three to an egg, 120 food and 15 spoils). UPDRAFT speeds up Hatchlings (132 to 152), Storm Challengers (120 to 138) and the Storm Sire while they fly.",
 		"The computer's Brood lays Hatchlings against enemy flyers (about two for each), and at stage 3 a few more to mature into Storm Challengers.",
-		"ART: the designer's Hatchling and Storm Challenger sheets (fly, bite or swoop, death, in every direction). Their portraits are crops of the concept for now, and they speak with the Skywing's sounds until their own come.",
+		"ART: the designer's Hatchling and Storm Challenger sheets (fly, bite or swoop, death, in every direction). Their portraits are the designer's too; they speak with the Skywing's sounds until their own come.",
+	]},
+	{"v": "0.20.2", "items": [
+		"ART: the designer's icons for the Brood's research (BIGGER CLUTCH for Raptors, Spitters and Hatchlings, PACK HUNT, BATTERING HORNS, SLITHER, LONG SPIT, UPDRAFT, QUICK ROOTS, SWAMP MENDING) replace the temporary ones, in the Brood's own bronze frame.",
+		"The grub's BUILD card shows each Sire's LURE on his button: the Tyrant's red spiked lure, the Venom's dripping yellow-green one, the Storm's crest-fin in its white haze. The Sire's own portrait stays on his card.",
 	]},
 	{"v": "0.20.1", "items": [
 		"THE STORM SIRE FLIES IN: when his lure is ripe he now comes flying from a few tiles away, his shadow on the ground under him, glides down, brakes and lands on the lure, then eats it and stands. The same total time.",
