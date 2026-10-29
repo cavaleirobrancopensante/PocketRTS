@@ -4,6 +4,14 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.16.0", "items": [
+		"THE NEW BROOD (EXPERIMENT): THREE FATHERS, each fathering his own line. The TYRANT SIRE (the Tyrannosaur, from the start): Raptors and Brutes. The VENOM SIRE (a lean Dilophosaurus, once the Brood Mother reaches stage 2): Spitters and Mist Toads. The STORM SIRE (a Pterodactyl, at her stage 3): Skywings. One of each at a time, each made from a grub (its BUILD menu; a father not unlocked yet is greyed with the reason, \"Needs the Brood Mother at stage 2\"). The Bloater is out of the new Brood (a replacement comes later).",
+		"THE MOTHER'S CARD offers every line; a warrior's egg is laid only with ITS father rooted beside her, and the refusal names him (\"Needs the Venom Sire rooted beside the Brood Mother\"). Each line's eggs roll into their own father's nest, where he fertilises them all at once and they hatch. Each father near her adds +20% to her laying: all three, +60%. The father range ring shows for whichever father is selected or being placed. The Mist Toad's TONGUE only staggers every father.",
+		"THE VENOM SIRE roots on a smaller nest (3x3) and, uprooted, SPITS venom from afar like a strong Spitter (acid that strips armour, flyers too): 650 health, 150 food and 25 essence, 30 s. THE STORM SIRE FLIES while uprooted (over cliffs and water) and DIVES to bite ground and air units: 700 health, 200 food and 50 essence, 40 s. ROOT: he lands on a nest (4x3) beside her and is then a ground creature that anything can hit; UPROOT: he takes off again.",
+		"THE COMPUTER grows its Brood Mother and makes the Venom Sire at stage 2 and the Storm Sire at stage 3, nests them beside her and lays a mix of each line: Raptors and some Brutes, Spitters behind them and a Mist Toad or two (which cast FOG and TONGUE), Skywings against flyers.",
+		"ART: the designer's own drawings for both new fathers in every direction: walks and spits, flights and dives, landing, fertilising, take-off and death, and their portraits.",
+		"FIX: a rooting creature that has got up (the Brood Mother, a Rootmaw, a Mound Turtle, a father) now chases the enemy it is told to attack, instead of standing still when it is out of reach.",
+	]},
 	{"v": "0.15.25", "items": [
 		"THE NEW BROOD (EXPERIMENT): SPITTERS join it. The Tyrannosaur fathers them (until a Spitter father of their own), on the Brood Mother's card with the grub, Raptor, Brute and Mist Toad; the retired Spore Mother is gone from it. The computer lays about one Spitter for every three Raptors.",
 	]},

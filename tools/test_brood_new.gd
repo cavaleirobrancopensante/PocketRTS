@@ -766,7 +766,7 @@ func _fixes_2(q: Unit, p: Dictionary) -> void:
 	if not bi.is_empty():
 		(bi[2] as Callable).call()
 	labs = card_labels()
-	check(g.hud.page == "build" and labs.has("ROOTMAW") and labs.has("MOUND TURTLE") and labs.has("TYRANNOSAUR") and labs.has("BACK") and not labs.has("CLUTCH MOUND") and not labs.has("FEEDING PIT"),
+	check(g.hud.page == "build" and labs.has("ROOTMAW") and labs.has("MOUND TURTLE") and labs.has("TYRANT SIRE") and labs.has("BACK") and not labs.has("CLUTCH MOUND") and not labs.has("FEEDING PIT"),
 		"    BUILD opens its build menu: %s" % str(labs))
 	var ri: Array = _item("ROOTMAW")
 	if not ri.is_empty():
@@ -774,7 +774,7 @@ func _fixes_2(q: Unit, p: Dictionary) -> void:
 	check(String(g.controls.mode) == "nb_root" and String(g.controls.place_kind) == BroodNew.MAW and g.hud.page == "", "    a creature there gives the ROOT placement ghost")
 	g.controls.cancel_mode()
 	g.hud.page = "build"          # (the B key sets this for any worker)
-	check(card_labels().has("TYRANNOSAUR"), "    the B key's page is the same menu")
+	check(card_labels().has("TYRANT SIRE"), "    the B key's page is the same menu")
 	g.hud.page = ""
 	# (6) the grub's own text: no old Brood building in it
 	card_labels()

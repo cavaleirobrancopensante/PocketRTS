@@ -533,13 +533,15 @@ func _fathers() -> void:
 	# out over open ground east of her (clear of the nests, for the pictures)
 	var open: Vector2 = g.cell_center(g.nearest_free(g.cell_of(q.position + Vector2(20.0 * Defs.TILE, 4.0 * Defs.TILE)), 10))
 	pt.cmd_move(open)
-	await wait(1.6)
-	g.camera.position = pt.position + Vector2(0, -30)
-	await _snap("ptero_flying", 0.05)
+	# (the camera takes a moment to get there: it is put ahead of him and waited for)
+	g.camera.position = pt.position.lerp(open, 0.5) + Vector2(0, -30)
+	await _snap("ptero_flying", 0.9)
 	for i in 300:
 		if pt.position.distance_to(open) < 12.0:
 			break
 		await physics_frame
+	g.camera.position = open + Vector2(30, -10)
+	await wait(0.8)
 	var foe: Unit = g._add_unit("musketeer", 1, open + Vector2(70, 30))
 	foe.hp = 99999.0
 	foe.max_hp = 99999.0
@@ -551,7 +553,6 @@ func _fathers() -> void:
 		if pt.anim == "attack" and pt.sprite.frame >= 2:
 			dived = true
 			break
-	g.camera.position = pt.position + Vector2(10, -20)
 	await _snap("ptero_diving", 0.0)
 	print("dive caught: ", dived)
 	g.consume_unit(foe)
@@ -563,7 +564,9 @@ func _fathers() -> void:
 	di.position = g.cell_center(g.nearest_free(g.cell_of(open + Vector2(0.0, 5.0 * Defs.TILE)), 10))
 	g.note_move(di)
 	di.cmd_stop()
-	await wait(0.2)
+	g.camera.position = di.position + Vector2(60, -10)
+	g.camera.zoom = Vector2(2.2, 2.2)
+	await wait(0.8)
 	var foe2: Unit = g._add_unit("musketeer", 1, di.position + Vector2(150, 50))
 	foe2.hp = 99999.0
 	foe2.max_hp = 99999.0
@@ -575,8 +578,6 @@ func _fathers() -> void:
 		if di.anim == "attack" and di.sprite.frame >= 3:
 			spat = true
 			break
-	g.camera.position = di.position + Vector2(50, -10)
-	g.camera.zoom = Vector2(2.2, 2.2)
 	await _snap("dilo_spitting", 0.0)
 	await wait(0.15)
 	await _snap("dilo_spit_glob", 0.0)
