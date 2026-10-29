@@ -3763,6 +3763,7 @@ func _res() -> Array:
 const TIP_CARD_DELAY := 0.35     # command card: almost at once (it always was)
 const TIP_HUD_DELAY := 0.8       # resources, quick buttons
 const TIP_WORLD_DELAY := 1.5     # units and buildings on the map
+const TIP_LABEL_DELAY := 0.5     # the workers' labels over the economy buildings (WorkerLabels)
 const TIP_HIDE := 0.25           # it lingers this long after the mouse leaves
 const TIP_PIN := 7.0             # phone: a tapped tooltip stays this long (or until the next touch)
 const TIP_W := 320.0
@@ -3988,7 +3989,11 @@ func _hover_at(p: Vector2) -> Dictionary:
 			return {"id": "stat:%s:%s" % [sr[1].get("icon", ""), sr[1].get("title", "")], "delay": TIP_CARD_DELAY, "stat": sr[1]}
 	if _hud_has(p):
 		return {}
-	var e := game.entity_at(controls.to_world(p * ui_scale))
+	var wp: Vector2 = controls.to_world(p * ui_scale)
+	var le := WorkerLabels.at(game, wp)
+	if le:
+		return {"id": "lab:%d" % le.get_instance_id(), "delay": TIP_LABEL_DELAY, "lab": le}
+	var e := game.entity_at(wp)
 	if e:
 		return {"id": "ent:%d" % e.get_instance_id(), "delay": TIP_WORLD_DELAY, "e": e}
 	return {}
@@ -4001,6 +4006,8 @@ func _tip_of(c: Dictionary) -> Dictionary:
 		return UnitStats.tip(c["stat"])
 	if c.has("res"):
 		return _res_tip(int(c["res"]))
+	if c.has("lab"):
+		return WorkerLabels.tip(game, c["lab"])
 	if c.has("e"):
 		return _entity_tip(c["e"])
 	if c.has("grp"):
@@ -4015,6 +4022,19 @@ func help_rect() -> Rect2:
 
 func _help_on() -> bool:
 	return not Settings.pc() and Settings.tooltips and not game.spectating()
+
+
+## Phone: a long press on a worker label (WorkerLabels) explains it, as a tapped stat does (at: HUD coordinates).
+func show_label_tip(e: Entity, at: Vector2) -> bool:
+	if not Settings.tooltips or paused or menu_open:
+		return false
+	var t := WorkerLabels.tip(game, e)
+	if t.is_empty():
+		return false
+	_tip = t
+	_tip_at = at
+	_tip_ms = Time.get_ticks_msec()
+	return true
 
 
 ## Phone, help mode: explain what the tap landed on.

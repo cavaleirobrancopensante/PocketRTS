@@ -460,7 +460,7 @@ static func lay(g: Game, q: Unit, k: String) -> String:
 		var busy := float(q.nb.get("lay_t", 0.0))       # (already laying: this egg comes out at the end of that show)
 		if busy <= 0.0:
 			q.nb["lay_t"] = lay_time(q)
-		var from := q.position + (LAY_EGG_AT if drawn else CLUTCH_AT) * float(stage_def(q)["scale"]) - p
+		var from := q.position + (LAY_EGG_AT if drawn else CLUTCH_AT) * float(stage_def(q)["scale"]) + Vector2(0.0, BroodRoot.drop(q)) - p     # (her rooted art is drawn BroodRoot.drop lower)
 		e.nb["pop_x"] = from.x
 		e.nb["pop_y"] = from.y
 		e.nb["pop"] = POP_TIME
@@ -658,7 +658,7 @@ const NEST_LIFT := 8.0       # (an egg there is drawn this much higher: on the n
 
 
 static func nest_point(f: Unit) -> Vector2:
-	return f.position + NEST_AT
+	return f.position + NEST_AT + Vector2(0.0, BroodRoot.drop(f))        # (his rooted art is drawn that much lower)
 
 
 ## The eggs in his nest, first laid first (the queue counted over him).
@@ -1132,32 +1132,7 @@ static func load_value(g: Game, src: Unit, t: int) -> float:
 
 
 ## WORKER COUNT (the owner, 21:28): over each of your rooted Rootmaws (and each food pile, nobody's, while you play the
-## new Brood) its grubs at work / the most it takes ("4/6"), drawn as the old Feeding Pits' and the Crown's farms' crew
-## (Game._draw_mine_labels: the same look and place, just over its bars; white with room, green when full, "spent" in
-## red when its ground and body are empty).
-static func draw_crew_labels(g: Game, font: Font) -> void:
-	var see_all := g.demo or g.spectating()
-	if not see_all and not on(g, g.human):
-		return
-	for u in g.units:
-		if u.dead or not u.visible or not is_source(u):
-			continue
-		if u.kind == MAW and (not rooted(u) or (u.team != g.human and not see_all)):
-			continue
-		if not g.view_rect.has_point(u.position):
-			continue
-		var cm := crew_max(g, u)
-		var have := crew(g, u)
-		var txt := crew_label(g, u)
-		var spent := txt == Loc.t("spent")
-		var sz := 15
-		var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
-		var p := Vector2(u.position.x - w * 0.5, u.position.y + label_top(u) - 7.0)
-		g.overlay.draw_rect(Rect2(p + Vector2(-4, -sz), Vector2(w + 8, sz + 5)), Color(0, 0, 0, 0.6))
-		var tc := Color(1, 0.45, 0.4) if spent else (Color(1, 1, 1) if have < cm else Color(0.45, 1, 0.45))
-		g.overlay.draw_string(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, tc)
-
-
+## new Brood) "GRUBS 4/6": drawn with the other workers' labels (WorkerLabels, scripts/worker_labels.gd).
 ## "4/6": its grubs at work / the most it takes ("spent" when its ground and body are empty and nobody is on it).
 static func crew_label(g: Game, u: Unit) -> String:
 	var have := crew(g, u)
@@ -1478,6 +1453,7 @@ static func _rooted_look(u: Unit, n: int) -> void:
 			BroodRoot.pic_parent(u).add_child(xf)
 			BroodRoot.pic_parent(u).move_child(xf, s.get_index() + 1)
 		xf.visible = true
+		xf.position = s.position
 		xf.self_modulate.a = 1.0 - shown
 		s.self_modulate.a = shown
 	else:
@@ -1514,10 +1490,7 @@ static func draw(u: Unit, top: float) -> void:
 	if u.selected and u.kind == MAW and u.team == g.human:
 		u.draw_arc(Vector2.ZERO, float(Defs.PIT_CLAIM) * Defs.TILE, 0, TAU, 48, Color(0.75, 0.9, 0.3, 0.45), 1.5)
 	# (the father's range round the Mother: the game's overlay draws it, BroodRoot.draw_overlay)
-	if u.selected and BroodRoot.has_fp(u) and ROOTERS.has(u.kind):
-		# rooted = a building: its footprint outlined, as a selected building's
-		var fr := BroodRoot.rect_of(u)
-		u.draw_rect(Rect2(fr.position - u.position, fr.size), Color(0.4, 1.0, 0.4, 0.75), false, 2.0)
+	# (rooted = a building: its footprint outlined when selected, as a building's, UNDER its pictures: BroodRoot._draw_frame)
 	if u.selected and mine and (BroodRoot.fixed(u)):
 		var rp := BroodRoot.rally_of(u)
 		if u.kind == EGG and bool(u.nb.get("nest", false)) and not u.nb.has("ro"):

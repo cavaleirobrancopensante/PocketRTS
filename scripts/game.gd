@@ -118,6 +118,7 @@ var astar_siege := AStarGrid2D.new()     # walls and gates counted as open: the 
 var units: Array = []
 var buildings: Array = []
 var crates: Array = []                   # Clockwork crates dropped on the way to their sites (Crate)
+var kegs: Array = []                     # powder kegs dropped by haulers who could not deliver them (PowderKeg)
 var ghost_cells := {}                    # map index -> the ghost sites (Building.ghost) over that cell
 var base_sites: Array = []               # hall cells of every base site (all mains and expansions)
 var players: Array = []
@@ -5254,6 +5255,40 @@ func free_crate(t: int, p: Vector2, r: float) -> Crate:
 	return best
 
 
+## A hauler could not deliver his keg: it lies at `p` with `shots` in it (PowderKeg; kegs never go back into the stores).
+func drop_keg(t: int, p: Vector2, shots: float, hp := -1.0) -> PowderKeg:
+	var k := PowderKeg.new()
+	k.setup(self, t, resolve_terrain(p, p, 8.0), shots)
+	if hp > 0.0:
+		k.hp = minf(hp, k.max_hp)
+	world.add_child(k)
+	kegs.append(k)
+	if not sees_all() and not allied(t, fog_team()):
+		k.visible = false
+	return k
+
+
+## The nearest keg of side t on the ground (unclaimed, with powder) within r of p.
+func free_keg(t: int, p: Vector2, r: float) -> PowderKeg:
+	var best: PowderKeg = null
+	var bd := r
+	for k in kegs:
+		if k.team == t and not k.dead and k.claimed == null and k.powder >= 1.0:
+			var dd: float = k.position.distance_to(p)
+			if dd < bd:
+				bd = dd
+				best = k
+	return best
+
+
+## The keg on the ground under a tap.
+func keg_at(p: Vector2) -> PowderKeg:
+	for k in kegs:
+		if not k.dead and k.visible and k.rect().grow(6).has_point(p):
+			return k
+	return null
+
+
 ## The crate on the ground under a tap.
 func crate_at(p: Vector2) -> Crate:
 	for c in crates:
@@ -6325,6 +6360,14 @@ func find_target(u: Unit, r: float) -> Entity:
 			if dc <= r and dc + 60.0 < bd and side_sees(u.team, c.position):
 				bd = dc + 60.0
 				best = c
+		# an enemy powder keg on the ground: a bomb in their midst, shot when nothing that fights back is nearer
+		for k in kegs:
+			if k.dead or not hostile(k.team, u.team) or not u.can_hit(k):
+				continue
+			var dk: float = k.position.distance_to(u.position)
+			if dk <= r and dk + 90.0 < bd and side_sees(u.team, k.position):
+				bd = dk + 90.0
+				best = k
 	if careful and not picks.is_empty():
 		picks.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
 		for i in mini(picks.size(), 6):
@@ -6594,6 +6637,11 @@ func entity_at(p: Vector2, _any := true) -> Entity:
 				nbest = u
 	if nbest != null:
 		return nbest
+	if net_cmd_team < 0:
+		# a click on a worker label ("FARMERS 3/8", drawn over everything) picks its building, even over another's drawing
+		var lab := WorkerLabels.at(self, p)
+		if lab != null:
+			return lab
 	for b in buildings:
 		if hidden_ghost(b, who) or not shown_to_commander(b):
 			continue                  # (both tests below need it on show to whoever gave the order)
@@ -8297,8 +8345,8 @@ func team_requests(t: int) -> Array:
 	return out
 
 
-## Powder Wagons on SUPPLY (out of reach of a filling building) with room for more kegs than
-## are already on the way, and dry Field Cannons / Mortars that cannot limber (on HOLD, or no
+## Powder Wagons on SUPPLY (out of reach of a filling building) whose powder use calls for more kegs than are already
+## on the way (WorkerLabels.wagon_need; the owner, 2026-10-29: no limit of kegs in flight, not even the wagon's room), and dry Field Cannons / Mortars that cannot limber (on HOLD, or no
 ## horse) and so cannot drive to a refill; the powder bank must have a keg's worth.
 func keg_requests(t: int) -> Array:
 	var out: Array = []
@@ -8316,7 +8364,16 @@ func keg_requests(t: int) -> Array:
 		if w.kind == "powder_wagon":
 			if not w.supplying or w._powder_building() != null:
 				continue
-			var n := mini(int(Defs.HAUL["kegs"]) - flying, int((w.max_powder() - w.powder) / shots) - flying)
+			# as many kegs on the way as its powder use calls for (WorkerLabels.wagon_need: kegs a second x the round trip),
+			# whatever its room: the haulers wait by a full wagon, keg in hand (the owner, 08:05). With no recent use, one
+			# keg while it has room for one (filling up), none when it is full: an idle full wagon pulls nothing.
+			var wn := WorkerLabels.wagon_need(self, w)
+			var want := 0
+			if float(wn["rate"]) > 0.0:
+				want = maxi(1, ceili(float(wn["want"]) - 0.05))
+			elif w.max_powder() - w.powder >= shots:
+				want = 1
+			var n := want - flying
 			if n > 0:
 				out.append({"key": "k%d" % w.get_instance_id(), "k": "keg", "wagon": w, "n": n})
 		elif w.needs_keg() and flying == 0:
@@ -8326,10 +8383,12 @@ func keg_requests(t: int) -> Array:
 
 var _haul_t := 0.0
 var _haul_seen := {}                # request key -> clock it first appeared (oldest is served first)
+var worker_label_state := {}        # the haulers' need (WorkerLabels: the wagons' powder use, read by keg_requests; the labels' smoothed numbers)
 
 
 ## Every Defs.HAUL.scan s: give the free haulers of each side the requests of its base.
 func haul_dispatch(delta: float) -> void:
+	WorkerLabels.tick(self, delta)        # (the wagons' powder use and the haulers' need: the kegs sent below, the HAULERS label)
 	_haul_t -= delta
 	if _haul_t > 0.0:
 		return
@@ -8396,7 +8455,13 @@ func haul_dispatch(delta: float) -> void:
 							break
 						var u3 := _nearest_free_hauler(free, (r["wagon"] as Unit).position)
 						free.erase(u3)
-						u3.begin_haul({"k": "keg", "ph": "to_mill", "wagon": r["wagon"]})
+						# a keg dropped on the ground is carried on first (PowderKeg), before a new one from the Mill
+						var pk := free_keg(t, u3.position, 60.0 * T)
+						if pk:
+							pk.claimed = u3
+							u3.begin_haul({"k": "keg", "ph": "to_pick", "pk": pk, "wagon": r["wagon"]})
+						else:
+							u3.begin_haul({"k": "keg", "ph": "to_mill", "wagon": r["wagon"]})
 	for k in _haul_seen.keys():
 		if not live.has(k):
 			_haul_seen.erase(k)
@@ -8831,6 +8896,8 @@ func _update_vis() -> void:
 			b.visible = true
 		for c in crates:
 			c.visible = true
+		for k in kegs:
+			k.visible = true
 		if line_net and line_net.rails:
 			for tr in line_net.rails.trains:
 				if is_instance_valid(tr):
@@ -8874,6 +8941,11 @@ func _update_vis() -> void:
 			c.visible = hv[idx(cell_of(c.position))] == 1
 		elif demo:
 			c.visible = true
+	for k in kegs:
+		if not allied(k.team, ft):
+			k.visible = hv[idx(cell_of(k.position))] == 1
+		elif demo:
+			k.visible = true
 	if line_net and line_net.rails:
 		for tr in line_net.rails.trains:
 			if is_instance_valid(tr):
@@ -9723,6 +9795,10 @@ func smart_command(list: Array, p: Vector2, force_move := false, queued := false
 		return
 	if cr and hostile(cr.team, us[0].team):
 		e = cr
+	if not force_move and not (e is Unit):
+		var kg := keg_at(p)
+		if kg and hostile(kg.team, us[0].team):
+			e = kg             # (an enemy powder keg on the ground: attack it, it blows up)
 	# a right click on a Farm's fields (Pit, Boiler...) usually lands on one of the men
 	# working it: workers sent there go to work the farm, not to that man
 	if e is Unit and e.team == us[0].team and us.any(func(u: Unit) -> bool: return u.can_gather()) \
@@ -9804,6 +9880,10 @@ func _smart_choice(us: Array, p: Vector2, force_move: bool) -> Array:
 		return [yellow, "other"]
 	if cr and hostile(cr.team, us[0].team):
 		e = cr
+	if not force_move and not (e is Unit):
+		var kg := keg_at(p)
+		if kg and hostile(kg.team, us[0].team):
+			e = kg             # (an enemy powder keg on the ground: attack it, it blows up)
 	if e is Unit and e.team == us[0].team and us.any(func(u: Unit) -> bool: return u.can_gather()) \
 			and not (e.hp < e.max_hp and us.any(func(u: Unit) -> bool: return u.can_repair(e))):
 		var site := crew_site_at(p, us[0].team)
@@ -10268,72 +10348,13 @@ func _tex_top(tex: Texture2D) -> float:
 	return _tex_tops[k]
 
 
-## Over your Town Hall: its haulers, free / assigned ("1/2": two assigned, one out on a job;
-## "0/0": none yet). White when all are free, amber when some are out, grey with none.
-func _draw_hauler_label(font: Font, b: Building) -> void:
-	var hs := b.haulers()
-	var free := b.haulers_free()
-	var txt := "%d/%d" % [free, hs.size()]
-	var sz := 15
-	var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
-	var p := Vector2(b.global_position.x - w * 0.5, b.global_position.y + b.bar_top() - 7.0)
-	overlay.draw_rect(Rect2(p + Vector2(-4, -sz), Vector2(w + 8, sz + 5)), Color(0, 0, 0, 0.6))
-	var col := Color(0.6, 0.6, 0.6) if hs.is_empty() else (Color(1, 1, 1) if free == hs.size() else Color(1.0, 0.75, 0.3))
-	overlay.draw_string(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, col)
-
-
-## Over your economy buildings: the crew (X/Y) and the efficiency bar with its % (see
-## Building.efficiency): one compact strip, readable on a phone.
+## Over your economy buildings: the workers' job word and count ("HAULERS 2/4", "FARMERS 3/8"; the Town Hall's is
+## assigned / needed), and the efficiency bar with its % (see Building.efficiency): one compact strip, readable on a
+## phone; the new Brood's Rootmaws and food piles too. Resting the mouse on one (a long press on a phone) explains it:
+## scripts/worker_labels.gd.
 func _draw_mine_labels() -> void:
 	var font := ThemeDB.fallback_font
-	for b in buildings:
-		if b.dead or not b.built or not b.visible or (b.team != human and not demo):
-			continue
-		if not view_rect.has_point(b.global_position):
-			continue        # (off screen; the overlay is redrawn 4 times a second at least)
-		if b.haul_cap() > 0:
-			_draw_hauler_label(font, b)
-			continue
-		var crew_max: int = b.crew_max()
-		var eff: Array = b.efficiency()
-		if crew_max == 0 and eff.is_empty():
-			continue
-		# just above its bars, which sit on top of the drawing itself (Building.bar_top)
-		var top: float = b.global_position.y + b.bar_top() - 3.0
-		var sz := 15
-		var txt := ""
-		var w1 := 0.0
-		var spent: bool = crew_max > 0 and b.crew.is_empty() and b.barren()
-		if crew_max > 0:
-			# (spent land takes no crew: "spent" rather than a 0/5 that looks like room)
-			txt = Loc.t("spent") if spent else "%d/%d" % [b.crew.size(), crew_max]
-			w1 = font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
-		var bar_w := 40.0
-		var pct := ""
-		var w2 := 0.0
-		if not eff.is_empty():
-			pct = "%d%%" % int(round(float(eff[0]) * 100))
-			w2 = font.get_string_size(pct, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
-		var gap := 4.0
-		var total := w1 + ((gap + bar_w + gap + w2) if pct != "" else 0.0)
-		if txt == "":
-			total -= gap
-		var p := Vector2(b.global_position.x - total * 0.5, top - 4)
-		overlay.draw_rect(Rect2(p + Vector2(-4, -sz), Vector2(total + 8, sz + 5)), Color(0, 0, 0, 0.6))
-		if txt != "":
-			var have: int = b.crew.size()
-			var tc := Color(1, 0.45, 0.4) if spent else (Color(1, 1, 1) if have < crew_max else Color(0.45, 1, 0.45))
-			overlay.draw_string(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, tc)
-		if pct != "":
-			var f := float(eff[0])
-			var col := eff_colour(f)
-			var bx := p.x + w1 + (gap if txt != "" else 0.0)
-			var bar := Rect2(bx, p.y - 10.0, bar_w, 8.0)
-			overlay.draw_rect(bar, Color(0.12, 0.12, 0.12, 0.95))
-			overlay.draw_rect(Rect2(bar.position, Vector2(bar_w * clampf(f, 0.0, 1.0), 8.0)), col)
-			overlay.draw_rect(bar.grow(0.5), Color(0, 0, 0, 0.9), false, 1.0)
-			overlay.draw_string(font, Vector2(bx + bar_w + gap, p.y), pct, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, col)
-	BroodNew.draw_crew_labels(self, font)      # (the new Brood: grubs at work / the most it takes, over each Rootmaw and food pile)
+	WorkerLabels.draw_all(self, font)
 	if exp_spots:
 		exp_spots.draw_labels(overlay)          # ("OPTIMAL EXPANSION SPOT" / "EXPANSION SPOT" on the gold spots)
 	for fl in _floats:
@@ -10441,6 +10462,8 @@ func _draw_hover() -> void:
 	if e.team >= 0:
 		col = Color(1.0, 0.3, 0.25) if hostile(human, e.team) else Color(0.4, 1.0, 0.4)
 	var pulse := 0.75 + 0.25 * sin(clock * 8.0)
+	if e is Unit and (e as Unit)._k_nb and (e as Unit).nb.has("fpx") and (e as Unit).get_node_or_null(BroodRoot.SORT + "/" + BroodRoot.FP_NODE) != null:
+		return          # (a rooted new-Brood creature: its building's frame is drawn under its pictures, BroodRoot._draw_frame)
 	if e is Unit and not ((e as Unit)._k_nb and (e as Unit).nb.has("fpx")):      # (a rooted new-Brood creature: a building's frame)
 		var r: float = (e as Unit).radius
 		overlay.draw_set_transform(e.position, 0.0, Vector2(1.0, 0.45))

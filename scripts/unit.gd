@@ -316,7 +316,10 @@ var _auto_bayonet := false      # Musketeer: on the bayonet because it ran dry (
 var supplying := false          # Powder Wagon: SUPPLY on (labourers bring kegs from the Powder Mill)
 var _supply_t := 0.0
 var _dispense_t := 0.0          # Powder Wagon: handing out powder (plays its unload pose)
+var powder_out := 0.0           # Powder Wagon: musket shots handed out so far (the haulers' need reads its recent rate: WorkerLabels)
 var keg := false                # Labourer: carrying a powder keg (it blows up if he's killed)
+var keg_shots := 0.0            # ... the musket shots in it (a full one from the Mill: Defs.WAGON keg; one picked up off the
+                                # ground: what was left in it). Undelivered it is dropped where he stands (drop_keg).
 ## (a hauler: a Labourer assigned to a Town Hall, order "gather" with home_mine the hall) his
 ## job from Game.haul_dispatch, or {} (waiting by the hall): {"k": "horse" | "team" | "keg",
 ## "ph": "fetch" | "deliver" | "home" | "to_mill" | "to_wagon", "want": [horses claimed, not yet
@@ -1221,9 +1224,19 @@ func _powder_tick(delta: float) -> void:
 		if o.kind == "powder_wagon" and o.team == team and not o.dead and not o.off_field and o.powder > 0.0:
 			var take := minf(amount, o.powder / per)
 			o.powder -= take * per
+			o.powder_out += take * per
 			o._dispense_t = 0.8
 			powder += take
 			return
+	# from a powder keg dropped on the ground (PowderKeg), the same way, until it is empty
+	if not game.kegs.is_empty():
+		var reach := float(Defs.POWDER["range"]) * Defs.TILE + 16.0
+		for k in game.kegs:
+			if k.team == team and not k.dead and k.powder > 0.0 and k.position.distance_to(position) < reach:
+				var take2 := minf(amount, k.powder / per)
+				k.powder -= take2 * per
+				powder += take2
+				return
 
 
 ## Cannon: round shot (long range, splash, smashes buildings) or canister (short range,
@@ -1443,6 +1456,7 @@ func _haul_start() -> void:
 	if src is Unit:
 		shots = minf(shots, (src as Unit).powder)
 		(src as Unit).powder -= shots
+		(src as Unit).powder_out += shots
 		(src as Unit)._dispense_t = float(Defs.BALLOON["haul"])
 	else:
 		var bank := float(game.players[team]["res2"])
@@ -2873,9 +2887,7 @@ func _reset_work() -> void:
 	if sky == "to_land":
 		sky = "air"
 	if keg:
-		# given another job on the way: the keg goes back into the stores
-		keg = false
-		game.add_res2(team, _keg_cost())
+		drop_keg()      # given another job on the way: the keg is set down where he stands (never back into the stores)
 	_cancel_refit()            # (a refit called off: paid back)
 	if (order == "mount" or order == "lead") and is_instance_valid(order_target) and order_target is Unit and order_target.claimed == self:      # (validity first: the horse may be gone, e.g. a man raised from the dead)
 		order_target.claimed = null    # (he isn't coming for that horse any more)
@@ -5677,6 +5689,10 @@ func hauler_text() -> String:
 		return "Hauler: waiting at the Town Hall for a horse or a keg to fetch."
 	match String(haul_job["k"]):
 		"keg":
+			if keg and String(haul_job.get("ph", "")) == "wait_room":
+				return "Hauler: waiting by the wagon for room (keg in hand; it blows up if he's killed!)"
+			if not keg and String(haul_job.get("ph", "")) == "to_pick":
+				return "Hauler: picking up a dropped powder keg."
 			return "Hauler: carrying a powder keg to the wagon (it blows up if he's killed!)" if keg else "Hauler: fetching a powder keg from the Powder Mill."
 		"team":
 			return "Hauler: bringing horses to a gun."
@@ -5846,17 +5862,34 @@ func _hitch(h: Unit, dest: Entity) -> void:
 
 
 ## A keg for a Powder Wagon: from the nearest Powder Mill (paid from the powder bank when it's
-## loaded) to the wagon, wherever it has got to; back to the hall.
+## loaded), or a dropped one picked up off the ground ("to_pick", first: Game.haul_dispatch), to the wagon, wherever it
+## has got to. A wagon without room for the whole keg: he WAITS by it, following it as it moves, keg in hand, and hands
+## it over as soon as there is room, first come first served ("wait_room"; the owner, 2026-10-29). Then back to the hall.
+## A keg he cannot deliver (the wagon gone, a new order) is dropped where he stands (drop_keg; never back to the stores).
 func _haul_keg(site: Building, delta: float) -> Vector2:
 	var j := haul_job
 	var w = j.get("wagon")
-	var shots := float(Defs.WAGON["keg"])
 	if w == null or not is_instance_valid(w) or w.dead or w.off_field:
 		if keg:
-			keg = false                 # (back into the stores)
-			game.players[team]["res2"] = float(game.players[team]["res2"]) + _keg_cost()
+			drop_keg()                  # (the wagon is gone: the keg lies here, a supply and a bomb)
 		j["ph"] = "home"
 	match String(j["ph"]):
+		"to_pick":
+			var pk = j.get("pk")
+			if pk == null or not is_instance_valid(pk) or pk.dead or pk.powder < 1.0:
+				j.erase("pk")
+				j["ph"] = "to_mill"
+				return Vector2.ZERO
+			work = "hauling"
+			if position.distance_to(pk.position) < radius + 14.0:
+				path = PackedVector2Array()
+				keg = true
+				keg_shots = pk.powder
+				pk.remove()
+				j.erase("pk")
+				j["ph"] = "to_wagon"
+				return Vector2.ZERO
+			return _walk_to(pk.position, delta)
 		"to_mill":
 			var mill := game.nearest_of(position, team, "powder_mill")
 			if mill == null:
@@ -5874,6 +5907,7 @@ func _haul_keg(site: Building, delta: float) -> Vector2:
 					if float(game.players[team]["res2"]) >= _keg_cost():
 						game.players[team]["res2"] = float(game.players[team]["res2"]) - _keg_cost()
 						keg = true
+						keg_shots = float(Defs.WAGON["keg"])
 						work = "hauling"
 						j["ph"] = "to_wagon"
 					else:
@@ -5884,29 +5918,42 @@ func _haul_keg(site: Building, delta: float) -> Vector2:
 				return Vector2.ZERO
 			work = "hauling"
 			return _walk_to(game.approach_point(mill, position), delta)
-		"to_wagon":
+		"to_wagon", "wait_room":
 			work = "hauling"
-			if position.distance_to(w.position) < radius + w.radius + 16.0:
+			var close: bool = position.distance_to(w.position) < radius + w.radius + 16.0
+			if close:
 				# (a gun counts its powder in its own shots: a cannon shot takes 3 musket shots)
 				var per := 1.0 if w.kind == "powder_wagon" else float(Defs.POWDER["cost"].get(w.kind, 0.5)) / float(Defs.POWDER["cost"]["musketeer"])
-				var put := minf(w.max_powder() - w.powder, shots / per)
+				var room: float = (w.max_powder() - w.powder) * per
+				if w.kind == "powder_wagon" and (room < keg_shots - 0.01 or not _first_waiting(w)):
+					# no room for the whole keg (or another came first): wait by it, keg in hand
+					if String(j["ph"]) != "wait_room":
+						j["ph"] = "wait_room"
+						j["since"] = game.clock
+					path = PackedVector2Array()
+					work = "waiting"
+					return Vector2.ZERO
+				var put := minf(w.max_powder() - w.powder, keg_shots / per)
 				w.powder += put
 				w._dispense_t = 0.8
-				if put * per < shots:
-					game.players[team]["res2"] = float(game.players[team]["res2"]) + _keg_cost() * (1.0 - put * per / shots)
+				var left := keg_shots - put * per
 				keg = false
+				keg_shots = 0.0
+				if left >= 1.0:
+					game.drop_keg(team, position, left)     # (a gun took what it could: the rest lies by it)
 				game.haul_done(team, "keg")
 				if team == game.human and put > 0.0:
-					game.float_text(position + Vector2(0, -30), "+%d shots" % int(put), Color(1, 0.85, 0.5))
+					game.float_text(position + Vector2(0, -30), "+%d shots" % int(put * per), Color(1, 0.85, 0.5))
 				path = PackedVector2Array()
 				j["ph"] = "home"
 				return Vector2.ZERO
+			if String(j["ph"]) == "wait_room":
+				work = "waiting"           # (the wagon moved off: he follows it, keg in hand)
 			# the wagon may be on the move: head straight for it when close, else path there
 			return _walk_to(w.position, delta)
 		_:
 			if keg:
-				keg = false
-				game.players[team]["res2"] = float(game.players[team]["res2"]) + _keg_cost()
+				drop_keg()
 			work = "hauling"
 			if site.edge_distance(position) < radius + float(Defs.HAUL["reach"]):
 				haul_job = {}
@@ -5914,6 +5961,29 @@ func _haul_keg(site: Building, delta: float) -> Vector2:
 				path = PackedVector2Array()
 				return Vector2.ZERO
 			return _walk_to(game.approach_point(site, position), delta)
+
+
+## Of the haulers waiting by wagon w with a keg, is he the one who came first (he unloads first)?
+func _first_waiting(w: Unit) -> bool:
+	var mine := float(haul_job.get("since", game.clock))
+	for u in game.haulers_of(team):
+		if u == self or not u.keg or u.dead or u.haul_job.get("wagon") != w or String(u.haul_job.get("ph", "")) != "wait_room":
+			continue
+		var theirs := float(u.haul_job.get("since", INF))
+		if theirs < mine or (theirs == mine and u.serial < serial):
+			return false
+	return true
+
+
+## He lets go of the keg he carries: it lies where he stands (PowderKeg), with what is in it.
+func drop_keg() -> void:
+	if not keg:
+		return
+	keg = false
+	var shots := keg_shots if keg_shots > 0.0 else float(Defs.WAGON["keg"])
+	keg_shots = 0.0
+	if not game.puppet:
+		game.drop_keg(team, position + Vector2(6, 4), shots)
 
 
 ## (a Field Cannon or Mortar) dry, cannot limber to go and refill (on HOLD, or without a

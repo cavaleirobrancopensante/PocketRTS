@@ -107,8 +107,11 @@ const WAGON := {"store": 120, "fill": 8.0, "per_powder": 2.0, "keg": 30, "keg_lo
 ## where the Horse Breeder spawns it to that building and hitched; a Powder Wagon on SUPPLY
 ## gets kegs from a Powder Mill; a gun or wagon with `team_want` horses gets spare ones.
 ## `scan` s between dispatches; `batch` tiles: other ready horses that close to the first one
-## are led along (with no hauler free the recruit / gun fetches its horse by itself at once); `reach` px to count as arrived; `kegs` kegs on the way to one wagon at a time.
-const HAUL := {"horses": 4, "scan": 0.5, "batch": 8.0, "reach": 30.0, "kegs": 2}
+## are led along (with no hauler free the recruit / gun fetches its horse by itself at once); `reach` px to count as arrived.
+## Kegs to a wagon: as many on the way at once as its powder use calls for (WorkerLabels.wagon_need: kegs a second x the
+## round trip from the Mill), only capped by its room (WAGON store); the old limit of 2 kegs in flight ("kegs") was
+## removed (the owner, 2026-10-29).
+const HAUL := {"horses": 4, "scan": 0.5, "batch": 8.0, "reach": 30.0}
 ## Observation Balloon's powder store: `store` musket shots (full when it's rigged). The
 ## Musketeers in its basket top up from it (POWDER.refill shots a second). Hovering still within
 ## `reach` tiles of a Powder Wagon with powder left, or of a finished POWDER.from building, with
@@ -118,7 +121,8 @@ const HAUL := {"horses": 4, "scan": 0.5, "batch": 8.0, "reach": 30.0, "kegs": 2}
 const BALLOON := {"store": 40, "keg": 10, "haul": 3.0, "reach": 2.0}
 ## A labourer killed with a keg on his back: a small blast (friends included).
 ## (Step 3, keg mines, will reuse the keg carry and Game.powder_blast.)
-const KEG := {"blast": 40.0, "radius": 48.0}
+## A dropped keg on the ground (PowderKeg): `hp` health; it blows up with the same blast, scaled by the powder left.
+const KEG := {"blast": 40.0, "radius": 48.0, "hp": 30.0}
 # Brood: grubs haul food from Feeding Pits to a Hive; the longer the haul, the richer it is.
 ## A load pays for the time its round trip takes, at a rate that rises with the pit's
 ## distance from its Hive (centre to centre, in tiles): FOOD_RATE biomass per grub-second
@@ -1863,6 +1867,11 @@ const NB := {
 	# nest's ground; it grows with her stages), the Tyrannosaur a Barracks (4x3), the turtle about a Clutch Mound but
 	# wide enough to close a 3-wide ramp either way.
 	"fp": {"brood_mother": [9, 4, 0, -40], "rootmaw": [3, 2, 0, -24], "tyrannosaur": [4, 3, 8, -16], "mound_turtle": [3, 3, 0, -24]},
+	# THE ROOTED ART SITS ON ITS FOOTPRINT (the owner, 2026-10-29): where the bottom of the rooted picture (her nest's
+	# rubble, the turtle's mud, the Tyrannosaur's nest) lies from the creature's feet in its sheet (art px, measured on
+	# the rooted strips: the lowest row a sixth as wide as the picture); rooted, the pictures are drawn that much lower
+	# (BroodRoot.drop) so that bottom touches the footprint's bottom edge, as a building stands on its tiles.
+	"nest_y": {"brood_mother": -8, "rootmaw": -1, "tyrannosaur": 26, "mound_turtle": 0},
 	"later": {"spitter": "the Spitter father", "bloater": "the Pterodactyl", "skywing": "the Pterodactyl"},
 }
 
