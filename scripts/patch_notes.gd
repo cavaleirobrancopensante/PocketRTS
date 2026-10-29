@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.15.26", "items": [
+		"THE BRUTE IS BIGGER: every picture of the Brute (standing, walking, the charge, the attack and the death, in every direction) is drawn 20% bigger, its feet on the same spot, and its body is wider to match (radius 20 -> 24): the selection ring, the health bar and its room on the ground grow with it. It still fits through a one-tile gap, such as the hole a broken Gate leaves. Old and new Brood.",
+		"THE BRUTE BREAKS WALLS: its damage against buildings goes from x1.6 to x2.5, the Field Cannon's own bonus. Five blows break a Gate or a palisade piece: one Brute breaks the Crown's ramp Gate in about 10 s of hitting (16 s before), four in about 2.5 s. It is now the Brood's wall-breaker, faster than the same price in Raptors; it still has to walk up to the wall under the defenders' fire. Old and new Brood.",
+		"THE SPITTER REACHES FURTHER: its range goes from 150 to 170 (a Musketeer's is 190). Old and new Brood.",
+	]},
 	{"v": "0.15.25", "items": [
 		"THE NEW BROOD (EXPERIMENT): SPITTERS join it. The Tyrannosaur fathers them (until a Spitter father of their own), on the Brood Mother's card with the grub, Raptor, Brute and Mist Toad; the retired Spore Mother is gone from it. The computer lays about one Spitter for every three Raptors.",
 	]},
