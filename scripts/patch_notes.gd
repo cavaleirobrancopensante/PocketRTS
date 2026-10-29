@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.15.23", "items": [
+		"EXPANSION SPOTS: a spot disappears as soon as a hall, any building, or a rooted Mound Turtle or Brood Mother touches its tinted tiles, and stays while they are completely off it. Every shown spot reads \"OPTIMAL EXPANSION SPOT\".",
+	]},
 	{"v": "0.15.22", "items": [
 		"THE DISMOUNTED CUIRASSIER, ALL NEW: his sword attack and his death are now the designer's new drawings too, in every direction. From his guard he raises the sword, swings it down, the blow lands on the slash (a white trail), he follows through and comes back to guard; when he falls he staggers, drops his sword, sinks to his knees and lies still with his helmet off beside him, and that is the body that stays. The blow and its damage now come exactly on the slash frame, in a match, in the ANIMATION VIEWER and in the Barracks drill.",
 		"THE DISMOUNTED CUIRASSIER IS BIGGER: every picture of him on foot (standing, walking, aiming, firing, the sword and the death) is drawn about 10% bigger, as tall as the old drawing was with its plume, so he no longer looks smaller than the Musketeer. His pistol smoke starts at his raised hand, in a match and at the Barracks.",
