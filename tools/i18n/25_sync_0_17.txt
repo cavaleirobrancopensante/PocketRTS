@@ -89,9 +89,9 @@ es VENENO
 pt Um Raptor crescido num Sire Tirano jovem: um mordedor médio para tudo, mais resistente que um Raptor, mais leve e rápido que um Brutamontes. Nunca é posto: um Raptor AMADURECE nele (a Mãe da Ninhada no estágio 2).
 es Un Raptor crecido en un Señor Tirano joven: un mordedor mediano para todo, más duro que un Raptor, más ligero y rápido que un Bruto. Nunca se pone: un Raptor MADURA en él (la Madre de la Camada en la etapa 2).
 
-> A Spitter grown into a young Venom Sire: a heavier venom glob than a Spitter's, a little farther, that strips armour and splashes a little round its target; it reaches flyers too. Tougher and slower than a Spitter. Never laid: a Spitter MATURES into it (the Brood Mother at stage 2).
-pt Um Cuspidor crescido num Sire do Veneno jovem: uma bola de veneno mais pesada que a de um Cuspidor, um pouco mais longe, que tira armadura e respinga um pouco em volta do alvo; alcança voadores também. Mais resistente e mais lento que um Cuspidor. Nunca é posto: um Cuspidor AMADURECE nele (a Mãe da Ninhada no estágio 2).
-es Un Escupidor crecido en un Señor del Veneno joven: una bola de veneno más pesada que la de un Escupidor, un poco más lejos, que quita armadura y salpica un poco alrededor del blanco; alcanza también a los voladores. Más duro y más lento que un Escupidor. Nunca se pone: un Escupidor MADURA en él (la Madre de la Camada en la etapa 2).
+> A Spitter grown into a young Venom Sire: a heavier venom glob than a Spitter's, as far, that strips armour and splashes a little round its target; it reaches flyers too. Tougher and slower than a Spitter. Never laid: a Spitter MATURES into it (the Brood Mother at stage 2).
+pt Um Cuspidor crescido num Sire do Veneno jovem: uma bola de veneno mais pesada que a de um Cuspidor, à mesma distância, que tira armadura e respinga um pouco em volta do alvo; alcança voadores também. Mais resistente e mais lento que um Cuspidor. Nunca é posto: um Cuspidor AMADURECE nele (a Mãe da Ninhada no estágio 2).
+es Un Escupidor crecido en un Señor del Veneno joven: una bola de veneno más pesada que la de un Escupidor, igual de lejos, que quita armadura y salpica un poco alrededor del blanco; alcanza también a los voladores. Más duro y más lento que un Escupidor. Nunca se pone: un Escupidor MADURA en él (la Madre de la Camada en la etapa 2).
 
 > A matured Raptor, a young Tyrant Sire: a medium all-round biter between the Raptor and the Brute.
 pt Um Raptor amadurecido, um Sire Tirano jovem: um mordedor médio para tudo, entre o Raptor e o Brutamontes.

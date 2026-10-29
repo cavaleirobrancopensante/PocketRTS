@@ -4,6 +4,13 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.20.1", "items": [
+		"THE STORM SIRE FLIES IN: when his lure is ripe he now comes flying from a few tiles away, his shadow on the ground under him, glides down, brakes and lands on the lure, then eats it and stands. The same total time.",
+		"THE SIRES' EGGS take their lure's colour, faintly: the Tyrant's a faint red, the Venom's a faint yellow-green, the Storm's a faint storm-cloud white. They take it as he breathes on them; grub eggs keep their colour. The Storm Lure's haze is storm-cloud white too, no longer blue (it clashed with a blue team).",
+		"LONG SPIT: Spitters and Venom Challengers now spit 165 as standard, under a Musketeer's 190; LONG SPIT brings them to 190, the Musketeer's range, not beyond.",
+		"PACK HUNT also speeds up the Tyrant Sire (64 to 75), UPDRAFT the flying Storm Sire (110 to 127).",
+		"What a Sire researches is shown only to his own side, its allies and spectators: an enemy sees only his production animation, no bar, label or card text.",
+	]},
 	{"v": "0.20.0", "items": [
 		"THE BROOD'S RESEARCH: with no buildings, its rooted creatures research. Each Sire, rooted on his nest, researches his own line's upgrades on his card; the Brood Mother the ones for every creature. One at a time each, paid up front; getting up stops it (paid back), and a Sire killed while researching loses it (paid back); what is done stays.",
 		"A SIRE RESEARCHING fathers no eggs: the Mother can't lay his line's eggs until he is done, but his fertilising animation keeps playing, so a scout sees him busy. His card shows RESEARCHING and its bar in place of his eggs, and STOP RESEARCH. The Mother keeps laying while she researches (she can't grow meanwhile).",

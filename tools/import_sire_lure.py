@@ -7,7 +7,7 @@ Re-runnable: python3 -I tools/import_sire_lure.py [--contact DIR] [--only KIND].
 steps (the navy background keyed out, the feet of a frame found on the green body). Writes, for each Sire KIND
 (tyrannosaur, dilophosaurus, pterodactyl), the art key "lure_<KIND>" (scripts/art_data.gd, assets/units/lure_<KIND>/):
   grow_se    4 frames: the concept's top row (the grub curling into the ground, swelling, the first scent holes, the
-             haze), its yellow-green haze and glow TINTED toward the Sire's lure (Tyrant red, Venom as drawn, Storm blue)
+             haze), its yellow-green haze and glow TINTED toward the Sire's lure (Tyrant red, Venom as drawn, Storm storm-cloud white)
   ripe_se    1 frame: the ripe lure (frame 1 of his arrival sheet: exactly where the arrival starts); the game pulses it
              (scale and brightness breathing) and adds haze puffs in code (BroodRoot.lure_look)
   arrive_se  12 frames: his arrival sheet <KIND>_lure_arrive_se_chatgpt.png (2 rows of 6: the lure pulsing, the Sire
@@ -47,7 +47,10 @@ HOLD = {"tyrannosaur": {1: 0}}           # arrival frame (from 0) -> the frame s
 # ends landed, wings folded (his landing strip's first landed frame)
 REF = {"tyrannosaur": ("idle_s", 0), "dilophosaurus": ("idle_se", 0), "pterodactyl": ("root_se", 2)}
 # the growing lure's haze and glow tinted toward each Sire's lure (None: the concept's yellow-green, the Venom lure's)
-TINT = {"tyrannosaur": (200, 42, 34), "dilophosaurus": None, "pterodactyl": (120, 170, 235)}
+TINT = {"tyrannosaur": (200, 42, 34), "dilophosaurus": None, "pterodactyl": (226, 230, 236)}
+# THE STORM LURE'S HAZE IS STORM-CLOUD WHITE, NOT BLUE (the owner, 2026-10-29 20:09: blue clashes with a blue team colour):
+# the arrival sheet's blue haze is turned grey-white at its own brightness (storm_white)
+WHITE = {"pterodactyl"}
 
 
 def slot_masks(px):
@@ -149,6 +152,21 @@ def tint(im, col):
     return out
 
 
+def storm_white(im):
+    """The sheet's blue haze turned storm-cloud white: each blue pixel a cool light grey at about its brightness."""
+    out = im.copy()
+    rgb = im[..., :3].astype(float)
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    blue = (im[..., 3] > 0) & (b > r + 20) & (b >= g) & (b > 60)
+    lum = 0.3 * r + 0.59 * g + 0.11 * b
+    v = np.clip(lum * 1.08 + 28, 0, 255)
+    for k, m in enumerate((0.95, 0.97, 1.0)):
+        ch = out[..., k].astype(float)
+        ch[blue] = np.clip(v[blue] * m, 0, 255)
+        out[..., k] = ch.astype(out.dtype)
+    return out
+
+
 def snap(im):
     """Team colour on the bright red spikes and the dark red right beside them; the darker red haze stays as drawn."""
     r, g, b = im[..., 0].astype(int), im[..., 1].astype(int), im[..., 2].astype(int)
@@ -196,6 +214,8 @@ def do_kind(kind):
         else:
             ref_pt = np.array(ibn.claw_feet(im)) + o
         small = snap(ia.shrink(im, s))
+        if kind in WHITE:
+            small = storm_white(small)
         arrive.append((small, (o - ref_pt) * s))
     placed["arrive"] = arrive
     placed["ripe"] = [arrive[0]]

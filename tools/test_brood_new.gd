@@ -535,6 +535,7 @@ func _run() -> void:
 	await _fathers(q, p)
 	await _mature(q, p)
 	await _lures(q, p)
+	await _storm_arrival(q)
 	await _research(q, p)
 	# 8. killing the Mother loses
 	q.take_damage(999999.0, null)
@@ -1477,6 +1478,33 @@ func _lures(q: Unit, p: Dictionary) -> void:
 		"    his eggs lie IN FRONT of his footprint, side by side, seen on the top layer (%d of %d) %s %s" % [front.size(), ne.size(), w1, w2])
 	var fert: bool = await wait_for(func() -> bool: return ne.all(func(e) -> bool: return e.dead or int(e.nb.get("fert", 0)) == 2), float(Defs.NB["fert_time"]) + 1.0)
 	check(fert and BroodNew.producing(g, lu), "    he fertilises them there, in his production loop")
+	# (the owner, 20:09) HIS EGGS TAKE HIS LURE'S COLOUR, FAINTLY; the plain eggs keep theirs
+	await wait(0.1)
+	var wsh: Array = ne.filter(func(e) -> bool: return not e.dead).map(func(e) -> Color: return (e.sprite.material as ShaderMaterial).get_shader_parameter("wash"))
+	var vcol := BroodNew.egg_col("spitter")
+	check(not wsh.is_empty() and wsh.all(func(c) -> bool: return absf(c.a - float(Defs.NB["egg_wash"])) < 0.02 and c.a < 0.5 and Color(c.r, c.g, c.b).is_equal_approx(vcol)),
+		"22. his fertilised eggs wear the Venom lure's faint yellow-green (%s)" % str(wsh))
+	var tcol := BroodNew.egg_col("raptor")
+	var scol := BroodNew.egg_col("skywing")
+	check(tcol.r > 0.8 and tcol.g < 0.4 and tcol.b < 0.4 and scol.r > 0.9 and scol.g > 0.9 and scol.b - scol.r < 0.05 and vcol.g > vcol.b + 0.5,
+		"    the Tyrant's eggs a faint red %s, the Storm's a faint storm-cloud white %s (no blue)" % [str(tcol), str(scol)])
+	var lc0 := BroodRoot.lure_col(BroodNew.PTERO)
+	check(lc0.b - lc0.r < 0.1 and lc0.r > 0.8, "    the Storm Lure's haze storm-cloud white too, not blue (%s)" % str(lc0))
+	var ge: Unit = g._add_unit(BroodNew.EGG, 0, spot_near(q.position, 4.0))
+	ge.nb["k"] = "grub"
+	var we: Unit = g._add_unit(BroodNew.EGG, 0, spot_near(q.position, 4.0))
+	we.nb["k"] = "raptor"
+	we.nb["fert"] = 1
+	var wn: Unit = g._add_unit(BroodNew.EGG, 0, spot_near(q.position, 4.0))
+	wn.nb["k"] = "raptor"
+	wn.nb["fert"] = 1
+	wn.nb["nest"] = true
+	await wait(0.15)
+	check(BroodNew.egg_tint(ge) == 0.0 and BroodNew.egg_tint(we) == 0.0 and absf(BroodNew.egg_tint(wn) - float(Defs.NB["egg_nest"])) < 0.01
+		and ((ge.sprite.material as ShaderMaterial).get_shader_parameter("wash") == null or float(((ge.sprite.material as ShaderMaterial).get_shader_parameter("wash") as Color).a) == 0.0),
+		"    a grub egg and a warrior egg not yet with him keep their colour; one lying in a Sire's nest starts faintly tinted (%.2f)" % BroodNew.egg_tint(wn))
+	for e in [ge, we, wn]:
+		g.consume_unit(e)
 	for e in mine(BroodNew.EGG):
 		g.consume_unit(e)
 	# a lure killed early: no refund, its ground free, another may grow
@@ -1515,6 +1543,50 @@ func _lures(q: Unit, p: Dictionary) -> void:
 	for fk0 in BroodNew.FATHERS:
 		for u in mine(fk0):
 			g.consume_unit(u)
+
+
+## 22. (the owner, 2026-10-29 20:09) THE STORM SIRE FLIES IN: from a few tiles away in his flying frames with his air
+## shadow, gliding down into the arrival sheet's frames 3-6 (dive, brake, land), then eats and stands; his total time
+## unchanged.
+func _storm_arrival(q: Unit) -> void:
+	var k := BroodNew.PTERO
+	for u in mine(k):
+		g.consume_unit(u)
+	var u: Unit = BroodRoot.cocoon(g, 0, k, _father_spot(q, k, 1.2))
+	var lt := BroodRoot.lure_times(k)
+	var fl := BroodRoot.fly_time(k)
+	check(absf(float(lt[0]) + float(lt[1]) + float(lt[2]) - BroodNew.egg_time(k)) < 0.01 and fl >= 2.0 and absf(float(lt[1]) - fl - float(Defs.NB["lure_arrive"])) < 0.01,
+		"22. the Storm Sire's time in all still %d s: the lure %.1f s, his flight in %.1f s and arrival %.1f s, settling %.1f s" % [int(BroodNew.egg_time(k)), float(lt[0]), fl, float(lt[1]) - fl, float(lt[2])])
+	u.nb["coc"] = float(lt[0]) + fl * 0.3
+	await wait(0.1)
+	var fn := BroodRoot._pic(u, BroodRoot.FLY) as Node2D
+	var body := fn.get_node_or_null("Body") as Sprite2D if fn else null
+	var cs := BroodRoot._pic(u, BroodRoot.COC) as Sprite2D
+	var shp: Vector2 = fn.get_meta("sh", Vector2.ZERO) if fn else Vector2.ZERO
+	check(BroodRoot.flying_in(u) and fn != null and fn.visible and body != null and body.visible and body.texture.resource_path.ends_with("pterodactyl/walk_se.png")
+		and cs.texture.resource_path.ends_with("ripe_se.png") and body.position.y < shp.y - 80.0 and shp.distance_to(cs.position) > Defs.TILE * 2.0
+		and String(BroodNew.progress(g, u).get("label", "")) == "THE SIRE ARRIVES",
+		"    he FLIES IN: his flying frames high over his shadow (%.0f px up), a few tiles off (%.0f px), the ripe lure below" % [shp.y - (body.position.y if body else 0.0), shp.distance_to(cs.position if cs else Vector2.ZERO)])
+	var y0 := body.position.y - shp.y if body else 0.0
+	var d0 := shp.distance_to(cs.position) if cs else 0.0
+	u.nb["coc"] = float(lt[0]) + fl * 0.9
+	await wait(0.05)
+	shp = fn.get_meta("sh", Vector2.ZERO)
+	check(body.position.y - shp.y > y0 and shp.distance_to(cs.position) < d0, "    he glides down and in (%.0f -> %.0f px up)" % [-y0, shp.y - body.position.y])
+	u.nb["coc"] = float(lt[0]) + fl + 0.05
+	await wait(0.05)
+	check(not BroodRoot.flying_in(u) and cs.texture.resource_path.ends_with("arrive_se.png") and cs.frame == 2 and not body.visible,
+		"    then the sheet's frame 3: his dive (frame %d)" % (cs.frame + 1))
+	var seen := {}
+	while BroodRoot.lure_phase(u) == "arrive":
+		seen[cs.frame] = true
+		await physics_frame
+	check(seen.has(3) and seen.has(4) and seen.has(5) and not seen.has(0) and not seen.has(1) and seen.has(11),
+		"    brake, land, eat and stand: frames %s (not the ripe-only frames 1-2)" % str(seen.keys().map(func(x) -> int: return x + 1)))
+	var opened: bool = await wait_for(func() -> bool: return not BroodRoot.in_cocoon(u), float(lt[2]) + 1.0)
+	await wait(0.1)
+	check(opened and BroodNew.rooted(u) and not u.is_air() and BroodRoot._pic(u, BroodRoot.FLY) == null, "    LANDED: rooted on his nest, a ground creature, his flight's pictures gone")
+	g.consume_unit(u)
 
 
 ## The match saved mid-lure, resumed: the lure is still there, as far on, its ground taken; it ripens and he comes.
@@ -1568,6 +1640,48 @@ func _sire(q: Unit, k: String, a: float) -> Unit:
 	return f
 
 
+## 22. (the owner, 2026-10-29 20:09) WHAT A SIRE RESEARCHES is shown to his own side, its allies and spectators,
+## never to an enemy: no bar or label over him, nothing on his card or its tooltips; the enemy sees only his loop.
+func _research_hidden(f: Unit) -> void:
+	var own := BroodNew.bar_over(g, f)
+	g.set_selection([f])
+	await wait(0.2)
+	check(String(own.get("label", "")).begins_with("RESEARCHING") and String(g.hud.nb_prog.get("label", "")).begins_with("RESEARCHING"),
+		"22. his own side sees RESEARCHING over him and on his card (%s)" % str(own.get("label", "")))
+	# the enemy (the Crown, team 1) looks at him
+	var h0: int = g.human
+	g.human = 1
+	g.set_selection([f])
+	await wait(0.25)
+	var labs := card_labels()
+	var leak := labs.filter(func(l) -> bool: return String(l).contains("RESEARCH") or String(l).contains("CLUTCH") or String(l).contains("PACK"))
+	var tips := ""
+	for k in g.hud._tip_for:
+		tips += str(g.hud._tip_for[k])
+	var fog_vis: bool = f.visible
+	g.reveal = true          # (where he can see him: his loop)
+	var frames := {}
+	for i in 30:
+		await physics_frame
+		frames[f.sprite.frame] = true
+	g.reveal = false
+	check(g.selection.has(f) and BroodNew.bar_over(g, f).is_empty() and g.hud.nb_prog.is_empty() and leak.is_empty() and not tips.contains("Bigger Clutch")
+		and not BroodResearch.shown_to(g, f),
+		"    an ENEMY selecting him sees no research: no bar or label over him, nothing on his card (%s) or its tooltips" % str(labs))
+	check(BroodNew.producing(g, f) and frames.size() >= 2, "    ...only his production loop playing where the enemy sees him (%d frames; under fog: hidden %s)" % [frames.size(), str(not fog_vis)])
+	# an ally of his (no frame passes: one side alone would have won)
+	var s1 = g.sides[1]
+	g.sides[1] = g.sides[0]
+	check(BroodResearch.shown_to(g, f) and String(BroodNew.bar_over(g, f).get("label", "")).begins_with("RESEARCHING"), "    an ALLY sees what he researches")
+	g.sides[1] = s1
+	g.demo = true
+	check(BroodResearch.shown_to(g, f) and not BroodNew.bar_over(g, f).is_empty(), "    a spectator sees it too")
+	g.demo = false
+	g.human = h0
+	g.set_selection([f])
+	await wait(0.1)
+
+
 func _research(q: Unit, p: Dictionary) -> void:
 	for fk0 in BroodNew.FATHERS:
 		for u in mine(fk0):
@@ -1618,6 +1732,7 @@ func _research(q: Unit, p: Dictionary) -> void:
 		"    BIGGER CLUTCH started: paid 100 food and 15 spoils %s" % w)
 	var pg := BroodNew.progress(g, f)
 	check(String(pg.get("label", "")).begins_with("RESEARCHING") and float(pg.get("left", 0.0)) > 38.0, "    his card shows %s (%.0f s)" % [pg.get("label", ""), float(pg.get("left", 0.0))])
+	await _research_hidden(f)
 	q.nb["eggs"] = BroodNew.eggs_max(q)
 	var why := BroodNew.lay_problem(g, q, "raptor")
 	check(why.contains("researching") and BroodNew.lay_problem(g, q, "spitter") == "", "    no Raptor eggs while he researches (%s); the Venom line still lays" % why)
@@ -1658,7 +1773,9 @@ func _research(q: Unit, p: Dictionary) -> void:
 	var vc: Unit = g._add_unit("venom_challenger", 0, spot_near(q.position, 14.0))
 	var sw: Unit = g._add_unit("skywing", 0, spot_near(q.position, 14.0))
 	var br: Unit = g._add_unit("brute", 0, spot_near(q.position, 14.0))
-	check(BroodResearch.speed_add(ra) == 0.0 and float(br.d["building_bonus"]) == 2.5 and float(spt.d["range"]) == 170.0, "    before: no speed added, a Brute x2.5 on buildings, a Spitter's range 170")
+	check(BroodResearch.speed_add(ra) == 0.0 and float(br.d["building_bonus"]) == 2.5 and float(spt.d["range"]) == 165.0 and float(vc.d["range"]) == 165.0
+		and float(spt.d["range"]) < float(Defs.UNITS["musketeer"]["range"]),
+		"    before: no speed added, a Brute x2.5 on buildings, a Spitter's and a Venom Challenger's range 165, under a Musketeer's %d" % int(Defs.UNITS["musketeer"]["range"]))
 	for k in ["nb_pack_hunt", "nb_slither", "nb_updraft", "nb_battering_horns", "nb_long_spit", "nb_quick_roots", "nb_swamp_mending"]:
 		BroodResearch.done(g, 0, k)
 	check(is_equal_approx(96.0 + BroodResearch.speed_add(ra), 114.0) and is_equal_approx(84.0 + BroodResearch.speed_add(tc), 98.0),
@@ -1667,6 +1784,16 @@ func _research(q: Unit, p: Dictionary) -> void:
 	check(ra.speed >= 113.9, "    ...and it runs at it (%.0f px/s now, swamp x1.3 included)" % ra.speed)
 	check(is_equal_approx(68.0 + BroodResearch.speed_add(spt), 78.0) and is_equal_approx(58.0 + BroodResearch.speed_add(vc), 67.0), "    SLITHER: a Spitter 78, a Venom Challenger 67")
 	check(is_equal_approx(BroodResearch.speed_add(sw), 18.0), "    UPDRAFT: a flying Skywing +18 (118 -> 136)")
+	# (the owner, 20:09) PACK HUNT also speeds up the Tyrant Sire, UPDRAFT the Storm Sire (flying), by about the same share
+	var stp: Unit = g._add_unit(BroodNew.PTERO, 0, spot_near(q.position, 14.0))
+	BroodNew.set_sky(stp)
+	var t_add := BroodResearch.speed_add(f)
+	var s_add := BroodResearch.speed_add(stp)
+	check(f.kind == BroodNew.FATHER and is_equal_approx(t_add, 11.0) and absf(t_add / float(Defs.UNITS[BroodNew.FATHER]["speed"]) - 18.0 / 96.0) < 0.03,
+		"22. PACK HUNT speeds up the Tyrant Sire too: %d -> %d (+%.0f%%, a Raptor +%.0f%%)" % [int(Defs.UNITS[BroodNew.FATHER]["speed"]), int(float(Defs.UNITS[BroodNew.FATHER]["speed"]) + t_add), t_add / float(Defs.UNITS[BroodNew.FATHER]["speed"]) * 100.0, 18.0 / 96.0 * 100.0])
+	check(stp.is_air() and is_equal_approx(s_add, 17.0) and absf(s_add / float(Defs.UNITS[BroodNew.PTERO]["speed"]) - 18.0 / 118.0) < 0.01,
+		"    UPDRAFT speeds up the flying Storm Sire too: 110 -> %d (+%.1f%%, a Skywing +%.1f%%)" % [int(110.0 + s_add), s_add / 110.0 * 100.0, 18.0 / 118.0 * 100.0])
+	g.consume_unit(stp)
 	sw.cmd_land()
 	await wait(1.6)
 	check(BroodResearch.speed_add(sw) == 0.0, "    ...landed, nothing (only while flying)")
@@ -1674,11 +1801,12 @@ func _research(q: Unit, p: Dictionary) -> void:
 	check(float(br.d["building_bonus"]) == 3.5 and float(br2.d["building_bonus"]) == 3.5 and float(Defs.UNITS["brute"]["building_bonus"]) == 2.5,
 		"    BATTERING HORNS: the Brutes x3.5 on buildings (a new one too; Defs untouched)")
 	var spt2: Unit = g._add_unit("spitter", 0, spot_near(q.position, 14.0))
-	check(float(spt.d["range"]) == 205.0 and float(spt2.d["range"]) == 205.0 and float(vc.d["range"]) == 215.0 and float(Defs.UNITS["spitter"]["range"]) == 170.0,
-		"    LONG SPIT: a Spitter 205, a Venom Challenger 215")
+	var mr := float(Defs.UNITS["musketeer"]["range"])
+	check(float(spt.d["range"]) == mr and float(spt2.d["range"]) == mr and float(vc.d["range"]) == mr and float(Defs.UNITS["spitter"]["range"]) == 165.0,
+		"    LONG SPIT: a Spitter and a Venom Challenger reach a Musketeer's range, not beyond (%d, %d, %d)" % [int(spt.d["range"]), int(vc.d["range"]), int(mr)])
 	var yt: Unit = g._add_unit("spitter", 0, spot_near(q.position, 14.0))
 	yt.morph("venom_challenger")
-	check(float(yt.d["range"]) == 215.0, "    ...and a Spitter matured into a Venom Challenger keeps it (%d)" % int(yt.d["range"]))
+	check(float(yt.d["range"]) == mr, "    ...and a Spitter matured into a Venom Challenger keeps it (%d)" % int(yt.d["range"]))
 	var tu: Unit = g._add_unit(BroodNew.TURTLE, 0, spot_near(q.position, 14.0))
 	check(is_equal_approx(tu.switch_time(), 1.25) and is_equal_approx(q.switch_time(), 2.0), "    QUICK ROOTS: a turtle roots in %.2f s, the Mother in %.1f s" % [tu.switch_time(), q.switch_time()])
 	ra.hit_clock = -99.0
@@ -1817,4 +1945,4 @@ func _research_resumed() -> void:
 	d.nb["rs_t"] = float(Defs.RESEARCH["nb_long_spit"]["time"]) - 0.2
 	var dn: bool = await wait_for(func() -> bool: return g.has_tech(0, "nb_long_spit"), 2.0)
 	var sp: Unit = g._add_unit("spitter", 0, d.position + Vector2(0, 80))
-	check(dn and float(sp.d["range"]) == 205.0, "    then it finishes: Spitters reach 205")
+	check(dn and float(sp.d["range"]) == float(Defs.UNITS["musketeer"]["range"]), "    then it finishes: Spitters reach %d (a Musketeer's)" % int(sp.d["range"]))

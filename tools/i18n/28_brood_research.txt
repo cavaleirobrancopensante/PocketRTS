@@ -36,9 +36,9 @@ es Cura del Pantano
 pt Os Raptores nascem três por ovo em vez de dois. O ovo custa mais (75 de comida por três), então cada Raptor custa o mesmo: mais Raptores de cada ovo, não Raptores mais baratos.
 es Los Raptores nacen tres por huevo en lugar de dos. El huevo cuesta más (75 de comida por tres), así que cada Raptor cuesta lo mismo: más Raptores de cada huevo, no Raptores más baratos.
 
-> Raptors and Tyrant Challengers run faster: a Raptor from 96 to 114, a Tyrant Challenger from 84 to 98.
-pt Os Raptores e os Desafiantes Tiranos correm mais rápido: um Raptor de 96 para 114, um Desafiante Tirano de 84 para 98.
-es Los Raptores y los Retadores Tiranos corren más rápido: un Raptor de 96 a 114, un Retador Tirano de 84 a 98.
+> Raptors, Tyrant Challengers and the Tyrant Sire run faster: a Raptor from 96 to 114, a Tyrant Challenger from 84 to 98, the Tyrant Sire from 64 to 75.
+pt Os Raptores, os Desafiantes Tiranos e o Sire Tirano correm mais rápido: um Raptor de 96 para 114, um Desafiante Tirano de 84 para 98, o Sire Tirano de 64 para 75.
+es Los Raptores, los Retadores Tiranos y el Señor Tirano corren más rápido: un Raptor de 96 a 114, un Retador Tirano de 84 a 98, el Señor Tirano de 64 a 75.
 
 > The Brutes' horns grow into rams: they hit buildings, walls and gates harder (x3.5 instead of x2.5).
 pt Os chifres dos Brutamontes viram aríetes: eles batem mais forte em construções, paliçadas e portões (x3,5 em vez de x2,5).
@@ -52,17 +52,17 @@ es Los Escupidores nacen tres por huevo en lugar de dos. El huevo cuesta más (1
 pt Os Cuspidores e os Desafiantes Venenosos andam uns 15% mais rápido: um Cuspidor de 68 para 78, um Desafiante Venenoso de 58 para 67.
 es Los Escupidores y los Retadores Venenosos se mueven un 15% más rápido: un Escupidor de 68 a 78, un Retador Venenoso de 58 a 67.
 
-> Spitters and Venom Challengers spit about 20% farther: a Spitter from 170 to 205, a Venom Challenger from 180 to 215.
-pt Os Cuspidores e os Desafiantes Venenosos cospem uns 20% mais longe: um Cuspidor de 170 para 205, um Desafiante Venenoso de 180 para 215.
-es Los Escupidores y los Retadores Venenosos escupen un 20% más lejos: un Escupidor de 170 a 205, un Retador Venenoso de 180 a 215.
+> Spitters and Venom Challengers spit as far as a Musketeer shoots: from 165 to 190.
+pt Os Cuspidores e os Desafiantes Venenosos cospem tão longe quanto um Mosqueteiro atira: de 165 para 190.
+es Los Escupidores y los Retadores Venenosos escupen tan lejos como dispara un Mosquetero: de 165 a 190.
 
 > Hatchlings hatch three to an egg instead of two, the egg's price grown so each costs the same. (The Hatchlings are not in the game yet.)
 pt Os Filhotes nascem três por ovo em vez de dois, com o preço do ovo maior para que cada um custe o mesmo. (Os Filhotes ainda não estão no jogo.)
 es Las Crías nacen tres por huevo en lugar de dos, con el precio del huevo mayor para que cada una cueste lo mismo. (Las Crías aún no están en el juego.)
 
-> The Brood's flyers ride the warm air: about 15% faster while flying (a Skywing from 118 to 136).
-pt Os voadores da Ninhada aproveitam o ar quente: uns 15% mais rápidos enquanto voam (uma Asa-do-Céu de 118 para 136).
-es Los voladores de la Nidada aprovechan el aire cálido: un 15% más rápidos mientras vuelan (un Ala del Cielo de 118 a 136).
+> The Brood's flyers and the Storm Sire ride the warm air: about 15% faster while flying (a Skywing from 118 to 136, the Storm Sire from 110 to 127).
+pt Os voadores da Ninhada e o Sire da Tempestade aproveitam o ar quente: uns 15% mais rápidos enquanto voam (uma Asa-do-Céu de 118 para 136, o Sire da Tempestade de 110 para 127).
+es Los voladores de la Nidada y el Señor de la Tormenta aprovechan el aire cálido: un 15% más rápidos mientras vuelan (un Ala del Cielo de 118 a 136, el Señor de la Tormenta de 110 a 127).
 
 > Every creature roots and uproots in half the time: the Brood Mother in 2 s instead of 4, the others in 1.25 s instead of 2.5.
 pt Toda criatura enraíza e desenraíza na metade do tempo: a Mãe da Ninhada em 2 s em vez de 4, as outras em 1,25 s em vez de 2,5.

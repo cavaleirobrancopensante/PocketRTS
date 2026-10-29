@@ -16,13 +16,13 @@ The owner's decisions: docs/brood_research_draft.md ("DECIDED (owner, 2026-10-29
 | Research | At | Needs | Cost | Time | Effect |
 | --- | --- | --- | --- | --- | --- |
 | BIGGER CLUTCH | Tyrant Sire | stage 1 | 100 food + 15 spoils | 40 s | Raptors 3 to an egg (75 food) instead of 2 (50) |
-| PACK HUNT | Tyrant Sire | stage 1 | 75 + 15 | 35 s | Raptor 96 -> 114, Tyrant Challenger 84 -> 98 |
+| PACK HUNT | Tyrant Sire | stage 1 | 75 + 15 | 35 s | Raptor 96 -> 114, Tyrant Challenger 84 -> 98, the Tyrant Sire 64 -> 75 (0.20.1) |
 | BATTERING HORNS | Tyrant Sire | stage 3 | 125 + 40 | 50 s | Brute building bonus x2.5 -> x3.5 |
 | BIGGER CLUTCH | Venom Sire | stage 1 | 100 + 15 | 40 s | Spitters 3 to an egg (135 + 8) instead of 2 (90 + 5) |
 | SLITHER | Venom Sire | stage 1 | 75 + 15 | 35 s | Spitter 68 -> 78, Venom Challenger 58 -> 67 (+15%) |
-| LONG SPIT | Venom Sire | stage 1 | 100 + 25 | 45 s | Spitter range 170 -> 205, Venom Challenger 180 -> 215 (+20%) |
+| LONG SPIT | Venom Sire | stage 1 | 100 + 25 | 45 s | Spitter and Venom Challenger range 165 -> 190, a Musketeer's (0.20.1; was 170 -> 205 and 180 -> 215) |
 | BIGGER CLUTCH | Storm Sire | stage 2 | 100 + 15 | 40 s | Hatchlings 3 to an egg (refused until they exist) |
-| UPDRAFT | Storm Sire | stage 2 | 75 + 15 | 35 s | flyers +15% while flying: Skywing 118 -> 136 (Hatchlings +18, Storm Challenger +16 when they come) |
+| UPDRAFT | Storm Sire | stage 2 | 75 + 15 | 35 s | flyers +15% while flying: Skywing 118 -> 136, the Storm Sire 110 -> 127 (0.20.1) (Hatchlings +18, Storm Challenger +16 when they come) |
 | QUICK ROOTS | Brood Mother | stage 2 | 100 + 30 | 45 s | root and uproot in half the time (her 4 -> 2 s, the others 2.5 -> 1.25 s) |
 | SWAMP MENDING | Brood Mother | stage 2 | 100 + 30 | 45 s | on her side's swamp, not hit for 4 s: +1.2% of max health a second, at least 1, at most 6, on top of the swamp's 2 |
 
@@ -54,13 +54,35 @@ A gate already falls fast to Brutes; the research cuts about a quarter of the hi
 
 tools/test_brood_new.gd section 21: 2 to an egg and the prices; the Sire's card (BATTERING HORNS greyed with its reason) and a tooltip with name, effect, cost and time; BIGGER CLUTCH paid, RESEARCHING on his card, no Raptor eggs meanwhile, STOP RESEARCH, his loop playing; then 75 for 3 and 3 hatched; maturing prices unchanged; the Venom clutch 135 + 8; the Hatchlings' data; every effect (speeds, Updraft only flying, Brutes x3.5 (Defs untouched), Long Spit on new and matured units, Quick Roots, Swamp Mending and its 4 s rule); a Spitter can't hit a balloon, a Venom Challenger can; the Mother researching and still laying, GROW waiting; a Sire killed mid-research (paid back, Bigger Clutch kept); uprooted mid-research; the snapshot carrying it; the computer (Bigger Clutch first, one Sire at a time, other lines laid); a save mid-research continued and finished. All pass. Also run: test_brood_new_defence (only its known rooted Musketeer failure), test_unit_stats, test_files, test_i18n, test_replay, test_stun_mark: pass.
 
-## Open questions for the owner
+## The owner's answers (2026-10-29 20:09; done in 0.20.1, branch brood-answers)
 
-1. The Mother keeps laying while she researches (asked as Claude's choice). She can't grow at the same time: OK?
-2. Swamp Mending only out of the fight (4 s not hit), capped at 6 hp/s for the big creatures: OK?
-3. LONG SPIT puts the Spitter (205) past the Musketeer (190): soft counter is still closing in (Spitters are 70 hp, slow), but it may want a stage-2 gate. Today it has no stage gate, as decided.
-4. BATTERING HORNS at x3.5: the times above. Too strong, fine, or x3.0?
-5. UPDRAFT does not speed up the Storm Sire himself (only his line's flyers), as PACK HUNT does not speed up the Tyrant Sire. Confirm.
+- **LONG SPIT**: the standard range must be SHORTER than the Musketeer's (190, Defs.UNITS musketeer "range") and the
+  upgrade brings it to the SAME range, not beyond. Done: the Spitter and the Venom Challenger 165 as standard (were
+  170 and 180), LONG SPIT +25 = 190. The Venom Challenger's about text no longer says "a little farther". Texts in
+  en/pt/es.
+- **PACK HUNT also speeds up the Tyrant Sire, UPDRAFT the Storm Sire (the same %)**: the Tyrant Sire +11 (64 -> 75,
+  +17%, between the Raptor's +19% and the Challenger's +17%), the Storm Sire +17 while flying (110 -> 127, +15%, the
+  Skywing's +15%). Defs.RESEARCH "speed"; texts updated.
+- **BATTERING HORNS x3.5 and SWAMP MENDING stay for now** ("needs more testing"). **The Mother can't grow and research
+  at once** (stays).
+- **Who sees a Sire's research?** The owner: only his own side (and allies); an enemy must NOT see the bar or the
+  label or what is researched, only his production animation; spectators may see everything.
+  - BEFORE 0.20.1 it already did not show to an enemy: the bar and label over him were drawn only for his own side
+    and spectators (BroodNew.draw `mine`), his card's progress line (hud `nb_prog`) only for his own side and
+    spectators, his research buttons, STOP RESEARCH and their tooltips only on his own side's card, nothing on the
+    minimap, the start sound and the "researched" message only for his side. But his ALLIES did not see it either.
+  - 0.20.1: BroodResearch.shown_to (his side, allies, spectators) decides; BroodNew.bar_over is what is drawn over a
+    rooted creature for the viewer (research only when shown_to); an ally's card shows his research line. Tested
+    (tools/test_brood_new.gd part 22: an enemy selecting him sees no bar, label, card line, button or tooltip, only
+    his loop playing; an ally and a spectator see it).
+
+## Open questions for the owner (earlier)
+
+1. ANSWERED: she can't grow and research at once (stays); she keeps laying while she researches.
+2. ANSWERED: Swamp Mending stays as it is for now ("needs more testing").
+3. ANSWERED (above): LONG SPIT now ends at the Musketeer's 190.
+4. ANSWERED: BATTERING HORNS stays x3.5 for now ("needs more testing").
+5. ANSWERED (above): both now speed up their Sire too.
 6. The Storm Sire's BIGGER CLUTCH is shown but refused ("Not in the Brood yet.") until the Hatchlings exist; its data and the 3-to-an-egg rule are in and tested.
 7. The research icons are code placeholders (the creature's portrait with a badge); ChatGPT prompts 43-52 in docs/command_icons_audit.md.
 8. The computer researches late (about 7:00) because of its spoils; a bigger spoils income for it (or cheaper spoils on the first research) would bring it earlier.

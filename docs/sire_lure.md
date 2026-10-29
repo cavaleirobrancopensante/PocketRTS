@@ -30,8 +30,8 @@ picture, while he keeps his production animation.
 - **His eggs in front** (scripts/brood_new.gd "THE SIRE'S EGGS IN FRONT"): the eggs of his line now lie in a row just
   in front (south) of his footprint (`nest_point`: the footprint's middle, 22 px past its front edge (an egg is about 20 px tall: drawn whole below his nest picture); up to 5 a row,
   14 px apart, further rows further south), seen at once and drawn on the top layer like the Mother's (`EGG_Z`). They
-  redden as he breathes on them and hatch there. Before, they lay hidden on the nest drawn in his rooted frame and only
-  showed to hatch. Egg colours unchanged (the owner hasn't decided).
+  take his colour as he breathes on them and hatch there. Before, they lay hidden on the nest drawn in his rooted frame and only
+  showed to hatch. Their colours: his lure's, faintly (0.20.1, the answers below).
 
 ## The timing (Defs.NB "lure_arrive", "lure_settle")
 
@@ -39,7 +39,7 @@ picture, while he keeps his production animation.
 |---|---|---|---|---|---|---|
 | Tyrant | 35 s | 31.2 s | 22.5 s | 8.7 s | 2.6 s | 1.2 s (from frame 1) |
 | Venom | 30 s | 26.2 s | 18.9 s | 7.3 s | 2.6 s | 1.2 s (from frame 1) |
-| Storm | 40 s | 36.2 s | 26.1 s | 10.1 s | 2.6 s | 1.2 s (from his first landed frame, 3) |
+| Storm | 40 s | 33.8 s | 24.3 s | 9.5 s | 2.4 s flying in + 2.6 s (frames 3-12) | 1.2 s (from his first landed frame, 3) |
 
 The swelling share is `BroodRoot.RIPE_AT` (0.72). The settle starts with a 0.36 s cross-fade from his last arrival
 frame into his rooting frames.
@@ -47,7 +47,7 @@ frame into his rooting frames.
 ## The art (tools/import_sire_lure.py; art keys lure_tyrannosaur, lure_dilophosaurus, lure_pterodactyl)
 
 - `grow_se` (4): the concept's top row (art/redraws/sire_lure_concept_chatgpt.png), its yellow-green haze and scent
-  holes tinted toward each Sire (red, as drawn, blue), sized so the 4th step is as wide as his ripe lure and stood on
+  holes tinted toward each Sire (red, as drawn, storm-cloud white since 0.20.1: was blue), sized so the 4th step is as wide as his ripe lure and stood on
   its mud. The game scales the steps up from about a grub's size (0.45) to full.
 - `ripe_se` (1): frame 1 of his arrival sheet (exactly where the arrival starts). The game breathes it (scale x/y
   about its ground, brightness) and adds haze puffs in code in the lure's colour (Defs.NB "lure_col").
@@ -79,16 +79,29 @@ frame into his rooting frames.
 - His rooted frames still draw the nest's red eggs (that is his production loop); the game's eggs now lie in front.
   If the owner wants the nest empty, the rooted strips need a redraw (or a paint-out of the eggs).
 
-## Open questions for the owner
+## The owner's answers (2026-10-29 20:09; done in 0.20.1, branch brood-answers)
 
-1. Refund for a lure killed early: none now (as a cocoon). A part refund (say half) would soften a lost Sire; the
-   design rules say a punishment should match the mistake, and the lure is a big, telegraphed target for 30-40 s.
-2. Should the lure be weaker than the Sire's health curve (it starts at 15% of HIS health: 150 of 1000 for the
-   Tyrant, rising)? A gland might rather have a fixed, low health.
-3. Should the enemy see the lure's haze through fog as a tell (it is a pheromone plume)? Not done.
-4. The eggs in front: the egg colours per Sire (Tyrant red, Venom yellow-green, Storm blue-white) are still undecided;
-   unchanged for now.
-5. The Storm Sire's arrival ends landed (his landing frames take over from the first landed one); fine?
+1. Refund for a lure killed early: **NONE** (as now).
+2. The lure's health: **a lure is just a cocoon**: its health stays the cocoon's (15% of his, rising), as now.
+3. The haze through fog: **NO**, the enemy does not see it. It already followed the fog: the lure's pictures, the code
+   haze puffs and (0.20.1) the Storm Sire's flight are children of the creature, which the fog hides as any enemy unit
+   (Game fog: `u.visible`); tested in tools/test_brood_new.gd part 22.
+4. The egg colours: **the eggs take their lure's colour, FAINTLY**: Tyrant a faint red, Venom a faint yellow-green,
+   Storm a faint WHITE (storm-cloud white, not blue: blue clashes with a blue team colour). Done: the team shader's
+   new `wash` (a faint colour at the picture's own brightness), Defs.NB "egg_col" and "egg_wash" (0.42),
+   BroodNew.egg_tint / egg_col. An egg of a Sire's line takes it as he breathes on it and keeps it until it hatches
+   (the old strong red tint is gone); lying in his nest it starts at "egg_nest" (0.3) of it; grub eggs and warrior
+   eggs not yet with him keep their colour. **The Storm Lure's haze is storm-cloud white too** (no blue in the Storm
+   line): Defs.NB "lure_col" and tools/import_sire_lure.py (`TINT`, and `storm_white` turns the arrival sheet's blue
+   haze a cool light grey at its brightness). Picture: docs/shots/brood_answers/eggs_tinted.png.
+5. The Storm Sire's arrival: **he must FLY IN AND LAND**. Done: his arrival starts with 2.4 s of flight
+   (Defs.NB "lure_fly"): his own flying frames (walk_se) with his air shadow, from about 7 tiles up and to the left
+   (190, 110 px), gliding down (150 px up, easing out, wingbeats slowing) into the sheet's frame 3, then the sheet's
+   frames 3-12 (dive, brake, land, eat, stand) over 2.6 s, his shadow sliding in under him and fading as he lands
+   (frames 3-6); the sheet's first two frames (the ripe lure alone) are skipped, the ripe lure pulses under him
+   instead. The flight comes out of the lure's growing (36.2 -> 33.8 s; the ripe lure still pulses under him while
+   he flies in): his 40 s in all is unchanged.
+   BroodRoot.fly_time / flying_in / _fly_look. GIF: docs/shots/brood_answers/storm_arrival.gif.
 
 ## Tests
 
@@ -96,3 +109,8 @@ tools/test_brood_new.gd part 20 (a grub becomes a lure, the lure ripens, the Sir
 eggs in front of his footprint and fertilised there, a lure killed early, one Sire at a time counts the lure, save and
 load mid-lure, the computer's Sire through a lure) and the older parts' nest checks moved to the row in front.
 Pictures: docs/shots/sire_lure/ (tools/shot_sire_lure.gd).
+
+0.20.1 (the owner's answers): tools/test_brood_new.gd part 22 (the egg tints, the Storm Sire in the air then landed,
+the ranges, the Sires' speeds, an enemy can't see a Sire's research). Pictures: docs/shots/brood_answers/
+(tools/shot_brood_answers.gd: storm_arrival.gif, storm_flying_in_*.png, eggs_tinted.png: the Tyrant's, the Venom's and
+the Storm's eggs, each beside a plain grub egg).

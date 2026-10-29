@@ -887,7 +887,7 @@ const UNITS := {
 	"spitter": {
 		"tags": ["light"],
 		"name": "Spitters", "hp": 70, "armor": 0, "speed": 68, "cost": 90, "time": 13.0, "supply": 1, "spawn": 2,
-		"sight": 8, "range": 170, "damage": 8, "cooldown": 2.0, "aim": 0.35, "radius": 12, "from": "",
+		"sight": 8, "range": 165, "damage": 8, "cooldown": 2.0, "aim": 0.35, "radius": 12, "from": "",
 		"acid": 3.0, "cost2": 5, "faction": "brood",
 		"about": "Spit acid at ground units (never at flyers) that burns and strips armour. Two hatch from each egg (three with the Venom Sire's BIGGER CLUTCH).",
 	},
@@ -1130,9 +1130,9 @@ const UNITS := {
 	"venom_challenger": {
 		"tags": ["armored"],
 		"name": "Venom Challenger", "hp": 220, "armor": 1, "speed": 58, "cost": 150, "cost2": 20, "time": 22.0, "supply": 2,
-		"sight": 9, "range": 180, "damage": 18, "cooldown": 2.0, "aim": 0.4, "radius": 18, "from": "brood_mother",
+		"sight": 9, "range": 165, "damage": 18, "cooldown": 2.0, "aim": 0.4, "radius": 18, "from": "brood_mother",
 		"acid": 4.0, "splash": 24, "anti_air": true, "venom": true, "plain_attack": true, "faction": "brood", "mature": true,
-		"about": "A Spitter grown into a young Venom Sire: a heavier venom glob than a Spitter's, a little farther, that strips armour and splashes a little round its target; it reaches flyers too. Tougher and slower than a Spitter. Never laid: a Spitter MATURES into it (the Brood Mother at stage 2).",
+		"about": "A Spitter grown into a young Venom Sire: a heavier venom glob than a Spitter's, as far, that strips armour and splashes a little round its target; it reaches flyers too. Tougher and slower than a Spitter. Never laid: a Spitter MATURES into it (the Brood Mother at stage 2).",
 	},
 	"brood_egg": {
 		"tags": ["light"],
@@ -1478,8 +1478,8 @@ const RESEARCH := {
 		"time": 40.0, "stage": 0, "icon": "nbr_clutch_raptor", "young": "raptor",
 		"about": "Raptors hatch three to an egg instead of two. The egg costs more (75 food for three), so each Raptor costs the same: more Raptors from each egg, not cheaper ones."},
 	"nb_pack_hunt": {"name": "Pack Hunt", "label": "PACK HUNT", "at": "tyrannosaur", "faction": "brood", "cost": 75, "cost2": 15,
-		"time": 35.0, "stage": 0, "icon": "nbr_pack_hunt", "speed": {"raptor": 18.0, "tyrant_challenger": 14.0},
-		"about": "Raptors and Tyrant Challengers run faster: a Raptor from 96 to 114, a Tyrant Challenger from 84 to 98."},
+		"time": 35.0, "stage": 0, "icon": "nbr_pack_hunt", "speed": {"raptor": 18.0, "tyrant_challenger": 14.0, "tyrannosaur": 11.0},
+		"about": "Raptors, Tyrant Challengers and the Tyrant Sire run faster: a Raptor from 96 to 114, a Tyrant Challenger from 84 to 98, the Tyrant Sire from 64 to 75."},
 	"nb_battering_horns": {"name": "Battering Horns", "label": "BATTERING HORNS", "at": "tyrannosaur", "faction": "brood", "cost": 125, "cost2": 40,
 		"time": 50.0, "stage": 2, "icon": "nbr_battering_horns", "bonus": {"brute": 3.5},
 		"about": "The Brutes' horns grow into rams: they hit buildings, walls and gates harder (x3.5 instead of x2.5)."},
@@ -1490,14 +1490,14 @@ const RESEARCH := {
 		"time": 35.0, "stage": 0, "icon": "nbr_slither", "speed": {"spitter": 10.0, "venom_challenger": 9.0},
 		"about": "Spitters and Venom Challengers move about 15% faster: a Spitter from 68 to 78, a Venom Challenger from 58 to 67."},
 	"nb_long_spit": {"name": "Long Spit", "label": "LONG SPIT", "at": "dilophosaurus", "faction": "brood", "cost": 100, "cost2": 25,
-		"time": 45.0, "stage": 0, "icon": "nbr_long_spit", "range": {"spitter": 35.0, "venom_challenger": 35.0},
-		"about": "Spitters and Venom Challengers spit about 20% farther: a Spitter from 170 to 205, a Venom Challenger from 180 to 215."},
+		"time": 45.0, "stage": 0, "icon": "nbr_long_spit", "range": {"spitter": 25.0, "venom_challenger": 25.0},
+		"about": "Spitters and Venom Challengers spit as far as a Musketeer shoots: from 165 to 190."},
 	"nb_clutch_hatchlings": {"name": "Bigger Clutch", "label": "BIGGER CLUTCH", "at": "pterodactyl", "faction": "brood", "cost": 100, "cost2": 15,
 		"time": 40.0, "stage": 1, "icon": "nbr_clutch_hatchlings", "young": "hatchlings",
 		"about": "Hatchlings hatch three to an egg instead of two, the egg's price grown so each costs the same. (The Hatchlings are not in the game yet.)"},
 	"nb_updraft": {"name": "Updraft", "label": "UPDRAFT", "at": "pterodactyl", "faction": "brood", "cost": 75, "cost2": 15,
-		"time": 35.0, "stage": 1, "icon": "nbr_updraft", "speed": {"skywing": 18.0, "hatchlings": 18.0, "storm_challenger": 16.0}, "air": true,
-		"about": "The Brood's flyers ride the warm air: about 15% faster while flying (a Skywing from 118 to 136)."},
+		"time": 35.0, "stage": 1, "icon": "nbr_updraft", "speed": {"skywing": 18.0, "hatchlings": 18.0, "storm_challenger": 16.0, "pterodactyl": 17.0}, "air": true,
+		"about": "The Brood's flyers and the Storm Sire ride the warm air: about 15% faster while flying (a Skywing from 118 to 136, the Storm Sire from 110 to 127)."},
 	"nb_quick_roots": {"name": "Quick Roots", "label": "QUICK ROOTS", "at": "brood_mother", "faction": "brood", "cost": 100, "cost2": 30,
 		"time": 45.0, "stage": 1, "icon": "nbr_quick_roots", "root": 0.5,
 		"about": "Every creature roots and uproots in half the time: the Brood Mother in 2 s instead of 4, the others in 1.25 s instead of 2.5."},
@@ -1878,7 +1878,21 @@ const NB := {
 	"lure_arrive": 2.6, "lure_settle": 1.2,
 	"lure_settle_from": {"tyrannosaur": 0, "dilophosaurus": 0, "pterodactyl": 2},
 	"lure_at": {"tyrannosaur": [11, 42, 85], "dilophosaurus": [2, 16, 48], "pterodactyl": [8, 12, 52]},
-	"lure_col": {"tyrannosaur": [0.85, 0.16, 0.12], "dilophosaurus": [0.75, 0.9, 0.2], "pterodactyl": [0.5, 0.7, 1.0]},
+	"lure_col": {"tyrannosaur": [0.85, 0.16, 0.12], "dilophosaurus": [0.75, 0.9, 0.2], "pterodactyl": [0.88, 0.9, 0.94]},     # (the Storm's: storm-cloud white, no blue: the owner, 20:09)
+	# THE STORM SIRE FLIES IN (the owner, 2026-10-29 20:09): his arrival starts with "time" s of flight (his own flying
+	# frames, walk_se, with his air shadow) from "from" (px from the lure, on the ground) gliding down from "alt" px up,
+	# into his arrival sheet's frame 3 ("lure_arrive_from": the sheet's frames from there on: dive, brake, land, eat,
+	# stand). The flight comes out of the ripe lure's pulsing: his total time is unchanged. "to": where his flying
+	# frame's anchor meets the sheet's frame 3 (px from the sheet's anchor) and "k" its scale there; "shadow": his
+	# shadow's point then (px from the lure's ground). Measured on assets/units/lure_pterodactyl/arrive_se.png frame 3.
+	"lure_fly": {"pterodactyl": {"time": 2.4, "from": [-190, -110], "alt": 150, "to": [-19, -84], "k": 0.81, "shadow": [-14, -2]}},
+	"lure_arrive_from": {"pterodactyl": 2},
+	# THE SIRES' EGGS (the owner, 20:09): an egg of a Sire's line takes his lure's colour FAINTLY as he fertilises it
+	# (and lying in his nest, at least "egg_nest" of it): Tyrant a faint red, Venom a faint yellow-green, Storm a faint
+	# storm-cloud white (never blue: it would clash with a blue team). The plain eggs (grubs, eggs not yet in a nest)
+	# keep their colour. "egg_wash": how much of the colour (the team shader's "wash").
+	"egg_col": {"tyrannosaur": [0.95, 0.25, 0.18], "dilophosaurus": [0.7, 1.0, 0.25], "pterodactyl": [0.94, 0.95, 0.97]},
+	"egg_wash": 0.42, "egg_nest": 0.3,
 	# where the eggs in each father's nest lie, from his feet (art px, measured by the importers on his rooted frame)
 	"nest_at": {"tyrannosaur": [26, 2], "dilophosaurus": [23, 3], "pterodactyl": [39, -16]},
 	# ROOTED = A BUILDING (the owner's playtest of 0.15.13, 19:19; scripts/brood_root.gd): the footprint each creature
