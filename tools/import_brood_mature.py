@@ -1,37 +1,36 @@
 #!/usr/bin/env python3
-"""Import YOUNG AND MATURE (the owner, 2026-10-29 12:40-13:58; docs/brood_new.md "Young and mature") from the owner's
-ChatGPT sheets in art/redraws/: the VIPER (kind "viper", the Venom Sire's young), the YOUNG TYRANT ("young_tyrant", a
-matured Raptor), the HOODED SERPENT ("hooded_serpent", a matured Viper), and the BROOD MOTHER'S STAGE 2 AND 3 art (art
-keys "brood_mother_2", "brood_mother_3": the game switches her art when she grows).
+"""Import YOUNG AND MATURE (the owner, 2026-10-29 12:40-14:40; docs/brood_new.md "Young and mature") from the owner's
+ChatGPT sheets in art/redraws/: the TYRANT CHALLENGER (kind "tyrant_challenger", a matured Raptor, a young Tyrant Sire;
+its sheets are named young_tyrant_*), the VENOM CHALLENGER ("venom_challenger", a matured Spitter, a young Venom Sire),
+and the BROOD MOTHER'S STAGE 2 AND 3 art (art keys "brood_mother_2", "brood_mother_3": the game switches her art when she
+grows). (The Viper and the Hooded Serpent were dropped by the owner, 14:40; their sheets stay in art/redraws.)
 
 Re-runnable: python3 -I tools/import_brood_mature.py [--contact DIR] [--only NAME]. It uses tools/import_brood_new.py's
 steps (the navy background keyed out, frames split, feet on the anchor, the red spikes snapped to the team reds; west
 views are the east ones mirrored by the game).
 
-SIZES (game px; the Raptor's east walk is 33 px long, 21 tall south-east):
-  - VIPER: its east slither as long as a Raptor's east walk (VIPER_E_W); every other sheet scaled so its first slither
-    frame covers as much as the east one (the same snake: the same painted area).
-  - YOUNG TYRANT: about twice a Raptor: its south-east run TYRANT_H tall (the Raptor 21, the Brute about 64).
-  - HOODED SERPENT: about three Vipers long: its slither frame's diagonal SERPENT_LONG times the Viper's south-east one;
-    the spit and death sheets so their first frame covers as much as the slither's (venom left out).
+SIZES (game px; the Raptor's south-east walk is 21 tall, the Brute's east walk about 64 tall):
+  - TYRANT CHALLENGER: about twice a Raptor: its south-east run TYRANT_H tall; every other view so its first run frame
+    covers as much as the south-east one (the north-east, drawn upright and stretched, keeps the same body size).
+  - VENOM CHALLENGER: the Venom Sire scaled to VENOM_SCALE (a young Venom Sire) until its own sheets come.
   - THE MOTHER'S STAGES: each stage's art is brought to her STAGE-1 BODY (its south-east walk's first frame covers as
     much as stage 1's); the game still scales her sprite by her stage (Defs.NB "stages" scale: x1.15, x1.3), so stage 2 is
     drawn 1.15x and stage 3 1.3x her stage-1 body, whatever size ChatGPT drew them (no double scaling).
 
 SHEETS
-  viper_<d>_chatgpt.png (d = se, s, e, ne, n): rows slither 6, spit 6, death 5 or 6 (N: all 6 kept).
-  young_tyrant_se_chatgpt.png: rows run 6, bite 6, death 5 (SOUTH-EAST ONLY: the game shows it in every view until the
-    owner's young_tyrant_<d>_chatgpt.png come; picked up by name).
-  hooded_serpent_slither_se_composed.png: the owner's composite, 6 cells of 470 x 560 (cut by cell: the tail fan is a
-    separate piece); hooded_serpent_spit_se_chatgpt.png (6); hooded_serpent_death_se_chatgpt.png (5). South-east only
-    (hooded_serpent_<d>_... picked up later by name).
+  young_tyrant_<d>_chatgpt.png (d = se, s, e, ne, n): rows run 6 (the SE legs weak), bite 6, death 5. The N sheet is weak
+    (from behind every frame nearly the same); used anyway.
+  venom_challenger_<d>_chatgpt.png (rows walk, spit, death), picked up by name when the owner's come; until then the
+    VENOM SIRE's own sheets (tools/import_brood_fathers.py: walk and spit in every view, his death) at VENOM_SCALE: a
+    stand-in (docs/art_style_inconsistency.md).
   brood_mother_stage<N>_se_walk_swipe_death_chatgpt.png: walk 6, swipe 6 (its frame 3 has a paw growing out of her back:
     dropped, frame 2 held twice), death 5; brood_mother_stage<N>_se_nest_chatgpt.png: rooting 5, rooted loop 4 (stage 3:
     5), laying 6, uprooting 5. The other views (walk and swipe S, E, NE, N) are her stage-1 frames (the same body size):
     stand-ins until the owner's sheets come.
-Portraits: crops of the concepts' heads until the owner's portraits come (<kind>_portrait_chatgpt.png, by name).
-Prints, for Defs.NB / BroodNew: each stage's rooted art bottom from her feet (nest_y) and where her last laying frame draws
-the new egg (lay_egg).
+Portraits: the owner's <kind>_portrait_chatgpt.png when it comes; until then a crop of the concept's head (the Tyrant
+Challenger) or the Venom Sire's portrait (the Venom Challenger).
+Prints, for Defs.NB / BroodMature: each stage's rooted art bottom from her feet (nest_y) and where her last laying frame
+draws the new egg (lay_egg).
 """
 import os
 import sys
@@ -43,17 +42,14 @@ from scipy import ndimage
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import import_art as ia  # noqa: E402
 import import_brood_new as ibn  # noqa: E402
+import import_brood_fathers as ibf  # noqa: E402
 
 R = ibn.R
 DIRS = ["se", "s", "e", "ne", "n"]
-VIPER_E_W = 34.0
 TYRANT_H = 42.0
-SERPENT_LONG = 3.0
-SERPENT_CELL = (470, 560)
+VENOM_SCALE = 0.58
 # concept heads for the stand-in portraits (x0, y0, x1, y1 on the sheet)
-HEADS = {"viper": ("viper_concept_chatgpt.png", (1125, 175, 1290, 340)),
-         "young_tyrant": ("young_tyrant_concept_chatgpt.png", (430, 300, 620, 490)),
-         "hooded_serpent": ("hooded_serpent_concept2_chatgpt.png", (835, 175, 1015, 355))}
+HEADS = {"tyrant_challenger": ("young_tyrant_concept_chatgpt.png", (430, 300, 620, 490))}
 
 
 def have(f):
@@ -101,31 +97,9 @@ def feet_all(small):
                 ibn.FEET[(key, k)] = body_feet(im)
 
 
-# ------------------------------------------------------------------ the Viper
+# ------------------------------------------------------------------ the Tyrant Challenger
 
-def viper(stand_ins):
-    small = {}
-    cut = {d: rows_of(f"viper_{d}_chatgpt.png") for d in DIRS if have(f"viper_{d}_chatgpt.png")}
-    ref = cut["e"][0][0] if "e" in cut else cut["se"][0][0]
-    base = VIPER_E_W / ref.shape[1]
-    A = body_area(ref) * base * base
-    for d, rows in cut.items():
-        sc = (A / body_area(rows[0][0])) ** 0.5
-        for name, ri in (("walk", 0), ("attack", 1), ("death", 2)):
-            if ri < len(rows):
-                small[(name, d)] = shrink_all(rows[ri], sc)
-        small[("idle", d)] = small[("walk", d)][:1]
-        print(f"  viper {d}: scale {sc:.4f}")
-    for d in DIRS:
-        if d not in cut:
-            stand_ins.append(f"viper {d.upper()}: the nearest drawn view until viper_{d}_chatgpt.png")
-    feet_all(small)
-    return small
-
-
-# ------------------------------------------------------------------ the Young Tyrant
-
-def young_tyrant(stand_ins):
+def tyrant_challenger(stand_ins):
     small = {}
     rows = rows_of("young_tyrant_se_chatgpt.png")
     sc = TYRANT_H / rows[0][0].shape[0]
@@ -145,63 +119,44 @@ def young_tyrant(stand_ins):
                     small[(name, d)] = shrink_all(r2[ri], s2)
             small[("idle", d)] = small[("walk", d)][:1]
         else:
-            stand_ins.append(f"young tyrant {d.upper()}: the south-east frames (game fallback) until {f}")
-    stand_ins.append("young tyrant run SE: the owner's sheet's legs are weak (as he said); kept until a redraw")
+            stand_ins.append(f"tyrant challenger {d.upper()}: the south-east frames (game fallback) until {f}")
+    stand_ins.append("tyrant challenger run SE: the owner's sheet's legs are weak (as he said); kept until a redraw")
+    stand_ins.append("tyrant challenger N: the owner's weak sheet (from behind, frames nearly the same); used as drawn")
     feet_all(small)
     return small
 
 
-# ------------------------------------------------------------------ the Hooded Serpent
+# ------------------------------------------------------------------ the Venom Challenger
 
-def cells(f, cw, ch):
-    """A composite sheet cut by its cells (each cell's drawing, all its pieces)."""
-    px = ia.load(R + f)
-    fg = ibn.key_mask(px)
-    out = []
-    for i in range(px.shape[1] // cw):
-        m = np.zeros_like(fg)
-        m[:ch, i * cw:(i + 1) * cw] = fg[:ch, i * cw:(i + 1) * cw]
-        lab, n = ndimage.label(m)
-        if n:
-            sz = ndimage.sum(m, lab, range(1, n + 1))
-            keep = np.zeros(n + 1, bool)
-            keep[1:] = sz >= 40           # (specks out)
-            m = keep[lab]
-        if m.any():
-            out.append(ia.cutout(px, ibn._piece(m)))
-    print(f"  {f}: {len(out)} cells")
-    return out
-
-
-def one_row(f):
-    px, rows = ibn.sheet_rows(f)
-    sprites = sorted([s for r in rows for s in r], key=lambda s: s["cx"])
-    print(f"  {f}: {len(sprites)} frames")
-    return [ia.cutout(px, s) for s in sprites]
-
-
-def diag(im):
-    ys, xs = np.nonzero(im[..., 3] > 0)
-    return float(np.hypot(xs.max() - xs.min() + 1, ys.max() - ys.min() + 1))
-
-
-def hooded_serpent(stand_ins, viper_small):
+def venom_challenger(stand_ins):
+    """The owner's venom_challenger_<d>_chatgpt.png (walk, spit, death) when they come; else the Venom Sire's frames at
+    VENOM_SCALE (his walk, spit and death; not his nest)."""
+    own = {d: f"venom_challenger_{d}_chatgpt.png" for d in DIRS if have(f"venom_challenger_{d}_chatgpt.png")}
     small = {}
-    sl = cells("hooded_serpent_slither_se_composed.png", *SERPENT_CELL)
-    want = SERPENT_LONG * diag(viper_small[("walk", "se")][0])
-    sc = want / diag(sl[0])
-    small[("walk", "se")] = shrink_all(sl, sc)
-    small[("idle", "se")] = small[("walk", "se")][:1]
-    A = body_area(small[("walk", "se")][0])
-    for name, f in (("attack", "hooded_serpent_spit_se_chatgpt.png"), ("death", "hooded_serpent_death_se_chatgpt.png")):
-        fr = one_row(f)
-        s2 = (A / body_area(fr[0])) ** 0.5
-        small[(name, "se")] = shrink_all(fr, s2)
-        print(f"  hooded_serpent {name}: scale {s2:.4f}")
-    print(f"  hooded_serpent: slither scale {sc:.4f} (diagonal {want:.0f} px, the Viper's x{SERPENT_LONG})")
-    for d in DIRS[1:]:
-        stand_ins.append(f"hooded serpent {d.upper()}: the south-east frames (game fallback) until the owner's {d.upper()} sheets")
-    feet_all(small)
+    if "se" in own:
+        rows = rows_of(own["se"])
+        sire_w = ibf.TARGET_W["dilophosaurus"] * VENOM_SCALE
+        sc = sire_w / rows[0][0].shape[1]
+        for d, f in own.items():
+            r2 = rows if d == "se" else rows_of(f)
+            s2 = sc if d == "se" else (body_area(small[("walk", "se")][0]) / body_area(r2[0][0])) ** 0.5
+            for name, ri in (("walk", 0), ("attack", 1), ("death", 2)):
+                if ri < len(r2):
+                    small[(name, d)] = shrink_all(r2[ri], s2)
+            small[("idle", d)] = small[("walk", d)][:1]
+        feet_all(small)
+        return small
+    tw = ibf.TARGET_W["dilophosaurus"]
+    ibf.TARGET_W["dilophosaurus"] = tw * VENOM_SCALE
+    try:
+        sire = ibf.dilophosaurus([])
+    finally:
+        ibf.TARGET_W["dilophosaurus"] = tw
+    for (a, d), lst in sire.items():
+        if a in ("walk", "attack", "idle", "death"):
+            small[(a, d)] = lst
+    # (his nest frames dropped; their feet entries too: assemble lines up only what it is given)
+    stand_ins.append("venom challenger: the Venom Sire's walk, spit and death at %d%% until venom_challenger_<d>_chatgpt.png" % int(VENOM_SCALE * 100))
     return small
 
 
@@ -311,6 +266,11 @@ def portrait(kind, stand_ins):
         ibn.PORTRAIT[kind] = f
         ibn.portrait(kind)
         return
+    if kind not in HEADS:
+        import shutil
+        shutil.copy(f"{ia.OUT}/icons/dilophosaurus.png", f"{ia.OUT}/icons/{kind}.png")
+        stand_ins.append(f"{kind} portrait: the Venom Sire's until {f}")
+        return
     src, (x0, y0, x1, y1) = HEADS[kind]
     px = ia.load(R + src)
     crop = px[y0:y1, x0:x1].astype(np.uint8)
@@ -328,26 +288,20 @@ def main():
     only = sys.argv[sys.argv.index("--only") + 1] if "--only" in sys.argv else ""
     stand_ins = []
     data = {}
-    vs = None
-    todo = ["viper", "young_tyrant", "hooded_serpent", "brood_mother_2", "brood_mother_3"]
+    todo = ["tyrant_challenger", "venom_challenger", "brood_mother_2", "brood_mother_3"]
     for name in todo:
-        if only and name != only and not (only == "hooded_serpent" and name == "viper"):
+        if only and name != only:
             continue
         print(name)
         ibn.FEET.clear()
-        if name == "viper":
-            small = viper(stand_ins)
-            vs = small
-        elif name == "young_tyrant":
-            small = young_tyrant(stand_ins)
-        elif name == "hooded_serpent":
-            small = hooded_serpent(stand_ins, vs)
+        if name == "tyrant_challenger":
+            small = tyrant_challenger(stand_ins)
+        elif name == "venom_challenger":
+            small = venom_challenger(stand_ins)
         else:
             s1 = mother_stage1()
             ibn.FEET.clear()
             small = mother_stage(int(name[-1]), s1, stand_ins)
-        if only and name != only:
-            continue
         ibn.assemble(name, small, data)
         ibn.write_entry(name, data[name])
         if not name.startswith("brood_mother"):

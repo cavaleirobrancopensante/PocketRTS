@@ -449,7 +449,7 @@ static func _specials(kind: String, d: Dictionary, st: Dictionary) -> Array:
 		"great_winder":
 			add.call("WIND / MEND / SWEEP", Loc.t("No weapon: it winds, mends and sweeps wrecks into cogs."))
 	if d.get("venom", false):
-		add.call("VENOM", Loc.t("Its venom strips 2 armour for %.1f s; ground units only.") % float(d.get("acid", 1.5)) \
+		add.call("VENOM", Loc.t("Its venom strips 2 armour for %.1f s; ground units only." if d.get("ground_only", false) else "Its venom strips 2 armour for %.1f s.") % float(d.get("acid", 1.5)) \
 			+ ((" " + Loc.t("Half the blow splashes on enemies within %.1f tiles of its target.") % (float(d.get("splash", 0)) / Defs.TILE)) if float(d.get("splash", 0)) > 0.0 else ""))
 	if BroodMature.mature_of(kind) != "":
 		var mk := BroodMature.mature_of(kind)

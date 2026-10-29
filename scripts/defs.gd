@@ -1161,7 +1161,7 @@ const UNITS := {
 		"name": "Venom Sire", "hp": 650, "armor": 1, "speed": 78, "cost": 150, "time": 30.0, "supply": 4,
 		"sight": 9, "range": 140, "damage": 20, "cooldown": 1.6, "aim": 0.4, "radius": 22, "from": "brood_mother",
 		"acid": 4.0, "anti_air": true, "building_bonus": 1.2, "faction": "brood", "new_brood": true, "father": true,
-		"about": "A FATHER, open from the start: rooted on his nest beside the Brood Mother, he fertilises the eggs of his line (Spitters from her stage 2, Mist Toads from stage 3). Uprooted he walks and SPITS venom from afar (on flyers too), a strong Spitter of his own. Only one at a time.",
+		"about": "A FATHER, open from the start: rooted on his nest beside the Brood Mother, he fertilises the eggs of his line (Spitters from the start, Mist Toads from her stage 3). Uprooted he walks and SPITS venom from afar (on flyers too), a strong Spitter of his own. Only one at a time.",
 	},
 	"pterodactyl": {
 		"tags": ["armored"],
@@ -1170,15 +1170,22 @@ const UNITS := {
 		"air": true, "anti_air": true, "faction": "brood", "new_brood": true, "father": true,
 		"about": "A FLYING FATHER, unlocked when the Brood Mother reaches stage 2. Uprooted he flies and DIVES to bite, on the ground and in the air. ROOT: he lands on a nest beside her and fertilises the eggs of his line (Skywings, from her stage 3); landed he is a ground creature anything can hit. Only one at a time.",
 	},
-	# YOUNG AND MATURE (the owner, 2026-10-29 12:40-12:45; scripts/brood_mature.gd, docs/brood_new.md "Young and mature";
-	# numbers: Claude's choice): a young unit MATURES on its card (MATURE) into its mature form: the Raptor into the YOUNG
-	# TYRANT (never laid).
-	"young_tyrant": {
+	# YOUNG AND MATURE (the owner, 2026-10-29 12:40-14:40; scripts/brood_mature.gd, docs/brood_new.md "Young and mature";
+	# numbers: Claude's choice): a young unit MATURES on its card (MATURE) into its mature form, a young Sire (a
+	# CHALLENGER): the Raptor into the TYRANT CHALLENGER, the Spitter into the VENOM CHALLENGER. Never laid.
+	"tyrant_challenger": {
 		"tags": ["light"],
-		"name": "Young Tyrant", "hp": 130, "armor": 1, "speed": 92, "cost": 100, "cost2": 10, "time": 18.0, "supply": 2,
+		"name": "Tyrant Challenger", "hp": 130, "armor": 1, "speed": 92, "cost": 100, "cost2": 10, "time": 18.0, "supply": 2,
 		"sight": 7, "range": 26, "damage": 15, "cooldown": 1.3, "aim": 0.2, "radius": 14, "from": "brood_mother",
 		"building_bonus": 1.3, "faction": "brood", "mature": true, "plain_attack": true,
-		"about": "A Raptor grown into a young tyrannosaur: a medium all-round biter, tougher than a Raptor, lighter and faster than a Brute. Never laid: a Raptor MATURES into it (the Brood Mother at stage 2).",
+		"about": "A Raptor grown into a young Tyrant Sire: a medium all-round biter, tougher than a Raptor, lighter and faster than a Brute. Never laid: a Raptor MATURES into it (the Brood Mother at stage 2).",
+	},
+	"venom_challenger": {
+		"tags": ["armored"],
+		"name": "Venom Challenger", "hp": 220, "armor": 1, "speed": 58, "cost": 150, "cost2": 20, "time": 22.0, "supply": 2,
+		"sight": 9, "range": 180, "damage": 18, "cooldown": 2.0, "aim": 0.4, "radius": 16, "from": "brood_mother",
+		"acid": 4.0, "splash": 24, "anti_air": true, "venom": true, "plain_attack": true, "faction": "brood", "mature": true,
+		"about": "A Spitter grown into a young Venom Sire: a heavier venom glob than a Spitter's, a little farther, that strips armour and splashes a little round its target; it reaches flyers too. Tougher and slower than a Spitter. Never laid: a Spitter MATURES into it (the Brood Mother at stage 2).",
 	},
 	"brood_egg": {
 		"tags": ["light"],
@@ -1890,24 +1897,22 @@ const NB := {
 	# stage AND its Sire rooted beside her). The Spore Mother and the Stormcaller are retired; the Bloater is out.
 	"lines": {"tyrannosaur": ["raptor", "brute"], "dilophosaurus": ["spitter", "mist_toad"], "pterodactyl": ["skywing"]},
 	"father_stage": {"tyrannosaur": 0, "dilophosaurus": 0, "pterodactyl": 1},
-	"unit_stage": {"raptor": 0, "spitter": 1, "brute": 2, "mist_toad": 2, "skywing": 2, "young_tyrant": 1},
+	"unit_stage": {"raptor": 0, "spitter": 0, "brute": 2, "mist_toad": 2, "skywing": 2,
+		"tyrant_challenger": 1, "venom_challenger": 1},
 	# YOUNG AND MATURE (the owner, 12:40; scripts/brood_mature.gd): the Mother lays only the young; a young unit MATURES
 	# (MATURE on its card) into its mature form once she is at the mature form's stage ("unit_stage"; its Sire is not
 	# needed): it pays the mature form's price less its own share of its egg, MOULTS for "moult" s (it can't move or
 	# fight), then it is the mature unit (its veterancy and health share kept). young -> mature.
-	"mature": {"raptor": "young_tyrant"},
+	"mature": {"raptor": "tyrant_challenger", "spitter": "venom_challenger"},
 	"moult": 9.0,
 	# COMING (the owner, 12:20 to 12:45; not in the game yet): their place in the lines, their stage and, for a MATURE
 	# form (YOUNG AND MATURE, 12:40: eggs lay only the young; a MATURE button turns a young unit into it at its stage),
 	# the young unit it grows from. A kind here moves to "lines" and "unit_stage" when it is built. The mature Pterodactyl
 	# replaces the Skywing (its id must differ from the Storm Sire's "pterodactyl"); the Dread Croc is dropped.
 	# ([kind, stage (-1: to confirm), young form])
-	# (the Young Tyrant is in since 0.17.0: "unit_stage", "mature". The VENOM LINE's young and mature pair is a generic
-	# slot, "venom_young" / "venom_mature", until the owner settles it (14:34: a young Venom Sire look; the Viper and the
-	# Hooded Serpent are parked: NB_PARKED). When they come: their entries in UNITS, the young in "lines" and both in
-	# "unit_stage", the pair in "mature"; no code change.)
-	"lines_later": {"dilophosaurus": [["venom_young", 0, ""], ["venom_mature", 1, "venom_young"]],
-		"pterodactyl": [["hatchlings", 1, ""], ["mature_pterodactyl", 2, "hatchlings"]]},
+	# (the Tyrant and Venom Challengers are in since 0.17.0: "unit_stage", "mature"; the owner, 14:40: the Spitter is the
+	# Venom line's young, from stage 1; the Viper and the Hooded Serpent are dropped, their sheets kept in art/redraws)
+	"lines_later": {"pterodactyl": [["hatchlings", 1, ""], ["mature_pterodactyl", 2, "hatchlings"]]},
 	# where the eggs in each father's nest lie, from his feet (art px, measured by the importers on his rooted frame)
 	"nest_at": {"tyrannosaur": [26, 2], "dilophosaurus": [23, 3], "pterodactyl": [39, -16]},
 	# ROOTED = A BUILDING (the owner's playtest of 0.15.13, 19:19; scripts/brood_root.gd): the footprint each creature
@@ -1923,31 +1928,6 @@ const NB := {
 	# (BroodRoot.drop) so that bottom touches the footprint's bottom edge, as a building stands on its tiles.
 	# (her stage-2 and stage-3 art, "brood_mother_2" / "_3", tools/import_brood_mature.py, by art key)
 	"nest_y": {"brood_mother": -8, "brood_mother_2": -15, "brood_mother_3": -9, "rootmaw": -1, "tyrannosaur": 26, "mound_turtle": 0, "dilophosaurus": 21, "pterodactyl": 9},
-}
-
-
-## THE VIPER AND THE HOODED SERPENT, PARKED (the owner, 2026-10-29 14:34: HOLD them; the Venom line's young and mature
-## pair is to be a young Venom Sire look instead, not settled yet). Built and tested in 0.17.0's work, then parked: their
-## entries live here, out of Defs.UNITS, and nothing lays them; their sheets stay in art/redraws/ and
-## tools/import_brood_mature.py imports them only with --venom-snakes. To bring them back: move these entries into UNITS,
-## put "viper" in NB "lines" (dilophosaurus) and "unit_stage", and {"viper": "hooded_serpent"} in NB "mature", and run
-## the importer with --venom-snakes. The code needs no change: a "venom" unit spits (BroodMature.venom_shot, a splash
-## if it has "splash"), "plain_attack" plays its attack strip.
-const NB_PARKED := {
-	"viper": {
-		"tags": ["light"],
-		"name": "Vipers", "hp": 45, "armor": 0, "speed": 96, "cost": 60, "time": 11.0, "supply": 1, "spawn": 2,
-		"sight": 8, "range": 120, "damage": 6, "cooldown": 1.4, "aim": 0.25, "radius": 8, "from": "brood_mother",
-		"acid": 1.5, "ground_only": true, "venom": true, "plain_attack": true, "faction": "brood",
-		"about": "Fast venomous snakes, the Brood's first ranged unit: they spit venom at ground units only (not at flyers), shorter than a Spitter. Two hatch from each egg. Each MATURES into a Hooded Serpent once the Brood Mother is at stage 2.",
-	},
-	"hooded_serpent": {
-		"tags": ["armored"],
-		"name": "Hooded Serpent", "hp": 160, "armor": 1, "speed": 62, "cost": 130, "cost2": 15, "time": 20.0, "supply": 2,
-		"sight": 9, "range": 165, "damage": 16, "cooldown": 2.2, "aim": 0.4, "radius": 14, "from": "brood_mother",
-		"acid": 3.0, "splash": 28, "ground_only": true, "venom": true, "plain_attack": true, "faction": "brood", "mature": true,
-		"about": "A Viper grown into a great hooded serpent: a heavy venom glob that splashes a little round its target and strips armour, nearly a Spitter's reach, at ground units only; slower than a Viper. Never laid: a Viper MATURES into it (the Brood Mother at stage 2).",
-	},
 }
 
 
@@ -2118,7 +2098,8 @@ const TIPS := {
 	"bloater": "Floating acid sac: spits from afar until its gas runs out. On HOLD GAS it drifts in to burst as a huge acid bomb.",
 	"skywing": "Flying, it hunts flyers with spines. LAND it to bite ground units (then anything can hit it).",
 	"mist_toad": "Swamp caster. FOG makes shots miss half the time; TONGUE drags an enemy to its feet. Weak in a fight.",
-	"young_tyrant": "A matured Raptor: a medium all-round biter between the Raptor and the Brute.",
+	"tyrant_challenger": "A matured Raptor, a young Tyrant Sire: a medium all-round biter between the Raptor and the Brute.",
+	"venom_challenger": "A matured Spitter, a young Venom Sire: a heavier glob than a Spitter's, a little farther, with a small splash.",
 	# Crown buildings
 	"town_hall": "Trains Labourers. Allows 2 Farms and 1 Powder Mill nearby; its soil and saltpetre run out in time.",
 	"horse_breeder": "Trains horses: 40 gold and 15 s each, no supply; RALLY sends them on. Unlocks Horsemen; cavalry, guns and wagons need its horses. Build as many as you like, anywhere. Two openings: Powder Mill first for Musketeers, or Horse Breeder first for a Horseman rush.",

@@ -399,7 +399,7 @@ func _nb_lay(q: Unit) -> void:
 
 
 ## Which warrior egg: a mix by the fathers rooted beside her (each line only while its father is there) and by her
-## stage (the owner's tiers, 12:20: Raptors from the start, Spitters at stage 2, Brutes, Mist Toads and Skywings at
+## stage (the owner's tiers, 12:20 and 14:40: Raptors and Spitters from the start, Brutes, Mist Toads and Skywings at
 ## stage 3). Raptors are the base; Spitters about one egg in three behind them; a Brute now and then; a Mist Toad per
 ## 12 army supply (up to 3); Skywings when the enemy flies (or as one egg in five).
 func _nb_warrior(gold: int) -> String:
@@ -429,26 +429,11 @@ func _nb_warrior(gold: int) -> String:
 	var keep := float(Defs.NB["stages"][2]["cost2"]) if st == 1 and game.clock >= 360.0 else 0.0      # (her stage 3 needs essence: kept for it)
 	if dilo and essence >= 5.0 + keep and gold >= 90 and (not trex or spitters * 3 < raptors + 3):
 		return "spitter"
-	# THE VENOM SIRE'S YOUNG (the line's young unit, whatever the owner settles on: Defs.NB "lines" and "mature"; none
-	# yet): a ranged share behind the Raptors, fewer once Spitters come
-	var vsire := BroodNew.father_near(game, team, BroodNew.DILO)
-	var vy := _young_of_line(BroodNew.DILO, st)
-	var vn := BroodNew.count_of(game, team, vy) if vy != "" else 0
-	if vy != "" and vsire and gold >= int(Defs.UNITS[vy]["cost"]) and (not trex or vn * (3 if dilo else 2) < raptors + 2):
-		return vy
 	if trex:
 		return "brute" if brutes_ok and essence >= 20.0 and gold >= 180 and randi() % 3 == 0 else "raptor"
-	if vsire:
-		return "spitter" if dilo and essence >= 5.0 else vy
+	if dilo:
+		return "spitter"
 	return "skywing" if ptero else ""
-
-
-## A father's line's YOUNG unit open at stage st (one with a mature form; not the Raptor: the base of its own line), or "".
-func _young_of_line(f: String, st: int) -> String:
-	for k in Defs.NB["lines"].get(f, []):
-		if k != "raptor" and BroodMature.mature_of(String(k)) != "" and st >= BroodNew.unit_stage(String(k)):
-			return String(k)
-	return ""
 
 
 ## MATURE (YOUNG AND MATURE, scripts/brood_mature.gd): when food piles up (more than MATURE_FOOD unspent, not saving
