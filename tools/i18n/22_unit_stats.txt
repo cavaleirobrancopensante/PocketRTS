@@ -437,9 +437,9 @@ es Volando solo alcanza voladores; ATERRIZADO muerde unidades en tierra (y cualq
 pt Feitiço (%d de energia): tiros de dentro ou para dentro da névoa erram metade das vezes.
 es Hechizo (%d de energía): los disparos desde o hacia la niebla fallan la mitad de las veces.
 
-> Spell (%d energy): marks one enemy for %d s, then drags it to the Toad.
-pt Feitiço (%d de energia): marca um inimigo por %d s e depois o arrasta até o Sapo.
-es Hechizo (%d de energía): marca a un enemigo durante %d s y luego lo arrastra hasta el Sapo.
+> Spell (%d energy): marks one enemy (a flyer too) for %d s, then drags it to the Toad; heavy units, the Brood Mother and the fathers are only staggered.
+pt Feitiço (%d de energia): marca um inimigo (um voador também) por %d s e depois o arrasta até o Sapo; unidades pesadas, a Mãe da Ninhada e os pais só cambaleiam.
+es Hechizo (%d de energía): marca a un enemigo (también a un volador) durante %d s y luego lo arrastra hasta el Sapo; las unidades pesadas, la Madre de la Nidada y los padres solo se tambalean.
 
 > Spell: stuns everything inside for %.1f s, friends too; no damage.
 pt Feitiço: atordoa tudo lá dentro por %.1f s, aliados também; sem dano.

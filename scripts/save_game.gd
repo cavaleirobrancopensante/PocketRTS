@@ -176,6 +176,8 @@ static func capture(game: Game, cfg: Dictionary) -> Dictionary:
 			ud["owl"] = snappedf(u.owl_t, 0.01)      # (a Swift turning into a Ticking Owl, paid)
 		if u.net_t > 0.0:
 			ud["net"] = snappedf(u.net_t, 0.01)      # (caught in a Netter's net)
+		if u.stun_left() > 0.0:
+			ud["stun"] = [snappedf(u.stun_t, 0.01), snappedf(u.stun_left(), 0.01)]      # (stunned, with its stars: StunMark)
 		if u.kind == Defs.BALLISTA_KIND and u.cooldown > 0.0:
 			ud["rl"] = snappedf(u.cooldown, 0.01)    # (a Spring Ballista's spring still being wound)
 		if u.crew_of != null and ids.has(u.crew_of):
@@ -511,6 +513,8 @@ static func restore(game: Game, d: Dictionary) -> void:
 		u.auto_refit = bool(ud.get("ar", false))
 		u.owl_t = float(ud.get("owl", -1.0)) if uk == Defs.CUCKOO else -1.0
 		u.net_t = float(ud.get("net", 0.0))
+		if ud.get("stun") is Array and (ud["stun"] as Array).size() >= 2:
+			u.stun(float(ud["stun"][0]), true, game.clock + float(ud["stun"][1]))
 		if u.net_t > 0.0:
 			u.stun_t = maxf(u.stun_t, u.net_t)      # (still caught: it stays put; a flyer is down on the ground)
 			u._low = 1.0 if u.d.get("air", false) else 0.0

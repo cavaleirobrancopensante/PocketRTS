@@ -106,7 +106,7 @@ static func catch(o: Unit, by: Entity, dmg: float) -> void:
 	var t := float(Defs.NET["time"])
 	var fresh := o.net_t <= 0.0
 	o.net_t = maxf(o.net_t, t)
-	o.stun_t = maxf(o.stun_t, t)
+	o.stun(t, false)      # (the net shows itself: no stun stars on a netted unit, StunMark)
 	o.phase = ""
 	o.velocity = Vector2.ZERO
 	o.nets_taken += 1

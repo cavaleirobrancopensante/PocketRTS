@@ -2030,9 +2030,9 @@ es Ningún Ornitóptero de aquí lleva una batería.
 pt Ninguém aqui pode lançar isso.
 es Nadie de aquí puede lanzar eso.
 
-> Pick an enemy unit on the ground (not a building or a flyer).
-pt Escolha uma unidade inimiga no chão (não um prédio nem um voador).
-es Elige una unidad enemiga en tierra (no un edificio ni un volador).
+> Pick an enemy unit (on the ground or a flyer; not a building).
+pt Escolha uma unidade inimiga (no chão ou um voador; não um prédio).
+es Elige una unidad enemiga (en tierra o un volador; no un edificio).
 
 > A Mist Toad is aiming its tongue at your %s: move it away or stun the Toad!
 pt Um Sapo da Névoa está mirando a língua em seu(sua) %s: afaste-o ou atordoe o Sapo!

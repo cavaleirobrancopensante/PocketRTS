@@ -1,0 +1,4 @@
+# The stun mark (scripts/stun_mark.gd): the unit card's status line while a real stun lasts
+> STUNNED: %s s (it cannot move or fight)
+pt ATORDOADO: %s s (não pode se mover nem lutar)
+es ATURDIDO: %s s (no puede moverse ni luchar)

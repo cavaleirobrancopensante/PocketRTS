@@ -283,6 +283,9 @@ func _ready() -> void:
 	body_bars.z_index = 1
 	body_bars.draw.connect(_draw_body_bars)
 	add_child(body_bars)
+	stun_layer = StunMark.new()          # the stars over stunned units' heads (scripts/stun_mark.gd)
+	stun_layer.game = self
+	add_child(stun_layer)
 	overlay = Node2D.new()
 	overlay.z_index = 50
 	overlay.draw.connect(_draw_overlay)
@@ -7954,7 +7957,7 @@ func tongue_order(list: Array, e) -> void:
 	if toads.is_empty():
 		return
 	if not (e is Unit) or not toads[0].can_tongue(e):
-		tell(toads[0].team, "Pick an enemy unit on the ground (not a building or a flyer).")
+		tell(toads[0].team, "Pick an enemy unit (on the ground or a flyer; not a building).")
 		return
 	var best: Unit = null
 	var bd := INF
@@ -8093,7 +8096,8 @@ func _tick_zones(delta: float) -> void:
 			for u in units_near(p, r + 20.0):
 				if u.dead or u.off_field or not in_ellipse(p, u.position, r + u.radius):
 					continue
-				u.stun_t = maxf(u.stun_t, 0.2)
+				# (topped up every tick while it stands in the storm: its mark lasts to the storm's end, StunMark)
+				u.stun(0.2, true, clock + maxf(float(z["t"]) - float(z["age"]), 0.0) + 0.2)
 				u.phase = ""
 				var c = z["caster"]
 				if u != c and float(Defs.STORM["dps"]) > 0.0:
@@ -9230,6 +9234,7 @@ func on_high(p: Vector2) -> bool:
 
 var _human_vis := PackedByteArray()
 var body_bars: Node2D
+var stun_layer: StunMark = null        # the stun marks (StunMark)
 var bodies: Array = []                   # the fallen still lying there (Unit._rest_in_peace)
 var _body_bar_t := 0.0
 

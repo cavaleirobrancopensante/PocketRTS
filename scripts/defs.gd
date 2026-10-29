@@ -1181,7 +1181,7 @@ const UNITS := {
 		"name": "Mist Toad", "hp": 90, "armor": 0, "speed": 42, "cost": 100, "cost2": 25, "time": 22.0, "supply": 3,
 		"sight": 9, "range": 24, "damage": 4, "cooldown": 1.6, "aim": 0.3, "radius": 14, "from": "hive",
 		"requires": "gorge_pit", "faction": "brood",
-		"about": "Slow, fragile swamp caster with only a weak lick. Its energy (fills over time, faster on swamp) pays for two spells. FOG lays a swamp fog bank: shots fired from or into it miss half the time, and units inside see only 2 tiles. TONGUE marks one enemy for 3 s (they see the crosshair), then drags it to the Toad's feet; heavy engines are only staggered.",
+		"about": "Slow, fragile swamp caster with only a weak lick. Its energy (fills over time, faster on swamp) pays for two spells. FOG lays a swamp fog bank: shots fired from or into it miss half the time, and units inside see only 2 tiles. TONGUE marks one enemy for 3 s (they see the crosshair), then drags it to the Toad's feet, a flyer too (through the air, to just over the Toad); heavy engines, the Brood Mother and the fathers are only staggered (stunned 1 s).",
 	},
 	"ornithopter": {
 		"tags": ["light"],
@@ -1911,14 +1911,16 @@ const TOAD := {"max": 150.0, "fill": 1.5, "swamp": 2.0, "start": 75.0}
 ## attacks (range 100+) fired from inside it or into it miss `miss` of the time, and units
 ## inside see only `sight` tiles. It hides everyone, friend or foe.
 const FOG := {"cost": 50.0, "range": 224.0, "radius": 96.0, "time": 12.0, "miss": 0.5, "sight": 2, "cast": 0.6}
-## TONGUE: one enemy ground unit within `range` px is marked for `windup` s (its owner sees
+## TONGUE: one enemy unit (on the ground or a flyer) within `range` px is marked for `windup` s (its owner sees
 ## the crosshair); the windup breaks if the Toad is stunned, killed or moved more than
 ## `moved` px, or the target gets beyond `break` x the range. Then the tongue lashes out
 ## (`lash` s) and drags it to the Toad's feet over `pull` s, stunned meanwhile (and `after` s
 ## more). Heavy units (supply `heavy`+ or tagged massive, like the Steam Walker) can't be
-## pulled: they're staggered (stunned `stagger` s). The energy is spent when the windup starts.
+## pulled: they're staggered (stunned `stagger` s); so are the kinds in `no_pull` and every Brood father (Defs "father":
+## owner, 2026-10-29: the Toad can't pull the Tyrannosaur, a father or the Brood Mother). A flyer is pulled through the
+## air to just over the Toad (`over` px from its middle) and stays in the air. The energy is spent when the windup starts.
 const TONGUE := {"cost": 75.0, "range": 224.0, "windup": 3.0, "break": 1.5, "moved": 12.0, "lash": 0.15,
-	"pull": 0.6, "after": 0.3, "stagger": 1.0, "heavy": 5}
+	"pull": 0.6, "after": 0.3, "stagger": 1.0, "heavy": 5, "no_pull": ["brood_mother", "tyrannosaur"], "over": 6.0}
 const CANISTER := {"range": 150.0, "damage": 18.0, "cooldown": 3.6, "cone": 0.82, "vs_light": 1.5}
 ## Round shot: the ball tears through a line of men past where it lands (bonus against
 ## armour); only a little splash where it hits.

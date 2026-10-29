@@ -3077,6 +3077,8 @@ func _draw_panel(font: Font) -> void:
 				info = "Charge %d%%: it runs down away from a field and shuts down when empty." % int((e as Unit).wind * 100)
 			if uu.net_t > 0.0:
 				info = "CAUGHT IN A NET: %d s (it cannot move or fight)" % int(ceil(uu.net_t))      # (a Netter's: scripts/netter.gd)
+			elif uu.stun_left() > 0.0:
+				info = "STUNNED: %s s (it cannot move or fight)" % ("%.1f" % uu.stun_left())      # (a real stun's stars: scripts/stun_mark.gd)
 			if uu.hold_fire and not uu.has_pistol():
 				info = "HOLD FIRE · " + info      # (the pistol's own line says it)
 			if not uu.led.is_empty():

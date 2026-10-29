@@ -135,6 +135,7 @@ var died_at := 0.0              # (a body) the game clock when it fell
 var final_death := false        # (a body) fell under the cross: it can't be raised again
 var knock := Vector2.ZERO       # being shoved back
 var stun_t := 0.0
+var stun_end := 0.0             # the game clock when a REAL stun's mark goes (StunMark: the stars over its head; 0: none)
 var _sep_n := 0
 var _hash_i := 0                # (its place in game.units at the last grid rebuild: Game._near_foe's tie-break)
 var _grid_p := Vector2.INF      # (where it stood at the last grid rebuild: Game._rebuild_hash)
@@ -507,6 +508,7 @@ func revive() -> void:
 	cross_t = float(Defs.REVIVE["cross"])
 	acid_t = 0.0
 	stun_t = 0.0
+	stun_end = 0.0
 	slow_t = 0.0
 	knock = Vector2.ZERO
 	velocity = Vector2.ZERO
@@ -2022,12 +2024,14 @@ func _cast(delta: float) -> Vector2:
 ## flyer, nor one being bandaged or riding in a balloon.)
 func can_tongue(e) -> bool:
 	return e is Unit and is_instance_valid(e) and not e.dead and not e.off_field and e.aboard == null \
-		and not e.is_air() and game.hostile(e.team, team) and e.is_inside_tree()
+		and game.hostile(e.team, team) and e.is_inside_tree()      # (flyers too, owner 2026-10-29)
 
 
-## Heavy units can't be pulled, only staggered: supply TONGUE.heavy and up, or tagged massive.
+## Heavy units can't be pulled, only staggered: supply TONGUE.heavy and up, or tagged massive; nor the Brood Mother and
+## the fathers (TONGUE "no_pull", Defs "father"). Flyers follow the same rule.
 static func too_heavy(e: Unit) -> bool:
-	return int(e.d["supply"]) >= int(Defs.TONGUE["heavy"]) or e.has_tag("massive")
+	return int(e.d["supply"]) >= int(Defs.TONGUE["heavy"]) or e.has_tag("massive") or Defs.TONGUE["no_pull"].has(e.kind) \
+		or bool(e.d.get("father", false))
 
 
 ## TONGUE: walk into range of `e`, then mark it (the windup) and drag it in.
@@ -2108,7 +2112,7 @@ func _tongue_tick(delta: float) -> void:
 			if tongue_t <= 0.0:
 				game.tongue_hit(self, e)
 				if too_heavy(e):
-					e.stun_t = maxf(e.stun_t, float(Defs.TONGUE["stagger"]))
+					e.stun(float(Defs.TONGUE["stagger"]))
 					e.phase = ""
 					tongue_stage = "recoil"
 					tongue_t = 0.15
@@ -2116,7 +2120,7 @@ func _tongue_tick(delta: float) -> void:
 					tongue_stage = "pull"
 					tongue_t = float(Defs.TONGUE["pull"])
 					_pull_from = e.position
-					e.stun_t = maxf(e.stun_t, float(Defs.TONGUE["pull"]) + float(Defs.TONGUE["after"]))
+					e.stun(float(Defs.TONGUE["pull"]) + float(Defs.TONGUE["after"]))
 					e.phase = ""
 					e.target = null
 					e.path = PackedVector2Array()
@@ -2136,8 +2140,12 @@ func _tongue_tick(delta: float) -> void:
 			var dir := (_pull_from - position).normalized()
 			if dir == Vector2.ZERO:
 				dir = facing
-			var feet := position + dir * (radius + e.radius + 4.0)
-			e.position = game.resolve_terrain(_pull_from.lerp(feet, f), e.position, e.radius, e.team)
+			if e.is_air():
+				# a flyer: through the air (no cliffs in its way) to just over the Toad, still flying
+				e.position = _pull_from.lerp(position + dir * float(Defs.TONGUE["over"]), f)
+			else:
+				var feet := position + dir * (radius + e.radius + 4.0)
+				e.position = game.resolve_terrain(_pull_from.lerp(feet, f), e.position, e.radius, e.team)
 			game.note_move(e)
 			e.velocity = Vector2.ZERO
 			if tongue_t <= 0.0:
@@ -3223,12 +3231,37 @@ func _overload(_delta: float) -> Vector2:
 	return (c.position - position).normalized() * speed
 
 
+## Stunned for `t` s: it cannot move or fight (a stun never shortens one it already has). `show`: a REAL stun (a
+## Mist Toad's tongue, a Cavalry charge's knock, a Stormcaller's storm) shows the stars over its head (StunMark) for
+## everyone who can see it, if it lasts at least StunMark.MIN_SHOW s; internal holds (a run-down construct standing
+## still) pass false. `until`: the game clock the mark lasts to, for a stun topped up every tick (the storm's end).
+func stun(t: float, show := true, until := -1.0) -> void:
+	stun_t = maxf(stun_t, t)
+	if not show or dead:
+		return
+	var end := until if until > 0.0 else game.clock + t
+	if until <= 0.0 and t < StunMark.MIN_SHOW:
+		return
+	if end > stun_end:
+		stun_end = end
+	StunMark.add(game, self)
+
+
+## How long the stun mark has left (0: none; a netted unit shows its net instead). On a guest or a replay the mark
+## lasts by the host's clock alone (stun_t isn't sent).
+func stun_left() -> float:
+	if dead or net_t > 0.0 or stun_end <= 0.0 or (stun_t <= 0.0 and not game.puppet):
+		return 0.0
+	return maxf(stun_end - game.clock, 0.0)
+
+
 ## A construct takes an Ornithopter's battery: overloaded (faster, harder hitting, quicker
 ## to strike), fully wound; when it burns out it's left with little charge.
 func overclock(by: Unit) -> void:
 	overclock_t = float(Defs.OVERLOAD["time"])
 	wind = 1.0
 	stun_t = 0.0
+	stun_end = 0.0
 	game.spawn_effect("zap_burst_y" if ArtData.EFFECTS.has("zap_burst_y") else "hit", center(), 1.2)
 	Sfx.play_any(["combat/tesla_attack", "zap"], position)
 	if team == game.human:
@@ -3541,7 +3574,7 @@ func _tick_unit(delta: float) -> void:
 		# out of charge: it shuts down where it stands, like a statue, until a field
 		# reaches it or a Winder winds it up again
 		if powered_down():
-			stun_t = maxf(stun_t, 0.25)
+			stun(0.25, false)      # (an internal hold, not a stun: no stars)
 			phase = ""
 			target = null
 		if d.has("regen") and hp < max_hp:
@@ -4818,7 +4851,7 @@ func _strike(e: Entity) -> void:
 			if charged and e is Unit and not e.dead and not e.is_air():
 				var heavy: float = 0.4 if int(e.d["supply"]) >= 3 else 1.0
 				e.knock = (e.position - position).normalized() * float(Defs.CHARGE["force"]) * heavy
-				e.stun_t = float(Defs.CHARGE["stun"]) * heavy
+				e.stun(float(Defs.CHARGE["stun"]) * heavy)
 				e.phase = ""
 				game.spawn_effect("dust", e.position, 1.4).scale = Vector2(0.6, 0.6)
 			Sfx.play_any(["combat/%s_attack" % kind, {"raptor": "bite", "brute": "bite", "grub": "bite", "thresher": "gear_hit", "bulwark": "gear_hit", "windup_soldier": "clash", "winder": "gear_hit"}.get(kind, "clash")], position)
@@ -7527,6 +7560,33 @@ func _draw_haul(ci: CanvasItem) -> void:
 		ci.draw_rect(Rect2(kp + Vector2(-4, -10), Vector2(8, 10)), Color(0.45, 0.28, 0.12))
 
 
+## Where its health bar goes, over its drawn body (unit space; up is negative): over the picture as drawn now, the
+## Swift's bird, a raised Tesla coil, a rooted new-Brood creature. `lifted`: how high a Springer is in the air. The
+## stun mark (StunMark) sits over it.
+func bar_top(lifted := 0.0) -> float:
+	var top := -float(ArtData.UNITS[art]["anchor"].y) * float(d.get("art_scale", 1.0)) - 4.0 - lifted
+	if Defs.FLYER.has(kind):
+		top = -float(Defs.FLYER[kind]["bar"])       # (the Swift and the Owl: just over the drawn bird, not its shadow or cell)
+	if kind == "mortar":
+		top = -50.0
+	elif kind == "mist_toad":
+		top = -ToadHop.BAR_TOP      # (over the crouched toad, not the hop's tall cell)
+	elif kind == "tesla_cart" and tesla_mode != "packed":
+		top = -70.0    # above the raised coil's sparks (the packed body: the anchor height)
+	elif kind == "cannon":
+		top = -64.0 if not ArtData.UNITS["cannon"]["frames"].has("walk_e") else -float(ArtData.UNITS[kind]["anchor"].y) * 0.75
+	if _k_nb and BroodNew.ROOTERS.has(kind):
+		# (the new Brood's rooting creatures: their rooted pictures and the Mother's growth stages are not their walk sheet's
+		# size: the bar and the labels go just over the body as drawn now, BroodRoot.body_rect; steady within 14 px)
+		var br := BroodRoot.body_rect(self)
+		if br.size.x > 2.0:
+			var bt := br.position.y - global_position.y - 2.0
+			if absf(bt - _nb_top) > 14.0:
+				_nb_top = bt
+			top = _nb_top
+	return top
+
+
 func _draw() -> void:
 	var _p0 := Time.get_ticks_usec()
 	_draw_unit()
@@ -7564,26 +7624,7 @@ func _draw_unit() -> void:
 		draw_set_transform(Vector2.ZERO)
 	if haul_t >= 0.0 and kind == "balloon" and _haul_node == null:
 		_draw_haul(self)
-	var top := -float(ArtData.UNITS[art]["anchor"].y) * float(d.get("art_scale", 1.0)) - 4.0 - lifted
-	if Defs.FLYER.has(kind):
-		top = -float(Defs.FLYER[kind]["bar"])       # (the Swift and the Owl: just over the drawn bird, not its shadow or cell)
-	if kind == "mortar":
-		top = -50.0
-	elif kind == "mist_toad":
-		top = -ToadHop.BAR_TOP      # (over the crouched toad, not the hop's tall cell)
-	elif kind == "tesla_cart" and tesla_mode != "packed":
-		top = -70.0    # above the raised coil's sparks (the packed body: the anchor height)
-	elif kind == "cannon":
-		top = -64.0 if not ArtData.UNITS["cannon"]["frames"].has("walk_e") else -float(ArtData.UNITS[kind]["anchor"].y) * 0.75
-	if _k_nb and BroodNew.ROOTERS.has(kind):
-		# (the new Brood's rooting creatures: their rooted pictures and the Mother's growth stages are not their walk sheet's
-		# size: the bar and the labels go just over the body as drawn now, BroodRoot.body_rect; steady within 14 px)
-		var br := BroodRoot.body_rect(self)
-		if br.size.x > 2.0:
-			var bt := br.position.y - global_position.y - 2.0
-			if absf(bt - _nb_top) > 14.0:
-				_nb_top = bt
-			top = _nb_top
+	var top := bar_top(lifted)
 	var bw := radius * 2.4
 	if kind != BroodNew.PILE:
 		draw_health(top, bw, true)

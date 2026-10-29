@@ -6771,7 +6771,8 @@ func _spells() -> void:
 ## Mist Toad: TONGUE drags a high-value target (guns, casters, a Missionary) into the swarm,
 ## once our army is close enough to eat it; FOG goes down on an enemy firing line while our
 ## army is engaging it. It keeps the energy for a TONGUE when there's a prize about.
-const TONGUE_PRIZES := ["cannon", "mortar", "stormcaller", "tesla_cart", "arc_thrower", "missionary", "spore_mother"]
+const TONGUE_PRIZES := ["cannon", "mortar", "stormcaller", "tesla_cart", "arc_thrower", "missionary", "spore_mother",
+	"balloon", "ornithopter", "skywing"]      # (flyers too since 0.15.23: a Balloon, an Ornithopter, a Skywing pulled into the swarm)
 
 
 func _toad(u: Unit) -> void:

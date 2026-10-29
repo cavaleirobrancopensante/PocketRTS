@@ -424,7 +424,7 @@ static func _specials(kind: String, d: Dictionary, st: Dictionary) -> Array:
 			add.call("SPINES / BITE", Loc.t("Flying it hits only flyers; LANDED it bites ground units (and anything can hit it)."))
 		"mist_toad":
 			add.call("FOG", Loc.t("Spell (%d energy): shots from or into the fog miss half the time.") % int(Defs.FOG["cost"]))
-			add.call("TONGUE", Loc.t("Spell (%d energy): marks one enemy for %d s, then drags it to the Toad.") % [int(Defs.TONGUE["cost"]), int(Defs.TONGUE["windup"])])
+			add.call("TONGUE", Loc.t("Spell (%d energy): marks one enemy (a flyer too) for %d s, then drags it to the Toad; heavy units, the Brood Mother and the fathers are only staggered.") % [int(Defs.TONGUE["cost"]), int(Defs.TONGUE["windup"])])
 		"stormcaller":
 			add.call("STORM", Loc.t("Spell: stuns everything inside for %.1f s, friends too; no damage.") % float(Defs.STORM["time"]))
 		"thresher":
