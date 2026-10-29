@@ -27,7 +27,9 @@ extends SceneTree
 ##     bottom edge (the Mother at stages 1 and 3), the selection frame under its pictures, no jump when it roots (the
 ##     drop eased over the rooting frames), the father's nest point and the ghost's picture moved with the art
 ##  18. THE THREE FATHERS (the owner, 2026-10-29 11:10): the lines (Tyrannosaur: Raptor, Brute; Dilophosaurus:
-##     Spitter, Mist Toad; Pterodactyl: Skywing; no Bloater), each father locked until her stage (the reason names it),
+##     Spitter, Mist Toad; Pterodactyl: Skywing; no Bloater), THE TIERS (the owner, 12:20: the Tyrant and Venom Sires
+##     from the start, the Storm Sire at her stage 2; Raptors at stage 1, Spitters 2, Brutes, Mist Toads, Skywings 3;
+##     the reasons name the stage), each father
 ##     made from a grub (a cocoon that opens rooted beside her), one of each (the morphing grub counts), her card's
 ##     refusals name the right father, each line's eggs go to its own father's nest and are fertilised all at once
 ##     there, the pheromones of three fathers stack, the Pterodactyl a ground structure rooted (a Musketeer can shoot
@@ -180,7 +182,7 @@ func _run() -> void:
 	p["gold"] = 2000
 	p["res2"] = 200.0
 	check(BroodNew.lay_problem(g, q, "raptor").contains("Tyrant Sire"), "3. no father: a Raptor's egg is refused (%s)" % BroodNew.lay_problem(g, q, "raptor"))
-	check(BroodNew.lay_problem(g, q, "spitter").contains("Venom Sire"), "   a Spitter's egg is in the new Brood too, fathered by the Dilophosaurus (%s)" % BroodNew.lay_problem(g, q, "spitter"))
+	check(BroodNew.lay_problem(g, q, "spitter") == "Needs the Brood Mother at stage 2.", "   a Spitter's egg waits for her stage 2 (the owner's tiers: %s)" % BroodNew.lay_problem(g, q, "spitter"))
 	check(not BroodNew.hatch_list().has("spore_mother") and BroodNew.hatch_list().has("spitter"), "   on her card: Spitters, not the retired Spore Mother")
 	var far := spot_near(q.position, 20.0)
 	var f: Unit = g._add_unit(BroodNew.FATHER, 0, far)
@@ -1148,13 +1150,24 @@ func _fathers(q: Unit, p: Dictionary) -> void:
 	var l_d0 := BroodRoot.morph_problem(g, 0, BroodNew.DILO)
 	var l_p0 := BroodRoot.morph_problem(g, 0, BroodNew.PTERO)
 	var l_t0 := BroodRoot.morph_problem(g, 0, BroodNew.FATHER)
+	q.nb["eggs"] = BroodNew.eggs_max(q)
+	var tiers := {}
+	for st in 3:
+		q.nb["stage"] = st
+		for k in ["raptor", "spitter", "brute", "mist_toad", "skywing"]:
+			tiers["%s%d" % [k, st]] = BroodNew.lay_problem(g, q, k).begins_with("Needs the Brood Mother at stage")
 	q.nb["stage"] = 1
-	var l_d1 := BroodRoot.morph_problem(g, 0, BroodNew.DILO)
 	var l_p1 := BroodRoot.morph_problem(g, 0, BroodNew.PTERO)
+	q.nb["stage"] = 0
+	var why_b := BroodNew.lay_problem(g, q, "brute")
 	q.nb["stage"] = st0
-	check(l_t0 == "" and l_d0 == "Needs the Brood Mother at stage 2." and l_p0 == "Needs the Brood Mother at stage 3.", "    stage 1: the Tyrannosaur only (%s / %s)" % [l_d0, l_p0])
-	check(l_d1 == "" and l_p1 == "Needs the Brood Mother at stage 3.", "    stage 2: the Dilophosaurus too; the Pterodactyl: %s" % l_p1)
-	check(st0 == 2 and BroodRoot.morph_problem(g, 0, BroodNew.PTERO) == "", "    stage 3: all three")
+	check(l_t0 == "" and l_d0 == "" and l_p0 == "Needs the Brood Mother at stage 2.", "    stage 1: the Tyrant and Venom Sires open, the Storm Sire locked (%s)" % l_p0)
+	check(l_p1 == "", "    stage 2: the Storm Sire too")
+	check(not tiers["raptor0"] and tiers["spitter0"] and tiers["brute0"] and tiers["mist_toad0"] and tiers["skywing0"]
+		and not tiers["spitter1"] and tiers["brute1"] and tiers["mist_toad1"] and tiers["skywing1"]
+		and not tiers["brute2"] and not tiers["mist_toad2"] and not tiers["skywing2"] and why_b == "Needs the Brood Mother at stage 3.",
+		"    the warriors' tiers: Raptors at stage 1, Spitters 2, Brutes, Mist Toads, Skywings 3 (a Brute at stage 1: %s)" % why_b)
+	check(st0 == 2 and BroodRoot.morph_problem(g, 0, BroodNew.PTERO) == "", "    stage 3: all three Sires")
 	# her card's refusals name the right father
 	q.nb["eggs"] = BroodNew.eggs_max(q)
 	var w_r := BroodNew.lay_problem(g, q, "raptor")

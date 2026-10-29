@@ -1153,7 +1153,7 @@ const UNITS := {
 		"name": "Tyrant Sire", "hp": 1000, "armor": 2, "speed": 64, "cost": 200, "time": 35.0, "supply": 4,
 		"sight": 9, "range": 40, "damage": 42, "cooldown": 1.9, "aim": 0.35, "radius": 30, "from": "brood_mother",
 		"building_bonus": 1.4, "faction": "brood", "new_brood": true, "father": true,
-		"about": "A FATHER: rooted on his nest beside the Brood Mother, he breathes on the eggs of his line (Raptors, Brutes) to fertilise them; an egg no father reaches in time hatches as a grub. Only one at a time. A terrible biter, but away from her no Raptors or Brutes are fathered.",
+		"about": "A FATHER, open from the start: rooted on his nest beside the Brood Mother, he breathes on the eggs of his line (Raptors; Brutes from her stage 3) to fertilise them; an egg no father reaches in time hatches as a grub. Only one at a time. A terrible biter, but away from her no Raptors or Brutes are fathered.",
 	},
 	# THE SECOND AND THIRD FATHERS (the owner, 2026-10-29 11:10: the father lines; numbers: Claude's choice, docs/brood_new.md)
 	"dilophosaurus": {
@@ -1161,14 +1161,14 @@ const UNITS := {
 		"name": "Venom Sire", "hp": 650, "armor": 1, "speed": 78, "cost": 150, "cost2": 25, "time": 30.0, "supply": 4,
 		"sight": 9, "range": 140, "damage": 20, "cooldown": 1.6, "aim": 0.4, "radius": 22, "from": "brood_mother",
 		"acid": 4.0, "anti_air": true, "building_bonus": 1.2, "faction": "brood", "new_brood": true, "father": true,
-		"about": "A FATHER, unlocked when the Brood Mother reaches stage 2: rooted on his nest beside her, he fertilises the eggs of his line (Spitters, Mist Toads). Uprooted he walks and SPITS venom from afar (on flyers too), a strong Spitter of his own. Only one at a time.",
+		"about": "A FATHER, open from the start: rooted on his nest beside the Brood Mother, he fertilises the eggs of his line (Spitters from her stage 2, Mist Toads from stage 3). Uprooted he walks and SPITS venom from afar (on flyers too), a strong Spitter of his own. Only one at a time.",
 	},
 	"pterodactyl": {
 		"tags": ["armored"],
 		"name": "Storm Sire", "hp": 700, "armor": 1, "speed": 110, "cost": 200, "cost2": 50, "time": 40.0, "supply": 4,
 		"sight": 10, "range": 30, "damage": 30, "cooldown": 1.7, "aim": 0.3, "radius": 26, "from": "brood_mother",
 		"air": true, "anti_air": true, "faction": "brood", "new_brood": true, "father": true,
-		"about": "A FLYING FATHER, unlocked when the Brood Mother reaches stage 3. Uprooted he flies and DIVES to bite, on the ground and in the air. ROOT: he lands on a nest beside her and fertilises the eggs of his line (Skywings); landed he is a ground creature anything can hit. Only one at a time.",
+		"about": "A FLYING FATHER, unlocked when the Brood Mother reaches stage 2. Uprooted he flies and DIVES to bite, on the ground and in the air. ROOT: he lands on a nest beside her and fertilises the eggs of his line (Skywings, from her stage 3); landed he is a ground creature anything can hit. Only one at a time.",
 	},
 	"brood_egg": {
 		"tags": ["light"],
@@ -1873,11 +1873,17 @@ const NB := {
 	"maw_crew": 6, "pile_crew": 4,
 	"haul_speed": 0.5,                           # HAUL: the full Rootmaw walks at half speed
 	"pile_rot": 0.6,                             # food a pile loses a second
-	# THE FATHERS (the owner, 2026-10-29 11:10: FATHER LINES), in order, and the warriors each fathers; one of each at a
-	# time, made from grubs; "father_stage": the Mother's growth stage (0 = stage 1) that unlocks each. The Spore Mother
-	# and the Stormcaller are retired; the Bloater is out of the new Brood (its replacement comes later).
+	# THE FATHERS (the owner, 2026-10-29 11:10: FATHER LINES; shown as the Tyrant, Venom and Storm Sires, 12:06), in
+	# order, and the warriors each fathers; one of each at a time, made from grubs. THE TIERS (the owner, 12:20): each
+	# Sire and each warrior is unlocked by the Mother's growth stage (0 = stage 1): "father_stage" for the Sires (the
+	# Tyrant and Venom Sires from the start, the Storm Sire at stage 2), "unit_stage" for the warriors (an egg needs its
+	# stage AND its Sire rooted beside her). The Spore Mother and the Stormcaller are retired; the Bloater is out.
 	"lines": {"tyrannosaur": ["raptor", "brute"], "dilophosaurus": ["spitter", "mist_toad"], "pterodactyl": ["skywing"]},
-	"father_stage": {"tyrannosaur": 0, "dilophosaurus": 1, "pterodactyl": 2},
+	"father_stage": {"tyrannosaur": 0, "dilophosaurus": 0, "pterodactyl": 1},
+	"unit_stage": {"raptor": 0, "spitter": 1, "brute": 2, "mist_toad": 2, "skywing": 2},
+	# COMING (the owner is designing them; not in the game yet): their place in the lines and their stage, for when they
+	# come (a kind here is added to "lines" and "unit_stage" then). The new pterosaur replaces the Skywing.
+	"lines_later": {"tyrannosaur": [["dread_croc", 1]], "dilophosaurus": [["viper", 0]], "pterodactyl": [["hatchling_swarm", 1], ["new_pterosaur", 2]]},
 	# where the eggs in each father's nest lie, from his feet (art px, measured by the importers on his rooted frame)
 	"nest_at": {"tyrannosaur": [26, 2], "dilophosaurus": [23, 3], "pterodactyl": [39, -16]},
 	# ROOTED = A BUILDING (the owner's playtest of 0.15.13, 19:19; scripts/brood_root.gd): the footprint each creature

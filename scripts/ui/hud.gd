@@ -1459,7 +1459,7 @@ func _nb_buttons(list: Array, units: Array) -> void:
 			var gwhy := BroodNew.grow_problem(game, q)
 			_tip_for["GROW"] = ["Grow (stage %d)" % (st + 2), "She grows bigger: up to %d eggs, laying %d%% faster (stage x%.1f), but a bigger, slower target with a wider swamp. Rooted only; %d s, and she lays no eggs meanwhile (uprooting stops it and pays it back). %s" % [
 				int(nx["eggs"]), int(round((float(nx["rate"]) / float(stages[st]["rate"]) - 1.0) * 100.0)), float(nx["rate"]), int(nx["time"]),
-				"Unlocks the %s (a grub's BUILD): %s." % [Defs.UNITS[BroodNew.FATHERS[mini(st + 1, 2)]]["name"], ", ".join((Defs.NB["lines"][BroodNew.FATHERS[mini(st + 1, 2)]] as Array).map(func(w): return Defs.train_name(w)))]]]
+				Loc.t("Unlocks: %s.") % BroodNew.unlocks_text(st + 1)]]
 			list.append(["broodmound", "GROW", func() -> void:
 				for u in game.selected_units():
 					if u.kind == BroodNew.QUEEN and u.team == game.human:

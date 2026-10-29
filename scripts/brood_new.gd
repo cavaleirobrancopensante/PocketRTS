@@ -63,6 +63,23 @@ static func father_stage(k: String) -> int:
 	return int((Defs.NB["father_stage"] as Dictionary).get(k, 0))
 
 
+## What her stage st (0 = stage 1) unlocks (her GROW tooltip): the Sires a grub turns into, the warriors she lays.
+static func unlocks_text(st: int) -> String:
+	var out: Array = []
+	for f in FATHERS:
+		if father_stage(f) == st:
+			out.append(Loc.t(String(Defs.UNITS[f]["name"])) + " " + Loc.t("(a grub's BUILD)"))
+	for k in Defs.NB["unit_stage"]:
+		if int(Defs.NB["unit_stage"][k]) == st:
+			out.append(Loc.t(Defs.train_name(k)))
+	return ", ".join(out)
+
+
+## The Mother's growth stage (0 = stage 1) a warrior's egg needs (the owner's tiers, 12:20), as well as its Sire.
+static func unit_stage(k: String) -> int:
+	return int((Defs.NB["unit_stage"] as Dictionary).get(k, 0))
+
+
 ## The father a warrior needs ("" for none: grubs, Rootmaws, the fathers themselves).
 static func father_of(k: String) -> String:
 	for f in Defs.NB["lines"]:
@@ -420,6 +437,8 @@ static func lay_problem(g: Game, q: Unit, k: String) -> String:
 	if int(q.nb.get("eggs", 0)) < 1:
 		return "No eggs ready."
 	var u: Dictionary = Defs.UNITS[k]
+	if stage(q) < unit_stage(k):
+		return "Needs the Brood Mother at stage %d." % (unit_stage(k) + 1)       # (the tiers, the owner 12:20)
 	var f := father_of(k)
 	if f != "" and not father_near(g, q.team, f):
 		return "Needs the %s rooted beside the Brood Mother." % Defs.UNITS[f]["name"]

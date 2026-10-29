@@ -342,7 +342,7 @@ func _fixes2() -> void:
 	await wait(3.5)
 	q.nb["eggs"] = 8
 	q.cmd_lay("raptor")
-	q.cmd_lay("brute")
+	q.cmd_lay("raptor")
 	q.cmd_lay("raptor")
 	await wait(3.6)
 	g.set_selection([f])

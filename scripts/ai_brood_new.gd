@@ -46,6 +46,7 @@ func _tick_ai(delta: float) -> void:
 	_nb_father(q)
 	_nb_morphs(q)
 	_nb_lay(q)
+	_nb_essence(q)
 	_nb_army(q)
 	if difficulty >= 1:
 		_spells()           # (the Mist Toads' FOG and TONGUE, as the old Brood's computer: AI._toad)
@@ -295,17 +296,71 @@ func _nb_one_father(q: Unit, f: Unit) -> void:
 
 # ------------------------------------------------------------------ eggs
 
-## GROW her when food piles up (more than the next stage's price and a reserve), not before about 4:30 (stage 2) and
-## 8:00 (stage 3), and not while enemies are at her.
+## GROW her (the owner's tiers, 12:20: Spitters need her stage 2; Brutes, Mist Toads and Skywings stage 3, the Storm
+## Sire stage 2): from about 3:30 (stage 2) and 7:00 (stage 3) it SAVES for it (_nb_saving_growth: no warrior eggs
+## meanwhile) and grows her once the price and a reserve are there; never while enemies are at her.
 func _nb_grow(q: Unit) -> void:
 	if BroodNew.grow_problem(game, q) != "" or _nb_threat(q) != Vector2.INF:
 		return
 	var st := BroodNew.stage(q)
 	var nx: Dictionary = Defs.NB["stages"][st + 1]
-	if game.clock < (270.0 if st == 0 else 480.0):
+	if game.clock < (210.0 if st == 0 else 420.0):
 		return
-	if int(game.players[team]["gold"]) >= int(nx["cost"]) + 150:
+	if int(game.players[team]["gold"]) >= int(nx["cost"]) + 100:
 		BroodNew.grow(game, q)
+
+
+## Saving food for her next stage: past its time, not grown yet, nothing at her, and the essence for it there (or
+## coming: _nb_essence).
+func _nb_saving_growth(q: Unit) -> bool:
+	var st := BroodNew.stage(q)
+	if st >= (Defs.NB["stages"] as Array).size() - 1 or float(q.nb.get("grow_t", 0.0)) > 0.0 or _nb_threat(q) != Vector2.INF:
+		return false
+	if game.clock < (210.0 if st == 0 else 420.0):
+		return false
+	var nx: Dictionary = Defs.NB["stages"][st + 1]
+	return int(game.players[team]["gold"]) < int(nx["cost"]) + 100 and float(game.players[team]["res2"]) >= float(nx["cost2"])
+
+
+## ESSENCE (her stage 3, the Venom and Storm Sires, the warriors that cost it): grubs HARVEST the bodies near home
+## (two at most, while there are bodies); with none, a spare grub is offered up at the Mother (SACRIFICE: a third of its
+## food as essence, and an egg back), one every 12 s at most, while the essence wanted is short.
+var _nb_offer_t := 0.0
+
+
+func _nb_essence(q: Unit) -> void:
+	var st := BroodNew.stage(q)
+	var want := 0.0
+	if BroodNew.count_of(game, team, BroodNew.DILO) == 0:
+		want = maxf(want, float(Defs.UNITS[BroodNew.DILO].get("cost2", 0)))
+	if st == 1:
+		want = maxf(want, float(Defs.NB["stages"][2]["cost2"]) + 10.0)
+		if BroodNew.count_of(game, team, BroodNew.PTERO) == 0:
+			want = maxf(want, float(Defs.UNITS[BroodNew.PTERO].get("cost2", 0)) + 10.0)
+	elif st >= 2:
+		want = 60.0
+	var have := float(game.players[team]["res2"])
+	var grubs := _nb_mine("grub")
+	var bodies := game.corpses.filter(func(c) -> bool: return is_instance_valid(c) and c.position.distance_to(q.position) < 22.0 * Defs.TILE)
+	var harvesting := grubs.filter(func(u: Unit) -> bool: return u.order == "harvest")
+	if not bodies.is_empty() and _nb_threat(q) == Vector2.INF:
+		for u in grubs:
+			if harvesting.size() >= 2:
+				break
+			if u.order == "gather" and u.carrying == 0 and not harvesting.has(u):
+				u.cmd_harvest()
+				harvesting.append(u)
+	elif bodies.is_empty():
+		for u in harvesting:
+			if u.cocoon <= 0.0:
+				u.cmd_stop()          # (no bodies left: back to work, WORK finds it a Rootmaw)
+	if have >= want or not bodies.is_empty() or game.clock < _nb_offer_t or grubs.size() < 14:
+		return
+	for u in grubs:
+		if u.order == "gather" and u.carrying == 0 and u.can_sacrifice():
+			u.cmd_sacrifice()
+			_nb_offer_t = game.clock + 12.0
+			return
 
 
 ## Her eggs: grubs and warriors only (the structure-units come from grubs: _nb_morphs).
@@ -321,9 +376,10 @@ func _nb_lay(q: Unit) -> void:
 	# saving up for a structure-unit the economy needs: no warriors meanwhile
 	var saving := _nb_short() or (BroodNew.count_of(game, team, BroodNew.MAW) < 2)
 	var any_father := BroodNew.FATHERS.any(func(f) -> bool: return BroodNew.father_near(game, team, f))
+	var growing := _nb_saving_growth(q)       # (saving for her next stage: grubs as needed, no warriors)
 	if grubs < want_grubs and (grubs < 8 or not any_father or gold < 200):
 		k = "grub"
-	elif any_father and not (saving and gold < 250):
+	elif any_father and not (saving and gold < 250) and not growing:
 		k = _nb_warrior(gold)
 	if k == "" or BroodNew.lay_problem(game, q, k) != "":
 		if k != "grub" and grubs < want_grubs and BroodNew.lay_problem(game, q, "grub") == "":
@@ -335,14 +391,19 @@ func _nb_lay(q: Unit) -> void:
 	BroodNew.lay(game, q, k)
 
 
-## Which warrior egg: a mix by the fathers rooted beside her (each line only while its father is there). Raptors are
-## the base; Spitters about one egg in three behind them; a Brute now and then; a Mist Toad per 12 army supply (up to
-## 3); Skywings when the enemy flies (or as one egg in five).
+## Which warrior egg: a mix by the fathers rooted beside her (each line only while its father is there) and by her
+## stage (the owner's tiers, 12:20: Raptors from the start, Spitters at stage 2, Brutes, Mist Toads and Skywings at
+## stage 3). Raptors are the base; Spitters about one egg in three behind them; a Brute now and then; a Mist Toad per
+## 12 army supply (up to 3); Skywings when the enemy flies (or as one egg in five).
 func _nb_warrior(gold: int) -> String:
+	var q := BroodNew.queen(game, team)
+	var st := BroodNew.stage(q) if q else 0
 	var essence := float(game.players[team]["res2"])
 	var trex := BroodNew.father_near(game, team, BroodNew.FATHER)
-	var dilo := BroodNew.father_near(game, team, BroodNew.DILO)
-	var ptero := BroodNew.father_near(game, team, BroodNew.PTERO)
+	var dilo := BroodNew.father_near(game, team, BroodNew.DILO) and st >= BroodNew.unit_stage("spitter")
+	var ptero := BroodNew.father_near(game, team, BroodNew.PTERO) and st >= BroodNew.unit_stage("skywing")
+	var toads_ok := dilo and st >= BroodNew.unit_stage("mist_toad")
+	var brutes_ok := trex and st >= BroodNew.unit_stage("brute")
 	var raptors := BroodNew.count_of(game, team, "raptor")
 	var spitters := BroodNew.count_of(game, team, "spitter")
 	var toads := BroodNew.count_of(game, team, "mist_toad")
@@ -356,12 +417,12 @@ func _nb_warrior(gold: int) -> String:
 			foe_air += 1
 	if ptero and essence >= 40.0 and gold >= 100 and (wings < foe_air or (wings * 5 < raptors + spitters and wings < 8)):
 		return "skywing"
-	if dilo and essence >= 25.0 and gold >= 100 and toads < mini(3, army / 12):
+	if toads_ok and essence >= 25.0 and gold >= 100 and toads < mini(3, army / 12):
 		return "mist_toad"
 	if dilo and essence >= 5.0 and gold >= 90 and (not trex or spitters * 3 < raptors + 3):
 		return "spitter"
 	if trex:
-		return "brute" if essence >= 20.0 and gold >= 180 and randi() % 3 == 0 else "raptor"
+		return "brute" if brutes_ok and essence >= 20.0 and gold >= 180 and randi() % 3 == 0 else "raptor"
 	if dilo:
 		return "spitter"
 	return "skywing" if ptero else ""
