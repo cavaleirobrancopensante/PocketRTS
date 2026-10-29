@@ -109,7 +109,24 @@ Musketeer, a Challenger swooping on a Raptor, an old Skywing egg, the computer),
 (Hatchlings in place of Skywings). tools/test_stun_mark.gd pulls a Storm Challenger through the air with the Toad's
 TONGUE (was a Skywing).
 
-RESULTS_PLACEHOLDER
+Results (0.21.0): test_brood_new 0 failures (section 23: a Hatchling egg [80, 10] gives 2, with BIGGER CLUTCH [120, 15]
+gives 3; maturing [110, 25]; UPDRAFT 132 -> 152 and 120 -> 138; 4 Hatchlings kill a Swift and never target the Musketeer
+beside it; a Challenger swoops on a Raptor; the computer lays Hatchlings against 3 enemy balloons and matures them with
+no flyers about), test_unit_stats, test_files, test_i18n, test_replay, test_stun_mark: all pass.
+
+## Two computer games against the Clockwork (tools/sim_brood_new.gd, Hollowfen, seed 4242, Hard)
+
+- 12 minutes (secs:720, Balanced): the Brood reached the Mother's stage 2 but never raised the Storm Sire (he costs 50
+  spoils; it had 12 to 39 spoils all game: they go to its first research and its stage 3 savings), so no Hatchlings;
+  the Hard Clockwork built no flyers either (Clock Soldiers, Springers, Netters, Pendulums, a Ballista). No script
+  errors. The Brood was alive at 12:00 (Clockwork 129 supply, Brood 41).
+- 17 minutes (secs:1080, Economy): stage 2 at about 6:00; spoils up to 71, spent on Tyrant Challengers (MATURE),
+  BIGGER CLUTCH and PACK HUNT; then its supply sat at the 88 cap, so again no Storm Sire. The Brood lost at 17:14.
+- So **in these games the Storm line never came up**: the computer's spoils (an old open point, docs/brood_research.md
+  question 8) and its supply cap starve its third Sire, and the Hard Clockwork does not build Swifts. The computer's
+  Storm line logic is tested directly (section 23). A follow-up could have the computer raise the Storm Sire first when
+  the enemy has flyers (and keep 4 supply for him).
+
 
 ## Open questions for the owner
 
@@ -117,5 +134,6 @@ RESULTS_PLACEHOLDER
    swoop / 120. Too weak or too strong after a play?
 2. Should the Storm Challenger get a bonus against flyers (it "hunts flyers")? Not given: damage modifiers kept few.
 3. The N fly rows (beak at the bottom) against the flipped N swoop: redraw the N fly rows facing away?
-4. Should Hatchlings stay out of the computer's attack waves (they can only guard against flyers)? Today they go with
+4. The computer rarely reaches its Storm Sire (spoils, supply cap): give him priority when the enemy flies?
+5. Should Hatchlings stay out of the computer's attack waves (they can only guard against flyers)? Today they go with
    the army, which also protects it from enemy flyers.
