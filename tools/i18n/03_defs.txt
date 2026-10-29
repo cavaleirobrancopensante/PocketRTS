@@ -114,9 +114,9 @@ es Escupen ácido que quema y corroe la armadura. Nacen dos de cada huevo.
 pt Brutamontes
 es Bruto
 
-> Huge horned tank. Charges in and knocks enemies back.
-pt Enorme tanque com chifres. Avança e arremessa os inimigos para trás.
-es Enorme tanque con cuernos. Embiste y empuja a los enemigos hacia atrás.
+> Huge horned tank. Charges in, knocks enemies back and batters down walls and gates.
+pt Enorme tanque com chifres. Avança, arremessa os inimigos para trás e derruba muralhas e portões.
+es Enorme tanque con cuernos. Embiste, empuja a los enemigos hacia atrás y derriba muros y puertas.
 
 > Spore Mother
 pt Mãe de Esporos
@@ -714,9 +714,9 @@ es Lleva comida de los Fosos de Alimentación a una Madriguera (cuanto más lejo
 pt Cospe ácido que queima e corrói a armadura. Dois nascem de cada ovo.
 es Escupe ácido que quema y corroe la armadura. Nacen dos de cada huevo.
 
-> Huge horned tank: charges in and knocks enemies back.
-pt Enorme tanque com chifres: avança e arremessa os inimigos para trás.
-es Enorme tanque con cuernos: embiste y empuja a los enemigos hacia atrás.
+> Huge horned tank: charges in, knocks enemies back and batters down walls and gates.
+pt Enorme tanque com chifres: avança, arremessa os inimigos para trás e derruba muralhas e portões.
+es Enorme tanque con cuernos: embiste, empuja a los enemigos hacia atrás y derriba muros y puertas.
 
 > ROOT her to lob splashing spit blobs and spread swamp; MIASMA heals the Brood. Can't attack while walking.
 pt ENRAIZAR-a para lançar bolas de cuspe em área e espalhar pântano; MIASMA cura a Ninhada. Não ataca enquanto anda.

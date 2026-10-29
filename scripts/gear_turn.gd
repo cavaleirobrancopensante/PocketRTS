@@ -34,7 +34,7 @@ static func on(game: Game) -> bool:
 static func carriable(u: Unit) -> bool:
 	if u.dead or u.off_field or u.aboard != null or u.crew_of != null or not u.jump.is_empty() or u.is_air():
 		return false
-	if float(u.d.get("radius", 10.0)) >= float(Defs.GEAR_TURN["max_radius"]) or u.kind == "balloon":
+	if (float(u.d.get("radius", 10.0)) >= float(Defs.GEAR_TURN["max_radius"]) and u.kind != "brute") or u.kind == "balloon":     # (the Brute, radius 24 since 0.15.x, is a creature: carried)
 		return false
 	return not u._towed()
 
