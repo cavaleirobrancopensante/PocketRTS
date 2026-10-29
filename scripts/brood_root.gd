@@ -478,7 +478,7 @@ static func cocoon_tick(g: Game, u: Unit, delta: float) -> void:
 		# the lure is ripe: the Sire comes (his roar: the cue, as a building's bell)
 		var tg := float(lure_times(u.kind)[0])
 		if was < tg and float(u.nb["coc"]) >= tg and u.team == g.human:
-			Sfx.play_any(["roar", "combat/brute_attack"], u.position, -6.0)
+			Sfx.play_any(["brood/arrive_" + u.kind, "roar", "combat/brute_attack"], u.position, -6.0)     # (his own call)
 	u.hp = minf(u.max_hp, u.hp + u.max_hp * 0.85 * delta / maxf(tt, 0.1))
 	if float(u.nb["coc"]) >= tt:
 		u.nb.erase("coc")

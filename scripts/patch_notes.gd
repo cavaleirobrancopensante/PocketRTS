@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.20.3", "items": [
+		"THE BROOD'S OWN CALLS: every Brood creature answers with grunts, growls, roars and hisses cut from the designer's recordings (no words): each line its own (the Tyrant line roars, the Venom line croaks and hisses, the Storm line cries), pitched down for the big creatures and up for the small ones. The Raptor keeps its lizard voice.",
+		"Every creature has its own blows and death now: the Tyrant Challenger, the Sires, the Brood Mother, the Rootmaw, the Mound Turtle and the Mist Toad no longer clash like swords. Each spitter has its own venom hiss, the Mist Toad's TONGUE its own lash, the Brute's charge his bellow.",
+		"Each Sire roars his own call when he comes to his lure and breathes his own on the eggs; a young creature calls out as it matures; a mixed Brood group answers with a chorus of creatures.",
+	]},
 	{"v": "0.20.2", "items": [
 		"ART: the designer's icons for the Brood's research (BIGGER CLUTCH for Raptors, Spitters and Hatchlings, PACK HUNT, BATTERING HORNS, SLITHER, LONG SPIT, UPDRAFT, QUICK ROOTS, SWAMP MENDING) replace the temporary ones, in the Brood's own bronze frame.",
 		"The grub's BUILD card shows each Sire's LURE on his button: the Tyrant's red spiked lure, the Venom's dripping yellow-green one, the Storm's crest-fin in its white haze. The Sire's own portrait stays on his card.",
