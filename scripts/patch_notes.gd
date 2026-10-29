@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.20.2", "items": [
+		"THE BROOD MOTHER'S STAGES IN EVERY DIRECTION: at stage 2 and stage 3 she now walks and swipes with her own pictures facing south, east, north-east and north too (and the west views, mirrored), no longer her stage-1 frames made bigger. She keeps her size as she turns and grows only by her stage.",
+		"Her swipe from behind (north) no longer shows an odd frame of her tail and a burst of earth: her claw stays raised a moment longer and comes down as the blow lands.",
+	]},
 	{"v": "0.20.1", "items": [
 		"THE STORM SIRE FLIES IN: when his lure is ripe he now comes flying from a few tiles away, his shadow on the ground under him, glides down, brakes and lands on the lure, then eats it and stands. The same total time.",
 		"THE SIRES' EGGS take their lure's colour, faintly: the Tyrant's a faint red, the Venom's a faint yellow-green, the Storm's a faint storm-cloud white. They take it as he breathes on them; grub eggs keep their colour. The Storm Lure's haze is storm-cloud white too, no longer blue (it clashed with a blue team).",

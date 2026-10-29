@@ -26,8 +26,8 @@ SHEETS
     stand-in (docs/art_style_inconsistency.md).
   brood_mother_stage<N>_se_walk_swipe_death_chatgpt.png: walk 6, swipe 6 (its frame 3 has a paw growing out of her back:
     dropped, frame 2 held twice), death 5; brood_mother_stage<N>_se_nest_chatgpt.png: rooting 5, rooted loop 4 (stage 3:
-    5), laying 6, uprooting 5. The other views (walk and swipe S, E, NE, N) are her stage-1 frames (the same body size):
-    stand-ins until the owner's sheets come.
+    5), laying 6, uprooting 5. brood_mother_stage<N>_<d>_walk_swipe_chatgpt.png (d = s, e, ne, n; 0.20.2): walk 6,
+    swipe 6, each view at her stage-1 body in that view (mother_views); the north swipes drop frame 4 (MOTHER_DROP).
 Portraits: the owner's <kind>_portrait_chatgpt.png when it comes; until then a crop of the concept's head
 (young_tyrant_concept_chatgpt.png, venom_challenger_concept_chatgpt.png: a JPEG screenshot).
 Prints, for Defs.NB / BroodMature: each stage's rooted art bottom from her feet (nest_y) and where her last laying frame
@@ -232,11 +232,11 @@ def mother_stage(n, s1, stand_ins):
     if egg is not None and egg[2] < len(lay) - 1:
         small[("lay", "se")] = lay[:egg[2] + 1]     # (her last frame took the egg back in: end on the frame that shows it)
         print(f"  stage {n}: laying ends on frame {egg[2] + 1} (the egg out)")
-    # the other views: her stage-1 frames (the same body), stand-ins
+    # the other views: the owner's stage sheets (mother_views); a view without its sheet keeps her stage-1 frames
+    mother_views(n, s1, small, stand_ins)
     for (a, d), lst in s1.items():
         if d != "se" and (a, d) not in small:
             small[(a, d)] = lst
-    stand_ins.append(f"brood mother stage {n}: walk and swipe S, E, NE, N are her stage-1 frames (scaled by the stage) until the owner's stage-{n} sheets")
     for key in [("rooted", "se"), ("lay", "se")]:
         small[("glow_" + key[0], key[1])] = [ibn.glow_of("brood_mother", im) for im in small[key]]
     feet = ibn.anchor_of(small[("rooted", "se")][0])
@@ -244,6 +244,108 @@ def mother_stage(n, s1, stand_ins):
     if egg is not None:
         print(f"  stage {n}: lay_egg: middle ({egg[0]:.0f}, {egg[1]:.0f}), bottom {egg[4]:.0f} from her feet (BroodNew.LAY_EGG: (x, bottom))")
     return small
+
+
+def _core(im):
+    """A frame's body for lining up: the alpha opened (dust specks and thin streaks gone), its biggest piece."""
+    a = ndimage.binary_opening(im[..., 3] > 0, iterations=2)
+    lab, nn = ndimage.label(a)
+    if nn > 1:
+        sz = ndimage.sum(a, lab, range(1, nn + 1))
+        a = lab == (1 + int(np.argmax(sz)))
+    return a
+
+
+def _drop_specks(im, least=30):
+    """Clears the frame's loose pieces smaller than least px (in place)."""
+    a = im[..., 3] > 0
+    lab, nn = ndimage.label(a, structure=np.ones((3, 3)))
+    if nn > 1:
+        sz = ndimage.sum(a, lab, range(1, nn + 1))
+        for i in range(nn):
+            if sz[i] < least:
+                im[lab == i + 1] = 0
+
+
+def _shift_to(ref, im, reach=30):
+    """The (dx, dy) that lays frame im best over frame ref (both placed at their top-left): the most shared body,
+    searched round the shift that puts their bodies' feet (bottom rows) and middles together."""
+    a, b = _core(ref), _core(im)
+    ya, xa = np.nonzero(a)
+    yb, xb = np.nonzero(b)
+    gx, gy = int(round(xa.mean() - xb.mean())), int(ya.max() - yb.max())
+    P = reach + 2 + max(abs(gx), abs(gy))
+    H = max(a.shape[0], b.shape[0]) + 2 * P
+    W = max(a.shape[1], b.shape[1]) + 2 * P
+    A = np.zeros((H, W), bool)
+    A[P:P + a.shape[0], P:P + a.shape[1]] = a
+
+    def score(dx, dy):
+        B = np.zeros((H, W), bool)
+        B[P + dy:P + dy + b.shape[0], P + dx:P + dx + b.shape[1]] = b
+        return float((A & B).sum()) / float((A | B).sum())
+
+    best, at = -1.0, (gx, gy)
+    for dy in range(gy - reach, gy + reach + 1, 2):
+        for dx in range(gx - reach, gx + reach + 1, 2):
+            s = score(dx, dy)
+            if s > best:
+                best, at = s, (dx, dy)
+    x0, y0 = at
+    for dy in range(y0 - 1, y0 + 2):
+        for dx in range(x0 - 1, x0 + 2):
+            s = score(dx, dy)
+            if s > best:
+                best, at = s, (dx, dy)
+    return at
+
+
+# the swipe frame (from 0) the NORTH views drop, both stages (the owner: "a strange frame with the tail and earth":
+# frame 4, the slam, shows the tail and a dust burst oddly); frame 3 (the claw up) is held in its place, so the paw
+# comes down on frame 5, the frame the game shows when the blow lands (9 fps from the start of her 0.5 s aim: index 4)
+MOTHER_DROP = {"n": 3}
+# the swipe's slam frame (from 0) in every view's sheet: the claw strikes the ground in a dust burst
+SLAM = 3
+
+
+def mother_views(n, s1, small, stand_ins):
+    """Her S, E, NE, N walk and swipe at stage n from brood_mother_stage<n>_<d>_walk_swipe_chatgpt.png (rows: walk 6,
+    swipe 6; west views are the east ones mirrored by the game). Each view is brought to her STAGE-1 body in that view
+    (its first walk frame covers as much as stage 1's), as her south-east is: turning keeps her size as at stage 1 and
+    the game scales every view by the stage. (Matching every view to the south-east's area instead made her north and
+    south views about 1.5 times taller than the south-east: ChatGPT drew those views long.) Swipe frames are lined up
+    on their first frame's body (the raised arm and the dust burst do not move her feet)."""
+    for d in ("s", "e", "ne", "n"):
+        f = f"brood_mother_stage{n}_{d}_walk_swipe_chatgpt.png"
+        if not have(f):
+            stand_ins.append(f"brood mother stage {n} {d.upper()}: walk and swipe are her stage-1 frames until {f}")
+            continue
+        rows = rows_of(f)
+        a1 = float((s1[("walk", d)][0][..., 3] > 0).sum())
+        sc = (a1 / float((rows[0][0][..., 3] > 0).sum())) ** 0.5
+        small[("walk", d)] = shrink_all(rows[0], sc)
+        small[("idle", d)] = small[("walk", d)][:1]
+        sw = list(rows[1])
+        if d in MOTHER_DROP and len(sw) >= 6:
+            k = MOTHER_DROP[d]
+            sw[k] = sw[k - 1]
+        att = shrink_all(sw, sc)
+        for k, im in enumerate(att):
+            if k != SLAM or d in MOTHER_DROP:
+                _drop_specks(im)        # (a stray dust speck beside a frame with no burst)
+        small[("attack", d)] = att
+        # feet: across, where the frame's body lies best over the first frame's (a raised arm does not slide her);
+        # down, each frame's lowest body row (dust specks opened away), the feet on one line; the slam frame (SLAM),
+        # whose dust burst joins the claw, by its body's fit instead (its burst would lift her)
+        ax = ibn.anchor_of(att[0])[0]
+        ay = float(np.nonzero(_core(att[0]))[0].max())
+        shifts = []
+        for k, im in enumerate(att):
+            dx, dy = (0, 0) if k == 0 else _shift_to(att[0], im)
+            y = ay - dy if (k == SLAM and d not in MOTHER_DROP) else float(np.nonzero(_core(im))[0].max())
+            ibn.FEET[(("attack", d), k)] = (ax - dx, y)
+            shifts.append((dx, dy))
+        print(f"  stage {n} {d}: scale {sc:.4f}, height {small[('walk', d)][0].shape[0]}, swipe shifts {shifts}")
 
 
 def lay_egg(lay, n):
