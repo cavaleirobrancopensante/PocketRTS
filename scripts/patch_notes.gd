@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.16.1", "items": [
+		"THE VENOM SIRE'S PICTURES: the pictures that go with 0.16.0's numbers (his frames lined up on his feet, not on the venom's lowest drop, so he no longer floats over his shadow while he spits). 0.16.0 shipped with the previous cut.",
+	]},
 	{"v": "0.16.0", "items": [
 		"THE NEW BROOD (EXPERIMENT): THREE FATHERS, the SIRES, each fathering his own line, and TIERS by the Brood Mother's growth stage. The TYRANT SIRE (the Tyrannosaur) and the VENOM SIRE (a lean Dilophosaurus) are open from the start; the STORM SIRE (a Pterodactyl) at her stage 2. Her warriors: Raptors (Tyrant) from the start; Spitters (Venom) at stage 2; Brutes (Tyrant), Mist Toads (Venom) and Skywings (Storm) at stage 3. One of each Sire at a time, each made from a grub (its BUILD menu); anything locked is greyed with the reason, \"Needs the Brood Mother at stage 2\". The Bloater is out of the new Brood (more units come later).",
 		"THE MOTHER'S CARD offers every line; a warrior's egg is laid only with ITS father rooted beside her, and the refusal names him (\"Needs the Venom Sire rooted beside the Brood Mother\"). Each line's eggs roll into their own father's nest, where he fertilises them all at once and they hatch. Each father near her adds +20% to her laying: all three, +60%. The father range ring shows for whichever father is selected or being placed. The Mist Toad's TONGUE only staggers every father.",
