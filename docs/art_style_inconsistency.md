@@ -504,6 +504,7 @@ The stars circling over a stunned unit's head are drawn in code: one 15 px five-
 - THE RESEARCH BAR over a researching Sire or the Mother (teal, with RESEARCHING · its name) is drawn in code, as her growing bar. A researching Sire plays his own fertilising loop (no new art).
 
 ## COULD BE BETTER (owner, 2026-10-29 21:49): works for now, redraw later
-- Hatchling and Storm Challenger sheets: some frames draw an EXTRA WING (ChatGPT struggles with this; the owner tried). Used as drawn for now.
+- Hatchling and Storm Challenger PORTRAITS draw an EXTRA WING (a second wing arm at the bottom left; the owner, 21:49). Their sheets too, in some frames, an EXTRA WING (ChatGPT struggles with this; the owner tried). Used as drawn for now.
 - Brood Mother stage 3, the S, E, NE, N walk/swipe sheets: not the best (bulky, the north slam frame dropped); used for now. Stage 2's south looks more south-east than south.
 - Double-check list (Claude): the Tyrant Challenger's SE run and N walk (weak), the Spitter's E and NE walks (shuffle), the Venom Challenger's NE walk (stiff), the Storm Challenger's NE swoop (rebuilt from 3 frames) and N swoop (flipped), the Storm Sire's arrival (size/position jump where the flight meets the sheet's dive), the Tyrant lure small on his nest, the lure growing steps (one concept recoloured per Sire), the Sires' nest pictures still painting their own eggs.
+- Brood Mother stage 2 and 3 portraits are very alike (stage 3 = brood_mother_stage3_portrait_chatgpt.png, the busier one with more eggs); a clearer step between them would be better.
