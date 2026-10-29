@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.16.3", "items": [
+		"THE MIST TOAD'S TONGUE no longer pulls a Field Cannon or a Mortar: it only staggers them, and every stagger now lasts 2.5 s (was 1 s; the Brood Mother and the Sires too). The Crown keeps its guns, but must kill the marked Toad by hand.",
+	]},
 	{"v": "0.16.2", "items": [
 		"SPOILS: the Brood's second resource is now called SPOILS (it was essence): spoils of war, from any body or wreck, flesh or metal, and from SACRIFICE. The top bar, costs and refusals (\"Not enough spoils.\", also spoken), help pages, harvest and sacrifice texts, floating numbers and the match log say it, for the old and the new Brood. Nothing else changes.",
 	]},

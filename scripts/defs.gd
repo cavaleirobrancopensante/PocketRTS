@@ -1213,7 +1213,7 @@ const UNITS := {
 		"name": "Mist Toad", "hp": 90, "armor": 0, "speed": 42, "cost": 100, "cost2": 25, "time": 22.0, "supply": 3,
 		"sight": 9, "range": 24, "damage": 4, "cooldown": 1.6, "aim": 0.3, "radius": 14, "from": "hive",
 		"requires": "gorge_pit", "faction": "brood",
-		"about": "Slow, fragile swamp caster with only a weak lick. Its energy (fills over time, faster on swamp) pays for two spells. FOG lays a swamp fog bank: shots fired from or into it miss half the time, and units inside see only 2 tiles. TONGUE marks one enemy for 3 s (they see the crosshair), then drags it to the Toad's feet, a flyer too (through the air, to just over the Toad); heavy engines, the Brood Mother and the fathers are only staggered (stunned 1 s).",
+		"about": "Slow, fragile swamp caster with only a weak lick. Its energy (fills over time, faster on swamp) pays for two spells. FOG lays a swamp fog bank: shots fired from or into it miss half the time, and units inside see only 2 tiles. TONGUE marks one enemy for 3 s (they see the crosshair), then drags it to the Toad's feet, a flyer too (through the air, to just over the Toad); heavy engines, field guns and mortars, the Brood Mother and the fathers are only staggered (stunned 2.5 s).",
 	},
 	"ornithopter": {
 		"tags": ["light"],
@@ -1975,7 +1975,7 @@ const FOG := {"cost": 50.0, "range": 224.0, "radius": 96.0, "time": 12.0, "miss"
 ## owner, 2026-10-29: the Toad can't pull the Tyrannosaur, a father or the Brood Mother). A flyer is pulled through the
 ## air to just over the Toad (`over` px from its middle) and stays in the air. The energy is spent when the windup starts.
 const TONGUE := {"cost": 75.0, "range": 224.0, "windup": 3.0, "break": 1.5, "moved": 12.0, "lash": 0.15,
-	"pull": 0.6, "after": 0.3, "stagger": 1.0, "heavy": 5, "no_pull": ["brood_mother", "tyrannosaur", "dilophosaurus", "pterodactyl"], "over": 6.0}
+	"pull": 0.6, "after": 0.3, "stagger": 2.5, "heavy": 5, "no_pull": ["brood_mother", "tyrannosaur", "dilophosaurus", "pterodactyl", "cannon", "mortar"], "over": 6.0}      # (the owner, 2026-10-29: the guns are only staggered, and a stagger lasts 2.5 s; docs/crown_turtle_study.md)
 const CANISTER := {"range": 150.0, "damage": 18.0, "cooldown": 3.6, "cone": 0.82, "vs_light": 1.5}
 ## Round shot: the ball tears through a line of men past where it lands (bonus against
 ## armour); only a little splash where it hits.
