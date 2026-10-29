@@ -1908,7 +1908,7 @@ func switch_time() -> float:
 			return float(Defs.NB["maw_switch"])
 		BroodNew.TURTLE:
 			return float(Defs.NB["turtle_switch"])
-		BroodNew.FATHER:
+		BroodNew.FATHER, BroodNew.DILO, BroodNew.PTERO:
 			return float(Defs.NB["father_switch"])
 	return Defs.TESLA_SWITCH
 
@@ -4764,8 +4764,8 @@ func _strike(e: Entity) -> void:
 			game.mortar_shot(self, (e.position if e is Unit else e.center()) + wide, dmg)
 		"tesla_cart":
 			game.tesla_zap(self, e, dmg)
-		"spitter":
-			game.acid_shot(self, e, dmg)
+		"spitter", BroodNew.DILO:
+			game.acid_shot(self, e, dmg)       # (the Dilophosaurus: a big venom glob, a strong Spitter's)
 		"spore_mother":
 			game.blob_shot(self, e.center() + Vector2(0, 12) + wide, dmg)
 		"skywing":

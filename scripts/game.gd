@@ -7361,7 +7361,7 @@ func foe_at(u: Unit, p: Vector2) -> Unit:
 func ground_shot_fx(u: Unit, to: Vector2) -> void:
 	var from := u.center() + u.facing * 16.0
 	match u.kind:
-		"spitter", "skywing", "bloater":
+		"spitter", "skywing", "bloater", BroodNew.DILO:
 			var s := Shot.new()
 			s.arc = 0.18
 			s.scale = Vector2(1.3, 1.3)
@@ -7901,7 +7901,7 @@ func fog_miss(u: Unit, e: Entity) -> void:
 	var sname := "ball"
 	var snd: Array = ["combat/musketeer_attack", "musket"]
 	match u.kind:
-		"spitter", "bloater":
+		"spitter", "bloater", BroodNew.DILO:
 			sname = "acid_ball"
 			snd = ["combat/spitter_attack", "acid"]
 		"arc_thrower":

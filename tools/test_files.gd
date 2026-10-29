@@ -111,7 +111,7 @@ func _buildings_and_data() -> void:
 		checked += 1
 		if not Defs.UNITS.has(k) or not ArtData.UNITS.has(k):
 			_fail("new brood %s: no unit or no art" % k)
-		elif not BroodNew.KINDS.has(k) or k in [BroodNew.QUEEN, BroodNew.MAW, BroodNew.FATHER]:
+		elif not BroodNew.KINDS.has(k) or k in [BroodNew.QUEEN, BroodNew.MAW] or BroodNew.is_father(k):
 			if not _icon_found("brood", k):
 				_fail("new brood %s: no icon" % k)
 	for ic in ["ab_nb_root", "ab_uproot", "ab_haul"]:

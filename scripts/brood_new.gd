@@ -10,11 +10,13 @@ extends RefCounted
 ##    the Mother (the farther, the more a trip pays: Game.food_at, as the old Feeding Pits). UPROOT spills its food as a
 ##    pile on the ground (grubs still collect it, it rots slowly); HAUL uproots it full and it walks at half speed with
 ##    it (killed while hauling, all of it bursts out as a pile; rooted again, it keeps it).
-##  - THE TYRANNOSAUR ("tyrannosaur"), a FATHER: ROOTED he is the Brood's "barracks" (the owner, 15:45): he settles on
-##    a nest, head lowered, breathing fire-gold on it (his concept's FERTILISING figure). Rooted within Defs.NB
-##    "father_r" of the Mother, her warrior eggs roll into his nest (they are the red eggs drawn there, counted over him
-##    like a Barracks' queue); he fertilises them all at once and they hatch there. Uprooted he walks and fights.
-##    Unfertilised eggs hatch as grubs; eggs already fertilised still hatch.
+##  - THE FATHERS (Defs.NB "lines", the owner 2026-10-29 11:10): the TYRANNOSAUR (Raptors, Brutes; from the start),
+##    the DILOPHOSAURUS (Spitters, Mist Toads; her stage 2) and the PTERODACTYL (Skywings; her stage 3, a flyer that
+##    lands to root). ROOTED each is one of the Brood's "barracks" (the owner, 15:45): he settles on a nest. Rooted
+##    within Defs.NB "father_r" of the Mother, the eggs of HIS LINE roll into his nest (counted over him like a
+##    Barracks' queue); he fertilises them all at once and they hatch there. Uprooted he walks (or flies) and fights.
+##    One of each at a time. Unfertilised eggs hatch as grubs; eggs already fertilised still hatch. No father is a
+##    special case: everything below goes by the lines.
 ##  - EGGS ("brood_egg") and FOOD PILES ("food_pile", nobody's) are units that stand still.
 ## The old Brood (buildings) is untouched and stays the default: everything here only runs for a side whose slot picked
 ## the experiment (Game.nb_teams[t]).
@@ -22,11 +24,14 @@ extends RefCounted
 const QUEEN := "brood_mother"
 const MAW := "rootmaw"
 const TURTLE := "mound_turtle"
-const FATHER := "tyrannosaur"
+const FATHER := "tyrannosaur"         # (the first father: the tools' and tests' shorthand; the game goes by FATHERS)
+const DILO := "dilophosaurus"
+const PTERO := "pterodactyl"
+const FATHERS := [FATHER, DILO, PTERO]     # (Defs.NB "lines" order)
 const EGG := "brood_egg"
 const PILE := "food_pile"
-const KINDS := [QUEEN, MAW, TURTLE, FATHER, EGG, PILE]
-const ROOTERS := [QUEEN, MAW, TURTLE, FATHER]     # (the creatures that ROOT and UPROOT)
+const KINDS := [QUEEN, MAW, TURTLE, FATHER, DILO, PTERO, EGG, PILE]
+const ROOTERS := [QUEEN, MAW, TURTLE, FATHER, DILO, PTERO]     # (the creatures that ROOT and UPROOT)
 const SE := Vector2(0.7071, 0.7071)
 
 
@@ -42,10 +47,23 @@ static func is_nb(k: String) -> bool:
 ## warriors. The structure-units (the Rootmaw, the Mound Turtle, the fathers) come from grubs (the owner, 19:19:
 ## BroodRoot.morph_list).
 static func hatch_list() -> Array:
-	return ["grub"] + (Defs.NB["lines"][FATHER] as Array)
+	var out: Array = ["grub"]
+	for f in Defs.NB["lines"]:
+		out.append_array(Defs.NB["lines"][f] as Array)
+	return out
 
 
-## The father a warrior needs ("" for none: grubs, Rootmaws, the Tyrannosaur itself).
+## Is k a father (any of them)?
+static func is_father(k: String) -> bool:
+	return (Defs.NB["lines"] as Dictionary).has(k)
+
+
+## The Mother's growth stage (0 = stage 1) a father needs before a grub can turn into him.
+static func father_stage(k: String) -> int:
+	return int((Defs.NB["father_stage"] as Dictionary).get(k, 0))
+
+
+## The father a warrior needs ("" for none: grubs, Rootmaws, the fathers themselves).
 static func father_of(k: String) -> String:
 	for f in Defs.NB["lines"]:
 		if (Defs.NB["lines"][f] as Array).has(k):
@@ -72,16 +90,18 @@ static func rooted(u: Unit) -> bool:
 	return u.tesla_mode == "deployed" and not u.nb.has("coc")
 
 
-static func father(g: Game, t: int) -> Unit:
+## A side's father of kind k (one of each at a time).
+static func father(g: Game, t: int, k: String = FATHER) -> Unit:
 	for u in g.units:
-		if u.team == t and u.kind == FATHER and not u.dead:
+		if u.team == t and u.kind == k and not u.dead:
 			return u
 	return null
 
 
-## The father rooted on his nest within his reach of the Mother (only then are her warrior eggs fertilised).
-static func father_near(g: Game, t: int) -> bool:
-	var f := father(g, t)
+## The father of kind k rooted on his nest within his reach of the Mother (only then are the eggs of his line
+## fertilised).
+static func father_near(g: Game, t: int, k: String = FATHER) -> bool:
+	var f := father(g, t, k)
 	var q := queen(g, t)
 	return f != null and q != null and rooted(f) and f.position.distance_to(q.position) <= float(Defs.NB["father_r"]) * Defs.TILE
 
@@ -239,12 +259,16 @@ static func eggs_max(q: Unit) -> int:
 
 ## The fathers near her (any father kind, rooted or not: away from her or dead, they give nothing).
 static func fathers_near(g: Game, q: Unit) -> int:
-	var n := 0
+	return fathers_near_list(g, q).size()
+
+
+static func fathers_near_list(g: Game, q: Unit) -> Array:
+	var out: Array = []
 	var r := float(Defs.NB["father_r"]) * Defs.TILE
 	for u in g.units:
-		if u.team == q.team and not u.dead and (Defs.NB["lines"] as Dictionary).has(u.kind) and not u.nb.has("coc") and u.position.distance_to(q.position) <= r:
-			n += 1
-	return n
+		if u.team == q.team and not u.dead and is_father(u.kind) and not u.nb.has("coc") and u.position.distance_to(q.position) <= r:
+			out.append(u)
+	return out
 
 
 ## The Mound Turtles that count as EXPANSIONS: rooted at least expansion_tiles from her and from every other one that
@@ -285,7 +309,7 @@ static func levers_text(g: Game, q: Unit) -> String:
 	if stage(q) > 0:
 		parts.append(Loc.t("stage %d") % (stage(q) + 1))
 	if int(lr[2]) > 0:
-		parts.append(Loc.t("%s near") % (Loc.t(String(Defs.UNITS[FATHER]["name"])) if int(lr[2]) == 1 else Loc.t("%d fathers") % int(lr[2])))
+		parts.append(Loc.t("%s near") % (Loc.t(String(fathers_near_list(g, q)[0].d["name"])) if int(lr[2]) == 1 else Loc.t("%d fathers") % int(lr[2])))
 	if int(lr[3]) > 0:
 		parts.append(Loc.t("1 expansion") if int(lr[3]) == 1 else Loc.t("%d expansions") % int(lr[3]))
 	var pct := int(round((float(lr[0]) - 1.0) * 100.0))
@@ -365,13 +389,13 @@ static func progress(g: Game, u: Unit) -> Dictionary:
 		return {"label": "ROOTING" if u.tesla_mode == "deploying" else "UPROOTING", "f": clampf(1.0 - u.tesla_t / maxf(sw, 0.01), 0.0, 1.0), "left": maxf(0.0, u.tesla_t),
 			"icon": "ab_nb_root" if u.tesla_mode == "deploying" else "ab_uproot", "col": BAR_ROOT}
 	var e: Unit = u if u.kind == EGG else null
-	if u.kind == FATHER and rooted(u):
+	if is_father(u.kind) and rooted(u):
 		var ne := nest_eggs(g, u)
 		e = ne[0] if not ne.is_empty() else null
 	if e != null and not e.nb.has("out"):
 		var k := String(e.nb.get("k", "grub"))
 		if int(e.nb.get("fert", 0)) == 1:
-			if u.kind == FATHER:
+			if is_father(u.kind):
 				return {"label": "FERTILISING", "f": clampf(float(e.nb.get("redden", 0.0)), 0.0, 1.0), "left": float(Defs.NB["fert_time"]) * (1.0 - clampf(float(e.nb.get("redden", 0.0)), 0.0, 1.0)), "icon": k, "col": BAR_WAIT}
 			return {"label": "WAITING FOR THE FATHER", "f": clampf(float(e.nb.get("wait", 0.0)) / float(Defs.NB["fert_wait"]), 0.0, 1.0), "left": maxf(0.0, float(Defs.NB["fert_wait"]) - float(e.nb.get("wait", 0.0))), "icon": k, "col": BAR_WAIT}
 		return {"label": "HATCHING", "f": clampf(float(e.nb.get("t", 0.0)) / maxf(egg_time(k), 0.1), 0.0, 1.0), "left": maxf(0.0, egg_time(k) - float(e.nb.get("t", 0.0))), "icon": k, "col": BAR_HATCH}
@@ -397,10 +421,8 @@ static func lay_problem(g: Game, q: Unit, k: String) -> String:
 		return "No eggs ready."
 	var u: Dictionary = Defs.UNITS[k]
 	var f := father_of(k)
-	if f != "" and not father_near(g, q.team):
+	if f != "" and not father_near(g, q.team, f):
 		return "Needs the %s rooted beside the Brood Mother." % Defs.UNITS[f]["name"]
-	if k == FATHER and count_of(g, q.team, FATHER) > 0:
-		return "Only one %s at a time." % u["name"]
 	var price := g.unit_price(q.team, k)
 	var res: Array = Defs.FACTIONS["brood"]["res"]
 	if int(g.players[q.team]["gold"]) < int(price[0]):
@@ -435,9 +457,10 @@ static func lay(g: Game, q: Unit, k: String) -> String:
 		# rooted, curled round her nest facing south-east: the eggs roll out in front of the nest's rim, south-west of her
 		# middle, where they can be seen (behind her they lay under her great body)
 		p = q.position + Vector2(-34.0 + float((n % 5) - 2) * 15.0, q.radius + 16.0 + float(n % 2) * 8.0)
-	var fa: Unit = father(g, q.team) if father_of(k) != "" else null
+	var fk := father_of(k)
+	var fa: Unit = father(g, q.team, fk) if fk != "" else null
 	var on_top := false
-	if fa != null and father_near(g, q.team):
+	if fa != null and father_near(g, q.team, fk):
 		p = nest_point(fa)          # (a warrior's egg goes into the father's nest: fertilised and hatched there)
 	else:
 		# EGG PLACEMENT (the owner, 21:32): the nearest EMPTY spot round her (not on a rooted footprint, a cliff, water or
@@ -652,13 +675,17 @@ static func egg_tick(g: Game, e: Unit, delta: float) -> void:
 # ------------------------------------------------------------------ fertilising
 
 ## Where the eggs in a rooted father's nest lie (in front of his lowered head, on the nest drawn in his rooted frame,
-## a little in front of his feet so a hatching shell is drawn over the nest).
-const NEST_AT := Vector2(26.0, 2.0)
+## a little in front of his feet so a hatching shell is drawn over the nest): Defs.NB "nest_at" per father.
 const NEST_LIFT := 8.0       # (an egg there is drawn this much higher: on the nest, but sorted in front of him)
 
 
+static func nest_at(k: String) -> Vector2:
+	var a: Array = (Defs.NB["nest_at"] as Dictionary).get(k, [26, 2])
+	return Vector2(float(a[0]), float(a[1]))
+
+
 static func nest_point(f: Unit) -> Vector2:
-	return f.position + NEST_AT + Vector2(0.0, BroodRoot.drop(f))        # (his rooted art is drawn that much lower)
+	return f.position + nest_at(f.kind) + Vector2(0.0, BroodRoot.drop(f))        # (his rooted art is drawn that much lower)
 
 
 ## The eggs in his nest, first laid first (the queue counted over him).
@@ -695,7 +722,8 @@ static func father_tick(g: Game, f: Unit, delta: float) -> void:
 		f.nb["scan"] = 0.25
 		# her warrior eggs left on the ground near him (laid before he rooted) roll into the nest
 		for u in g.units_near(f.position, r):
-			if u.team == f.team and u.kind == EGG and not u.dead and int(u.nb.get("fert", 0)) == 1 and not bool(u.nb.get("nest", false)):
+			if u.team == f.team and u.kind == EGG and not u.dead and int(u.nb.get("fert", 0)) == 1 and not bool(u.nb.get("nest", false)) \
+					and father_of(String(u.nb.get("k", ""))) == f.kind:       # (only the eggs of his line)
 				u.nb["nest"] = true
 				u.nb["drop"] = 0.0
 				u.position = nest_point(f)
@@ -802,13 +830,14 @@ static func father_busy(g: Game, f: Unit) -> bool:
 	if not nest_eggs(g, f).is_empty():
 		return true
 	for u in g.units_near(f.position, float(Defs.NB["father_r"]) * Defs.TILE):
-		if u.team == f.team and u.kind == EGG and not u.dead and int(u.nb.get("fert", 0)) == 1 and not u.nb.has("out"):
+		if u.team == f.team and u.kind == EGG and not u.dead and int(u.nb.get("fert", 0)) == 1 and not u.nb.has("out") \
+				and father_of(String(u.nb.get("k", ""))) == f.kind:
 			return true
 	return false
 
 
 static func fertilising(u: Unit) -> bool:
-	return u.kind == FATHER and u.nb.get("fe") != null and is_instance_valid(u.nb.get("fe"))
+	return is_father(u.kind) and u.nb.get("fe") != null and is_instance_valid(u.nb.get("fe"))
 
 
 # ------------------------------------------------------------------ ground (the Rootmaws' circles)
@@ -912,6 +941,7 @@ static func tick(g: Game, u: Unit, delta: float) -> void:
 		u.nb["m"] = u.tesla_mode
 		if ROOTERS.has(u.kind):
 			u.nb_mass = 1000.0 if u.tesla_mode != "packed" else packed_mass(u.kind)     # (dug in: not shoved)
+		set_sky(u)
 	if rooted(u) and u.phase == "" and u.target == null and float(u.nb.get("devour", 0.0)) <= 0.0:
 		u.facing = SE          # (rooted, it settles back facing south-east after a fight)
 	match u.kind:
@@ -962,7 +992,7 @@ static func tick(g: Game, u: Unit, delta: float) -> void:
 					_ground_warn(g, u, float(s["left"]) / float(Defs.PIT_GROUND))
 			elif not rooted(u) and food > 0.5:
 				u.speed *= float(Defs.NB["haul_speed"])        # HAUL: full and slow
-		FATHER:
+		FATHER, DILO, PTERO:
 			father_tick(g, u, delta)
 
 
@@ -980,17 +1010,43 @@ static func _ground_warn(g: Game, u: Unit, left: float) -> void:
 			else "A Rootmaw's ground is running low (%d%% left): plan fresh ground for it." % int(round(left * 100)), false)
 
 
+## THE PTERODACTYL FLIES UPROOTED AND IS A GROUND STRUCTURE ROOTED (the owner, 2026-10-29): from the moment he starts
+## to land on his nest (ROOT) until he has taken off again (UPROOT done), he is on the ground: not a flyer (anything that
+## hits the ground hits him; his footprint is a building's), drawn in the building layer; up, he is a flyer again. As a
+## landed Skywing, his kind's entry is swapped for a grounded copy (Unit.d: is_air() follows it). Any other kind: nothing.
+static var _ptero_ground := {}
+
+
+static func grounded_d() -> Dictionary:
+	if _ptero_ground.is_empty():
+		_ptero_ground = (Defs.UNITS[PTERO] as Dictionary).duplicate(true)
+		_ptero_ground["air"] = false
+	return _ptero_ground
+
+
+static func set_sky(u: Unit) -> void:
+	if u.kind != PTERO:
+		return
+	var up := u.tesla_mode == "packed" and not u.nb.has("coc") and not u.dead
+	if up == bool(u.d.get("air", false)):
+		return
+	u.d = Defs.UNITS[PTERO] if up else grounded_d()
+	u.z_index = 3 if u.is_air() else 0
+	if u.game:
+		u.game.note_move(u)
+
+
 ## How hard a walking (uprooted) creature is to shove (Game.separation): the Mother a great deal; the Tyrannosaur and
 ## the Mound Turtle, huge heavy beasts, enough that the grubs streaming to the Mother flow round them instead of washing
 ## them back; the others as anyone.
 static func packed_mass(k: String) -> float:
-	return 30.0 if k == QUEEN else (8.0 if k == FATHER or k == TURTLE else 1.0)
+	return 30.0 if k == QUEEN else (8.0 if is_father(k) or k == TURTLE else 1.0)
 
 
 static func _mode_changed(g: Game, u: Unit, was: String) -> void:
 	match u.tesla_mode:
 		"packing":
-			if u.kind == FATHER:
+			if is_father(u.kind):
 				for e in nest_eggs(g, u):
 					e.nb.erase("nest")      # (he gets up: the eggs in his nest lie on the ground, waiting)
 					e.nb["redden"] = 0.0
@@ -1233,7 +1289,7 @@ static func anim(u: Unit, moving: bool) -> String:
 			return "idle"
 		PILE:
 			return "idle"
-		QUEEN, MAW, TURTLE, FATHER:
+		QUEEN, MAW, TURTLE, FATHER, DILO, PTERO:
 			var fr: Dictionary = ArtData.UNITS[u.art]["frames"]
 			if u.nb.has("coc"):
 				return "fill1" if fr.has("fill1_se") else "rooted"        # (in its cocoon: BroodRoot.cocoon_look)
@@ -1342,7 +1398,7 @@ static func producing(g: Game, u: Unit) -> bool:
 	match u.kind:
 		QUEEN:
 			return float(u.nb.get("lay_t", 0.0)) > 0.0 or float(u.nb.get("grow_t", 0.0)) > 0.0 or int(u.nb.get("eggs", 0)) < eggs_max(u)
-		FATHER:
+		FATHER, DILO, PTERO:
 			# (the owner, 21:28: he keeps his fertilising loop while any warrior egg is in his nest or near him waiting for
 			# him, until the last one has hatched; only then still)
 			return fertilising(u) or father_busy(g, u)
@@ -1423,7 +1479,7 @@ static func _rooted_look(u: Unit, n: int) -> void:
 		var pulse := 0.0 if idle else 0.5 + 0.5 * sin(clk * TAU / 2.2)
 		var lo := 0.18
 		var hi := 0.42
-		if u.kind == FATHER:
+		if is_father(u.kind):
 			if not idle:
 				pulse = clampf(pulse * 0.75 + 0.25 * absf(sin(clk * 11.0 + sin(clk * 3.7) * 2.0)), 0.0, 1.0)     # (fire flickers)
 			lo = 0.1          # (light: his fertilising loop is drawn, its six frames hardly differ)
@@ -1522,11 +1578,11 @@ static func draw(u: Unit, top: float) -> void:
 		var cw := cr.size.x * 0.7
 		u.draw_rect(Rect2(-cw * 0.5 + cr.get_center().x - u.position.x, by, cw, 4).grow(0.5), Color(0, 0, 0, 0.6))
 		u.draw_rect(Rect2(-cw * 0.5 + cr.get_center().x - u.position.x, by, cw * cp, 4), Color(0.85, 0.75, 0.35))
-	if u.kind == FATHER and mine and rooted(u):
+	if is_father(u.kind) and mine and rooted(u):
 		# his nest's queue, as a Barracks': the eggs in it, the first one's breath or incubation
 		var eggs := nest_eggs(g, u)
 		var font2 := ThemeDB.fallback_font
-		var near := father_near(g, u.team)
+		var near := father_near(g, u.team, u.kind)
 		var txt2 := (Loc.t("%d eggs") % eggs.size()) if near else Loc.t("too far from the Mother")
 		u.draw_string_outline(font2, Vector2(-30, top - 6), txt2, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, 4, Color(0, 0, 0, 0.8))
 		u.draw_string(font2, Vector2(-30, top - 6), txt2, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1.0, 0.7, 0.45) if near else Color(1.0, 0.5, 0.4))
@@ -1574,7 +1630,7 @@ static func _draw_key2(u: Unit) -> int:
 			return int(float(u.nb.get("food", 0.0)) / 6.0) + (100000 if u.nb.has("spot") else 0)
 		QUEEN:
 			return int(u.nb.get("eggs", 0)) + int(float(u.nb.get("grow_t", 0.0))) * 31
-		FATHER:
+		FATHER, DILO, PTERO:
 			return int(u.game.clock * 4.0) if rooted(u) else 0       # (his nest's queue and its progress)
 	return 0
 
@@ -1612,6 +1668,7 @@ static func unit_load(u: Unit, d: Dictionary) -> void:
 			u.nb[k] = int(u.nb[k])
 	if u.kind == QUEEN:
 		apply_stage(u)
+	set_sky(u)          # (a Pterodactyl landed on his nest is on the ground)
 	if u.kind == EGG and not u.nb.has("out"):
 		u.z_index = EGG_Z
 

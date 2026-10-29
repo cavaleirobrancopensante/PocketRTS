@@ -1153,7 +1153,22 @@ const UNITS := {
 		"name": "Tyrannosaur", "hp": 1000, "armor": 2, "speed": 64, "cost": 200, "time": 35.0, "supply": 4,
 		"sight": 9, "range": 40, "damage": 42, "cooldown": 1.9, "aim": 0.35, "radius": 30, "from": "brood_mother",
 		"building_bonus": 1.4, "faction": "brood", "new_brood": true, "father": true,
-		"about": "A FATHER: standing still near the Brood Mother, it breathes on her warrior eggs (Raptors, Brutes, Spitters, Mist Toads) to fertilise them; an egg it doesn't reach in time hatches as a grub. Only one at a time. A terrible biter, but away from her no warriors are fathered.",
+		"about": "A FATHER: rooted on his nest beside the Brood Mother, he breathes on the eggs of his line (Raptors, Brutes) to fertilise them; an egg no father reaches in time hatches as a grub. Only one at a time. A terrible biter, but away from her no Raptors or Brutes are fathered.",
+	},
+	# THE SECOND AND THIRD FATHERS (the owner, 2026-10-29 11:10: the father lines; numbers: Claude's choice, docs/brood_new.md)
+	"dilophosaurus": {
+		"tags": ["armored"],
+		"name": "Dilophosaurus", "hp": 650, "armor": 1, "speed": 78, "cost": 150, "cost2": 25, "time": 30.0, "supply": 4,
+		"sight": 9, "range": 140, "damage": 20, "cooldown": 1.6, "aim": 0.4, "radius": 22, "from": "brood_mother",
+		"acid": 4.0, "anti_air": true, "building_bonus": 1.2, "faction": "brood", "new_brood": true, "father": true,
+		"about": "A FATHER, unlocked when the Brood Mother reaches stage 2: rooted on his nest beside her, he fertilises the eggs of his line (Spitters, Mist Toads). Uprooted he walks and SPITS venom from afar (on flyers too), a strong Spitter of his own. Only one at a time.",
+	},
+	"pterodactyl": {
+		"tags": ["armored"],
+		"name": "Pterodactyl", "hp": 700, "armor": 1, "speed": 110, "cost": 200, "cost2": 50, "time": 40.0, "supply": 4,
+		"sight": 10, "range": 30, "damage": 30, "cooldown": 1.7, "aim": 0.3, "radius": 26, "from": "brood_mother",
+		"air": true, "anti_air": true, "faction": "brood", "new_brood": true, "father": true,
+		"about": "A FLYING FATHER, unlocked when the Brood Mother reaches stage 3. Uprooted he flies and DIVES to bite, on the ground and in the air. ROOT: he lands on a nest beside her and fertilises the eggs of his line (Skywings); landed he is a ground creature anything can hit. Only one at a time.",
 	},
 	"brood_egg": {
 		"tags": ["light"],
@@ -1848,7 +1863,7 @@ const NB := {
 	"father_rate": 0.2, "expansion_rate": 0.15, "expansion_max": 3, "expansion_tiles": 15.0,
 	"drop": 0.35,                                # seconds an egg falls from under her
 	"father_r": 7.0,                             # tiles: the father rooted on his nest this near the Mother fertilises her warrior eggs
-	"father_switch": 2.5,                        # seconds the Tyrannosaur takes to settle on his nest or get up
+	"father_switch": 2.5,                        # seconds a father takes to settle on his nest (the Pterodactyl: to land) or get up
 	"fert_time": 1.5, "fert_wait": 25.0,         # breath per egg; an egg not fertilised in this time hatches as a grub
 	"queen_supply": 16, "turtle_supply": 12,     # supply: the Mother (the old Burrow's), every ROOTED Mound Turtle (the old Clutch Mound's)
 	"turtle_switch": 2.5, "turtle_swamp": 10.0,  # the Mound Turtle: seconds to root or uproot, tiles of swamp round it rooted
@@ -1858,21 +1873,25 @@ const NB := {
 	"maw_crew": 6, "pile_crew": 4,
 	"haul_speed": 0.5,                           # HAUL: the full Rootmaw walks at half speed
 	"pile_rot": 0.6,                             # food a pile loses a second
-	# the fathers and the warriors they father; the others wait for their fathers (a Pterodactyl for the fliers, a
-	# Spitter father): not in the new Brood yet
-	"lines": {"tyrannosaur": ["raptor", "brute", "spitter", "mist_toad"]},      # (Spitters too, the owner 2026-10-29, until the Spitter father; the Spore Mother is retired)
+	# THE FATHERS (the owner, 2026-10-29 11:10: FATHER LINES), in order, and the warriors each fathers; one of each at a
+	# time, made from grubs; "father_stage": the Mother's growth stage (0 = stage 1) that unlocks each. The Spore Mother
+	# and the Stormcaller are retired; the Bloater is out of the new Brood (its replacement comes later).
+	"lines": {"tyrannosaur": ["raptor", "brute"], "dilophosaurus": ["spitter", "mist_toad"], "pterodactyl": ["skywing"]},
+	"father_stage": {"tyrannosaur": 0, "dilophosaurus": 1, "pterodactyl": 2},
+	# where the eggs in each father's nest lie, from his feet (art px, measured by the importers on his rooted frame)
+	"nest_at": {"tyrannosaur": [26, 2], "dilophosaurus": [27, 1], "pterodactyl": [58, -15]},
 	# ROOTED = A BUILDING (the owner's playtest of 0.15.13, 19:19; scripts/brood_root.gd): the footprint each creature
 	# takes on the grid while rooted (tiles wide, tiles deep) and where its middle lies from the creature's feet (px).
 	# The owner's sizes: the Rootmaw a bit bigger than a Cottage (2x2), the Mother about the Clocktower's gear ring (her
 	# nest's ground; it grows with her stages), the Tyrannosaur a Barracks (4x3), the turtle about a Clutch Mound but
 	# wide enough to close a 3-wide ramp either way.
-	"fp": {"brood_mother": [9, 4, 0, -40], "rootmaw": [3, 2, 0, -24], "tyrannosaur": [4, 3, 8, -16], "mound_turtle": [3, 3, 0, -24]},
+	"fp": {"brood_mother": [9, 4, 0, -40], "rootmaw": [3, 2, 0, -24], "tyrannosaur": [4, 3, 8, -16], "mound_turtle": [3, 3, 0, -24],
+		"dilophosaurus": [3, 3, 0, -20], "pterodactyl": [4, 3, 24, -39]},
 	# THE ROOTED ART SITS ON ITS FOOTPRINT (the owner, 2026-10-29): where the bottom of the rooted picture (her nest's
 	# rubble, the turtle's mud, the Tyrannosaur's nest) lies from the creature's feet in its sheet (art px, measured on
 	# the rooted strips: the lowest row a sixth as wide as the picture); rooted, the pictures are drawn that much lower
 	# (BroodRoot.drop) so that bottom touches the footprint's bottom edge, as a building stands on its tiles.
-	"nest_y": {"brood_mother": -8, "rootmaw": -1, "tyrannosaur": 26, "mound_turtle": 0},
-	"later": {"bloater": "the Pterodactyl", "skywing": "the Pterodactyl"},
+	"nest_y": {"brood_mother": -8, "rootmaw": -1, "tyrannosaur": 26, "mound_turtle": 0, "dilophosaurus": 22, "pterodactyl": 3},
 }
 
 
@@ -1920,7 +1939,7 @@ const FOG := {"cost": 50.0, "range": 224.0, "radius": 96.0, "time": 12.0, "miss"
 ## owner, 2026-10-29: the Toad can't pull the Tyrannosaur, a father or the Brood Mother). A flyer is pulled through the
 ## air to just over the Toad (`over` px from its middle) and stays in the air. The energy is spent when the windup starts.
 const TONGUE := {"cost": 75.0, "range": 224.0, "windup": 3.0, "break": 1.5, "moved": 12.0, "lash": 0.15,
-	"pull": 0.6, "after": 0.3, "stagger": 1.0, "heavy": 5, "no_pull": ["brood_mother", "tyrannosaur"], "over": 6.0}
+	"pull": 0.6, "after": 0.3, "stagger": 1.0, "heavy": 5, "no_pull": ["brood_mother", "tyrannosaur", "dilophosaurus", "pterodactyl"], "over": 6.0}
 const CANISTER := {"range": 150.0, "damage": 18.0, "cooldown": 3.6, "cone": 0.82, "vs_light": 1.5}
 ## Round shot: the ball tears through a line of men past where it lands (bonus against
 ## armour); only a little splash where it hits.

@@ -26,6 +26,16 @@ extends SceneTree
 ##   xvfb-run -a godot ... --script res://tools/shot_brood_structures.gd -- <outdir> alignafter_
 ## <prefix>mother_stage1(_close).png, mother_stage3(_close).png  the Mother selected (her footprint's frame)
 ## <prefix>mother_hover.png  the pointer over her: the hover corners; tyrannosaur, mound_turtle, rootmaw, cocoon.png
+## With a second argument "fathers" (the three fathers, 2026-10-29; docs/shots/brood_fathers/):
+##   xvfb-run -a godot ... --script res://tools/shot_brood_structures.gd -- docs/shots/brood_fathers fathers
+## grub_build_locked(_tip).png  a grub's BUILD menu at her stage 1: the Dilophosaurus and Pterodactyl locked (the reason)
+## mother_card_refusals.png, mother_card_refusal_<spitter|skywing>.png  her card without fathers: each line refused,
+##   the tooltip naming its father
+## fathers_rooted(_fertilised).png  the three fathers rooted round a stage-3 Mother, eggs of each line in each nest
+## nest_<father>.png     each father's nest close up, selected (his queue over him)
+## ptero_takeoff.png, ptero_flying.png, ptero_diving.png  the Pterodactyl taking off, flying, diving on a Musketeer
+## dilo_spitting.png, dilo_spit_glob.png  the Dilophosaurus spitting venom
+## grub_build_stage3.png  the BUILD menu at stage 3 (one of each: the fathers alive say so)
 var main: Node
 var g
 var out := ""
@@ -93,6 +103,11 @@ func spot(k: String, p: Vector2, tiles: float, swamp := true) -> Vector2:
 func _run() -> void:
 	if mode == "fixes2":
 		await _fixes2()
+		print("shots done")
+		quit(0)
+		return
+	if mode == "fathers":
+		await _fathers()
 		print("shots done")
 		quit(0)
 		return
@@ -402,3 +417,154 @@ func _fixes2() -> void:
 	g.camera.zoom = Vector2(1.0, 1.0)
 	await _snap("mother_growing", 0.8)
 	g.set_selection([])
+
+
+# ------------------------------------------------------------------ "fathers" (the three fathers, 2026-10-29; docs/shots/brood_fathers/)
+
+## A spot beside the Mother where a father of kind k may nest, looked for round her from the angle a.
+func father_spot(q: Unit, k: String, a: float) -> Vector2:
+	var reach := float(Defs.NB["father_r"]) * Defs.TILE
+	for frac in [0.75, 0.6, 0.9, 0.5]:
+		for i in 24:
+			var p: Vector2 = BroodRoot.snap(k, q.position + Vector2.from_angle(a + TAU * i / 24.0) * reach * frac)
+			if BroodRoot.home_region(g, p) == BroodRoot.home_region(g, q.position) and BroodRoot.place_problem(g, 0, k, p, null) == "":
+				return p
+	return q.position
+
+
+## The card's tooltip for the button labelled lab, held on screen for the picture.
+func _tip_snap(name: String, lab: String) -> void:
+	var item = null
+	for b in g.hud._card_buttons:
+		if String(b["item"][1]) == lab:
+			item = b
+	if item == null:
+		print("no card button ", lab)
+		await _snap(name, 0.3)
+		return
+	for i in 8:
+		g.hud._tip = g.hud._card_tip(item["item"])
+		g.hud._tip_at = (item["rect"] as Rect2).get_center()
+		g.hud._tip_ms = Time.get_ticks_msec()
+		g.hud.queue_redraw()
+		await process_frame
+	root.get_viewport().get_texture().get_image().save_png("%s/%s.png" % [out, name])
+	g.hud._tip = {}
+
+
+func _fathers() -> void:
+	await wait(2.5)
+	var q: Unit = BroodNew.queen(g, 0)
+	g.players[0]["gold"] = 9000
+	g.players[0]["res2"] = 900.0
+	var ctl = g.controls
+	for gr in mine("grub"):
+		gr.auto_work = false
+	# the grub's BUILD menu at stage 1: the later fathers locked, with the reason
+	var gr0: Unit = mine("grub")[0]
+	g.set_selection([gr0])
+	g.camera.position = gr0.position
+	g.camera.zoom = Vector2(1.3, 1.3)
+	g.hud.page = "build"
+	await _snap("grub_build_locked", 0.8)
+	await _tip_snap("grub_build_locked_tip", "PTERODACTYL")
+	g.hud.page = ""
+	# her card at stage 1 with no father: each line refused, naming its father
+	q.nb["eggs"] = 10
+	g.set_selection([q])
+	g.camera.position = q.position + Vector2(0, -30)
+	g.camera.zoom = Vector2(1.0, 1.0)
+	await _snap("mother_card_refusals", 0.8)
+	for k in ["raptor", "spitter", "mist_toad", "skywing"]:
+		print("refusal %s: %s" % [k, BroodNew.lay_problem(g, q, k)])
+	await _tip_snap("mother_card_refusal_spitter", "SPITTERS")
+	await _tip_snap("mother_card_refusal_skywing", "SKYWING")
+	# stage 3, the three fathers rooted round her, each with eggs of his line in his nest
+	q.nb["stage"] = 2
+	BroodNew.apply_stage(q)
+	BroodRoot.footprint_on(g, q)
+	g.swamp_dirty = true
+	await wait(0.3)
+	var made := {}
+	var ang := {BroodNew.FATHER: 0.6, BroodNew.DILO: 2.4, BroodNew.PTERO: -0.9}
+	for fk in BroodNew.FATHERS:
+		var c: Unit = BroodRoot.cocoon(g, 0, fk, father_spot(q, fk, float(ang[fk])))
+		c.nb["coc"] = BroodRoot.cocoon_time(c) - 0.05
+		made[fk] = c
+	await wait(0.5)
+	q.nb["eggs"] = BroodNew.eggs_max(q)
+	for k in ["raptor", "raptor", "brute", "spitter", "spitter", "mist_toad", "skywing", "skywing"]:
+		var w: String = q.cmd_lay(k)
+		if w != "":
+			print("lay %s: %s" % [k, w])
+	await wait(0.6)
+	g.set_selection([q])
+	g.camera.position = q.position + Vector2(0, -10)
+	g.camera.zoom = Vector2(0.85, 0.85)
+	await _snap("fathers_rooted", 0.6)
+	g.set_selection([])
+	for fk in BroodNew.FATHERS:
+		var f: Unit = made[fk]
+		g.camera.position = BroodRoot.rect_of(f).get_center() + Vector2(0, -20)
+		g.camera.zoom = Vector2(2.0, 2.0)
+		g.set_selection([f])
+		await _snap("nest_%s" % fk, 0.5)
+	g.set_selection([])
+	await wait(float(Defs.NB["fert_time"]) + 0.3)
+	g.camera.position = q.position + Vector2(0, -10)
+	g.camera.zoom = Vector2(0.85, 0.85)
+	await _snap("fathers_rooted_fertilised", 0.4)
+	# the Pterodactyl takes off and flies; dives on a Musketeer
+	var pt: Unit = made[BroodNew.PTERO]
+	pt.cmd_uproot(false)
+	await wait(float(Defs.NB["father_switch"]) * 0.5)
+	g.camera.position = pt.position + Vector2(0, -30)
+	g.camera.zoom = Vector2(2.0, 2.0)
+	await _snap("ptero_takeoff", 0.05)
+	await wait(float(Defs.NB["father_switch"]) * 0.5 + 0.3)
+	var far: Vector2 = q.position + Vector2(-13.0 * Defs.TILE, 9.0 * Defs.TILE)
+	far = g.cell_center(g.nearest_free(g.cell_of(far), 10))
+	pt.cmd_move(far)
+	await wait(1.2)
+	g.camera.position = pt.position + Vector2(0, -30)
+	await _snap("ptero_flying", 0.05)
+	var foe: Unit = g._add_unit("musketeer", 1, pt.position + Vector2(60, 40))
+	foe.cmd_stop()
+	pt.cmd_attack(foe)
+	var dived := false
+	for i in 120:
+		await physics_frame
+		if pt.anim == "attack" and pt.sprite.frame >= 2:
+			dived = true
+			break
+	g.camera.position = pt.position + Vector2(10, -20)
+	await _snap("ptero_diving", 0.0)
+	print("dive caught: ", dived)
+	g.consume_unit(foe)
+	# the Dilophosaurus gets up and spits at an enemy
+	var di: Unit = made[BroodNew.DILO]
+	di.cmd_uproot(false)
+	await wait(float(Defs.NB["father_switch"]) + 0.3)
+	var foe2: Unit = g._add_unit("musketeer", 1, di.position + Vector2(110, 60))
+	foe2.hp = 99999.0
+	foe2.max_hp = 99999.0
+	foe2.cmd_stop()
+	di.cmd_attack(foe2)
+	var spat := false
+	for i in 150:
+		await physics_frame
+		if di.anim == "attack" and di.sprite.frame >= 3:
+			spat = true
+			break
+	g.camera.position = di.position + Vector2(50, -10)
+	g.camera.zoom = Vector2(2.2, 2.2)
+	await _snap("dilo_spitting", 0.0)
+	await wait(0.15)
+	await _snap("dilo_spit_glob", 0.0)
+	print("spit caught: ", spat)
+	# the grub's BUILD menu at stage 3: all unlocked (one of each: the ones alive say so)
+	g.consume_unit(foe2)
+	g.set_selection([mine("grub")[0]])
+	g.hud.page = "build"
+	await _snap("grub_build_stage3", 0.8)
+	g.hud.page = ""

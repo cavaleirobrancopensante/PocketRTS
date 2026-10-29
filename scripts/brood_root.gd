@@ -248,7 +248,7 @@ static func plan_of(u: Unit) -> Array:
 
 ## Why a `k` of team t can't root with its feet at p ("" = it can): the grid (a cliff, trees, a building or another
 ## rooted creature, a ramp, uneven ground), another creature's plan there, and its own rules (a Rootmaw: on your swamp,
-## its ground circle clear of the others'; the Tyrannosaur: within his reach of the Mother). `me`: the one rooting
+## its ground circle clear of the others'; a father: within his reach of the Mother). `me`: the one rooting
 ## (its own plan and body don't count). ai: the computer also keeps its ramps clear. sc: the Mother's stage scale.
 static func place_problem(g: Game, t: int, k: String, p: Vector2, me: Unit = null, ai := false, sc := 1.0, swamp_rule := true) -> String:
 	p = snap(k, p, sc)
@@ -305,10 +305,10 @@ static func place_problem(g: Game, t: int, k: String, p: Vector2, me: Unit = nul
 				var pl2 := plan_of(o)
 				if o.team == t and not pl2.is_empty() and String(pl2[0]) == BroodNew.MAW and (pl2[1] as Vector2).distance_to(p) < rr:
 					return "Too close to another Rootmaw's planned ground."
-		BroodNew.FATHER:
-			var q := BroodNew.queen(g, t)
-			if q == null or q.position.distance_to(p) > father_reach():
-				return "Out of range: he must nest within %d tiles of the Brood Mother." % int(Defs.NB["father_r"])
+	if BroodNew.is_father(k):
+		var q := BroodNew.queen(g, t)
+		if q == null or q.position.distance_to(p) > father_reach():
+			return "Out of range: he must nest within %d tiles of the Brood Mother." % int(Defs.NB["father_r"])
 	return ""
 
 
@@ -371,8 +371,15 @@ static func morph_problem(g: Game, t: int, k: String, gr: Unit = null) -> String
 	if not morph_list().has(k):
 		return "A grub can't turn into that."
 	var u: Dictionary = Defs.UNITS[k]
-	if (Defs.NB["lines"] as Dictionary).has(k) and BroodNew.count_of(g, t, k, gr) > 0:
-		return "Only one %s at a time." % u["name"]
+	if BroodNew.is_father(k):
+		# each father is unlocked by the Mother's growth stage (the owner, 21:45: the Dilophosaurus at stage 2, the
+		# Pterodactyl at stage 3); one of each at a time (a grub on its way and a cocoon count)
+		var need := BroodNew.father_stage(k)
+		var q := BroodNew.queen(g, t)
+		if need > 0 and (q == null or BroodNew.stage(q) < need):
+			return "Needs the Brood Mother at stage %d." % (need + 1)
+		if BroodNew.count_of(g, t, k, gr) > 0:
+			return "Only one %s at a time." % u["name"]
 	var price := g.unit_price(t, k)
 	var res: Array = Defs.FACTIONS["brood"]["res"]
 	if int(g.players[t]["gold"]) < int(price[0]):
@@ -449,6 +456,7 @@ static func cocoon(g: Game, t: int, k: String, p: Vector2) -> Unit:
 	footprint_on(g, u)
 	if k == BroodNew.MAW:
 		BroodNew._claim(g, u)
+	BroodNew.set_sky(u)          # (a Pterodactyl comes out of his cocoon landed: a ground structure)
 	BroodNew.recount(g, t)
 	return u
 
@@ -508,7 +516,7 @@ static func set_rally(u: Unit, p: Vector2, own := true) -> void:
 static func hatch_rally(g: Game, e: Unit) -> Vector2:
 	var rp := rally_of(e)
 	if bool(e.nb.get("nest", false)) and not e.nb.has("ro"):
-		var f := BroodNew.father(g, e.team)
+		var f := BroodNew.father(g, e.team, BroodNew.father_of(String(e.nb.get("k", ""))))
 		if f != null and rally_of(f) != Vector2.INF:
 			rp = rally_of(f)
 	return rp
@@ -768,7 +776,7 @@ static func overlay_wanted(g: Game) -> bool:
 	return ring_wanted(g)
 
 
-## The father's range round the Mother: while a Tyrannosaur (or a grub turning into one) is selected or placing his
+## The father's range round the Mother: while a father (or a grub turning into one) is selected or placing his
 ## root, and while the Mother is selected.
 static func ring_wanted(g: Game) -> bool:
 	if not BroodNew.on(g, g.human):

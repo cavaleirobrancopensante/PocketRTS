@@ -1459,7 +1459,7 @@ func _nb_buttons(list: Array, units: Array) -> void:
 			var gwhy := BroodNew.grow_problem(game, q)
 			_tip_for["GROW"] = ["Grow (stage %d)" % (st + 2), "She grows bigger: up to %d eggs, laying %d%% faster (stage x%.1f), but a bigger, slower target with a wider swamp. Rooted only; %d s, and she lays no eggs meanwhile (uprooting stops it and pays it back). %s" % [
 				int(nx["eggs"]), int(round((float(nx["rate"]) / float(stages[st]["rate"]) - 1.0) * 100.0)), float(nx["rate"]), int(nx["time"]),
-				"Unlocks the second father, when one exists: nothing yet." if st == 0 else "Unlocks the third father, when one exists: nothing yet."]]
+				"Unlocks the %s (a grub's BUILD): %s." % [Defs.UNITS[BroodNew.FATHERS[mini(st + 1, 2)]]["name"], ", ".join((Defs.NB["lines"][BroodNew.FATHERS[mini(st + 1, 2)]] as Array).map(func(w): return Defs.train_name(w)))]]]
 			list.append(["broodmound", "GROW", func() -> void:
 				for u in game.selected_units():
 					if u.kind == BroodNew.QUEEN and u.team == game.human:
@@ -1481,7 +1481,7 @@ func _nb_buttons(list: Array, units: Array) -> void:
 		if int(e0.nb.get("fert", 0)) == 1:
 			var left := maxf(0.0, float(Defs.NB["fert_wait"]) - float(e0.nb.get("wait", 0.0)))
 			st2 = "WAITING FOR THE FATHER %ds" % int(ceil(left))
-			tip = "Not fertilised yet: the %s must breathe on it (rooted within %d tiles of the Mother). In %d s it hatches as a grub (the difference paid back)." % [Defs.UNITS[BroodNew.FATHER]["name"], int(Defs.NB["father_r"]), int(ceil(left))]
+			tip = "Not fertilised yet: the %s must breathe on it (rooted within %d tiles of the Mother). In %d s it hatches as a grub (the difference paid back)." % [Defs.UNITS[BroodNew.father_of(ek) if BroodNew.father_of(ek) != "" else BroodNew.FATHER]["name"], int(Defs.NB["father_r"]), int(ceil(left))]
 		else:
 			var tl := maxf(0.0, BroodNew.egg_time(ek) - float(e0.nb.get("t", 0.0)))
 			st2 = ("FERTILISED %ds" if int(e0.nb.get("fert", 0)) == 2 else "%ds") % int(ceil(tl))
@@ -1503,7 +1503,7 @@ func _nb_buttons(list: Array, units: Array) -> void:
 		if not packed.is_empty():
 			# ROOT like BUILD (point 8): the ghost of its rooted footprint; it walks there and roots on that spot
 			var rk: String = packed[0].kind
-			_tip_for["ROOT"] = ["Root", "Pick where it roots (a ghost on the grid, as a building's): it walks there and roots on that spot. Rooted it is a building: armour and a quarter less damage, its footprint blocks the way, it takes no move orders (UPROOT gets it up). A Rootmaw roots only on your swamp, its 5-tile circle clear of another's; a Mound Turtle gives 12 supply and swamp and can close a ramp; the Tyrannosaur nests within %d tiles of the Mother. No rooted creature attacks." % int(Defs.NB["father_r"])]
+			_tip_for["ROOT"] = ["Root", "Pick where it roots (a ghost on the grid, as a building's): it walks there and roots on that spot. Rooted it is a building: armour and a quarter less damage, its footprint blocks the way, it takes no move orders (UPROOT gets it up). A Rootmaw roots only on your swamp, its 5-tile circle clear of another's; a Mound Turtle gives 12 supply and swamp and can close a ramp; a father (the Tyrannosaur, the Dilophosaurus, the Pterodactyl, who lands) nests within %d tiles of the Mother. No rooted creature attacks." % int(Defs.NB["father_r"])]
 			list.insert(mini(3, list.size()), ["ab_nb_root", "ROOT", func() -> void:
 				controls.begin_nb_root(rk, false)
 				toast("Pick where it roots."), true, "", ""])
@@ -1521,7 +1521,7 @@ func _nb_buttons(list: Array, units: Array) -> void:
 							u.cmd_uproot(false), true, "", ""])
 	# RALLY (point 7): rooted creatures and eggs; a right-click on the ground does the same (and never uproots)
 	if units.any(func(u: Unit) -> bool: return BroodRoot.fixed(u) and u.team == game.human):
-		_tip_for["RALLY"] = ["Rally point", "Where what comes out goes: the Mother's eggs (and their hatchlings), the warriors hatching in the Tyrannosaur's nest, an egg's own hatchling. Right-click the ground does the same; it never uproots."]
+		_tip_for["RALLY"] = ["Rally point", "Where what comes out goes: the Mother's eggs (and their hatchlings), the warriors hatching in a father's nest, an egg's own hatchling. Right-click the ground does the same; it never uproots."]
 		list.append(["rally", "RALLY", func() -> void:
 			controls.mode = "nb_rally"
 			toast("Tap where the hatchlings go."), true, "", ""])

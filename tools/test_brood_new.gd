@@ -26,6 +26,13 @@ extends SceneTree
 ##  17. THE ROOTED ART ON ITS FOOTPRINT (the owner, 2026-10-29): each rooted creature's drawn bottom on its footprint's
 ##     bottom edge (the Mother at stages 1 and 3), the selection frame under its pictures, no jump when it roots (the
 ##     drop eased over the rooting frames), the father's nest point and the ghost's picture moved with the art
+##  18. THE THREE FATHERS (the owner, 2026-10-29 11:10): the lines (Tyrannosaur: Raptor, Brute; Dilophosaurus:
+##     Spitter, Mist Toad; Pterodactyl: Skywing; no Bloater), each father locked until her stage (the reason names it),
+##     made from a grub (a cocoon that opens rooted beside her), one of each (the morphing grub counts), her card's
+##     refusals name the right father, each line's eggs go to its own father's nest and are fertilised all at once
+##     there, the pheromones of three fathers stack, the Pterodactyl a ground structure rooted (a Musketeer can shoot
+##     it, its footprint solid) and a flyer uprooted (it flies over and lands again on its nest), the Toad only
+##     staggers every father
 ## Prints PASS / FAIL lines and "brood_new: N failures".
 var main: Node
 var t := 0.0
@@ -173,7 +180,7 @@ func _run() -> void:
 	p["gold"] = 2000
 	p["res2"] = 200.0
 	check(BroodNew.lay_problem(g, q, "raptor").contains("Tyrannosaur"), "3. no father: a Raptor's egg is refused (%s)" % BroodNew.lay_problem(g, q, "raptor"))
-	check(BroodNew.lay_problem(g, q, "spitter").contains("Tyrannosaur"), "   a Spitter's egg is in the new Brood too, fathered by the Tyrannosaur (%s)" % BroodNew.lay_problem(g, q, "spitter"))
+	check(BroodNew.lay_problem(g, q, "spitter").contains("Dilophosaurus"), "   a Spitter's egg is in the new Brood too, fathered by the Dilophosaurus (%s)" % BroodNew.lay_problem(g, q, "spitter"))
 	check(not BroodNew.hatch_list().has("spore_mother") and BroodNew.hatch_list().has("spitter"), "   on her card: Spitters, not the retired Spore Mother")
 	var far := spot_near(q.position, 20.0)
 	var f: Unit = g._add_unit(BroodNew.FATHER, 0, far)
@@ -508,6 +515,7 @@ func _run() -> void:
 	await _rooted_is_a_building(q, p)
 	await _fixes_2(q, p)
 	await _rooted_art(q)
+	await _fathers(q, p)
 	# 8. killing the Mother loses
 	q.take_damage(999999.0, null)
 	var out: bool = await wait_for(func() -> bool: return bool(g.eliminated[0]), 3.0)
@@ -735,7 +743,7 @@ func _fixes_2(q: Unit, p: Dictionary) -> void:
 	for gr in mine("grub"):
 		gr.auto_work = false
 		gr.cmd_stop()
-	for k in ["raptor", "brute", "spore_mother", "mist_toad"]:
+	for k in ["raptor", "brute", "spore_mother", "mist_toad", "spitter", "skywing"]:
 		for u in mine(k):
 			g.consume_unit(u)          # (room in the supply for the eggs below)
 	var grs: Array = mine("grub")
@@ -1105,3 +1113,132 @@ func _free_in(ring: Rect2, inner: Rect2) -> int:
 			if not inner.has_point(p) and g._walkable(g.cell_of(p)):
 				n += 1
 	return n
+
+
+## 18. THE THREE FATHERS (the owner, 2026-10-29 11:10: FATHER LINES; docs/brood_new.md "The three fathers").
+func _fathers(q: Unit, p: Dictionary) -> void:
+	var T := Defs.TILE
+	p["gold"] = 9000
+	p["res2"] = 900.0
+	for gr in mine("grub"):
+		gr.auto_work = false
+		gr.cmd_stop()
+	for k in ["raptor", "brute", "mist_toad", "spitter", "skywing", BroodNew.EGG, BroodNew.FATHER, BroodNew.DILO, BroodNew.PTERO, BroodNew.TURTLE]:
+		for u in mine(k):
+			g.consume_unit(u)
+	while mine("grub").size() < 4:
+		g._add_unit("grub", 0, spot_near(q.position, 12.0))
+	await wait(0.3)
+	# the lines
+	check(BroodNew.father_of("raptor") == BroodNew.FATHER and BroodNew.father_of("brute") == BroodNew.FATHER
+		and BroodNew.father_of("spitter") == BroodNew.DILO and BroodNew.father_of("mist_toad") == BroodNew.DILO
+		and BroodNew.father_of("skywing") == BroodNew.PTERO and not BroodNew.hatch_list().has("bloater")
+		and BroodNew.hatch_list().has("skywing") and BroodRoot.morph_list().has(BroodNew.DILO) and BroodRoot.morph_list().has(BroodNew.PTERO),
+		"18. the lines: Tyrannosaur Raptor, Brute; Dilophosaurus Spitter, Mist Toad; Pterodactyl Skywing; no Bloater (her card: %s)" % str(BroodNew.hatch_list()))
+	# locked until her stage
+	var st0 := BroodNew.stage(q)
+	q.nb["stage"] = 0
+	var l_d0 := BroodRoot.morph_problem(g, 0, BroodNew.DILO)
+	var l_p0 := BroodRoot.morph_problem(g, 0, BroodNew.PTERO)
+	var l_t0 := BroodRoot.morph_problem(g, 0, BroodNew.FATHER)
+	q.nb["stage"] = 1
+	var l_d1 := BroodRoot.morph_problem(g, 0, BroodNew.DILO)
+	var l_p1 := BroodRoot.morph_problem(g, 0, BroodNew.PTERO)
+	q.nb["stage"] = st0
+	check(l_t0 == "" and l_d0 == "Needs the Brood Mother at stage 2." and l_p0 == "Needs the Brood Mother at stage 3.", "    stage 1: the Tyrannosaur only (%s / %s)" % [l_d0, l_p0])
+	check(l_d1 == "" and l_p1 == "Needs the Brood Mother at stage 3.", "    stage 2: the Dilophosaurus too; the Pterodactyl: %s" % l_p1)
+	check(st0 == 2 and BroodRoot.morph_problem(g, 0, BroodNew.PTERO) == "", "    stage 3: all three")
+	# her card's refusals name the right father
+	q.nb["eggs"] = BroodNew.eggs_max(q)
+	var w_r := BroodNew.lay_problem(g, q, "raptor")
+	var w_s := BroodNew.lay_problem(g, q, "spitter")
+	var w_m := BroodNew.lay_problem(g, q, "mist_toad")
+	var w_k := BroodNew.lay_problem(g, q, "skywing")
+	check(w_r.contains("Tyrannosaur") and w_s.contains("Dilophosaurus") and w_m.contains("Dilophosaurus") and w_k.contains("Pterodactyl"),
+		"    no father: the refusals name each line's father (%s | %s | %s)" % [w_r, w_s, w_k])
+	# made from grubs: each walks to a spot beside her and morphs; one of each (the grub on its way counts)
+	var made := {}
+	var ang := {BroodNew.FATHER: 0.5, BroodNew.DILO: 2.6, BroodNew.PTERO: 4.4}
+	for fk in [BroodNew.FATHER, BroodNew.DILO, BroodNew.PTERO]:
+		var spot := _father_spot(q, fk, float(ang[fk]))
+		var gr: Unit = mine("grub").filter(func(u) -> bool: return u.order != "nb_morph")[0]
+		gr.give({"o": "nb_morph", "k": fk, "p": spot})
+		await wait(0.1)
+		check(BroodRoot.morph_problem(g, 0, fk).begins_with("Only one"), "    a grub on its way to turn into a %s: one at a time (%s)" % [Defs.UNITS[fk]["name"], BroodRoot.morph_problem(g, 0, fk)])
+		var cocooned: bool = await wait_for(func() -> bool: return mine(fk).size() == 1, 25.0)
+		if not cocooned:
+			check(false, "    the grub never turned into a %s (spot %s: %s)" % [fk, str(spot), BroodRoot.place_problem(g, 0, fk, spot, gr)])
+			continue
+		var c: Unit = mine(fk)[0]
+		c.nb["coc"] = BroodRoot.cocoon_time(c) - 0.3          # (the morph's time is the father's own: not waited out here)
+		var open: bool = await wait_for(func() -> bool: return not BroodRoot.in_cocoon(c), 2.0)
+		check(open and BroodNew.rooted(c) and BroodNew.father_near(g, 0, fk), "    a grub turned into the %s: rooted on his nest beside her (%.1f tiles)" % [Defs.UNITS[fk]["name"], c.position.distance_to(q.position) / T])
+		made[fk] = c
+	if made.size() < 3:
+		return
+	var tr: Unit = made[BroodNew.FATHER]
+	var di: Unit = made[BroodNew.DILO]
+	var pt: Unit = made[BroodNew.PTERO]
+	# the Pterodactyl rooted: a ground structure
+	var shooter: Unit = g._add_unit("musketeer", 1, pt.position + Vector2(0, 200))
+	var cell_solid: bool = g.solid[g.idx(g.cell_of(BroodRoot.rect_of(pt).get_center()))] != 0
+	check(not pt.is_air() and shooter.can_hit(pt) and cell_solid, "    the Pterodactyl rooted is a ground structure: a Musketeer can shoot it, its footprint solid (air %s)" % pt.is_air())
+	# pheromones stack
+	var lr: Array = BroodNew.lay_rate(g, q)
+	check(int(lr[2]) == 3 and absf(float(lr[0]) - float(lr[1]) * (1.0 + 3.0 * float(Defs.NB["father_rate"]) + float(Defs.NB["expansion_rate"]) * int(lr[3]))) < 0.001,
+		"    three fathers near her: +%d%% (%s)" % [int(round(3.0 * float(Defs.NB["father_rate"]) * 100.0)), BroodNew.levers_text(g, q)])
+	# each line's eggs go to its own father's nest, all at once
+	q.nb["eggs"] = BroodNew.eggs_max(q)
+	var before: Array = mine(BroodNew.EGG)
+	var why := ""
+	for k in ["spitter", "spitter", "mist_toad", "skywing", "raptor"]:
+		var w: String = q.cmd_lay(k)
+		if w != "":
+			why += k + ": " + w + " "
+	await wait(0.1)
+	var new_eggs: Array = mine(BroodNew.EGG).filter(func(e) -> bool: return not before.has(e))
+	var right := 0
+	for e in new_eggs:
+		var fk2 := BroodNew.father_of(String(e.nb["k"]))
+		var f2: Unit = made[fk2]
+		if bool(e.nb.get("nest", false)) and e.position.distance_to(BroodNew.nest_point(f2)) < 3.0:
+			right += 1
+	check(why == "" and new_eggs.size() == 5 and right == 5, "    5 eggs (2 Spitters, a Toad, a Skywing, Raptors): each in its own father's nest (%d of %d) %s" % [right, new_eggs.size(), why])
+	check(BroodNew.nest_eggs(g, di).size() == 3 and BroodNew.nest_eggs(g, pt).size() == 1 and BroodNew.nest_eggs(g, tr).size() == 1,
+		"    nests: Dilophosaurus %d, Pterodactyl %d, Tyrannosaur %d" % [BroodNew.nest_eggs(g, di).size(), BroodNew.nest_eggs(g, pt).size(), BroodNew.nest_eggs(g, tr).size()])
+	await wait(float(Defs.NB["fert_time"]) * 0.5)
+	var half := BroodNew.nest_eggs(g, di).filter(func(e) -> bool: return float(e.nb.get("redden", 0.0)) > 0.2 or int(e.nb.get("fert", 0)) == 2).size()
+	var all_f: bool = await wait_for(func() -> bool: return new_eggs.all(func(e) -> bool: return e.dead or int(e.nb.get("fert", 0)) == 2), float(Defs.NB["fert_time"]) + 1.0)
+	check(half == 3 and all_f, "    each father fertilises all the eggs of his nest at once (%d of 3 under the Dilophosaurus' breath together)" % half)
+	var hatched: bool = await wait_for(func() -> bool: return mine("skywing").size() >= 1 and mine("spitter").size() >= 4 and mine("mist_toad").size() >= 1, 30.0)
+	check(hatched, "    they hatch: %d Spitters, %d Toads, %d Skywings" % [mine("spitter").size(), mine("mist_toad").size(), mine("skywing").size()])
+	# the Toad only staggers the fathers
+	var small_one: Unit = mine("spitter")[0] if not mine("spitter").is_empty() else shooter
+	check(Unit.too_heavy(tr) and Unit.too_heavy(di) and Unit.too_heavy(pt) and not Unit.too_heavy(small_one),
+		"    the Toad's TONGUE only staggers each father (never pulls him)")
+	# the Pterodactyl uprooted: a flyer again (flies over, lands on his nest again)
+	var home := BroodRoot.rect_of(pt).get_center()
+	pt.cmd_uproot(false)
+	var up: bool = await wait_for(func() -> bool: return pt.tesla_mode == "packed", float(Defs.NB["father_switch"]) + 2.0)
+	await wait(0.1)
+	check(up and pt.is_air() and not shooter.can_hit(pt) and not BroodRoot.has_fp(pt) and g.solid[g.idx(g.cell_of(home))] == 0,
+		"    UPROOT: the Pterodactyl takes off: a flyer (the Musketeer can't hit it), his ground free")
+	var spot2 := _father_spot(q, BroodNew.PTERO, 4.4 + PI)
+	pt.give({"o": "nb_root", "p": spot2})
+	var landed: bool = await wait_for(func() -> bool: return pt.tesla_mode == "deployed", 20.0)
+	check(landed and not pt.is_air() and pt.position.distance_to(spot2) < 2.0, "    ROOT: he flies to the spot and lands on his nest there (air %s, %.0f px off)" % [pt.is_air(), pt.position.distance_to(spot2)])
+	g.consume_unit(shooter)
+	for k in ["spitter", "mist_toad", "skywing", "raptor"]:
+		for u in mine(k):
+			g.consume_unit(u)
+
+
+## A spot beside the Mother where a father of kind k may nest, looked for round her from the angle a.
+func _father_spot(q: Unit, k: String, a: float) -> Vector2:
+	var reach := float(Defs.NB["father_r"]) * Defs.TILE
+	for frac in [0.75, 0.6, 0.9, 0.5]:
+		for i in 24:
+			var p: Vector2 = BroodRoot.snap(k, q.position + Vector2.from_angle(a + TAU * i / 24.0) * reach * frac)
+			if g.region_of(g.cell_of(p)) == BroodRoot.home_region(g, q.position) and BroodRoot.place_problem(g, 0, k, p, null) == "":
+				return p
+	return q.position

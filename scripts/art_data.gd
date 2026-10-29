@@ -1161,6 +1161,24 @@ const BASE_UNITS := {
 		"walk_s": 6,
 		"walk_se": 6,
 	}},
+	"dilophosaurus": {"cell": Vector2i(172, 152), "anchor": Vector2(86, 117), "frames": {
+		"attack_se": 6,
+		"death_se": 5,
+		"glow_rooted_se": 6,
+		"idle_se": 1,
+		"root_se": 5,
+		"rooted_se": 6,
+		"uproot_se": 5,
+		"walk_se": 6,
+	}},
+	"pterodactyl": {"cell": Vector2i(190, 171), "anchor": Vector2(95, 164), "frames": {
+		"attack_se": 6,
+		"death_se": 3,
+		"glow_rooted_se": 1,
+		"idle_se": 4,
+		"rooted_se": 1,
+		"walk_se": 4,
+	}},
 }
 
 const BUILDING_SIZE := {

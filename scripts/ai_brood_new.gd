@@ -4,11 +4,13 @@ extends AI
 ## plainly, so a match against it is possible; it is not clever yet (what it lacks: docs/brood_new.md).
 ##  - the Brood Mother stays rooted at home (she starts rooted); she gets up only to fight off an attack at her nest;
 ##  - the STRUCTURE-UNITS come from grubs (the owner, 19:19; scripts/brood_root.gd): Mound Turtles for supply ahead of
-##    need, rooted round the Mother; Rootmaws on fresh swamp round her; the Tyrannosaur on a nest beside her. Each spot
+##    need, rooted round the Mother; Rootmaws on fresh swamp round her; the fathers on nests beside her (the
+##    Tyrannosaur early, the Dilophosaurus once she reaches stage 2, the Pterodactyl at stage 3). Each spot
 ##    passes the same ROOT placement checks as the player's ghost (BroodRoot.place_problem) and keeps the ramps clear;
 ##  - a spent Rootmaw is uprooted (it spills what little it holds) and walked to new ground (ROOT like BUILD);
 ##  - grubs: enough to crew the rooted Rootmaws (idle grubs find work by themselves, Unit WORK);
-##  - warriors: Raptors, Spitters (about one egg in three), a Brute now and then (essence from SACRIFICE is not used yet), laid while the father is near;
+##  - warriors: each line while its father is rooted beside her: Raptors and a Brute now and then (Tyrannosaur),
+##    Spitters behind them and a Mist Toad or two (Dilophosaurus), Skywings against flyers or as a share (Pterodactyl);
 ##  - waves: the army attack-moves to the nearest enemy once it is big enough (the strategy's wave size, growing), falls
 ##    back to the Mother when it is cut down; anything near the Mother is fought by everything, the father too.
 ## No cheating: it goes for the enemy's starting spot and what it meets on the way.
@@ -45,6 +47,9 @@ func _tick_ai(delta: float) -> void:
 	_nb_morphs(q)
 	_nb_lay(q)
 	_nb_army(q)
+	if difficulty >= 1:
+		_spells()           # (the Mist Toads' FOG and TONGUE, as the old Brood's computer: AI._toad)
+		_skywings()         # (Skywings land to bite the ground and take off for flyers)
 
 
 func in_wave(u: Unit) -> bool:
@@ -101,6 +106,8 @@ func _nb_morphs(q: Unit) -> void:
 		k = BroodNew.TURTLE
 	elif BroodNew.count_of(game, team, BroodNew.FATHER) == 0 and (grubs >= (6 if rush else 9) or game.clock > (40.0 if rush else 80.0)) and maws >= 2:
 		k = BroodNew.FATHER
+	elif _nb_next_father(q) != "":
+		k = _nb_next_father(q)
 	elif maws < _nb_wanted_maws() and (maws < 2 or int(game.players[team]["gold"]) >= 120):
 		k = BroodNew.MAW
 	if k == "" or grubs < 3 or BroodRoot.morph_problem(game, team, k) != "":
@@ -117,13 +124,23 @@ func _nb_morphs(q: Unit) -> void:
 		best.give({"o": "nb_morph", "k": k, "p": spot})
 
 
+## The later fathers, once her stage unlocks them (the owner, 21:45 and 2026-10-29 11:10): one of each, in order.
+func _nb_next_father(q: Unit) -> String:
+	for f in BroodNew.FATHERS:
+		if f == BroodNew.FATHERS[0]:
+			continue
+		if BroodNew.count_of(game, team, f) == 0 and BroodNew.stage(q) >= BroodNew.father_stage(f) and BroodRoot.morph_problem(game, team, f) == "":
+			return f
+	return ""
+
+
 func _nb_spot_for(q: Unit, k: String, me: Unit):
 	match k:
 		BroodNew.TURTLE:
 			return _nb_turtle_spot(q, me)
 		BroodNew.MAW:
 			return _nb_find_spot(q, me)
-	return _nb_father_spot(q, me)
+	return _nb_father_spot(q, me, k)
 
 
 ## Mound Turtles root a few tiles round the Mother, spread out (their swamp joins hers), never on the ramps.
@@ -147,19 +164,20 @@ func _nb_turtle_spot(q: Unit, me: Unit):
 	return null
 
 
-## The father's nest: beside the Mother, three quarters of his reach out (clear of her nest), the spot nearest him.
-func _nb_father_spot(q: Unit, me: Unit):
+## A father's nest: beside the Mother, three quarters of his reach out (clear of her nest and of the other fathers'),
+## the spot nearest him.
+func _nb_father_spot(q: Unit, me: Unit, k: String = BroodNew.FATHER):
 	var home := BroodRoot.home_region(game, q.position)
 	var reach := float(Defs.NB["father_r"]) * Defs.TILE
 	var from: Vector2 = me.position if me != null else q.position + Vector2(0, reach)
-	for frac in [0.75, 0.6, 0.9]:
+	for frac in [0.75, 0.6, 0.9, 0.5, 1.0]:
 		var best = null
-		for i in 16:
-			var p: Vector2 = BroodRoot.snap(BroodNew.FATHER, q.position + Vector2.from_angle(TAU * i / 16.0) * reach * frac)
+		for i in 24:
+			var p: Vector2 = BroodRoot.snap(k, q.position + Vector2.from_angle(TAU * i / 24.0) * reach * frac)
 			var c := game.cell_of(p)
 			if not _nb_on_map(p) or not game._walkable(c) or game.region_of(c) != home:
 				continue
-			if BroodRoot.place_problem(game, team, BroodNew.FATHER, p, me, true) != "":
+			if BroodRoot.place_problem(game, team, k, p, me, true) != "":
 				continue
 			if best == null or p.distance_to(from) < (best as Vector2).distance_to(from):
 				best = p
@@ -244,11 +262,18 @@ func _nb_nearest_foe_pos(p: Vector2) -> Vector2:
 
 # ------------------------------------------------------------------ the father
 
-## The father: walked to a nest spot beside the Mother (ROOT like BUILD) and rooted there (he is the Brood's barracks:
-## her warrior eggs are fertilised and hatch in it). Rooted too far from her (she moved), he gets up and follows.
+## Each father: walked (flown) to a nest spot beside the Mother (ROOT like BUILD) and rooted there (he is one of the
+## Brood's barracks: the eggs of his line are fertilised and hatch in it). Rooted too far from her (she moved), he gets
+## up and follows.
 func _nb_father(q: Unit) -> void:
-	var f := BroodNew.father(game, team)
-	if f == null or f in _wave or BroodRoot.in_cocoon(f):
+	for fk in BroodNew.FATHERS:
+		var f := BroodNew.father(game, team, fk)
+		if f != null:
+			_nb_one_father(q, f)
+
+
+func _nb_one_father(q: Unit, f: Unit) -> void:
+	if f in _wave or BroodRoot.in_cocoon(f):
 		return
 	var d := f.position.distance_to(q.position)
 	var reach := float(Defs.NB["father_r"]) * Defs.TILE
@@ -261,7 +286,7 @@ func _nb_father(q: Unit) -> void:
 		return          # (uprooted, he fights with the others: _nb_army; he roots again when it is calm)
 	if f.tesla_mode != "packed" or f.target != null or f.order == "nb_root":
 		return
-	var spot = _nb_father_spot(q, f)
+	var spot = _nb_father_spot(q, f, f.kind)
 	if spot != null:
 		f.give({"o": "nb_root", "p": spot})
 	elif d > 14.0 * Defs.TILE and f.order != "move":
@@ -295,14 +320,11 @@ func _nb_lay(q: Unit) -> void:
 	var k := ""
 	# saving up for a structure-unit the economy needs: no warriors meanwhile
 	var saving := _nb_short() or (BroodNew.count_of(game, team, BroodNew.MAW) < 2)
-	if grubs < want_grubs and (grubs < 8 or not BroodNew.father_near(game, team) or gold < 200):
+	var any_father := BroodNew.FATHERS.any(func(f) -> bool: return BroodNew.father_near(game, team, f))
+	if grubs < want_grubs and (grubs < 8 or not any_father or gold < 200):
 		k = "grub"
-	elif BroodNew.father_near(game, team) and not (saving and gold < 250):
-		var essence := float(game.players[team]["res2"])
-		k = "brute" if essence >= 20.0 and gold >= 180 and randi() % 3 == 0 else "raptor"
-		# Spitters behind the Raptors (the owner, 2026-10-29: they're in the new Brood too): about one in three warrior eggs
-		if k == "raptor" and essence >= 5.0 and gold >= 120 and BroodNew.count_of(game, team, "spitter") * 3 < BroodNew.count_of(game, team, "raptor"):
-			k = "spitter"
+	elif any_father and not (saving and gold < 250):
+		k = _nb_warrior(gold)
 	if k == "" or BroodNew.lay_problem(game, q, k) != "":
 		if k != "grub" and grubs < want_grubs and BroodNew.lay_problem(game, q, "grub") == "":
 			k = "grub"
@@ -311,6 +333,38 @@ func _nb_lay(q: Unit) -> void:
 	if k == "grub" and saving and gold < 75 + 50:
 		return          # (the turtle or Rootmaw first)
 	BroodNew.lay(game, q, k)
+
+
+## Which warrior egg: a mix by the fathers rooted beside her (each line only while its father is there). Raptors are
+## the base; Spitters about one egg in three behind them; a Brute now and then; a Mist Toad per 12 army supply (up to
+## 3); Skywings when the enemy flies (or as one egg in five).
+func _nb_warrior(gold: int) -> String:
+	var essence := float(game.players[team]["res2"])
+	var trex := BroodNew.father_near(game, team, BroodNew.FATHER)
+	var dilo := BroodNew.father_near(game, team, BroodNew.DILO)
+	var ptero := BroodNew.father_near(game, team, BroodNew.PTERO)
+	var raptors := BroodNew.count_of(game, team, "raptor")
+	var spitters := BroodNew.count_of(game, team, "spitter")
+	var toads := BroodNew.count_of(game, team, "mist_toad")
+	var wings := BroodNew.count_of(game, team, "skywing")
+	var army := 0
+	for u in _nb_army_units():
+		army += int(u.d["supply"])
+	var foe_air := 0
+	for u in game.units:
+		if game.hostile(u.team, team) and not u.dead and u.is_air():
+			foe_air += 1
+	if ptero and essence >= 40.0 and gold >= 100 and (wings < foe_air or (wings * 5 < raptors + spitters and wings < 8)):
+		return "skywing"
+	if dilo and essence >= 25.0 and gold >= 100 and toads < mini(3, army / 12):
+		return "mist_toad"
+	if dilo and essence >= 5.0 and gold >= 90 and (not trex or spitters * 3 < raptors + 3):
+		return "spitter"
+	if trex:
+		return "brute" if essence >= 20.0 and gold >= 180 and randi() % 3 == 0 else "raptor"
+	if dilo:
+		return "spitter"
+	return "skywing" if ptero else ""
 
 
 # ------------------------------------------------------------------ the army
@@ -334,10 +388,11 @@ func _nb_army(q: Unit) -> void:
 	# nest for it (rooted creatures don't attack: the Rootmaws and turtles stay rooted, the Mother: BroodNew.mother_guard)
 	var threat := _nb_threat(q)
 	if threat != Vector2.INF:
-		var f := BroodNew.father(game, team)
 		var defenders := army.duplicate()
-		if f and f.tesla_mode == "packed":
-			defenders.append(f)      # (rooted on his nest he stays: it is the barracks)
+		for fk in BroodNew.FATHERS:
+			var f := BroodNew.father(game, team, fk)
+			if f and f.tesla_mode == "packed" and not BroodRoot.in_cocoon(f):
+				defenders.append(f)      # (rooted on his nest he stays: it is the barracks)
 		for u in defenders:
 			if u.target == null and (u.order == "idle" or u.order == "nb_root" or u in _wave):
 				u.cmd_move(threat, true)
