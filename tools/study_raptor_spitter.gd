@@ -16,6 +16,16 @@ extends SceneTree
 ##   R    the ramp: A, B and C at 1200 against the Crown's own wall and gate (Greenhold, the AI's Cottage wall plan)
 ##   E    the new Brood (slot faction brood_new): Raptors only, as A (it has no Spitters yet)
 ##   S    break-even scan: the 1200 Brood mixes against 8 to 22 Musketeers
+## The TOAD AND HEALTH study (the owner, 2026-10-29; docs/toad_hp_study.md):
+##   T    Mist Toads against the cannon: Raptors (or 3:1) + 0, 1 or 2 Toads (in the cost) vs Musketeers + 1 or 2 Field
+##        Cannons, 1200 and 2000; the Toads play as a player would (FOG on the line, TONGUE on a gun), with their
+##        starting energy or full (a Toad that waited). Config keys: toads, toad_e ("start"/"full"), toad_plan.
+##   H    Musketeer health 70 / 60 / 50 (key "hp"; set on the spawned men only, the Guardsman scaled by the same
+##        ratio): the key rows of A, B, C and D. HR: the ramp rows at each health. HS: the break-even scan.
+##   X    Crown v Clockwork: Musketeers (mid kit, each health) on HOLD against Clock Soldiers at equal cost (70 cogs,
+##        no Tension) attack-moving in, 1200 and 2000, with and without a cannon, and with SHIELD WALL raised by the
+##        Clockwork computer's own rule (ShieldWall.think).
+## Config names start with their group and "_" (only: picks the group from the name).
 ## One line of JSON a fight goes to out: (and a short line to the console).
 ##
 ## Prices (Defs.UNITS; Game.unit_price for the Musketeer's kit): a Raptor egg 75 biomass for 3 (25 each), a Spitter egg
@@ -33,13 +43,18 @@ var only := ""
 var n_seeds := 3
 var out_path := ""
 var film := ""
+var film_zoom := 0.8          # (zoom:1.4 films closer)
 var _out: FileAccess = null
 var map := "dune_sea"
 var ramp := false
 var nb := false
+var cw := false                 # (group X) the other side is the Clockwork
+var listing := false
 
 const RAPTOR := [25.0, 0.0]
 const SPITTER := [45.0, 2.5]
+const TOAD_P := [100.0, 25.0]
+const CLOCK_SOLDIER := [70.0, 0.0]     # (cogs, Tension)
 const GUN := {"cannon": [210.0, 0.0], "mortar": [185.0, 20.0]}
 const KITS := {
 	"mid": {"lock": "matchlock", "bayonet": true},
@@ -66,10 +81,21 @@ func _initialize() -> void:
 			out_path = a.substr(4)
 		elif a.begins_with("film:"):
 			film = a.substr(5)
+		elif a.begins_with("zoom:"):
+			film_zoom = float(a.substr(5))
+		elif a == "list":
+			listing = true
 	if only != "":
-		group = only.substr(0, 1)
-	ramp = group == "R"
+		group = only.get_slice("_", 0)
+	ramp = group in ["R", "HR"]
 	nb = group == "E"
+	cw = group == "X"
+	if listing:
+		# (the group's config names, one a line: the .sh runs each in its own process with PER_CONFIG=1)
+		for c in configs():
+			print("CFG " + String(c["name"]))
+		quit(0)
+		return
 	if ramp:
 		map = "greenhold"
 	if out_path != "":
@@ -79,6 +105,8 @@ func _initialize() -> void:
 
 
 func _process(delta: float) -> bool:
+	if listing:
+		return true
 	t += delta
 	if not begun:
 		if t > 0.2:
@@ -87,7 +115,7 @@ func _process(delta: float) -> bool:
 				root.add_child(SilentSfx.new())
 			main.start({"map": map, "seed": 4242, "slots": [
 				{"who": "hard", "faction": "crown", "colour": 0, "side": 0},
-				{"who": "easy", "faction": Defs.BROOD_NEW if nb else "brood", "colour": 1, "side": 1}]})
+				{"who": "easy", "faction": "clockwork" if cw else (Defs.BROOD_NEW if nb else "brood"), "colour": 1, "side": 1}]})
 			if main.game:
 				for ai in main.game.ais:
 					ai.process_mode = Node.PROCESS_MODE_DISABLED
@@ -138,7 +166,8 @@ func musk_price(kit: String) -> Array:
 
 func cfg(name: String, musk: int, guns: int, raptors: int, spitters: int, extra := {}) -> Dictionary:
 	var c := {"name": name, "musk": musk, "guns": guns, "gun": "cannon", "raptors": raptors, "spitters": spitters,
-		"form": "front", "sp": 18.0, "kit": "mid"}
+		"form": "front", "sp": 18.0, "kit": "mid", "toads": 0, "toad_e": "start", "toad_plan": "", "hp": 70, "clock": 0,
+		"shield": false}
 	c.merge(extra, true)
 	return c
 
@@ -200,6 +229,57 @@ func configs() -> Array:
 				var b: Array = brood_mix(s, r[1])
 				for nm in [8, 11, 14, 17, 20, 23]:
 					out.append(cfg("S_%d1_m%d" % [r[0], nm], nm, 0, b[0], b[1]))
+		"T":
+			for s in [1200.0, 2000.0]:
+				for guns in [1, 2]:
+					for r in [[99, 1.0], [3, 0.75]]:
+						# toads: [count, energy, plan, tag]
+						for tv in [[0, "start", "", "t0"], [1, "start", "fog", "t1fog"], [1, "start", "tongue", "t1tongue"],
+								[2, "start", "", "t2"], [1, "full", "", "t1full"], [2, "full", "", "t2full"]]:
+							var m: Array = crown_mix(s, guns)
+							var b: Array = brood_mix(s - tv[0] * (TOAD_P[0] + TOAD_P[1]), r[1])
+							out.append(cfg("T_%d_g%d_%s_%s" % [s, guns, "r" if r[0] == 99 else "31", tv[3]], m[0], guns, b[0], b[1],
+								{"toads": tv[0], "toad_e": tv[1], "toad_plan": tv[2]}))
+		"H":
+			for hp in [70, 60, 50]:
+				for s in [1200.0, 2000.0]:
+					var m: Array = crown_mix(s, 0)
+					var m1: Array = crown_mix(s, 1)
+					out.append(cfg("H_A%d_hp%d" % [s, hp], m[0], 0, int(round(s / 75.0)) * 3, 0, {"hp": hp}))
+					var b3: Array = brood_mix(s, 0.75)
+					out.append(cfg("H_C%d_g1_31_hp%d" % [s, hp], m1[0], 1, b3[0], b3[1], {"hp": hp}))
+					if s < 1500.0:
+						for r in [[3, 0.75], [1, 0.5]]:
+							var b: Array = brood_mix(s, r[1])
+							out.append(cfg("H_B%d_%d1_hp%d" % [s, r[0], hp], m[0], 0, b[0], b[1], {"hp": hp}))
+						out.append(cfg("H_D%d_g1_hp%d" % [s, hp], m1[0], 1, int(round(s / 75.0)) * 3, 0, {"hp": hp}))
+		"HR":
+			var s := 1200.0
+			var m: Array = crown_mix(s, 0)
+			var m1: Array = crown_mix(s, 1)
+			for hp in [70, 60, 50]:
+				out.append(cfg("HR_raptors_hp%d" % hp, m[0], 0, int(round(s / 75.0)) * 3, 0, {"hp": hp}))
+				for r in [[3, 0.75], [1, 0.5]]:
+					var b: Array = brood_mix(s, r[1])
+					out.append(cfg("HR_%d1_hp%d" % [r[0], hp], m[0], 0, b[0], b[1], {"hp": hp}))
+				var b3: Array = brood_mix(s, 0.75)
+				out.append(cfg("HR_g1_31_hp%d" % hp, m1[0], 1, b3[0], b3[1], {"hp": hp}))
+		"HS":
+			var s := 1200.0
+			for hp in [70, 60, 50]:
+				for r in [[99, 1.0], [3, 0.75], [1, 0.5]]:
+					var b: Array = brood_mix(s, r[1])
+					for nm in [10, 12, 14, 16, 18, 20, 22, 24]:
+						out.append(cfg("HS_%d1_m%d_hp%d" % [r[0], nm, hp], nm, 0, b[0], b[1], {"hp": hp}))
+		"X":
+			for hp in [70, 60, 50]:
+				for s in [1200.0, 2000.0]:
+					for guns in [0, 1]:
+						var m: Array = crown_mix(s, guns)
+						var ncs := int(round(s / CLOCK_SOLDIER[0]))
+						for sh in [false, true]:
+							out.append(cfg("X_%d_g%d_%s_hp%d" % [s, guns, "shield" if sh else "plain", hp], m[0], guns, 0, 0,
+								{"hp": hp, "clock": ncs, "shield": sh}))
 	if only != "":
 		out = out.filter(func(c) -> bool: return c["name"] == only)
 	return out
@@ -339,6 +419,10 @@ func _price(u: Unit, kit: String) -> Array:
 			return RAPTOR
 		"spitter":
 			return SPITTER
+		"mist_toad":
+			return TOAD_P
+		"clock_soldier":
+			return CLOCK_SOLDIER
 		"musketeer":
 			return musk_price(kit)
 		"cannon", "mortar":
@@ -401,6 +485,11 @@ func fight(c: Dictionary, s: int) -> Dictionary:
 		var u := _add("musketeer", 0, p, lv0, crown)
 		u.set_kit(KITS[c["kit"]])
 		u.powder = u._pmax        # (the pouch refit keeps what he had: a player's army has filled it since)
+		if int(c["hp"]) != 70:
+			# (the study's health: his own `d` copy, scaled by hp/70, so a Guardsman's 90 scales the same way)
+			u.d["hp"] = round(float(u.d["hp"]) * float(c["hp"]) / 70.0)
+			u.max_hp = float(u.d["hp"])
+			u.hp = u.max_hp
 	for i in int(c["guns"]):
 		var gp: Vector2 = mid - dir * 75.0 + perp * ((i - (c["guns"] - 1) / 2.0) * 70.0)
 		_add(c["gun"], 0, gp, lv0, crown)
@@ -415,6 +504,14 @@ func fight(c: Dictionary, s: int) -> Dictionary:
 	var back_k := "raptor" if c["form"] == "lead" else "spitter"
 	var nf: int = c["spitters"] if c["form"] == "lead" else c["raptors"]
 	var nb_: int = c["raptors"] if c["form"] == "lead" else c["spitters"]
+	if cw:
+		# (group X: Clock Soldiers in one block, a little wider apart: radius 10 against a Raptor's)
+		front_k = "clock_soldier"
+		nf = c["clock"]
+		nb_ = 0
+		sp = 24.0
+		if c["shield"]:
+			g.players[1]["tech"]["shield_wall"] = true
 	for pair in [[front_k, nf, 0.0], [back_k, nb_, 110.0 + sqrt(float(nf)) * sp * 0.5]]:
 		var k: String = pair[0]
 		var n: int = pair[1]
@@ -425,17 +522,30 @@ func fight(c: Dictionary, s: int) -> Dictionary:
 			var p: Vector2 = bspot + dir * (float(pair[2]) + row * sp) + perp * ((col - (cols - 1) / 2.0) * sp)
 			p += Vector2(rng.randf_range(-sp * 0.3, sp * 0.3), rng.randf_range(-sp * 0.3, sp * 0.3))
 			_add(k, 1, p, lv1, brood)
+	# Mist Toads (group T): a little in front of the wave, side by side
+	var toads: Array = []
+	for i in int(c["toads"]):
+		var p: Vector2 = bspot - dir * 30.0 + perp * ((i - (c["toads"] - 1) / 2.0) * 60.0)
+		var u := _add("mist_toad", 1, p, lv1, brood)
+		if c["toad_e"] == "full":
+			u.charge = float(Defs.TOAD["max"])
+		toads.append(u)
 	await wait(3.0)        # (the guns unlimber: 2.5 s)
 	for u in crown:
 		if u.deploys():
 			u.cmd_hold()
 	var goal: Vector2 = _home(0) if ramp else mid
 	var held: Array = []
+	var tw := {}           # the Toads' plans and what their tongues did (group T)
 	for u in brood:
-		if c["form"] == "lead" and u.kind == "raptor":
-			held.append(u)
+		if u.kind == "mist_toad":
+			continue
+		if (c["form"] == "lead" and u.kind == "raptor") or not toads.is_empty():
+			held.append(u)          # (with Toads, the wave waits for them to come up: as the wave arrives, the fog goes down)
 			continue
 		u.cmd_move(goal, true)
+	if not toads.is_empty():
+		tw = _toad_start(c, toads, crown, mid, bspot)
 	var supply0 := 0
 	var supply1 := 0
 	for u in crown:
@@ -446,17 +556,29 @@ func fight(c: Dictionary, s: int) -> Dictionary:
 	var shots := 0
 	var released := held.is_empty()
 	var frame := 0
+	var first_shot := -1.0
 	while g.clock - t0 < 180.0:
 		if film != "":
 			await _film_frame(crown, brood, frame, c["name"])
 			frame += 1
 		await wait(0.5)
+		if first_shot < 0.0 and _musk_shots(crown) > 0:
+			first_shot = snapped(g.clock - t0, 0.5)
 		var a0 := _alive(crown)
 		var a1 := _alive(brood)
-		if a0.is_empty() or a1.is_empty():
+		# (the fight is over when the line or the wave is gone: Toads that stood back don't keep it going)
+		if a0.is_empty() or a1.filter(func(u) -> bool: return u.kind != "mist_toad").is_empty():
 			break
+		if not toads.is_empty():
+			_toad_tick(tw, crown, mid)
+			if not released and tw["near"]:
+				tw["release_t"] = snapped(g.clock - t0, 0.1)
+		if cw and c["shield"]:
+			ShieldWall.think(g, 1)
 		if not released:
 			var go := g.clock - t0 > 30.0
+			if not toads.is_empty():
+				go = go or tw["near"]
 			for u in brood:
 				if u.kind == "spitter" and is_instance_valid(u) and not u.dead and u.target != null:
 					go = true
@@ -474,6 +596,8 @@ func fight(c: Dictionary, s: int) -> Dictionary:
 			at += u.position
 		at /= a0.size()
 		for u in a1:
+			if u.kind == "mist_toad":
+				continue
 			if (released or not held.has(u)) and u.order == "idle" and u.target == null:
 				u.cmd_move(at, true)
 	var dur: float = g.clock - t0
@@ -504,11 +628,23 @@ func fight(c: Dictionary, s: int) -> Dictionary:
 		r[side[0] + "_left_hp"] = snapped(left_hp, 1.0)
 		r[side[0] + "_alive"] = alive
 	var w := "draw"
-	if _alive(brood).is_empty() and not _alive(crown).is_empty():
+	var fighters := _alive(brood).filter(func(u) -> bool: return u.kind != "mist_toad")
+	if fighters.is_empty() and not _alive(crown).is_empty():
 		w = "crown"
 	elif _alive(crown).is_empty() and not _alive(brood).is_empty():
 		w = "brood"
 	r["winner"] = w
+	r["musk_shots"] = _musk_shots(crown)
+	r["first_shot_t"] = first_shot
+	r["toads"] = c["toads"]
+	r["toad_e"] = c["toad_e"]
+	r["toad_plan"] = c["toad_plan"]
+	r["hp"] = c["hp"]
+	r["clock"] = c["clock"]
+	r["shield"] = c["shield"]
+	if not toads.is_empty():
+		tw["on"] = false
+		r["toad"] = _toad_report(tw, crown)
 	if ramp:
 		var wl := 0.0
 		var broken := 0
@@ -526,7 +662,9 @@ func fight(c: Dictionary, s: int) -> Dictionary:
 		r["wall_dmg"] = snapped(wl, 1.0)
 	if film != "":
 		await _film_frame(crown, brood, frame, c["name"], true)
-	# clear the field (bodies too) for the next fight
+	# clear the field (bodies too) for the next fight; a fog bank still standing goes too (it would blind the next one)
+	for z in g.zones:
+		z["age"] = maxf(float(z["age"]), float(z["t"]))
 	for u in crown + brood:
 		if is_instance_valid(u):
 			g.consume_unit(u)
@@ -541,6 +679,213 @@ func fight(c: Dictionary, s: int) -> Dictionary:
 				wall_pieces[i] = g._add_building(wall_plan[i][0], 0, wall_plan[i][1], true)
 	await wait(1.0)
 	return r
+
+
+# ------------------------------------------------------------------ the Toads (group T)
+
+## Each Toad's plan, as a player would play it: FOG on the Musketeer line as the wave arrives, TONGUE on a gun once
+## the fight is on (the fog down or the Raptors at the line). Starting energy (75) pays for one spell: one Toad fogs
+## or tongues (plan "fog" / "tongue"), two Toads split the work. Full energy (150) pays for two spells each.
+func _toad_start(c: Dictionary, toads: Array, crown: Array, mid: Vector2, bspot: Vector2) -> Dictionary:
+	var plans: Array = []
+	var full: bool = c["toad_e"] == "full"
+	if toads.size() == 1:
+		if full:
+			plans = [["fog_line", "tongue_gun"]]
+		elif c["toad_plan"] == "tongue":
+			plans = [["tongue_gun"]]
+		else:
+			plans = [["fog_line"]]
+	else:
+		plans = [["fog_line", "tongue_gun"], ["tongue_gun", "fog_guns"]] if full else [["fog_line"], ["tongue_gun"]]
+	var tw := {"on": true, "t0": g.clock, "near": false, "fogged": false, "fogs": [], "events": [], "release_t": -1.0,
+		"bspot": bspot, "toads": [], "guns": {}}
+	for i in toads.size():
+		tw["toads"].append({"u": toads[i], "plan": plans[i], "i": 0, "stage": "", "ev": null, "dead_t": -1.0, "home": false})
+	for u in crown:
+		if u.kind == "cannon":
+			tw["guns"][u] = {"dead_t": -1.0}
+	_toad_watch(tw)
+	_toad_tick(tw, crown, mid)
+	return tw
+
+
+func _engaged(crown: Array) -> bool:
+	for u in _alive(crown):
+		for o in g.units_near(u.position, 70.0):
+			if o.team == 1 and not o.dead and o.kind != "mist_toad":
+				return true
+	return false
+
+
+## Every half second: each idle Toad takes the next step of its plan; done, it walks back out of the fight.
+func _toad_tick(tw: Dictionary, crown: Array, mid: Vector2) -> void:
+	var line := Vector2.ZERO
+	var nl := 0
+	var guns: Array = []
+	for u in _alive(crown):
+		if u.kind == "musketeer":
+			line += u.position
+			nl += 1
+		elif u.kind == "cannon":
+			guns.append(u)
+	line = line / nl if nl > 0 else mid
+	var engaged: bool = tw["fogged"] or _engaged(crown)
+	var taken := {}
+	for ts in tw["toads"]:
+		var u: Unit = ts["u"]
+		if is_instance_valid(u) and not u.dead and u.order == "tongue" and u.order_target:
+			taken[u.order_target] = true
+		if is_instance_valid(u) and u.tongue_victim:
+			taken[u.tongue_victim] = true
+	for ts in tw["toads"]:
+		var u: Unit = ts["u"]
+		if not is_instance_valid(u) or u.dead:
+			continue
+		if u.position.distance_to(mid) < 300.0:
+			tw["near"] = true
+		if u.order in ["cast", "tongue"] or u.tongue_stage != "":
+			continue
+		var plan: Array = ts["plan"]
+		if ts["i"] >= plan.size():
+			if not ts["home"]:
+				ts["home"] = true
+				u.cmd_move(tw["bspot"], false)
+			continue
+		var step: String = plan[ts["i"]]
+		match step:
+			"fog_line", "fog_guns":
+				if u.charge < float(Defs.FOG["cost"]):
+					continue
+				var at := line
+				if step == "fog_guns" and not guns.is_empty():
+					at = Vector2.ZERO
+					for gu in guns:
+						at += gu.position
+					at /= guns.size()
+				u.cmd_cast("fog", at)
+				ts["i"] += 1
+			"tongue_gun":
+				if u.charge < float(Defs.TONGUE["cost"]):
+					continue
+				if not engaged:
+					# (it comes up behind the wave to just outside musket range, and waits for the fight to start)
+					var stage_at: Vector2 = mid + (u.position - mid).normalized() * 250.0
+					if u.position.distance_to(stage_at) > 20.0 and (u.order != "move" or u.order_point.distance_to(stage_at) > 20.0):
+						u.cmd_move(stage_at, false)
+					continue
+				var best: Unit = null
+				var bd := INF
+				for e in guns:
+					if not taken.has(e) and u.can_tongue(e) and e.position.distance_to(u.position) < bd:
+						bd = e.position.distance_to(u.position)
+						best = e
+				if best == null:
+					# (no gun left to take: the nearest Musketeer instead)
+					for e in _alive(crown):
+						if not taken.has(e) and u.can_tongue(e) and e.position.distance_to(u.position) < bd:
+							bd = e.position.distance_to(u.position)
+							best = e
+				if best:
+					u.cmd_tongue(best)
+					taken[best] = true
+				ts["i"] += 1
+
+
+## Every physics frame while the fight lasts: the fog banks laid, each tongue's windup, lash and pull, and the guns.
+func _toad_watch(tw: Dictionary) -> void:
+	var nfog := 0
+	while tw["on"]:
+		await physics_frame
+		if not tw["on"] or g == null:
+			return
+		var t: float = snapped(g.clock - float(tw["t0"]), 0.1)
+		var fz := 0
+		for z in g.zones:
+			if z["kind"] == "fog":
+				fz += 1
+		if fz > nfog:
+			tw["fogs"].append(t)
+			tw["fogged"] = true
+		nfog = fz
+		for gu in tw["guns"]:
+			var gs: Dictionary = tw["guns"][gu]
+			if gs["dead_t"] < 0.0 and (not is_instance_valid(gu) or gu.dead):
+				gs["dead_t"] = t
+		for ts in tw["toads"]:
+			var u: Unit = ts["u"]
+			var alive := is_instance_valid(u) and not u.dead
+			if not alive and ts["dead_t"] < 0.0:
+				ts["dead_t"] = t
+			var st: String = u.tongue_stage if alive else ""
+			var prev: String = ts["stage"]
+			if st == prev:
+				continue
+			ts["stage"] = st
+			var ev = ts["ev"]
+			if st == "windup":
+				var v: Unit = u.tongue_victim
+				ev = {"victim": v.kind, "t": t, "dist": snapped(v.position.distance_to(u.position), 1.0), "result": "",
+					"_v": v, "_pw": v.powder}
+				ts["ev"] = ev
+				tw["events"].append(ev)
+			elif ev != null:
+				var v = ev["_v"]
+				if st == "pull":
+					ev["result"] = "pulled"
+					ev["t_hit"] = t
+					ev["_from"] = v.position
+					ev["_pw"] = v.powder
+					ev["mode_before"] = v.tesla_mode
+				elif st == "recoil":
+					ev["result"] = "staggered"
+					ev["t_hit"] = t
+					ev["_pw"] = v.powder
+				elif st == "":
+					if prev == "windup":
+						ev["result"] = "toad killed in windup" if not alive else "broken"
+					elif prev == "pull" and is_instance_valid(v):
+						ev["moved"] = snapped(Vector2(ev["_from"]).distance_to(v.position), 1.0)
+						ev["mode_after"] = v.tesla_mode
+					ts["ev"] = null
+
+
+## What the Toads did, for the JSON line.
+func _toad_report(tw: Dictionary, crown: Array) -> Dictionary:
+	var evs: Array = []
+	for ev in tw["events"]:
+		var e := {}
+		for k in ev:
+			if not String(k).begins_with("_"):
+				e[k] = ev[k]
+		var v = ev["_v"]
+		if String(ev["victim"]) == "cannon":
+			var gs: Dictionary = tw["guns"].get(v, {"dead_t": -1.0})
+			e["gun_dead_t"] = gs["dead_t"]
+			if ev.has("t_hit") and is_instance_valid(v):
+				e["gun_shots_after"] = int(round(float(ev["_pw"]) - v.powder))
+		evs.append(e)
+	var gun_shots := 0
+	var gun_dead := 0
+	for gu in tw["guns"]:
+		if is_instance_valid(gu):
+			gun_shots += int(round(gu._pmax - gu.powder))
+		if tw["guns"][gu]["dead_t"] >= 0.0:
+			gun_dead += 1
+	var toad_dead: Array = []
+	for ts in tw["toads"]:
+		toad_dead.append(ts["dead_t"])
+	return {"fogs": tw["fogs"], "tongues": evs, "release_t": tw["release_t"], "gun_shots": gun_shots, "guns_dead": gun_dead,
+		"toad_dead_t": toad_dead}
+
+
+## Musket shots the line has fired so far (each shot uses one of the shots a man carries; the fallen count too).
+func _musk_shots(crown: Array) -> int:
+	var n := 0.0
+	for u in crown:
+		if is_instance_valid(u) and u.kind == "musketeer":
+			n += u._pmax - u.powder
+	return int(round(n))
 
 
 var _ramp_cache: Array = []
@@ -561,7 +906,7 @@ func _film_frame(crown: Array, brood: Array, i: int, name: String, last := false
 			m += u.position
 		c += m / side.size() * (0.5 if not a0.is_empty() and not a1.is_empty() else 1.0)
 	g.camera.position = c
-	g.camera.zoom = Vector2(0.8, 0.8)
+	g.camera.zoom = Vector2(film_zoom, film_zoom)
 	if g.hud:
 		g.hud.visible = false
 	await process_frame
