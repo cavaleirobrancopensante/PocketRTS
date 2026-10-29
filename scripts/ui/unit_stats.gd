@@ -416,6 +416,10 @@ static func _specials(kind: String, d: Dictionary, st: Dictionary) -> Array:
 			add.call("KNOCKBACK", Loc.t("Every blow throws the enemy back."))
 		"skywing":
 			add.call("SPINES / BITE", Loc.t("Flying it hits only flyers; LANDED it bites ground units (and anything can hit it)."))
+		"hatchlings":
+			add.call("BITE", Loc.t("It bites only flyers: it can't touch the ground."))
+		"storm_challenger":
+			add.call("SWOOP", Loc.t("It swoops down to bite flyers and ground units alike, over cliffs and water."))
 		"mist_toad":
 			add.call("FOG", Loc.t("Spell (%d energy): shots from or into the fog miss half the time.") % int(Defs.FOG["cost"]))
 			add.call("TONGUE", Loc.t("Spell (%d energy): marks one enemy (a flyer too) for %d s, then drags it to the Toad; heavy units, the Brood Mother and the fathers are only staggered.") % [int(Defs.TONGUE["cost"]), int(Defs.TONGUE["windup"])])

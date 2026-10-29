@@ -446,7 +446,7 @@ static func _is_horseman(u: Unit) -> bool:
 ## What each faction rushes with (fast units that arrive long before an army would). Anything
 ## else armed and quick (Defs speed >= RUSH_SPEED) counts too.
 const RUSH_KINDS := {
-	"brood": ["raptor", "skywing"],
+	"brood": ["raptor", "skywing", "storm_challenger"],
 	"crown": ["cuirassier", "dragoon"],
 	"clockwork": ["ornithopter"],
 }

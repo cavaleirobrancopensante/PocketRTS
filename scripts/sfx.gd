@@ -223,6 +223,9 @@ static func building_selected(kind: String, faction: String) -> void:
 
 ## Sounds that come with a unit's answer: kind -> {what: [[sound, chance], ...]} (each sound's
 ## GAP keeps it from repeating: the horse at most every 6 s).
+## Units with no sounds of their own yet speak (and die) with another's: the Storm line with the retired Skywing's
+## (docs/storm_line.md). Their own files (voice/<kind>/..., combat/<kind>_death) win as soon as they exist.
+const VOICE_AS := {"hatchlings": "skywing", "storm_challenger": "skywing"}
 const VOICE_EXTRA := {"dragoon": {"select": [["horse/neigh", 0.7]], "move": [["horse/neigh", 0.25]]},
 	"horseman": {"select": [["horse/neigh", 0.7]], "move": [["horse/neigh", 0.25]]},
 	"horse": {"select": [["horse/neigh", 0.8]]},
@@ -260,6 +263,8 @@ static func voice(kind: String, what: String) -> void:
 	if me._voice.playing:
 		return
 	var list := me._find("voice/%s/%s" % [kind, what])
+	if list.is_empty() and VOICE_AS.has(kind):
+		list = me._find("voice/%s/%s" % [VOICE_AS[kind], what])     # (a stand-in voice until the unit has its own)
 	if list.is_empty() and what == "attack":
 		list = me._find("voice/%s/move" % kind)
 	if list.is_empty():

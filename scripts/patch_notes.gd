@@ -4,6 +4,14 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.21.0", "items": [
+		"THE STORM LINE: the Storm Sire now fathers HATCHLINGS (the Brood Mother at stage 2), two to an egg (80 food and 10 spoils): cheap, fast little flyers that bite only FLYERS. They can't touch the ground: a flock to keep the enemy's flyers off, fragile against muskets.",
+		"STORM CHALLENGER: at her stage 3 a Hatchling MATURES (110 food and 25 spoils, 9 s moult) into a Storm Challenger, a young Storm Sire that swoops down to bite flyers and ground units alike, over cliffs and water.",
+		"The SKYWING is retired: it was the Storm Sire's stand-in and is no longer laid. Skywings in older saves still fight, and a Skywing egg in an older save hatches Hatchlings.",
+		"The Storm Sire's BIGGER CLUTCH works now (Hatchlings three to an egg, 120 food and 15 spoils). UPDRAFT speeds up Hatchlings (132 to 152), Storm Challengers (120 to 138) and the Storm Sire while they fly.",
+		"The computer's Brood lays Hatchlings against enemy flyers (about two for each), and at stage 3 a few more to mature into Storm Challengers.",
+		"ART: the designer's Hatchling and Storm Challenger sheets (fly, bite or swoop, death, in every direction). Their portraits are the designer's too; they speak with the Skywing's sounds until their own come.",
+	]},
 	{"v": "0.20.3", "items": [
 		"THE BROOD'S OWN CALLS: every Brood creature answers with grunts, growls, roars and hisses cut from the designer's recordings (no words): each line its own (the Tyrant line roars, the Venom line croaks and hisses, the Storm line cries), pitched down for the big creatures and up for the small ones. The Raptor keeps its lizard voice.",
 		"Every creature has its own blows and death now: the Tyrant Challenger, the Sires, the Brood Mother, the Rootmaw, the Mound Turtle and the Mist Toad no longer clash like swords. Each spitter has its own venom hiss, the Mist Toad's TONGUE its own lash, the Brute's charge his bellow.",

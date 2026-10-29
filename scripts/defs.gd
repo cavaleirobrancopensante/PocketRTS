@@ -1078,7 +1078,7 @@ const UNITS := {
 		"name": "Skywing", "hp": 75, "armor": 0, "speed": 118, "cost": 100, "cost2": 40, "time": 16.0, "supply": 2,
 		"sight": 9, "range": 130, "damage": 11, "cooldown": 1.1, "aim": 0.15, "radius": 13, "from": "",
 		"air": true, "anti_air": true, "air_only": true, "faction": "brood",
-		"about": "Flying, it hunts other flyers with volleys of spines (it can't touch the ground). LAND it (1.2 s) to fight on the ground with its bite: then it walks, can't cross cliffs, and anything can hit it. Costs spoils.",
+		"about": "Flying, it hunts other flyers with volleys of spines (it can't touch the ground). LAND it (1.2 s) to fight on the ground with its bite: then it walks, can't cross cliffs, and anything can hit it. Costs spoils. (Retired in 0.21.0: the Storm Sire fathers Hatchlings now; Skywings in older saves still fight.)",
 	},
 	# ---- THE BROOD (scripts/brood_new.gd, docs/brood_new.md): creatures only, no buildings
 	"brood_mother": {
@@ -1115,7 +1115,7 @@ const UNITS := {
 		"name": "Storm Sire", "hp": 700, "armor": 1, "speed": 110, "cost": 200, "cost2": 50, "time": 40.0, "supply": 4,
 		"sight": 10, "range": 30, "damage": 30, "cooldown": 1.7, "aim": 0.3, "radius": 26, "from": "brood_mother",
 		"air": true, "anti_air": true, "faction": "brood", "new_brood": true, "father": true,
-		"about": "A FLYING FATHER, unlocked when the Brood Mother reaches stage 2. Uprooted he flies and DIVES to bite, on the ground and in the air. ROOT: he lands on a nest beside her and fertilises the eggs of his line (Skywings, from her stage 3); landed he is a ground creature anything can hit. Only one at a time.",
+		"about": "A FLYING FATHER, unlocked when the Brood Mother reaches stage 2. Uprooted he flies and DIVES to bite, on the ground and in the air. ROOT: he lands on a nest beside her and fertilises the eggs of his line (Hatchlings, from her stage 2; they MATURE into Storm Challengers at her stage 3); landed he is a ground creature anything can hit. Only one at a time.",
 	},
 	# YOUNG AND MATURE (the owner, 2026-10-29 12:40-14:40; scripts/brood_mature.gd, docs/brood_new.md "Young and mature";
 	# numbers: Claude's choice): a young unit MATURES on its card (MATURE) into its mature form, a young Sire (a
@@ -1133,6 +1133,31 @@ const UNITS := {
 		"sight": 9, "range": 165, "damage": 18, "cooldown": 2.0, "aim": 0.4, "radius": 18, "from": "brood_mother",
 		"acid": 4.0, "splash": 24, "anti_air": true, "venom": true, "plain_attack": true, "faction": "brood", "mature": true,
 		"about": "A Spitter grown into a young Venom Sire: a heavier venom glob than a Spitter's, as far, that strips armour and splashes a little round its target; it reaches flyers too. Tougher and slower than a Spitter. Never laid: a Spitter MATURES into it (the Brood Mother at stage 2).",
+	},
+	# THE STORM LINE (the owner, 2026-10-29: Hatchlings at the Mother's stage 2 -> the Storm Challenger at stage 3; numbers:
+	# Claude's choice, docs/storm_line.md). HATCHLINGS: the Storm Sire's young, two to an egg (three with his BIGGER
+	# CLUTCH): cheap, fast, fragile little flyers that bite FLYERS ONLY (the owner, 18:59: anti-air, can't hit the ground).
+	# A pair (80 food + 10 spoils, 2 supply) is a Swift's match in price and supply (75 cogs + 15 Tension, 2): 76 hp
+	# against its 90, 6 every 1.3 s each (9.3 a second for two against its 7.9), faster (132: a Swift 118), so two beat a
+	# lone Swift; a musket ball (20) takes half of one. Their niche: the swarming flyers (Swifts, the Ticking Owl that
+	# can't hit back, balloons); useless against the ground.
+	"hatchlings": {
+		"tags": ["light"],
+		"name": "Hatchlings", "hp": 38, "armor": 0, "speed": 132, "cost": 80, "cost2": 10, "time": 12.0, "supply": 1, "spawn": 2,
+		"sight": 8, "range": 20, "damage": 6, "cooldown": 0.6, "aim": 0.33, "radius": 8, "from": "",
+		"air": true, "anti_air": true, "air_only": true, "plain_attack": true, "faction": "brood",
+		"about": "The Storm Sire's young: cheap, fast little flyers with a sharp bite, two to an egg (three with his BIGGER CLUTCH). They bite only FLYERS (they can't touch the ground): a flock to keep the enemy's flyers off. Fragile. A Hatchling MATURES into a Storm Challenger (the Brood Mother at stage 3).",
+	},
+	# STORM CHALLENGER: a Hatchling grown into a young Storm Sire (the Skywing's role, which it replaces: hunts flyers, and
+	# it SWOOPS on the ground too). 150 food + 30 spoils, 2 supply (the other Challengers' 2); 150 hp, 16 every 1.9 s
+	# (8.5 a second: a Tyrant Challenger's 8.1), speed 120 (a Skywing's 118). Flying over cliffs and water is its strength,
+	# so its blow is not the strongest; anything that shoots flyers answers it.
+	"storm_challenger": {
+		"tags": ["light"],
+		"name": "Storm Challenger", "hp": 150, "armor": 0, "speed": 120, "cost": 150, "cost2": 30, "time": 20.0, "supply": 2,
+		"sight": 9, "range": 28, "damage": 16, "cooldown": 1.2, "aim": 0.33, "radius": 15, "from": "brood_mother",
+		"air": true, "anti_air": true, "plain_attack": true, "faction": "brood", "mature": true,
+		"about": "A Hatchling grown into a young Storm Sire: a flyer that SWOOPS down to bite, on flyers and on the ground alike, over cliffs and water. Tougher than a Hatchling, not a heavy hitter. Never laid: a Hatchling MATURES into it (the Brood Mother at stage 3).",
 	},
 	"brood_egg": {
 		"tags": ["light"],
@@ -1494,10 +1519,10 @@ const RESEARCH := {
 		"about": "Spitters and Venom Challengers spit as far as a Musketeer shoots: from 165 to 190."},
 	"nb_clutch_hatchlings": {"name": "Bigger Clutch", "label": "BIGGER CLUTCH", "at": "pterodactyl", "faction": "brood", "cost": 100, "cost2": 15,
 		"time": 40.0, "stage": 1, "icon": "nbr_clutch_hatchlings", "young": "hatchlings",
-		"about": "Hatchlings hatch three to an egg instead of two, the egg's price grown so each costs the same. (The Hatchlings are not in the game yet.)"},
+		"about": "Hatchlings hatch three to an egg instead of two. The egg costs more (120 food and 15 spoils for three), so each Hatchling costs the same: more Hatchlings from each egg, not cheaper ones."},
 	"nb_updraft": {"name": "Updraft", "label": "UPDRAFT", "at": "pterodactyl", "faction": "brood", "cost": 75, "cost2": 15,
-		"time": 35.0, "stage": 1, "icon": "nbr_updraft", "speed": {"skywing": 18.0, "hatchlings": 18.0, "storm_challenger": 16.0, "pterodactyl": 17.0}, "air": true,
-		"about": "The Brood's flyers and the Storm Sire ride the warm air: about 15% faster while flying (a Skywing from 118 to 136, the Storm Sire from 110 to 127)."},
+		"time": 35.0, "stage": 1, "icon": "nbr_updraft", "speed": {"skywing": 18.0, "hatchlings": 20.0, "storm_challenger": 18.0, "pterodactyl": 17.0}, "air": true,
+		"about": "Hatchlings, Storm Challengers and the Storm Sire ride the warm air: about 15% faster while flying (Hatchlings from 132 to 152, a Storm Challenger from 120 to 138, the Storm Sire from 110 to 127)."},
 	"nb_quick_roots": {"name": "Quick Roots", "label": "QUICK ROOTS", "at": "brood_mother", "faction": "brood", "cost": 100, "cost2": 30,
 		"time": 45.0, "stage": 1, "icon": "nbr_quick_roots", "root": 0.5,
 		"about": "Every creature roots and uproots in half the time: the Brood Mother in 2 s instead of 4, the others in 1.25 s instead of 2.5."},
@@ -1849,15 +1874,15 @@ const NB := {
 	# Sire and each warrior is unlocked by the Mother's growth stage (0 = stage 1): "father_stage" for the Sires (the
 	# Tyrant and Venom Sires from the start, the Storm Sire at stage 2), "unit_stage" for the warriors (an egg needs its
 	# stage AND its Sire rooted beside her). The Spore Mother and the Stormcaller are retired; the Bloater is out.
-	"lines": {"tyrannosaur": ["raptor", "brute"], "dilophosaurus": ["spitter", "mist_toad"], "pterodactyl": ["skywing"]},
+	"lines": {"tyrannosaur": ["raptor", "brute"], "dilophosaurus": ["spitter", "mist_toad"], "pterodactyl": ["hatchlings"]},
 	"father_stage": {"tyrannosaur": 0, "dilophosaurus": 0, "pterodactyl": 1},
-	"unit_stage": {"raptor": 0, "spitter": 0, "brute": 2, "mist_toad": 2, "skywing": 2,
-		"tyrant_challenger": 1, "venom_challenger": 1},
+	"unit_stage": {"raptor": 0, "spitter": 0, "brute": 2, "mist_toad": 2, "hatchlings": 1,
+		"tyrant_challenger": 1, "venom_challenger": 1, "storm_challenger": 2},
 	# YOUNG AND MATURE (the owner, 12:40; scripts/brood_mature.gd): the Mother lays only the young; a young unit MATURES
 	# (MATURE on its card) into its mature form once she is at the mature form's stage ("unit_stage"; its Sire is not
 	# needed): it pays the mature form's price less its own share of its egg, MOULTS for "moult" s (it can't move or
 	# fight), then it is the mature unit (its veterancy and health share kept). young -> mature.
-	"mature": {"raptor": "tyrant_challenger", "spitter": "venom_challenger"},
+	"mature": {"raptor": "tyrant_challenger", "spitter": "venom_challenger", "hatchlings": "storm_challenger"},
 	"moult": 9.0,
 	# COMING (the owner, 12:20 to 12:45; not in the game yet): their place in the lines, their stage and, for a MATURE
 	# form (YOUNG AND MATURE, 12:40: eggs lay only the young; a MATURE button turns a young unit into it at its stage),
@@ -1868,7 +1893,9 @@ const NB := {
 	# Venom line's young, from stage 1; the Viper and the Hooded Serpent are dropped, their sheets kept in art/redraws)
 	# TARGETS (the owner, 2026-10-29 18:59): the Hatchlings attack AIR ONLY ("air_only", like the Skywing in the air), the
 	# Storm Challenger hits air and ground ("anti_air"); a Hatchling egg holds two (three with the Storm Sire's BIGGER CLUTCH).
-	"lines_later": {"pterodactyl":[["hatchlings", 1, ""], ["storm_challenger", 2, "hatchlings"]]},
+	# (0.21.0: the Storm line is in, "lines", "unit_stage", "mature": nothing is reserved now; the SKYWING, its stand-in, is
+	# retired: no longer laid, kept in UNITS so older saves and replays still have it, docs/storm_line.md)
+	"lines_later": {},
 	# THE SIRE LURES (the owner, 2026-10-29 18:03-18:31; scripts/brood_root.gd, docs/sire_lure.md): a grub turning into
 	# a Sire roots and swells into his LURE (a living pheromone gland); ripe, the Sire ARRIVES in its animation, eats it
 	# and nests on its spot. The Sire's own "time" in all: the lure grows, then "lure_arrive" s of his arrival (12
@@ -2079,10 +2106,12 @@ const TIPS := {
 	"raptor": "Fast, flimsy claws. Two hatch from each egg (three with BIGGER CLUTCH).",
 	"spitter": "Spits acid at ground units (not flyers) that burns and strips armour. Two hatch from each egg (three with BIGGER CLUTCH).",
 	"brute": "Huge horned tank: charges in, knocks enemies back and batters down walls and gates.",
-	"skywing": "Flying, it hunts flyers with spines. LAND it to bite ground units (then anything can hit it).",
+	"skywing": "Flying, it hunts flyers with spines. LAND it to bite ground units (then anything can hit it). Retired: no longer laid.",
+	"hatchlings": "Cheap, fast little flyers that bite only flyers. Two hatch from each egg (three with BIGGER CLUTCH). MATURE into a Storm Challenger.",
 	"mist_toad": "Swamp caster. FOG makes shots miss half the time; TONGUE drags an enemy to its feet. Weak in a fight.",
 	"tyrant_challenger": "A matured Raptor, a young Tyrant Sire: a medium all-round biter between the Raptor and the Brute.",
 	"venom_challenger": "A matured Spitter, a young Venom Sire: a heavier glob than a Spitter's, a little farther, with a small splash.",
+	"storm_challenger": "A matured Hatchling, a young Storm Sire: a flyer that swoops to bite flyers and ground units alike.",
 	# Crown buildings
 	"town_hall": "Trains Labourers. Allows 2 Farms and 1 Powder Mill nearby; its soil and saltpetre run out in time.",
 	"horse_breeder": "Trains horses: 40 gold and 15 s each, no supply; RALLY sends them on. Unlocks Horsemen; cavalry, guns and wagons need its horses. Build as many as you like, anywhere. Two openings: Powder Mill first for Musketeers, or Horse Breeder first for a Horseman rush.",

@@ -1829,6 +1829,15 @@ static func unit_load(u: Unit, d: Dictionary) -> void:
 	set_sky(u)          # (a Pterodactyl landed on his nest is on the ground)
 	if u.kind == EGG and not u.nb.has("out"):
 		u.z_index = EGG_Z
+	if u.kind == EGG and RETIRED_EGGS.has(String(u.nb.get("k", ""))):
+		# an older save's egg of a retired kind (0.21.0: the Skywing, the Storm Sire's stand-in) holds that line's young
+		# now (its price was paid; the young it holds is fixed when laid: a plain clutch)
+		u.nb["k"] = RETIRED_EGGS[String(u.nb["k"])]
+		u.nb.erase("n")
+
+
+## Eggs of a kind no longer laid hatch as this (docs/storm_line.md): the Storm Sire's Skywing stand-in -> his Hatchlings.
+const RETIRED_EGGS := {"skywing": "hatchlings"}
 
 
 static func save(g: Game) -> Dictionary:

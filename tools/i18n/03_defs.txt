@@ -210,9 +210,9 @@ es Un Misionero a caballo: tan rápido como un Mensajero, desarmado. Se apea par
 pt Asa-do-Céu
 es Ala del Cielo
 
-> Flying, it hunts other flyers with volleys of spines (it can't touch the ground). LAND it (1.2 s) to fight on the ground with its bite: then it walks, can't cross cliffs, and anything can hit it. Costs spoils.
-pt Voando, caça outros voadores com salvas de espinhos (não alcança o chão). POUSE-o (1,2 s) para lutar no chão com a mordida: aí ele anda, não cruza penhascos, e qualquer coisa pode atingi-lo. Custa espólios.
-es Volando, caza a otros voladores con salvas de púas (no alcanza el suelo). ATERRÍZALO (1,2 s) para luchar en tierra con su mordisco: entonces camina, no cruza acantilados y cualquier cosa puede golpearlo. Cuesta botín.
+> Flying, it hunts other flyers with volleys of spines (it can't touch the ground). LAND it (1.2 s) to fight on the ground with its bite: then it walks, can't cross cliffs, and anything can hit it. Costs spoils. (Retired in 0.21.0: the Storm Sire fathers Hatchlings now; Skywings in older saves still fight.)
+pt Voando, caça outros voadores com salvas de espinhos (não alcança o chão). POUSE-o (1,2 s) para lutar no chão com a mordida: aí ele anda, não cruza penhascos, e qualquer coisa pode atingi-lo. Custa espólios. (Aposentada na 0.21.0: o Sire da Tempestade agora gera Filhotes; Asas-do-Céu em jogos salvos antigos ainda lutam.)
+es Volando, caza a otros voladores con salvas de púas (no alcanza el suelo). ATERRÍZALO (1,2 s) para luchar en tierra con su mordisco: entonces camina, no cruza acantilados y cualquier cosa puede golpearlo. Cuesta botín. (Retirada en la 0.21.0: el Señor de la Tormenta ahora engendra Crías; las Alas del Cielo de partidas guardadas antiguas siguen luchando.)
 
 > Mist Toad
 pt Sapo da Névoa
@@ -726,9 +726,9 @@ es ARRÁIGALA para lanzar bolas de saliva en área y extender el pantano; MIASMA
 pt Saco de ácido flutuante: cospe de longe até o gás acabar. Com SEGURAR GÁS flutua até o alvo para explodir como uma enorme bomba de ácido.
 es Saco de ácido flotante: escupe desde lejos hasta que se acaba el gas. Con RETENER GAS se acerca flotando para estallar como una enorme bomba de ácido.
 
-> Flying, it hunts flyers with spines. LAND it to bite ground units (then anything can hit it).
-pt Voando, caça voadores com espinhos. POUSE-a para morder unidades terrestres (aí qualquer coisa pode atingi-la).
-es Volando, caza voladores con púas. ATERRÍZALA para morder a unidades terrestres (entonces cualquier cosa puede golpearla).
+> Flying, it hunts flyers with spines. LAND it to bite ground units (then anything can hit it). Retired: no longer laid.
+pt Voando, caça voadores com espinhos. POUSE-a para morder unidades terrestres (aí qualquer coisa pode atingi-la). Aposentada: não é mais posta.
+es Volando, caza voladores con púas. ATERRÍZALA para morder a unidades terrestres (entonces cualquier cosa puede golpearla). Retirada: ya no se pone.
 
 > Swamp caster. FOG makes shots miss half the time; TONGUE drags an enemy to its feet. Weak in a fight.
 pt Conjurador de pântano. NEBLINA faz os tiros errarem metade das vezes; LÍNGUA arrasta um inimigo até seus pés. Fraco em combate.

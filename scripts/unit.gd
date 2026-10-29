@@ -4783,6 +4783,12 @@ func _strike(e: Entity) -> void:
 				wind = maxf(0.0, wind - float(Defs.ARC["drain"]))
 		"steam_walker":
 			game.steam_cone(self, e, dmg)
+		"hatchlings", "storm_challenger":
+			# the Storm line's bite and swoop (docs/storm_line.md): one blow, the Brood's jaws; the retired Skywing's bite
+			# sounds stand in (combat/<kind>_attack first, when a sound job adds them)
+			e.take_damage(dmg, self, BLOW_BROOD)
+			game.spawn_effect("hit", e.center() + Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.5 if kind == "hatchlings" else 0.7)
+			Sfx.play_any(["combat/%s_attack" % kind, "combat/skywing_attack", "bite"], position, -4.0 if kind == "hatchlings" else 0.0)
 		_:
 			var bonus: Dictionary = d.get("bonus", {})
 			dmg *= float(bonus.get(e.kind, 1.0))
@@ -6330,7 +6336,7 @@ func die() -> void:
 	game.on_unit_died(self)
 	if _k_nb:
 		BroodNew.on_death(game, self)      # (a Rootmaw's food bursts out; the supply and swamp change)
-	Sfx.play_any(["combat/%s_death" % kind, "combat/%s_death" % Sfx.SHORT.get(d["faction"], "crown"), "death_" + Sfx.SHORT.get(d["faction"], "crown")], position)
+	Sfx.play_any(["combat/%s_death" % kind, "combat/%s_death" % String(Sfx.VOICE_AS.get(kind, kind)), "combat/%s_death" % Sfx.SHORT.get(d["faction"], "crown"), "death_" + Sfx.SHORT.get(d["faction"], "crown")], position)
 	_set_anim(_death_anim(), true)
 	z_index = 3 if Defs.FLYER.has(kind) else -1     # (the Swift and the Owl fall first: under the living once down)
 	# powder goes up: a keg on a labourer's back, or a whole Powder Wagon
@@ -6597,6 +6603,9 @@ const GALLOPERS := ["cuirassier", "horseman", "messenger", "dragoon", "dragoon_a
 ## standing creatures' 2 fps it beat its wings once every 1 to 1.5 s and snapped between very different poses
 ## (docs/animation_audit_brood.md).
 const SKYWING_HOVER_FPS := 6.0
+## The Storm line hovering (their idle is their 6-frame fly loop, docs/storm_line.md): the little Hatchlings beat their
+## wings fast, the Storm Challenger a little slower (the Storm Sire's own idle stays at the standing 2 fps).
+const HOVER_FPS := {"hatchlings": 10.0, "storm_challenger": 7.0}
 
 ## Walk cycles of the men on foot at full speed, in frames a second (docs/animation_audit_units.md).
 ## Their strips draw a step about 10 to 14 px long, and at 62 to 66 px/s the feet slid 2 to 4 times
@@ -6763,6 +6772,8 @@ func _animate(delta: float) -> void:
 			fps = 2.0 if not Defs.FLYER.has(kind) else float(Defs.FLYER[kind]["flap"]) * 0.85     # (a flyer flaps in place)
 			if kind == "skywing":
 				fps = SKYWING_HOVER_FPS
+			elif HOVER_FPS.has(kind):
+				fps = float(HOVER_FPS[kind])
 		"death", "death_cocoon", "gdeath", "death_keg":
 			fps = 7.0
 			loop = false
