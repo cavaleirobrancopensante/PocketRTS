@@ -1161,7 +1161,7 @@ const BASE_UNITS := {
 		"walk_s": 6,
 		"walk_se": 6,
 	}},
-	"dilophosaurus": {"cell": Vector2i(162, 155), "anchor": Vector2(81, 116), "frames": {
+	"dilophosaurus": {"cell": Vector2i(176, 155), "anchor": Vector2(88, 116), "frames": {
 		"attack_e": 6,
 		"attack_n": 6,
 		"attack_ne": 6,

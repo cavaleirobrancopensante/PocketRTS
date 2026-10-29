@@ -127,6 +127,8 @@ func _nb_morphs(q: Unit) -> void:
 
 ## The later fathers, once her stage unlocks them (the owner, 21:45 and 2026-10-29 11:10): one of each, in order.
 func _nb_next_father(q: Unit) -> String:
+	if BroodNew.count_of(game, team, BroodNew.FATHERS[0]) == 0 or BroodNew.count_of(game, team, BroodNew.MAW) < 3 or game.clock < 150.0:
+		return ""          # (the first Sire and the economy first: the others after him, from about 2:30)
 	for f in BroodNew.FATHERS:
 		if f == BroodNew.FATHERS[0]:
 			continue
@@ -178,7 +180,7 @@ func _nb_father_spot(q: Unit, me: Unit, k: String = BroodNew.FATHER):
 			var c := game.cell_of(p)
 			if not _nb_on_map(p) or not game._walkable(c) or game.region_of(c) != home:
 				continue
-			if BroodRoot.place_problem(game, team, k, p, me, true) != "":
+			if BroodRoot.place_problem(game, team, k, p, me, true) != "" or BroodRoot.rect_for(k, p).intersects(_nb_mother_ground(q)):
 				continue
 			if best == null or p.distance_to(from) < (best as Vector2).distance_to(from):
 				best = p
@@ -314,7 +316,7 @@ func _nb_grow(q: Unit) -> void:
 ## coming: _nb_essence).
 func _nb_saving_growth(q: Unit) -> bool:
 	var st := BroodNew.stage(q)
-	if st >= (Defs.NB["stages"] as Array).size() - 1 or float(q.nb.get("grow_t", 0.0)) > 0.0 or _nb_threat(q) != Vector2.INF:
+	if st >= (Defs.NB["stages"] as Array).size() - 1 or float(q.nb.get("grow_t", 0.0)) > 0.0 or _nb_threat(q) != Vector2.INF or q.tesla_mode != "deployed":
 		return false
 	if game.clock < (210.0 if st == 0 else 420.0):
 		return false
@@ -323,8 +325,9 @@ func _nb_saving_growth(q: Unit) -> bool:
 
 
 ## ESSENCE (her stage 3, the Venom and Storm Sires, the warriors that cost it): grubs HARVEST the bodies near home
-## (two at most, while there are bodies); with none, a spare grub is offered up at the Mother (SACRIFICE: a third of its
-## food as essence, and an egg back), one every 12 s at most, while the essence wanted is short.
+## (two at most, while there are bodies); and while that is not enough, a Raptor at home (not in a wave; 6 always kept) is offered up
+## at the Mother (SACRIFICE: about a third of its food as essence, and an egg back; grubs can't be offered), one every
+## 4 s at most, while the essence wanted is short (and in an attack on her, none).
 var _nb_offer_t := 0.0
 
 
@@ -354,12 +357,15 @@ func _nb_essence(q: Unit) -> void:
 		for u in harvesting:
 			if u.cocoon <= 0.0:
 				u.cmd_stop()          # (no bodies left: back to work, WORK finds it a Rootmaw)
-	if have >= want or not bodies.is_empty() or game.clock < _nb_offer_t or grubs.size() < 14:
+	if have + 9.0 * harvesting.size() >= want or game.clock < _nb_offer_t or _nb_threat(q) != Vector2.INF:
 		return
-	for u in grubs:
-		if u.order == "gather" and u.carrying == 0 and u.can_sacrifice():
+	var raptors := _nb_mine("raptor").filter(func(u: Unit) -> bool: return u.position.distance_to(q.position) < 16.0 * Defs.TILE and u.target == null and u.order != "sacrifice")      # (at home, not fighting)
+	if raptors.size() <= 6:          # (some always kept at home)
+		return
+	for u in raptors:
+		if u.can_sacrifice():
 			u.cmd_sacrifice()
-			_nb_offer_t = game.clock + 12.0
+			_nb_offer_t = game.clock + 4.0
 			return
 
 
@@ -419,7 +425,8 @@ func _nb_warrior(gold: int) -> String:
 		return "skywing"
 	if toads_ok and essence >= 25.0 and gold >= 100 and toads < mini(3, army / 12):
 		return "mist_toad"
-	if dilo and essence >= 5.0 and gold >= 90 and (not trex or spitters * 3 < raptors + 3):
+	var keep := float(Defs.NB["stages"][2]["cost2"]) if st == 1 and game.clock >= 360.0 else 0.0      # (her stage 3 needs essence: kept for it)
+	if dilo and essence >= 5.0 + keep and gold >= 90 and (not trex or spitters * 3 < raptors + 3):
 		return "spitter"
 	if trex:
 		return "brute" if brutes_ok and essence >= 20.0 and gold >= 180 and randi() % 3 == 0 else "raptor"
@@ -501,3 +508,10 @@ func _nb_army(q: Unit) -> void:
 		for u in army:
 			if u.order == "idle" and u.target == null and u.position.distance_to(spot) > 180.0:
 				u.cmd_move(spot)
+
+
+## The ground the Mother roots on at home (her footprint at her stage, one tile round it): a Sire never nests there,
+## even while she is up fighting, or she could not root again when it is calm.
+func _nb_mother_ground(q: Unit) -> Rect2:
+	var home: Vector2 = _q_guard.get("home", q.position)
+	return BroodRoot.rect_for(BroodNew.QUEEN, home, BroodRoot.scale_of(q)).grow(Defs.TILE)

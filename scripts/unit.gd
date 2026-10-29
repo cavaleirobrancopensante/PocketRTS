@@ -4574,7 +4574,9 @@ func _engage(e: Entity, delta: float, may_move: bool) -> Vector2:
 			return Vector2.ZERO
 		if tesla_mode != "packed":
 			return Vector2.ZERO
-	elif deploys() and not _k_nb and (dist > rng or dist < min_r) and phase == "":
+	elif deploys() and (not _k_nb or kind == BroodNew.QUEEN) and (dist > rng or dist < min_r) and phase == "":
+		# (guns set up and don't chase; the Brood Mother stands her ground too, on her leash: BroodNew.mother_guard; the other
+		# rooters, up, are walking creatures and chase what they are told to attack)
 		target = null         # set-up guns don't chase
 		return Vector2.ZERO
 	if phase != "":

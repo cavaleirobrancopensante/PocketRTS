@@ -35,6 +35,7 @@ import sys
 
 import numpy as np
 from PIL import Image
+from scipy import ndimage
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import import_art as ia  # noqa: E402
@@ -241,9 +242,31 @@ def dilophosaurus(stand_ins):
     for name in ["root", "rooted", "uproot"]:
         for k, im in enumerate(small.get((name, "se"), [])):
             ibn.FEET[((name, "se"), k)] = ibn.claw_feet(im)
+    # THE SPIT: its stream and droplets fall below his feet (south and south-east), so a spit frame lined up on its
+    # lowest pixel would lift him off the ground: his feet are the lowest row of the frame without the bright venom
+    for (anim, d), lst in small.items():
+        if anim == "attack":
+            for k, im in enumerate(lst):
+                ibn.FEET[((anim, d), k)] = spit_feet(im)
     small[("glow_rooted", "se")] = [ibn.glow_of("tyrannosaur", im) for im in small[("rooted", "se")]]
     eggs_and_bottom(kind, small, ("rooted", "se"))
     return small
+
+
+def spit_feet(im):
+    """Where a spitting frame stands: the body without the venom (bright yellow-green, and the loose droplets: pieces
+    away from the body), its columns' middle and lowest row."""
+    rgb = im[..., :3].astype(int)
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    body = (im[..., 3] > 0) & ~((g > 160) & (b < 110) & (r > 110) & (g > r * 0.9))
+    lab, n = ndimage.label(body)
+    if n > 1:
+        sizes = ndimage.sum(body, lab, range(1, n + 1))
+        body = lab == (1 + int(np.argmax(sizes)))
+    ys, xs = np.nonzero(body)
+    if len(xs) < 50:
+        return ibn.anchor_of(im)
+    return float(xs.mean()), float(ys.max())
 
 
 def pterodactyl(stand_ins):

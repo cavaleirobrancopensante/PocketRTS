@@ -1158,7 +1158,7 @@ const UNITS := {
 	# THE SECOND AND THIRD FATHERS (the owner, 2026-10-29 11:10: the father lines; numbers: Claude's choice, docs/brood_new.md)
 	"dilophosaurus": {
 		"tags": ["armored"],
-		"name": "Venom Sire", "hp": 650, "armor": 1, "speed": 78, "cost": 150, "cost2": 25, "time": 30.0, "supply": 4,
+		"name": "Venom Sire", "hp": 650, "armor": 1, "speed": 78, "cost": 150, "time": 30.0, "supply": 4,
 		"sight": 9, "range": 140, "damage": 20, "cooldown": 1.6, "aim": 0.4, "radius": 22, "from": "brood_mother",
 		"acid": 4.0, "anti_air": true, "building_bonus": 1.2, "faction": "brood", "new_brood": true, "father": true,
 		"about": "A FATHER, open from the start: rooted on his nest beside the Brood Mother, he fertilises the eggs of his line (Spitters from her stage 2, Mist Toads from stage 3). Uprooted he walks and SPITS venom from afar (on flyers too), a strong Spitter of his own. Only one at a time.",
