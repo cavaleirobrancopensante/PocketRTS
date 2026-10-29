@@ -140,3 +140,12 @@ Still to settle with him (see the chat, 2026-10-28): which units root and what e
   - stage 2: Dread Croc (Tyrant), Spitter (Venom), Hatchling Swarm (Storm);
   - stage 3: Brute (Tyrant), Mist Toad (Venom), the new pterosaur that replaces the Skywing (Storm; concept art/redraws/skywing_pterosaur_concept_chatgpt.png).
   The Spitter's range goes from 150 to 170 (the Viper's shorter, about 120).
+- (2026-10-29 12:36) OWNER, ideas (not all decided):
+  - The BROOD MOTHER gets 3 different sprites, one per growth stage: more terrifying at each stage (new art for stages 2 and 3).
+  - YOUNG AND MATURE, a unifying Brood feature: each Sire has a YOUNG unit that comes in numbers from one egg (a swarm, like the Raptor's 3) and a MATURE form the young grows into (the same unit, matured). A good army mixes both, because their roles differ.
+    - Storm Sire: HATCHLINGS (each a separate unit, several from one egg) -> mature PTERODACTYL (the Skywing's replacement): the stage-2 unit becomes the stage-3 unit.
+    - Venom Sire: VIPER -> SPITTER (the same idea).
+    - Tyrant Sire: RAPTOR -> maybe a small TYRANNOSAUR (a matured Raptor) instead of the Dread Croc; the owner is not sure yet.
+  - Concepts in: art/redraws/viper_concept_chatgpt.png, dread_croc_concept_chatgpt.png, hatchling_swarm_concept_chatgpt.png.
+- (2026-10-29 12:40) DECIDED (owner): YOUNG AND MATURE. Eggs lay only the YOUNG; a young unit MATURES with a MATURE button on its card once the Mother reaches the mature form's stage: it costs food (+ essence), takes some seconds (a short moult/cocoon, it can't move), then it is the mature unit. Pairs: Tyrant Sire: RAPTOR -> a SMALL TYRANNOSAUR (a young tyrant; the Dread Croc is dropped); Storm Sire: HATCHLINGS (several separate units from one egg) -> the mature PTERODACTYL. Venom Sire: being settled (the Viper is a snake and can't grow into the frilled-lizard Spitter; options: Viper -> great hooded serpent, or a young Spitter -> Spitter).
+- (2026-10-29 12:45) DECIDED (owner): Venom Sire: VIPER -> a great HOODED SERPENT (its mature form); the SPITTER stays a separate unit. Lines now: Tyrant Sire: Raptor (st.1) -> young Tyrannosaur (mature, st.2); Brute (st.3). Venom Sire: Viper (st.1) -> Hooded Serpent (mature; Claude suggests st.2 or 3, to confirm); Spitter (st.2); Mist Toad (st.3). Storm Sire: Hatchlings (st.2) -> Pterodactyl (mature, st.3).
