@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.15.18", "items": [
+		"THE NEW BROOD (EXPERIMENT), from the designer's screenshot: a rooted creature's picture now sits on its footprint like a building on its tiles: the bottom of the Brood Mother's nest (at every growth stage), the Rootmaw, the Mound Turtle's mud and the Tyrannosaur's nest touch the bottom edge of their green rectangle, sliding down smoothly as they root (no jump), and the selection rectangle and the pointer's corners are drawn under the creature, not across it. The eggs she lays in her nest and the Tyrannosaur's nest eggs moved with the pictures, and the FATHER RANGE label sits at the bottom of its ring, off her body.",
+	]},
 	{"v": "0.15.17", "items": [
 		"THE NEW BROOD (EXPERIMENT): a father fertilises ALL the warrior eggs in his nest at once, not one at a time: a queue of 10 Raptor eggs is fathered together and hatches together. The same for every father.",
 	]},

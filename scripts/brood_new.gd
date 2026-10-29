@@ -460,7 +460,7 @@ static func lay(g: Game, q: Unit, k: String) -> String:
 		var busy := float(q.nb.get("lay_t", 0.0))       # (already laying: this egg comes out at the end of that show)
 		if busy <= 0.0:
 			q.nb["lay_t"] = lay_time(q)
-		var from := q.position + (LAY_EGG_AT if drawn else CLUTCH_AT) * float(stage_def(q)["scale"]) - p
+		var from := q.position + (LAY_EGG_AT if drawn else CLUTCH_AT) * float(stage_def(q)["scale"]) + Vector2(0.0, BroodRoot.drop(q)) - p     # (her rooted art is drawn BroodRoot.drop lower)
 		e.nb["pop_x"] = from.x
 		e.nb["pop_y"] = from.y
 		e.nb["pop"] = POP_TIME
@@ -658,7 +658,7 @@ const NEST_LIFT := 8.0       # (an egg there is drawn this much higher: on the n
 
 
 static func nest_point(f: Unit) -> Vector2:
-	return f.position + NEST_AT
+	return f.position + NEST_AT + Vector2(0.0, BroodRoot.drop(f))        # (his rooted art is drawn that much lower)
 
 
 ## The eggs in his nest, first laid first (the queue counted over him).
@@ -1478,6 +1478,7 @@ static func _rooted_look(u: Unit, n: int) -> void:
 			BroodRoot.pic_parent(u).add_child(xf)
 			BroodRoot.pic_parent(u).move_child(xf, s.get_index() + 1)
 		xf.visible = true
+		xf.position = s.position
 		xf.self_modulate.a = 1.0 - shown
 		s.self_modulate.a = shown
 	else:
@@ -1514,10 +1515,7 @@ static func draw(u: Unit, top: float) -> void:
 	if u.selected and u.kind == MAW and u.team == g.human:
 		u.draw_arc(Vector2.ZERO, float(Defs.PIT_CLAIM) * Defs.TILE, 0, TAU, 48, Color(0.75, 0.9, 0.3, 0.45), 1.5)
 	# (the father's range round the Mother: the game's overlay draws it, BroodRoot.draw_overlay)
-	if u.selected and BroodRoot.has_fp(u) and ROOTERS.has(u.kind):
-		# rooted = a building: its footprint outlined, as a selected building's
-		var fr := BroodRoot.rect_of(u)
-		u.draw_rect(Rect2(fr.position - u.position, fr.size), Color(0.4, 1.0, 0.4, 0.75), false, 2.0)
+	# (rooted = a building: its footprint outlined when selected, as a building's, UNDER its pictures: BroodRoot._draw_frame)
 	if u.selected and mine and (BroodRoot.fixed(u)):
 		var rp := BroodRoot.rally_of(u)
 		if u.kind == EGG and bool(u.nb.get("nest", false)) and not u.nb.has("ro"):

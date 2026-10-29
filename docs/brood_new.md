@@ -77,6 +77,18 @@ The owner played 0.15.14 (docs/idea_brood_mobile_buildings.md, 21:28, 21:32, 21:
 9. PROGRESS BARS. While she grows: a violet bar over her ("GROWING · STAGE 2") and, on her card, the label, the time left and a bar in the text line, with STOP GROWING (all paid back) in place of GROW. The same card line for a cocoon (MORPHING), rooting and uprooting (with a bar over the creature), an egg (HATCHING, WAITING FOR THE FATHER) and the Tyrannosaur's first nest egg (FERTILISING, HATCHING) (BroodNew.progress). The bars and labels over a rooting creature now sit just over its drawn body (they floated far above the Mother and the Tyrannosaur: the walk sheet's size). The laying-levers button reads just "LAYING +15%" (the levers in its tooltip). (mother_growing.png, father_eggs.png)
 10. THE MOUND TURTLE COSTS 100 (was 150; the owner, 21:34). See the fairness paragraph below.
 
+## The rooted art on its footprint (the owner, 2026-10-29)
+
+The owner's phone screenshot of the rooted Mother, selected: the green rectangle's top ran across her eggs and its bottom lay well below her nest. Code: BroodRoot.layer, art_dy, drop, drop_for, _draw_frame (scripts/brood_root.gd); Defs.NB "nest_y". Test: tools/test_brood_new.gd section 17. Pictures: docs/shots/rooted_align/ (before_* and after_*; tools/shot_brood_structures.gd with "alignbefore_" / "alignafter_").
+
+1. THE ART SITS ON ITS FOOTPRINT. Rooted, each creature's pictures (sprite, glow, cocoon fade-in) are drawn lower than its feet by its DROP: from the feet to where the bottom of its rooted art (Defs.NB "nest_y", measured on the rooted strips: her nest's rubble -8 px, the Rootmaw -1, the turtle's mud 0, the Tyrannosaur's nest +26, times her stage scale) meets the footprint's bottom edge. The Mother 32 px at stage 1, 43 at stage 2, 38 at stage 3 (her footprint's rounding); the Mound Turtle 24; the Rootmaw 9; the Tyrannosaur 6. The footprint itself, the feet (u.position), paths, reach and placement are unchanged: only the pictures move. All the rooted strips (rooting, rooted loop, laying, the Rootmaw's food levels, uprooting) get the same drop, so they stay steady relative to each other.
+2. NO JUMP. Walking the drop is 0; it eases in over the rooting frames (smoothstep on the rooting time) and out over the uprooting frames, so the walking and the rooted pictures meet at the same feet. A creature that dies rooted keeps its drop (its death strip where its body was).
+3. WHAT FOLLOWS THE ART: the click-to-select area and the bars and labels over her (both read the drawn frame: BroodRoot.body_rect), the egg in her laying frame 6 (LAY_EGG_AT + the drop), the Tyrannosaur's nest point (NEST_AT + his drop: the eggs lie on his drawn nest), the ROOT ghost's picture (drop_for). Her eggs still go to the nearest empty spot round her footprint's rim (the footprint did not move). No shadow is drawn under a rooted creature (as before).
+4. THE FRAME UNDER THE ART. The selection rectangle (a building's green frame, 3 px out) and the hover corners are drawn by a node under the creature's pictures in the building layer (as a building's selection), so only the parts outside the art show; BroodNew.draw and Game._draw_hover no longer draw them over her.
+5. FATHER RANGE. The ring's label moved from over the ring's top (it ran across her spikes) to just inside its bottom, far below her nest.
+
+For the owner to know: the Mound Turtle's 3x3 footprint is much wider and deeper than its drawn shell (the art is about 80x56 px on a 96x96 px footprint): with the shell on the bottom edge, its top third is empty ground (the size was chosen to close a 3-wide ramp).
+
 ## The numbers
 
 - Brood Mother: 2,400 health, armour 1, speed 24, paw 40 damage every 2.4 s. Gives 16 supply, as the old Burrow.
