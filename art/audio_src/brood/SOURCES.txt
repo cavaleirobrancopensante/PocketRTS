@@ -1,0 +1,7 @@
+The owner's Brood creature sounds, sent 2026-10-29 20:49 ("use them at your discretion in the Brood faction").
+File names are his (the purpose he had in mind):
+venom.mp3 (0.6 s), venom2.mp3 (3.6 s), venom_sire.mp3 (3.1 s), spitter.mp3 (3.3 s): the Venom line
+tyrant_sire.mp3 (1.7 s), tyrant_challanger.mp3 (1.6 s): the Tyrant line
+storm.mp3 (2.5 s): the Storm line
+weak_grown.mp3 (2.3 s), terrifying.mp3 (2.3 s), weird.mp3 (1.5 s): general creature calls
+freesound_community-small-dino-raspy-calls-39345.mp3 (1.8 s): "small dino raspy calls" by freesound_community (Pixabay, Pixabay licence: free to use, no attribution required)
