@@ -140,3 +140,10 @@ Still to settle with him (see the chat, 2026-10-28): which units root and what e
   - stage 2: Dread Croc (Tyrant), Spitter (Venom), Hatchling Swarm (Storm);
   - stage 3: Brute (Tyrant), Mist Toad (Venom), the new pterosaur that replaces the Skywing (Storm; concept art/redraws/skywing_pterosaur_concept_chatgpt.png).
   The Spitter's range goes from 150 to 170 (the Viper's shorter, about 120).
+- (2026-10-29 12:36) OWNER, ideas (not all decided):
+  - The BROOD MOTHER gets 3 different sprites, one per growth stage: more terrifying at each stage (new art for stages 2 and 3).
+  - YOUNG AND MATURE, a unifying Brood feature: each Sire has a YOUNG unit that comes in numbers from one egg (a swarm, like the Raptor's 3) and a MATURE form the young grows into (the same unit, matured). A good army mixes both, because their roles differ.
+    - Storm Sire: HATCHLINGS (each a separate unit, several from one egg) -> mature PTERODACTYL (the Skywing's replacement): the stage-2 unit becomes the stage-3 unit.
+    - Venom Sire: VIPER -> SPITTER (the same idea).
+    - Tyrant Sire: RAPTOR -> maybe a small TYRANNOSAUR (a matured Raptor) instead of the Dread Croc; the owner is not sure yet.
+  - Concepts in: art/redraws/viper_concept_chatgpt.png, dread_croc_concept_chatgpt.png, hatchling_swarm_concept_chatgpt.png.
