@@ -1,0 +1,146 @@
+# THE WORKER LABELS over the economy buildings (scripts/worker_labels.gd; the owner, 2026-10-29): the job word before
+# each count and the tooltip that opens on it. (GRUBS and WINDERS were already translated.)
+
+> HAULERS
+pt CARREGADORES
+es PORTEADORES
+
+> FARMERS
+pt LAVRADORES
+es LABRADORES
+
+> POWDER MAKERS
+pt POLVORISTAS
+es POLVORISTAS
+
+> Farmers
+pt Lavradores
+es Labradores
+
+> Powder makers
+pt Polvoristas
+es Polvoristas
+
+> Drive
+pt Tração
+es Tracción
+
+> Efficiency
+pt Eficiência
+es Eficiencia
+
+> Haulers: %d assigned, %d needed
+pt Carregadores: %d designados, %d necessários
+es Porteadores: %d asignados, %d necesarios
+
+> %d of %d at work
+pt %d de %d trabalhando
+es %d de %d trabajando
+
+> soil left %d%%
+pt solo restante %d%%
+es suelo restante %d%%
+
+> saltpetre left %d%%
+pt salitre restante %d%%
+es salitre restante %d%%
+
+> ground left %d%%
+pt terreno restante %d%%
+es terreno restante %d%%
+
+> %d tiles from the capital
+pt a %d casas da capital
+es a %d casillas de la capital
+
+> %d tiles from the Mother
+pt a %d casas da Mãe
+es a %d casillas de la Madre
+
+> %d food left
+pt %d de comida restante
+es %d de comida restante
+
+> %d food in it, %d in its ground
+pt %d de comida nela, %d no seu terreno
+es %d de comida dentro, %d en su terreno
+
+> %d of %d free  ·  this base can use %d (up to %d)
+pt %d de %d livres  ·  esta base pode usar %d (até %d)
+es %d de %d libres  ·  esta base puede usar %d (hasta %d)
+
+> Nothing to haul yet: build a Horse Breeder, or put a Powder Wagon on SUPPLY.
+pt Nada para carregar ainda: construa um Criador de Cavalos ou ponha uma Carroça de Pólvora em ABASTECER.
+es Nada que acarrear todavía: construye un Criador de Caballos o pon un Carro de Pólvora en ABASTECER.
+
+> More haulers than needed: the spare Labourers could be farming.
+pt Mais carregadores do que o necessário: os Operários de sobra poderiam estar na lavoura.
+es Más porteadores de los necesarios: los Peones sobrantes podrían estar labrando.
+
+> Labourers working the Farm. With all %d it ripens a %d-gold harvest every %d s; with nobody it grows at %d%% of that speed, and each farmer adds the same share: about %d gold a minute each. Harvests draw on the Town Hall's soil: once it is spent the Farm pays nothing.
+pt Operários trabalhando a Fazenda. Com todos os %d ela amadurece uma colheita de %d de ouro a cada %d s; sem ninguém cresce a %d%% dessa velocidade, e cada lavrador acrescenta a mesma parte: cerca de %d de ouro por minuto cada um. As colheitas tiram do solo da Prefeitura: esgotado o solo, a Fazenda não rende nada.
+es Peones trabajando la Granja. Con los %d madura una cosecha de %d de oro cada %d s; sin nadie crece al %d%% de esa velocidad, y cada labrador añade la misma parte: unos %d de oro por minuto cada uno. Las cosechas tiran del suelo del Ayuntamiento: agotado el suelo, la Granja no rinde nada.
+
+> Labourers grinding the Town Hall's saltpetre into black powder, about %d powder a minute each (%d with all %d). Powder buys Musketeers and Powder Wagons and refills your soldiers' shots. Once the saltpetre is spent the Mill grinds nothing.
+pt Operários moendo o salitre da Prefeitura em pólvora negra, cerca de %d de pólvora por minuto cada um (%d com todos os %d). A pólvora compra Mosqueteiros e Carroças de Pólvora e recarrega os tiros dos seus soldados. Esgotado o salitre, o Moinho não mói nada.
+es Peones moliendo el salitre del Ayuntamiento en pólvora negra, unos %d de pólvora por minuto cada uno (%d con los %d). La pólvora compra Mosqueteros y Carros de Pólvora y recarga los tiros de tus soldados. Agotado el salitre, el Molino no muele nada.
+
+> Grubs carry food from this pit's ground to the Burrow. A trip from here pays about %d food, about %d a minute for each grub: the farther the pit, the more a trip pays (best about %d to %d tiles out). It takes %d grubs, one more for every %d tiles beyond %d, up to %d.
+pt As larvas levam comida do terreno deste poço até a Toca. Uma viagem daqui rende cerca de %d de comida, cerca de %d por minuto para cada larva: quanto mais longe o poço, mais rende uma viagem (melhor a cerca de %d a %d casas). Ele aceita %d larvas, mais uma a cada %d casas além de %d, até %d.
+es Las larvas llevan comida del terreno de este foso a la Madriguera. Un viaje desde aquí rinde unos %d de comida, unos %d por minuto por cada larva: cuanto más lejos el foso, más rinde un viaje (mejor a unas %d a %d casillas). Admite %d larvas, una más por cada %d casillas más allá de %d, hasta %d.
+
+> Food spilled on the ground by an uprooted Rootmaw (or a hauling one killed). Up to %d grubs carry it to the Brood Mother; a trip from here pays about %d food. It rots slowly.
+pt Comida derramada no chão por uma Bocarraiz desenraizada (ou morta carregando). Até %d larvas a levam à Mãe da Ninhada; uma viagem daqui rende cerca de %d de comida. Ela apodrece devagar.
+es Comida derramada en el suelo por una Bocarraíz desenraizada (o muerta acarreando). Hasta %d larvas la llevan a la Madre de la Camada; un viaje desde aquí rinde unos %d de comida. Se pudre despacio.
+
+> Grubs carry the food this Rootmaw draws from its ground to the Brood Mother. A trip from here pays about %d food, about %d a minute for each grub: the farther from her, the more a trip pays. It takes %d grubs, one more for every %d tiles beyond %d from her, up to %d.
+pt As larvas levam à Mãe da Ninhada a comida que esta Bocarraiz tira do seu terreno. Uma viagem daqui rende cerca de %d de comida, cerca de %d por minuto para cada larva: quanto mais longe dela, mais rende uma viagem. Ela aceita %d larvas, mais uma a cada %d casas além de %d dela, até %d.
+es Las larvas llevan a la Madre de la Camada la comida que esta Bocarraíz saca de su terreno. Un viaje desde aquí rinde unos %d de comida, unos %d por minuto por cada larva: cuanto más lejos de ella, más rinde un viaje. Admite %d larvas, una más por cada %d casillas más allá de %d de ella, hasta %d.
+
+> The % is how hard it works now: its Winders' share x its DRIVE (100% when its ring meshes with the Clocktower's or a Mainspring's, 90, 80, 70% for each ring farther out; 0 unlinked)
+pt O % é o quanto ela trabalha agora: a parte dos seus Enroladores x a sua TRAÇÃO (100% quando o seu anel engrena com o da Torre do Relógio ou de uma Mola Real, 90, 80, 70% para cada anel mais longe; 0 desligada)
+es El % es cuánto trabaja ahora: la parte de sus Dadores de cuerda x su TRACCIÓN (100% cuando su anillo engrana con el de la Torre del Reloj o de un Muelle Real, 90, 80, 70% por cada anillo más lejos; 0 desenlazado)
+
+> x the brass (a quarter once it is spent).
+pt x o latão (um quarto depois de esgotado).
+es x el latón (un cuarto una vez agotado).
+
+> Winders winding the Cog Press: it presses cogs from the Clocktower's brass, %.1f a second with all %d; alone it makes %d%% of that and each Winder adds the same share, about %.2f a second.
+pt Enroladores dando corda na Prensa de Engrenagens: ela prensa engrenagens com o latão da Torre do Relógio, %.1f por segundo com todos os %d; sozinha faz %d%% disso e cada Enrolador acrescenta a mesma parte, cerca de %.2f por segundo.
+es Dadores de cuerda girando la Prensa de Engranajes: prensa engranajes con el latón de la Torre del Reloj, %.1f por segundo con los %d; sola hace el %d%% de eso y cada Dador de cuerda añade la misma parte, unos %.2f por segundo.
+
+> Winders cranking the Mainspring: it winds Tension, %.1f a second with all %d; alone it makes %d%% of that and each Winder adds the same share, about %.2f a second. Winding stops when you hold what your Mainsprings store.
+pt Enroladores girando a manivela da Mola Real: ela enrola Tensão, %.1f por segundo com todos os %d; sozinha faz %d%% disso e cada Enrolador acrescenta a mesma parte, cerca de %.2f por segundo. Para de enrolar quando você tem o que suas Molas Reais guardam.
+es Dadores de cuerda girando la manivela del Muelle Real: enrolla Tensión, %.1f por segundo con los %d; solo hace el %d%% de eso y cada Dador de cuerda añade la misma parte, unos %.2f por segundo. Deja de enrollar cuando tienes lo que guardan tus Muelles Reales.
+
+> How fast it works now: 100% when its gear ring meshes with the Clocktower's or a Mainspring's, 90%, 80%, 70% for each ring farther out, 0 when it is not linked to the gear field.
+pt O quanto ela trabalha rápido agora: 100% quando o seu anel engrena com o da Torre do Relógio ou de uma Mola Real, 90%, 80%, 70% para cada anel mais longe, 0 quando não está ligada ao campo de engrenagens.
+es Lo rápido que trabaja ahora: 100% cuando su anillo engrana con el de la Torre del Reloj o de un Muelle Real, 90%, 80%, 70% por cada anillo más lejos, 0 cuando no está enlazado al campo de engranajes.
+
+> How hard it works now: the share of its crew at work x what is left of the reserve it draws on.
+pt O quanto ela trabalha agora: a parte da sua equipe trabalhando x o que resta da reserva de que tira.
+es Cuánto trabaja ahora: la parte de su equipo trabajando x lo que queda de la reserva de la que tira.
+
+> Winders carry the batteries it fills to an Ore Crusher, where the charge becomes ore: the farther a battery travels, the more it holds.
+pt Os Enroladores levam as baterias que ela enche a um Triturador de Minério, onde a carga vira minério: quanto mais longe a bateria viaja, mais ela guarda.
+es Los Dadores de cuerda llevan las baterías que llena a una Trituradora de Mineral, donde la carga se vuelve mineral: cuanto más lejos viaja una batería, más guarda.
+
+> %d for the Horse Breeder(s)
+pt %d para o(s) Criador(es) de Cavalos
+es %d para el/los Criador(es) de Caballos
+
+> %d for powder: %d wagon(s) about %d tiles from a Powder Mill, using about 1 keg every %s s
+pt %d para pólvora: %d carroça(s) a cerca de %d casas de um Moinho de Pólvora, gastando cerca de 1 barril a cada %s s
+es %d para pólvora: %d carro(s) a unas %d casillas de un Molino de Pólvora, gastando cerca de 1 barril cada %s s
+
+> Needed %d: %s.
+pt Necessários %d: %s.
+es Necesarios %d: %s.
+
+> The base could use more than %d: build another Town Hall nearer the fighting.
+pt A base poderia usar mais de %d: construa outra Prefeitura mais perto da luta.
+es La base podría usar más de %d: construye otro Ayuntamiento más cerca de la lucha.
+
+> Haulers are Labourers you right-click onto the Town Hall. They lead new horses from the Horse Breeder to the Barracks or Foundry, bring spare horses to guns and wagons short of a team, and carry powder kegs from a Powder Mill to Powder Wagons on SUPPLY. The base can use 1 for each Horse Breeder, and for each wagon on SUPPLY that is being drawn from as many as keep its kegs coming: the kegs it uses a second x the walk from the Mill and back (at least 1, at most %d: only %d kegs go to one wagon at a time). Up to %d in all.
+pt Carregadores são Operários que você manda para a Prefeitura com o clique direito. Eles levam os cavalos novos do Criador de Cavalos ao Quartel ou à Fundição, trazem cavalos de reserva para canhões e carroças sem parelha completa e levam barris de pólvora de um Moinho de Pólvora às Carroças de Pólvora em ABASTECER. A base pode usar 1 para cada Criador de Cavalos e, para cada carroça em ABASTECER que está sendo usada, quantos mantêm os barris chegando: os barris que ela gasta por segundo x a caminhada do Moinho e de volta (pelo menos 1, no máximo %d: só %d barris vão a uma carroça de cada vez). Até %d no total.
+es Los porteadores son Peones que mandas al Ayuntamiento con el clic derecho. Llevan los caballos nuevos del Criador de Caballos al Cuartel o a la Fundición, traen caballos de repuesto a los cañones y carros sin tiro completo y llevan barriles de pólvora de un Molino de Pólvora a los Carros de Pólvora en ABASTECER. La base puede usar 1 por cada Criador de Caballos y, por cada carro en ABASTECER del que se está tirando, cuantos mantengan los barriles llegando: los barriles que gasta por segundo x el camino desde el Molino y de vuelta (al menos 1, como mucho %d: solo %d barriles van a un carro a la vez). Hasta %d en total.

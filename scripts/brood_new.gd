@@ -1132,32 +1132,7 @@ static func load_value(g: Game, src: Unit, t: int) -> float:
 
 
 ## WORKER COUNT (the owner, 21:28): over each of your rooted Rootmaws (and each food pile, nobody's, while you play the
-## new Brood) its grubs at work / the most it takes ("4/6"), drawn as the old Feeding Pits' and the Crown's farms' crew
-## (Game._draw_mine_labels: the same look and place, just over its bars; white with room, green when full, "spent" in
-## red when its ground and body are empty).
-static func draw_crew_labels(g: Game, font: Font) -> void:
-	var see_all := g.demo or g.spectating()
-	if not see_all and not on(g, g.human):
-		return
-	for u in g.units:
-		if u.dead or not u.visible or not is_source(u):
-			continue
-		if u.kind == MAW and (not rooted(u) or (u.team != g.human and not see_all)):
-			continue
-		if not g.view_rect.has_point(u.position):
-			continue
-		var cm := crew_max(g, u)
-		var have := crew(g, u)
-		var txt := crew_label(g, u)
-		var spent := txt == Loc.t("spent")
-		var sz := 15
-		var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
-		var p := Vector2(u.position.x - w * 0.5, u.position.y + label_top(u) - 7.0)
-		g.overlay.draw_rect(Rect2(p + Vector2(-4, -sz), Vector2(w + 8, sz + 5)), Color(0, 0, 0, 0.6))
-		var tc := Color(1, 0.45, 0.4) if spent else (Color(1, 1, 1) if have < cm else Color(0.45, 1, 0.45))
-		g.overlay.draw_string(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, tc)
-
-
+## new Brood) "GRUBS 4/6": drawn with the other workers' labels (WorkerLabels, scripts/worker_labels.gd).
 ## "4/6": its grubs at work / the most it takes ("spent" when its ground and body are empty and nobody is on it).
 static func crew_label(g: Game, u: Unit) -> String:
 	var have := crew(g, u)

@@ -6603,6 +6603,8 @@ func entity_at(p: Vector2, _any := true) -> Entity:
 			var sr: Rect2 = b.sprite_rect()
 			if sr.grow(-6).has_point(p):
 				return b
+	if net_cmd_team < 0:
+		return WorkerLabels.at(self, p)       # (a click on a building's worker label selects the building)
 	return null
 
 
@@ -8326,10 +8328,12 @@ func keg_requests(t: int) -> Array:
 
 var _haul_t := 0.0
 var _haul_seen := {}                # request key -> clock it first appeared (oldest is served first)
+var worker_label_state := {}        # the haulers' need on the Town Hall labels (WorkerLabels: wagons' powder use, the smoothed numbers)
 
 
 ## Every Defs.HAUL.scan s: give the free haulers of each side the requests of its base.
 func haul_dispatch(delta: float) -> void:
+	WorkerLabels.tick(self, delta)        # (the HAULERS label's need: display only)
 	_haul_t -= delta
 	if _haul_t > 0.0:
 		return
@@ -10268,72 +10272,13 @@ func _tex_top(tex: Texture2D) -> float:
 	return _tex_tops[k]
 
 
-## Over your Town Hall: its haulers, free / assigned ("1/2": two assigned, one out on a job;
-## "0/0": none yet). White when all are free, amber when some are out, grey with none.
-func _draw_hauler_label(font: Font, b: Building) -> void:
-	var hs := b.haulers()
-	var free := b.haulers_free()
-	var txt := "%d/%d" % [free, hs.size()]
-	var sz := 15
-	var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
-	var p := Vector2(b.global_position.x - w * 0.5, b.global_position.y + b.bar_top() - 7.0)
-	overlay.draw_rect(Rect2(p + Vector2(-4, -sz), Vector2(w + 8, sz + 5)), Color(0, 0, 0, 0.6))
-	var col := Color(0.6, 0.6, 0.6) if hs.is_empty() else (Color(1, 1, 1) if free == hs.size() else Color(1.0, 0.75, 0.3))
-	overlay.draw_string(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, col)
-
-
-## Over your economy buildings: the crew (X/Y) and the efficiency bar with its % (see
-## Building.efficiency): one compact strip, readable on a phone.
+## Over your economy buildings: the workers' job word and count ("HAULERS 2/4", "FARMERS 3/8"; the Town Hall's is
+## assigned / needed), and the efficiency bar with its % (see Building.efficiency): one compact strip, readable on a
+## phone; the new Brood's Rootmaws and food piles too. Resting the mouse on one (a long press on a phone) explains it:
+## scripts/worker_labels.gd.
 func _draw_mine_labels() -> void:
 	var font := ThemeDB.fallback_font
-	for b in buildings:
-		if b.dead or not b.built or not b.visible or (b.team != human and not demo):
-			continue
-		if not view_rect.has_point(b.global_position):
-			continue        # (off screen; the overlay is redrawn 4 times a second at least)
-		if b.haul_cap() > 0:
-			_draw_hauler_label(font, b)
-			continue
-		var crew_max: int = b.crew_max()
-		var eff: Array = b.efficiency()
-		if crew_max == 0 and eff.is_empty():
-			continue
-		# just above its bars, which sit on top of the drawing itself (Building.bar_top)
-		var top: float = b.global_position.y + b.bar_top() - 3.0
-		var sz := 15
-		var txt := ""
-		var w1 := 0.0
-		var spent: bool = crew_max > 0 and b.crew.is_empty() and b.barren()
-		if crew_max > 0:
-			# (spent land takes no crew: "spent" rather than a 0/5 that looks like room)
-			txt = Loc.t("spent") if spent else "%d/%d" % [b.crew.size(), crew_max]
-			w1 = font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
-		var bar_w := 40.0
-		var pct := ""
-		var w2 := 0.0
-		if not eff.is_empty():
-			pct = "%d%%" % int(round(float(eff[0]) * 100))
-			w2 = font.get_string_size(pct, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
-		var gap := 4.0
-		var total := w1 + ((gap + bar_w + gap + w2) if pct != "" else 0.0)
-		if txt == "":
-			total -= gap
-		var p := Vector2(b.global_position.x - total * 0.5, top - 4)
-		overlay.draw_rect(Rect2(p + Vector2(-4, -sz), Vector2(total + 8, sz + 5)), Color(0, 0, 0, 0.6))
-		if txt != "":
-			var have: int = b.crew.size()
-			var tc := Color(1, 0.45, 0.4) if spent else (Color(1, 1, 1) if have < crew_max else Color(0.45, 1, 0.45))
-			overlay.draw_string(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, tc)
-		if pct != "":
-			var f := float(eff[0])
-			var col := eff_colour(f)
-			var bx := p.x + w1 + (gap if txt != "" else 0.0)
-			var bar := Rect2(bx, p.y - 10.0, bar_w, 8.0)
-			overlay.draw_rect(bar, Color(0.12, 0.12, 0.12, 0.95))
-			overlay.draw_rect(Rect2(bar.position, Vector2(bar_w * clampf(f, 0.0, 1.0), 8.0)), col)
-			overlay.draw_rect(bar.grow(0.5), Color(0, 0, 0, 0.9), false, 1.0)
-			overlay.draw_string(font, Vector2(bx + bar_w + gap, p.y), pct, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, col)
-	BroodNew.draw_crew_labels(self, font)      # (the new Brood: grubs at work / the most it takes, over each Rootmaw and food pile)
+	WorkerLabels.draw_all(self, font)
 	if exp_spots:
 		exp_spots.draw_labels(overlay)          # ("OPTIMAL EXPANSION SPOT" / "EXPANSION SPOT" on the gold spots)
 	for fl in _floats:

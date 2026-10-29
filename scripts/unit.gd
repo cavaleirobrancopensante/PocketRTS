@@ -316,6 +316,7 @@ var _auto_bayonet := false      # Musketeer: on the bayonet because it ran dry (
 var supplying := false          # Powder Wagon: SUPPLY on (labourers bring kegs from the Powder Mill)
 var _supply_t := 0.0
 var _dispense_t := 0.0          # Powder Wagon: handing out powder (plays its unload pose)
+var powder_out := 0.0           # Powder Wagon: musket shots handed out so far (the haulers' need reads its recent rate: WorkerLabels)
 var keg := false                # Labourer: carrying a powder keg (it blows up if he's killed)
 ## (a hauler: a Labourer assigned to a Town Hall, order "gather" with home_mine the hall) his
 ## job from Game.haul_dispatch, or {} (waiting by the hall): {"k": "horse" | "team" | "keg",
@@ -1221,6 +1222,7 @@ func _powder_tick(delta: float) -> void:
 		if o.kind == "powder_wagon" and o.team == team and not o.dead and not o.off_field and o.powder > 0.0:
 			var take := minf(amount, o.powder / per)
 			o.powder -= take * per
+			o.powder_out += take * per
 			o._dispense_t = 0.8
 			powder += take
 			return
@@ -1443,6 +1445,7 @@ func _haul_start() -> void:
 	if src is Unit:
 		shots = minf(shots, (src as Unit).powder)
 		(src as Unit).powder -= shots
+		(src as Unit).powder_out += shots
 		(src as Unit)._dispense_t = float(Defs.BALLOON["haul"])
 	else:
 		var bank := float(game.players[team]["res2"])
