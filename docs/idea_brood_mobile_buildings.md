@@ -135,3 +135,8 @@ Still to settle with him (see the chat, 2026-10-28): which units root and what e
   - DREAD CROC: not a titan: a MEDIUM all-round fighter between the Raptor and the Brute.
   - VIPER: a snake, NOT burrowing (the game has no detection); hits GROUND units only, shorter range than the Spitter; the FIRST unit (tier 1), so the Venom Sire becomes the tier-1 father. Maybe raise the Spitter's range a little.
   - HATCHLING SWARM (Storm Sire): cheap, fast little fliers in a flock; good against lone guns and wagons; fragile. Niche protection against swarming.
+- (2026-10-29 12:20) DECIDED (owner): TIERS. Sires: the Tyrant Sire and the Venom Sire are open from the start (stage 1); the Storm Sire opens at the Mother's stage 2. Units, each unlocked by the Mother's stage (and fathered by its Sire):
+  - stage 1: Raptor (Tyrant), Viper (Venom);
+  - stage 2: Dread Croc (Tyrant), Spitter (Venom), Hatchling Swarm (Storm);
+  - stage 3: Brute (Tyrant), Mist Toad (Venom), the new pterosaur that replaces the Skywing (Storm; concept art/redraws/skywing_pterosaur_concept_chatgpt.png).
+  The Spitter's range goes from 150 to 170 (the Viper's shorter, about 120).
