@@ -99,11 +99,11 @@ THE TIERS (the owner, 12:20; Defs.NB "father_stage" and "unit_stage"): each Sire
 
 | Sire (the creature) | Sire unlocked | Stage 1 | Stage 2 | Stage 3 |
 | --- | --- | --- | --- | --- |
-| Tyrant Sire (Tyrannosaur) | from the start | Raptors | (Dread Croc, coming) | Brutes |
-| Venom Sire (Dilophosaurus) | from the start | (Viper, coming) | Spitters | Mist Toads |
-| Storm Sire (Pterodactyl) | stage 2 | | (Hatchling Swarm, coming) | Skywings (the new pterosaur that replaces them, coming) |
+| Tyrant Sire (Tyrannosaur) | from the start | Raptors | (young Tyrannosaur, matured from Raptors: coming) | Brutes |
+| Venom Sire (Dilophosaurus) | from the start | (Viper, coming; matures into the Hooded Serpent, stage to confirm) | Spitters | Mist Toads |
+| Storm Sire (Pterodactyl) | stage 2 | | (Hatchlings, coming) | Skywings (until the mature Pterodactyl, matured from Hatchlings, replaces them) |
 
-The units "coming" are the owner's, being designed; their places are kept in Defs.NB "lines_later" (each with its stage), not in the game yet. Until the Viper comes, the Venom Sire fathers nothing at stage 1 (he still adds his pheromones and fights); until the Hatchling Swarm comes, the Storm Sire fathers nothing at stage 2.
+The units "coming" are the owner's (12:20 to 12:45: YOUNG AND MATURE, eggs lay only the young and a MATURE button grows them; the Dread Croc dropped); their places are kept in Defs.NB "lines_later" ([kind, stage, young form]), not in the game yet. Until the Viper comes, the Venom Sire fathers nothing at stage 1 (he still adds his pheromones and fights); until the Hatchlings come, the Storm Sire fathers nothing at stage 2.
 
 - ONE OF EACH at a time; a grub on its way to turn into one, and its cocoon, count. All come from GRUBS (the grub's BUILD menu, as the Tyrannosaur). A Sire not yet unlocked is greyed on the menu with the reason: "Needs the Brood Mother at stage 2." (the Storm Sire). One alive: "Only one Venom Sire at a time."
 - THE MOTHER'S CARD offers every line (grubs, Raptors, Brutes, Spitters, Mist Toads, Skywings). A warrior's egg is laid only at its stage ("Needs the Brood Mother at stage 3.") and with ITS father rooted beside her; the refusal names him: "Needs the Venom Sire rooted beside the Brood Mother." Her GROW tooltip lists what the next stage unlocks.

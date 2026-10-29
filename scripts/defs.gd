@@ -926,16 +926,16 @@ const UNITS := {
 	"spitter": {
 		"tags": ["light"],
 		"name": "Spitters", "hp": 70, "armor": 0, "speed": 68, "cost": 90, "time": 13.0, "supply": 1, "spawn": 2,
-		"sight": 8, "range": 150, "damage": 8, "cooldown": 2.0, "aim": 0.35, "radius": 12, "from": "hive",
+		"sight": 8, "range": 170, "damage": 8, "cooldown": 2.0, "aim": 0.35, "radius": 12, "from": "hive",
 		"acid": 3.0, "requires": ["warren", "brood_pen"], "cost2": 5, "anti_air": true, "faction": "brood",
 		"about": "Spit acid that burns and strips armour. Two hatch from each egg.",
 	},
 	"brute": {
 		"tags": ["armored"],
 		"name": "Brute", "hp": 240, "armor": 2, "speed": 56, "cost": 150, "time": 22.0, "supply": 3,
-		"sight": 7, "range": 28, "damage": 26, "cooldown": 1.8, "aim": 0.25, "radius": 20, "from": "hive",
-		"building_bonus": 1.6, "requires": "gorge_pit", "cost2": 20, "faction": "brood",
-		"about": "Huge horned tank. Charges in and knocks enemies back.",
+		"sight": 7, "range": 28, "damage": 26, "cooldown": 1.8, "aim": 0.25, "radius": 24, "from": "hive",
+		"art_scale": 1.2, "building_bonus": 2.5, "requires": "gorge_pit", "cost2": 20, "faction": "brood",
+		"about": "Huge horned tank. Charges in, knocks enemies back and batters down walls and gates.",
 	},
 	"spore_mother": {
 		"tags": ["armored"],
@@ -1881,9 +1881,13 @@ const NB := {
 	"lines": {"tyrannosaur": ["raptor", "brute"], "dilophosaurus": ["spitter", "mist_toad"], "pterodactyl": ["skywing"]},
 	"father_stage": {"tyrannosaur": 0, "dilophosaurus": 0, "pterodactyl": 1},
 	"unit_stage": {"raptor": 0, "spitter": 1, "brute": 2, "mist_toad": 2, "skywing": 2},
-	# COMING (the owner is designing them; not in the game yet): their place in the lines and their stage, for when they
-	# come (a kind here is added to "lines" and "unit_stage" then). The new pterosaur replaces the Skywing.
-	"lines_later": {"tyrannosaur": [["dread_croc", 1]], "dilophosaurus": [["viper", 0]], "pterodactyl": [["hatchling_swarm", 1], ["new_pterosaur", 2]]},
+	# COMING (the owner, 12:20 to 12:45; not in the game yet): their place in the lines, their stage and, for a MATURE
+	# form (YOUNG AND MATURE, 12:40: eggs lay only the young; a MATURE button turns a young unit into it at its stage),
+	# the young unit it grows from. A kind here moves to "lines" and "unit_stage" when it is built. The mature Pterodactyl
+	# replaces the Skywing (its id must differ from the Storm Sire's "pterodactyl"); the Dread Croc is dropped.
+	# ([kind, stage (-1: to confirm), young form])
+	"lines_later": {"tyrannosaur": [["young_tyrant", 1, "raptor"]], "dilophosaurus": [["viper", 0, ""], ["hooded_serpent", -1, "viper"]],
+		"pterodactyl": [["hatchlings", 1, ""], ["mature_pterodactyl", 2, "hatchlings"]]},
 	# where the eggs in each father's nest lie, from his feet (art px, measured by the importers on his rooted frame)
 	"nest_at": {"tyrannosaur": [26, 2], "dilophosaurus": [23, 3], "pterodactyl": [39, -16]},
 	# ROOTED = A BUILDING (the owner's playtest of 0.15.13, 19:19; scripts/brood_root.gd): the footprint each creature
@@ -2063,7 +2067,7 @@ const TIPS := {
 	"grub": "Hauls food from Feeding Pits to a Burrow (longer hauls pay more) and turns into buildings.",
 	"raptor": "Fast, flimsy claws. Three hatch from each egg.",
 	"spitter": "Spits acid that burns and strips armour. Two hatch from each egg.",
-	"brute": "Huge horned tank: charges in and knocks enemies back.",
+	"brute": "Huge horned tank: charges in, knocks enemies back and batters down walls and gates.",
 	"spore_mother": "ROOT her to lob splashing spit blobs and spread swamp; MIASMA heals the Brood. Can't attack while walking.",
 	"bloater": "Floating acid sac: spits from afar until its gas runs out. On HOLD GAS it drifts in to burst as a huge acid bomb.",
 	"skywing": "Flying, it hunts flyers with spines. LAND it to bite ground units (then anything can hit it).",
