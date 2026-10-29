@@ -157,14 +157,25 @@ def write_glob(kind, glob, glob_len):
     print(f"  {kind}_glob: {gs.shape[1]}x{gs.shape[0]}")
 
 
+def portrait():
+    """The owner's framed Spitter portrait (spitter_portrait_chatgpt.png, 0.21.1) on its card; without it the painted
+    one of round 11/13 stays."""
+    if os.path.exists(ibn.R + "spitter_portrait_chatgpt.png"):
+        ibn.PORTRAIT["spitter"] = "spitter_portrait_chatgpt.png"
+        ibn.portrait("spitter")
+
+
 def main():
+    if "--portraits" in sys.argv:
+        portrait()
+        return
     contact_dir = sys.argv[sys.argv.index("--contact") + 1] if "--contact" in sys.argv else ""
     small, glob = build("spitter", SPITTER_LEN)
     data = {}
     ibn.assemble("spitter", small, data)
     ibn.write_entry("spitter", data["spitter"])
     write_glob("spitter", glob, GLOB_LEN)
-    # (the card's portrait stays the painted one of round 11/13: already a young Spitter's head, no ruff)
+    portrait()
     if contact_dir:
         ibn.contact(contact_dir, "spitter", small)
 

@@ -18,8 +18,13 @@ extends RefCounted
 const T := Defs.TILE
 const SORT := "NbSort"          # the node the rooted creature's pictures hang under (the building layer)
 const COC := "NbCoc"            # the cocoon's picture (a morphing grub)
-const MORPH_GRUB := 1.6         # s: the grub's own morph strip (the old Brood's), then the cocoon
-const COC_TEX := "res://assets/buildings/clutch_mound_construction.png"     # (the old Brood's grub-building look)
+const MORPH_GRUB := 0.8         # s: the grub's own picture fading into the small case (no larva: the owner, 2026-10-29)
+const COC_TEX := "res://assets/buildings/clutch_mound_construction.png"     # (the old stand-in: without the cocoon art)
+const COC_ART := "brood_cocoon"  # the owner's cocoon (tools/import_brood_cocoon.py): open_se, 10 frames
+const COC_GROW := 0.78          # share of the cocoon time the case grows (frames 0-3)
+const COC_CRACK := 0.92         # ... to here it glows, shakes and cracks (frames 4-6); then it splits (7-8)
+const COC_LEFT := 2.6           # s the empty shell (frame 9) stays on the ground after, fading over its last FADE_LEFT
+const COC_FADE_LEFT := 1.2
 
 
 # ------------------------------------------------------------------ footprints
@@ -564,7 +569,7 @@ static func layer(u: Unit) -> void:
 			fpn.draw.connect(_draw_frame.bind(u, fpn))
 			srt.add_child(fpn)
 		srt.position = Vector2(0.0, dy)
-		for n in [u.sprite, u.get_node_or_null("Glow"), u.get_node_or_null("Xf"), u.get_node_or_null(COC), u.get_node_or_null(PUFF), u.get_node_or_null(FLY)]:
+		for n in [u.sprite, u.get_node_or_null("Glow"), u.get_node_or_null("Xf"), u.get_node_or_null(COC), u.get_node_or_null(COC_GRUB), u.get_node_or_null(PUFF), u.get_node_or_null(FLY)]:
 			if n != null and n.get_parent() != srt:
 				n.reparent(srt, false)
 		u.sprite.position.y -= dy        # (Unit._animate put it at the feet: under the node it is drawn there again)
@@ -721,22 +726,134 @@ static func pic_parent(u: Unit) -> Node:
 	return u.sprite.get_parent()
 
 
-## The cocoon: the grub's morph strip for MORPH_GRUB s, then the old Brood's grub-building mound, growing; the creature
-## fades in over it at the end (code: docs/art_style_inconsistency.md).
+## THE COCOON (the owner's ChatGPT sheet, tools/import_brood_cocoon.py; docs/brood_anims.md): the grub's own picture
+## fades into the small scaly case on the earth (MORPH_GRUB s); the case grows to full size (frames 0-3, to COC_GROW of
+## the time), glows, shakes and cracks (4-6, to COC_CRACK), splits open as the creature comes out of it (7-8: the creature
+## fades in over the shell, the shell drawn behind it); the empty broken shell (9) stays a moment and fades (COC_LEFT s:
+## a picture only, its clock on the node). Sized by the footprint's width (the art's earth is 3 tiles wide) times
+## Defs.NB "cocoon_scale". Without the art: the old stand-in (the old Brood's construction mound, growing).
 static func cocoon_look(u: Unit) -> void:
 	if BroodNew.is_father(u.kind):
 		lure_look(u)          # (a Sire: his lure, then his arrival)
 		return
 	var s := u.sprite
-	var cs := u.get_node_or_null(COC) as Sprite2D
-	if cs == null:
-		cs = u.get_node_or_null(SORT + "/" + COC) as Sprite2D
+	var cs := _pic(u, COC) as Sprite2D
+	var gs := _pic(u, COC_GRUB) as Sprite2D
 	if not in_cocoon(u):
+		if gs != null:
+			gs.queue_free()
+			gs.get_parent().remove_child(gs)
 		if cs != null:
-			cs.queue_free()
-			cs.get_parent().remove_child(cs)
+			var left := float(cs.get_meta("left", -1.0))
+			if left < 0.0 and ArtData.UNITS.has(COC_ART) and not u.dead:
+				left = Time.get_ticks_msec() / 1000.0
+				cs.set_meta("left", left)
+				cs.frame = cs.hframes - 1
+			var el := Time.get_ticks_msec() / 1000.0 - left
+			if left < 0.0 or u.dead or el >= COC_LEFT:
+				cs.queue_free()
+				cs.get_parent().remove_child(cs)
+			else:
+				cs.self_modulate.a = 1.0 - clampf((el - (COC_LEFT - COC_FADE_LEFT)) / COC_FADE_LEFT, 0.0, 1.0)
 			s.self_modulate.a = 1.0
 		return
+	if not ArtData.UNITS.has(COC_ART):
+		_cocoon_old(u)
+		return
+	if cs == null:
+		cs = Sprite2D.new()
+		cs.name = COC
+		cs.centered = false
+		cs.material = _plain_team(s)
+		pic_parent(u).add_child(cs)
+		var st := _strip_of(COC_ART, "open_se")
+		cs.texture = st[0]
+		cs.hframes = int(st[1])
+		cs.offset = st[2]
+	var el := float(u.nb["coc"])
+	var tt := cocoon_time(u)
+	var p := clampf(el / maxf(tt, 0.1), 0.0, 1.0)
+	var r := rect_of(u)
+	var at := s.position - Vector2(0.0, art_dy(u))        # (the feet in the picture's space: not the rooted art's drop)
+	var base := Vector2(r.get_center().x, r.end.y - 6.0) - u.position + at      # (the footprint's front, in the picture's space)
+	var k := r.size.x / float(Defs.TILE * 3) * float((Defs.NB["cocoon_scale"] as Dictionary).get(u.kind, 1.0))
+	cs.position = base
+	var fi := 0
+	var sc := 1.0
+	var a := 1.0
+	var out := 0.0           # the creature coming out
+	var g0 := clampf(el / MORPH_GRUB, 0.0, 1.0)
+	if p < COC_GROW:
+		fi = clampi(int(p / COC_GROW * 4.0), 0, 3)
+		if el < MORPH_GRUB:
+			sc = lerpf(0.55, 1.0, g0 * g0 * (3.0 - 2.0 * g0))
+			a = g0
+	elif p < COC_CRACK:
+		var c := (p - COC_GROW) / (COC_CRACK - COC_GROW)
+		fi = 4 + clampi(int(c * 3.0), 0, 2)
+		cs.position.x += roundf(sin(el * 41.0) * (0.5 + 1.5 * c))       # (it shakes, harder as it cracks)
+	else:
+		var e := (p - COC_CRACK) / (1.0 - COC_CRACK)
+		fi = 7 if e < 0.5 else 8
+		out = clampf((e - 0.25) / 0.75, 0.0, 1.0)
+	cs.frame = clampi(fi, 0, cs.hframes - 1)
+	cs.scale = Vector2.ONE * k * sc
+	cs.self_modulate = Color(1, 1, 1, a)
+	# split open: the shell behind the creature, which fades in over it
+	if (out <= 0.0) == (cs.get_index() < s.get_index()):
+		pic_parent(u).move_child(cs, s.get_index())       # (after it while closed; before it once it splits)
+	s.self_modulate.a = out
+	# the grub fading into the small case (its own south-east picture, on the case's ground)
+	if el < MORPH_GRUB:
+		if gs == null:
+			gs = Sprite2D.new()
+			gs.name = COC_GRUB
+			gs.centered = false
+			gs.material = _plain_team(s)
+			pic_parent(u).add_child(gs)
+			var gt := _strip_of("grub", "idle_se")
+			gs.texture = gt[0]
+			gs.hframes = int(gt[1])
+			gs.offset = gt[2]
+		pic_parent(u).move_child(gs, cs.get_index() + 1)
+		gs.position = base + Vector2(0.0, -2.0)
+		gs.self_modulate.a = 1.0 - g0
+		gs.scale = Vector2(1.0, 1.0 - 0.15 * g0)
+	elif gs != null:
+		gs.queue_free()
+		gs.get_parent().remove_child(gs)
+
+
+const COC_GRUB := "NbCocGrub"
+
+
+## A copy of its team shader with its own strip's masks off (veterancy, venom belly: they don't fit other pictures).
+static func _plain_team(s: Sprite2D) -> Material:
+	var sm := s.material as ShaderMaterial
+	if sm == null:
+		return s.material
+	var lm := sm.duplicate() as ShaderMaterial
+	lm.set_shader_parameter("vet_style", 0)
+	lm.set_shader_parameter("venom_swap", false)
+	lm.set_shader_parameter("vet_mask", null)
+	lm.set_shader_parameter("venom_mask", null)
+	lm.set_shader_parameter("wash", Color(1, 1, 1, 0))
+	return lm
+
+
+## [texture, frames, offset] of an art key's strip (its anchor on the node's origin).
+static func _strip_of(art: String, key: String) -> Array:
+	var info: Dictionary = ArtData.UNITS[art]
+	var tx := Game.tex("res://assets/units/%s/%s.png" % [art, key])
+	var cell: Vector2i = info["cell"]
+	var anc: Vector2 = info["anchor"]
+	return [tx, int((info["frames"] as Dictionary).get(key, 1)), -anc - Vector2(0, tx.get_height() - cell.y)]
+
+
+## The old stand-in (no cocoon art): the old Brood's construction mound, growing; the creature fades in at the end.
+static func _cocoon_old(u: Unit) -> void:
+	var s := u.sprite
+	var cs := _pic(u, COC) as Sprite2D
 	if cs == null:
 		cs = Sprite2D.new()
 		cs.name = COC
@@ -748,34 +865,20 @@ static func cocoon_look(u: Unit) -> void:
 	var tt := cocoon_time(u)
 	var p := clampf(el / maxf(tt, 0.1), 0.0, 1.0)
 	var r := rect_of(u)
-	var at := s.position - Vector2(0.0, art_dy(u))        # (the feet in the picture's space: not the rooted art's drop)
-	var base := Vector2(r.get_center().x, r.end.y - 6.0) - u.position + at      # (the footprint's front, in the picture's space)
-	if el < MORPH_GRUB:
-		# the grub curls into its cocoon (the old Brood's morph strip)
-		var gt := Game.tex("res://assets/units/grub/morph_e.png")
-		cs.texture = gt
-		cs.hframes = int(ArtData.UNITS["grub"]["frames"].get("morph_e", 7))
-		cs.frame = clampi(int(el / MORPH_GRUB * cs.hframes), 0, cs.hframes - 1)
-		var anc: Vector2 = ArtData.UNITS["grub"]["anchor"]
-		cs.offset = -anc
-		cs.scale = Vector2.ONE * 1.4
-		cs.position = r.get_center() - u.position + at + Vector2(0, 10)
-		cs.self_modulate.a = 1.0
-		s.self_modulate.a = 0.0
-		return
+	var at := s.position - Vector2(0.0, art_dy(u))
+	var base := Vector2(r.get_center().x, r.end.y - 6.0) - u.position + at
 	var ct := Game.tex(COC_TEX)
 	if cs.texture != ct:
 		cs.texture = ct
 		cs.hframes = 1
 		cs.frame = 0
 	var w := r.size.x * 0.95
-	var grow := lerpf(0.45, 1.0, clampf((el - MORPH_GRUB) / maxf(tt * 0.3, 0.1), 0.0, 1.0))
+	var grow := lerpf(0.45, 1.0, clampf(el / maxf(tt * 0.3, 0.1), 0.0, 1.0))
 	var pulse := 1.0 + 0.03 * sin(el * TAU / 1.4)
 	var k := w / float(ct.get_width()) * grow
 	cs.scale = Vector2(k, k * pulse * minf(1.0, r.size.y / r.size.x + 0.55))
 	cs.offset = Vector2(-ct.get_width() * 0.5, -ct.get_height())
 	cs.position = base
-	# the last quarter: the creature comes out of it
 	var out := clampf((p - 0.75) / 0.25, 0.0, 1.0)
 	cs.self_modulate.a = 1.0 - out
 	s.self_modulate.a = out

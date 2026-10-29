@@ -1293,6 +1293,26 @@ const BASE_UNITS := {
 		"walk_s": 6,
 		"walk_se": 6,
 	}},
+	"brood_cocoon": {"cell": Vector2i(120, 118), "anchor": Vector2(60, 113), "frames": {
+		"open_se": 10,
+	}},
+	"moult_venom": {"cell": Vector2i(66, 61), "anchor": Vector2(33, 59), "frames": {
+		"open_se": 1,
+		"shell_se": 4,
+		"skin_se": 1,
+		"split_se": 2,
+	}},
+	"moult_tyrant": {"cell": Vector2i(42, 40), "anchor": Vector2(21, 38), "frames": {
+		"open_se": 1,
+		"shell_se": 4,
+		"skin_se": 1,
+		"split_se": 2,
+	}},
+	"moult_storm": {"cell": Vector2i(48, 44), "anchor": Vector2(24, 42), "frames": {
+		"open_se": 1,
+		"shell_se": 4,
+		"split_se": 2,
+	}},
 }
 
 const BUILDING_SIZE := {

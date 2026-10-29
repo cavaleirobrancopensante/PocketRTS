@@ -6968,7 +6968,9 @@ func _animate(delta: float) -> void:
 	if _k_nb:
 		BroodNew.animate(self, n)     # (rooting, a Rootmaw's food levels, an egg's fall, a pile's size)
 	if moult_t >= 0.0:
-		BroodMature.look(self)        # (moulting: still, its skin shimmering)
+		BroodMature.look(self)        # (moulting: its shell, scripts/moult_look.gd)
+	elif MoultLook.busy(self):
+		MoultLook.after(self, delta)  # (just matured: its colour back, the empty shell and skin left behind, fading)
 
 
 ## The cannon sheet has one frame per pose, so the crew's work is faked: the gun rocks and

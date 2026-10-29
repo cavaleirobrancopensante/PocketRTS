@@ -1922,6 +1922,10 @@ const NB := {
 	"egg_wash": 0.42, "egg_nest": 0.3,
 	# where the eggs in each father's nest lie, from his feet (art px, measured by the importers on his rooted frame)
 	"nest_at": {"tyrannosaur": [26, 2], "dilophosaurus": [23, 3], "pterodactyl": [39, -16]},
+	# THE GRUB'S COCOON (scripts/brood_root.gd cocoon_look): its size over the footprint's width (the art's earth is 3
+	# tiles wide: a Rootmaw's and a Mound Turtle's footprints are both 3 wide; the turtle's is deeper and the creature
+	# bigger, so its cocoon a little bigger)
+	"cocoon_scale": {"rootmaw": 1.0, "mound_turtle": 1.12},
 	# ROOTED = A BUILDING (the owner's playtest of 0.15.13, 19:19; scripts/brood_root.gd): the footprint each creature
 	# takes on the grid while rooted (tiles wide, tiles deep) and where its middle lies from the creature's feet (px).
 	# The owner's sizes: the Rootmaw a bit bigger than a Cottage (2x2), the Mother about the Clocktower's gear ring (her

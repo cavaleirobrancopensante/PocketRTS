@@ -683,17 +683,38 @@ def write_entry(name, e):
     open(path, "w").write(src)
 
 
-def portrait(kind):
+# the steel frame's width over the square cut: most of the owner's portrait sheets draw the frame 0.85 of the sheet
+# wide, centred; a sheet drawn otherwise (the Spitter's, 0.81 and lower down) is cut round its frame to match
+FRAME_FRAC = 0.85
+
+
+def portrait(kind, out=None):
+    """The owner's framed portrait PORTRAIT[kind] cut to the 64 px card icon assets/icons/<out or kind>.png: a square
+    round the steel frame (the frame FRAME_FRAC of it, so every Brood card's frame is the same size), shrunk to 60 px on
+    the card's grey."""
     px = ia.load(R + PORTRAIT[kind])
     h, w = px.shape[:2]
-    s = min(h, w)
-    crop = px[(h - s) // 2:(h - s) // 2 + s, (w - s) // 2:(w - s) // 2 + s].astype(np.uint8)
+    rgb = px[..., :3].astype(int)
+    bg = np.median(np.concatenate([rgb[:6].reshape(-1, 3), rgb[-6:].reshape(-1, 3)]), 0)
+    d = np.abs(rgb - bg).sum(2) > 60
+    rows = np.nonzero(d.sum(1) > w * 0.3)[0]
+    cols = np.nonzero(d.sum(0) > h * 0.3)[0]
+    if len(rows) and len(cols):
+        cy, cx = (rows.min() + rows.max()) / 2.0, (cols.min() + cols.max()) / 2.0
+        s = int(round(max(rows.max() - rows.min(), cols.max() - cols.min()) / FRAME_FRAC))
+        s = min(s, h, w)
+        y0 = int(np.clip(round(cy - s / 2.0), 0, h - s))
+        x0 = int(np.clip(round(cx - s / 2.0), 0, w - s))
+    else:
+        s = min(h, w)
+        y0, x0 = (h - s) // 2, (w - s) // 2
+    crop = px[y0:y0 + s, x0:x0 + s].astype(np.uint8)
     img = Image.fromarray(crop).convert("RGB").resize((60, 60), Image.LANCZOS)
     icon = np.zeros((64, 64, 4), np.uint8)
     icon[..., :3] = (70, 74, 72)
     icon[..., 3] = 255
     icon[2:62, 2:62, :3] = np.array(img)
-    ia.save(ia.unteam(icon), f"{ia.OUT}/icons/{kind}.png")
+    ia.save(ia.unteam(icon), f"{ia.OUT}/icons/{out or kind}.png")
 
 
 def command_icons():

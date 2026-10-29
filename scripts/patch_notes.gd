@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.21.1", "items": [
+		"ART: THE GRUB'S COCOON is the designer's drawing now. A grub turning into a Rootmaw or a Mound Turtle fades into a small scaly case on the earth, the case grows to full size, glows, shakes and cracks, splits open as the creature comes out, and its empty broken shell stays on the ground a moment.",
+		"ART: THE MOULT is drawn now. A young Spitter, Raptor or Hatchling maturing turns south-east, hunches and greys, a stone-grey shell closes round it and swells, glows, shakes, cracks and splits, and the Challenger steps out grey and regains its colour; the broken shell and the shed skin stay on the ground a moment. A Hatchling comes down to the ground for it and its Storm Challenger rises out of the shell into the air.",
+		"ART: the designer's portraits for the Spitter, the Venom Challenger and the Tyrant Challenger, and for the Brood Mother at stages 2 and 3: her card shows the portrait of her current stage.",
+	]},
 	{"v": "0.21.0", "items": [
 		"THE STORM LINE: the Storm Sire now fathers HATCHLINGS (the Brood Mother at stage 2), two to an egg (80 food and 10 spoils): cheap, fast little flyers that bite only FLYERS. They can't touch the ground: a flock to keep the enemy's flyers off, fragile against muskets.",
 		"STORM CHALLENGER: at her stage 3 a Hatchling MATURES (110 food and 25 spoils, 9 s moult) into a Storm Challenger, a young Storm Sire that swoops down to bite flyers and ground units alike, over cliffs and water.",
