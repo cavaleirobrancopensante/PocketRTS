@@ -6419,7 +6419,7 @@ func acid_shot(u: Unit, e: Entity, dmg: float) -> void:
 	var mouth := u.center() + u.facing * 14.0 + (Vector2(0, -8) if e.is_air() else Vector2.ZERO)
 	e.take_damage(dmg, u, Entity.BLOW_RANGED)      # (a glob on one target: a shot)
 	e.acid_t = maxf(e.acid_t, float(u.d.get("acid", 3.0)))
-	Sfx.play_any(["combat/spitter_attack", "acid"], mouth)
+	Sfx.play_any(["combat/%s_attack" % u.kind, "combat/spitter_attack", "acid"], mouth)      # (each spitter its own hiss)
 	var s := Shot.new()
 	s.arc = 0.18
 	s.scale = Vector2.ONE * venom_glob_scale(u)
@@ -8865,20 +8865,30 @@ func _check_end() -> void:
 # ------------------------------------------------------------------ selection & commands (used by input and HUD)
 
 ## Which voice answers a pick: a Crown army of two or more kinds of fighting men (musketeers,
-## cannons, pikes ...) answers with the marching column ("crown_army"); one kind answers with its own.
+## cannons, pikes ...) answers with the marching column ("crown_army"); a mixed Brood pick with a chorus of
+## creatures ("brood_army", tools/audio/make_brood_sounds.py); one kind answers with its own.
 func _select_voice_kind(list: Array, first: Unit) -> String:
 	var kinds := {}
 	for e in list:
 		if is_instance_valid(e) and e is Unit and e.team == human and not e.dead and not e.is_worker():
 			kinds[e.kind] = true
-	if kinds.size() >= 2:
-		var crown := true
-		for k in kinds:
-			if String(Defs.UNITS[k].get("faction", "")) != "crown":
-				crown = false
-		if crown:
-			return "crown_army"
-	return first.kind
+	var army := _army_voice(kinds)
+	return army if army != "" else first.kind
+
+
+## The voice of a mixed army (two or more kinds of fighters, all of one faction that has an army voice:
+## assets/voice/<crown|brood>_army), "" if none.
+func _army_voice(kinds: Dictionary) -> String:
+	if kinds.size() < 2:
+		return ""
+	var f := ""
+	for k in kinds:
+		var fk := String(Defs.UNITS[k].get("faction", ""))
+		if f != "" and fk != f:
+			return ""
+		f = fk
+	var v: String = {"crown": "crown_army", "brood": "brood_army"}.get(f, "")
+	return v if v != "" and Sfx.has("voice/%s/select" % v) else ""
 
 
 func set_selection(list: Array) -> void:
@@ -9473,6 +9483,9 @@ func command_sound(us: Array, what: String, call: String) -> void:
 	var crown := faction_of(human) == "crown"
 	if crown and kinds.size() >= 2:
 		Sfx.bugle("crown", call)
+		return
+	if _army_voice(kinds) == "brood_army":          # (a mixed Brood group: the creatures' chorus answers)
+		Sfx.voice("brood_army", what)
 		return
 	Sfx.voice(us[0].kind, what)
 	if crown and call != "move" and randf() < 0.4:

@@ -843,7 +843,7 @@ static func father_tick(g: Game, f: Unit, delta: float) -> void:
 			u.nb.erase("fb")
 			if f.team == g.human and not roared:
 				roared = true
-				Sfx.play_any(["roar", "combat/brute_attack"], f.position, -10.0)
+				Sfx.play_any(["brood/breath_" + f.kind, "roar", "combat/brute_attack"], f.position, -10.0)
 		elif any == null:
 			any = u
 	if any != null:
@@ -921,7 +921,7 @@ static func devour(q: Unit, u: Unit) -> void:
 		q.facing = (u.position - q.position).normalized()
 	q.frame_i = 0
 	q.anim_t = 0.0
-	Sfx.play_any(["combat/brute_attack", "bite"], q.position, -6.0)
+	Sfx.play_any(["combat/brood_mother_devour", "combat/brute_attack", "bite"], q.position, -6.0)
 
 
 ## Any warrior egg in his nest (fertilised or not, until it hatches) or lying near him waiting for his breath.

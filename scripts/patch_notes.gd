@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.20.1", "items": [
+		"THE BROOD'S OWN CALLS: every Brood creature answers with grunts, growls, roars and hisses cut from the designer's recordings (no words): each line its own (the Tyrant line roars, the Venom line croaks and hisses, the Storm line cries), pitched down for the big creatures and up for the small ones. The Raptor keeps its lizard voice.",
+		"Every creature has its own blows and death now: the Tyrant Challenger, the Sires, the Brood Mother, the Rootmaw, the Mound Turtle and the Mist Toad no longer clash like swords. Each spitter has its own venom hiss, the Mist Toad's TONGUE its own lash, the Brute's charge his bellow.",
+		"Each Sire roars his own call when he comes to his lure and breathes his own on the eggs; a young creature calls out as it matures; a mixed Brood group answers with a chorus of creatures.",
+	]},
 	{"v": "0.20.0", "items": [
 		"THE BROOD'S RESEARCH: with no buildings, its rooted creatures research. Each Sire, rooted on his nest, researches his own line's upgrades on his card; the Brood Mother the ones for every creature. One at a time each, paid up front; getting up stops it (paid back), and a Sire killed while researching loses it (paid back); what is done stays.",
 		"A SIRE RESEARCHING fathers no eggs: the Mother can't lay his line's eggs until he is done, but his fertilising animation keeps playing, so a scout sees him busy. His card shows RESEARCHING and its bar in place of his eggs, and STOP RESEARCH. The Mother keeps laying while she researches (she can't grow meanwhile).",

@@ -123,7 +123,18 @@ const GAP := {"ui/chat": 500, "combat/raptor_attack": 220, "combat/grub_attack":
 	"combat/springer_jump": 150, "combat/springer_land": 150, "combat/springer_crouch": 150, "combat/owl_bomb": 200, "combat/owl_drop": 150,
 	"combat/clock_soldier_death": 150, "combat/springer_death": 200, "combat/cuckoo_death": 200, "combat/ticking_owl_death": 300,
 	"combat/pendulum_death": 400, "combat/netter_death": 250, "combat/ballista_attack": 150, "combat/ballista_hit": 150, "combat/ballista_crank": 1200, "combat/ballista_wound": 300, "combat/ballista_death": 400, "combat/great_winder_step": 450, "combat/great_winder_wind": 1300, "combat/great_winder_sweep": 700, "combat/great_winder_death": 400, "combat/winder_death": 200, "select/clocktower": 400,
-	"select/cog_press": 400, "select/mainspring": 400, "select/escapement": 400, "select/regulator": 400}
+	"select/cog_press": 400, "select/mainspring": 400, "select/escapement": 400, "select/regulator": 400,
+	# the Brood's sounds cut from the owner's creature recordings (tools/audio/make_brood_sounds.py, docs/brood_sounds.md)
+	"combat/tyrant_challenger_attack": 160, "combat/tyrannosaur_attack": 250, "combat/brood_mother_attack": 300,
+	"combat/rootmaw_attack": 200, "combat/mound_turtle_attack": 250, "combat/pterodactyl_attack": 250,
+	"combat/storm_challenger_attack": 160, "combat/hatchlings_attack": 120, "combat/mist_toad_attack": 200,
+	"combat/mist_toad_tongue": 400, "combat/venom_challenger_attack": 180, "combat/dilophosaurus_attack": 250,
+	"combat/brute_attack": 200, "combat/brute_charge": 1500, "combat/brood_mother_devour": 600,
+	"combat/tyrant_challenger_death": 200, "combat/venom_challenger_death": 200, "combat/storm_challenger_death": 200,
+	"combat/hatchlings_death": 150, "combat/tyrannosaur_death": 400, "combat/dilophosaurus_death": 400,
+	"combat/pterodactyl_death": 400, "combat/rootmaw_death": 300, "combat/mound_turtle_death": 400,
+	"combat/brood_egg_death": 200, "brood/breath_tyrannosaur": 1500, "brood/breath_dilophosaurus": 1500,
+	"brood/breath_pterodactyl": 1500, "roar": 600}
 
 ## How far a sound's pitch may wander from one play to the next (default 7%).
 const JITTER := {"combat/musketeer_attack": 0.04, "combat/cannon_attack": 0.04,

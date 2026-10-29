@@ -2096,7 +2096,7 @@ func _tongue_tick(delta: float) -> void:
 				tongue_t = float(Defs.TONGUE["lash"])
 				frame_i = 0
 				anim_t = 0.0
-				Sfx.play_any(["combat/brute_attack", "roar", "combat/spitter_attack", "acid"], position)
+				Sfx.play_any(["combat/mist_toad_tongue", "combat/brute_attack", "roar", "combat/spitter_attack", "acid"], position)
 		"lash":
 			if e == null or not is_instance_valid(e) or e.dead:
 				_end_tongue()
@@ -3460,7 +3460,7 @@ func _tick_unit(delta: float) -> void:
 		speed *= 1.6      # charge
 		if not _charging:
 			_charging = true
-			Sfx.play_any(["combat/brute_attack", "roar"], position)
+			Sfx.play_any(["combat/brute_charge", "combat/brute_attack", "roar"], position)
 	elif kind == "brute":
 		_charging = false
 	if kind == "balloon":

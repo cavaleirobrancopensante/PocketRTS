@@ -135,7 +135,7 @@ static func tick(u: Unit, delta: float) -> void:
 		u.sprite.self_modulate = Color.WHITE
 	if u.visible and g.view_rect.has_point(u.position):
 		g.spawn_effect("acid_splash", u.position + Vector2(0, -8), 0.9)
-		Sfx.play_any(["hatch", "roar"], u.position, -6.0)
+		Sfx.play_any(["brood/mature_" + u.kind, "hatch", "roar"], u.position, -6.0)
 	if g.mlog:
 		g.mlog.add("%s's %s matured into a %s" % [g.mlog.who(u.team), Defs.UNITS[was]["name"], Defs.UNITS[m]["name"]])
 	if u.team == g.human:
