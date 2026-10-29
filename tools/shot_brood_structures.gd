@@ -337,7 +337,7 @@ func _fixes2() -> void:
 		var sp: Dictionary = shown[0]
 		var mid: Vector2 = (Vector2(sp["tc"]) + Vector2(1.5, 1.5)) * T
 		g.camera.position = mid
-		g.camera.zoom = Vector2(1.1, 1.1)
+		g.camera.zoom = Vector2(0.9, 0.9)
 		await _snap("spots_map", 1.2)
 		g.camera.zoom = Vector2(0.6, 0.6)
 		await _snap("spots_far", 1.2)          # (zoomed out: the label gives way, the gold and the minimap squares stay)
@@ -492,7 +492,7 @@ func _mature() -> void:
 		q.nb["eggs"] = BroodNew.eggs_max(q)
 		g.set_selection([])
 		g.camera.position = home + Vector2(0, -40)
-		g.camera.zoom = Vector2(1.1, 1.1)
+		g.camera.zoom = Vector2(0.9, 0.9)
 		await _snap("mother_s%d_rooted" % (st + 1), 0.6)
 		q.cmd_uproot(true)
 		await wait(float(Defs.NB["queen_switch"]) + 0.3)

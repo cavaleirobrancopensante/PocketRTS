@@ -18,7 +18,7 @@ const UNIT_PROPS := ["order", "phase", "work", "carrying", "mode", "tesla_mode",
 	"cocoon", "coat", "armoured", "kills", "art", "powder", "wind", "max_hp", "off_field", "horse_hp", "harnessed",
 	"topter_bat", "courier", "supplying", "auto_repair", "hold_fire", "pistol", "bayonet", "pouch", "carry_empty",
 	"gas", "spin", "overclock_t", "cranked_t", "self_wind_t", "tongue_stage", "tesla_t", "haul_t", "auto_work",
-	"owl_t", "moult_t", "net_t", "arm", "shield_up", "shield_t", "loaded", "auto_sweep", "ride_n", "nb", "stun_end"]       # (stun_end: the clock a real stun's stars go, scripts/stun_mark.gd; nb: the new Brood's own state, scripts/brood_new.gd; (a Clock Soldier's SHIELD FORWARD and its switch; a Swift's morph under way: its clock and bar; a unit caught in a Netter's net; the
+	"owl_t", "net_t", "arm", "shield_up", "shield_t", "loaded", "auto_sweep", "ride_n", "nb", "stun_end", "moult_t"]       # (stun_end: the clock a real stun's stars go, scripts/stun_mark.gd; nb: the new Brood's own state, scripts/brood_new.gd; (a Clock Soldier's SHIELD FORWARD and its switch; a Swift's morph under way: its clock and bar; a unit caught in a Netter's net; the
 	# launcher a Springer fires now, so a guest plays that arm's strip; a Spring Ballista's bolt in or not: loaded or fired, its crew
 	# cranking; a Great Winder's SWEEP autocast, for its card; ride_n: a Horseman's blows struck in passing, so a
 	# guest draws the sabre arc: scripts/ride_by.gd)
@@ -55,7 +55,7 @@ static func unit_vals(u: Unit) -> Array:
 		snappedf(u.gas, 0.01), snappedf(u.spin, 0.01), snappedf(u.overclock_t, 0.01), snappedf(u.cranked_t, 0.01),
 		snappedf(u.self_wind_t, 0.01), u.tongue_stage, snappedf(u.tesla_t, 0.01), snappedf(u.haul_t, 0.01), u.auto_work,
 		snappedf(u.owl_t, 0.01), snappedf(u.net_t, 0.01), u.arm, u.shield_up, snappedf(u.shield_t, 0.01), u.loaded, u.auto_sweep, u.ride_n,
-		BroodNew.unit_save(u) if u._k_nb else u.nb, snappedf(u.stun_end, 0.01)]
+		BroodNew.unit_save(u) if u._k_nb else u.nb, snappedf(u.stun_end, 0.01), snappedf(u.moult_t, 0.01)]
 
 
 ## The building's values, in BLD_PROPS order.
@@ -638,6 +638,8 @@ static func _set_unit_vals(u: Unit, row: Array, o: int) -> void:
 		u.stun_end = float(row[o + 48])
 		if u.stun_end > float(u.game.clock):
 			StunMark.add(u.game, u)      # (the host's stars: scripts/stun_mark.gd)
+	if row.size() > o + 49:
+		u.moult_t = float(row[o + 49])        # (a young Brood unit maturing: its shimmer and bar, scripts/brood_mature.gd)
 
 
 static func _unit_refs(s: NetSession, u: Unit, row: Array) -> void:

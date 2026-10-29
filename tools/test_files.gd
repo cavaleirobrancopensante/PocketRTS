@@ -107,7 +107,7 @@ func _buildings_and_data() -> void:
 		_requires(String(Defs.UNITS[k].get("faction", "")), k, Defs.UNITS[k])
 	# the new Brood (experiment, scripts/brood_new.gd): every creature its Mother lays and its own kinds have art and an
 	# icon; its command icons exist; its art entries follow the strip rules (_strips, with these kinds in a normal game)
-	for k in BroodNew.hatch_list() + BroodNew.KINDS:
+	for k in BroodNew.hatch_list() + BroodNew.KINDS + (Defs.NB["mature"] as Dictionary).values():
 		checked += 1
 		if not Defs.UNITS.has(k) or not ArtData.UNITS.has(k):
 			_fail("new brood %s: no unit or no art" % k)
