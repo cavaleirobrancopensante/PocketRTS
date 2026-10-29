@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.20.2", "items": [
+		"ART: the designer's icons for the Brood's research (BIGGER CLUTCH for Raptors, Spitters and Hatchlings, PACK HUNT, BATTERING HORNS, SLITHER, LONG SPIT, UPDRAFT, QUICK ROOTS, SWAMP MENDING) replace the temporary ones, in the Brood's own bronze frame.",
+		"The grub's BUILD card shows each Sire's LURE on his button: the Tyrant's red spiked lure, the Venom's dripping yellow-green one, the Storm's crest-fin in its white haze. The Sire's own portrait stays on his card.",
+	]},
 	{"v": "0.20.1", "items": [
 		"THE STORM SIRE FLIES IN: when his lure is ripe he now comes flying from a few tiles away, his shadow on the ground under him, glides down, brakes and lands on the lure, then eats it and stands. The same total time.",
 		"THE SIRES' EGGS take their lure's colour, faintly: the Tyrant's a faint red, the Venom's a faint yellow-green, the Storm's a faint storm-cloud white. They take it as he breathes on them; grub eggs keep their colour. The Storm Lure's haze is storm-cloud white too, no longer blue (it clashed with a blue team).",
