@@ -189,11 +189,11 @@ func _run() -> void:
 		big.position = at2 + Vector2(-900, 900)
 		big.visible = false
 		await step(g2, 0.3)
-	# a Skywing in the air: pulled through the air to just over the Toad, still flying
-	var wing := tough(g2._add_unit("skywing", 1, at2 + Vector2(40, -20)))
+	# a Storm Challenger in the air (0.21.0: the retired Skywing before): pulled through the air to just over the Toad, still flying
+	var wing := tough(g2._add_unit("storm_challenger", 1, at2 + Vector2(40, -20)))
 	wing.hold_fire = true
 	wing.cmd_hold()
-	check("the Skywing is flying", wing.is_air())
+	check("the Storm Challenger is flying", wing.is_air())
 	toad2.charge = 200.0
 	toad2.cmd_tongue(wing)
 	var w3 := 0.0
@@ -204,7 +204,7 @@ func _run() -> void:
 	while wing.stun_left() <= 0.0 and w3 < 10.0:
 		await step(g2, 1.0 / 30.0)
 		w3 += 1.0 / 30.0
-	check("the tongue pulls the Skywing, stunned with stars", wing.stun_left() > 0.0 and g2.stun_layer.marked.has(wing))
+	check("the tongue pulls the Storm Challenger, stunned with stars", wing.stun_left() > 0.0 and g2.stun_layer.marked.has(wing))
 	await step(g2, float(Defs.TONGUE["pull"]) + 0.1)
 	var dd: float = wing.position.distance_to(toad2.position)
 	check("it ends just over the Toad", dd <= float(Defs.TONGUE["over"]) + 3.0, "%.1f px" % dd)
@@ -212,7 +212,7 @@ func _run() -> void:
 	await step(g2, 1.0)
 	check("its stars go after the stun", not g2.stun_layer.marked.has(wing))
 	# the windup still breaks when the flyer flies out of reach
-	var wing2 := tough(g2._add_unit("skywing", 1, at2 + Vector2(-60, -20)))
+	var wing2 := tough(g2._add_unit("storm_challenger", 1, at2 + Vector2(-60, -20)))
 	toad2.charge = 200.0
 	toad2.cmd_tongue(wing2)
 	var w4 := 0.0

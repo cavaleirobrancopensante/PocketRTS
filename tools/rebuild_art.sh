@@ -135,6 +135,8 @@ python3 tools/anim_audit/fix_crown.py    # Crown animation audit fixes (docs/ani
 python3 tools/import_musket_aim_dirs.py  # Musketeer / Guardsman aim, fire, bayonet toward se, ne, s (ChatGPT over tools/musket_guide/aim_dirs.py)
 python3 tools/import_spitter_redo.py     # the Spitter from the owner's ChatGPT sheets (art/redraws/spitter_<d>_chatgpt.png): walk, spit, death in
                                          # every view and its straight glob missile (replaces import_art's; after fix_brood, before the masks)
+python3 tools/import_storm_line.py      # the Storm line (Hatchlings, Storm Challenger) from the owner's ChatGPT sheets (docs/storm_line.md;
+                                         # before the masks)
 python3 tools/import_vet_trim.py         # veterancy trim masks (hat lace / band, helmet comb and brim)
                                          # for the Crown's soldiers: after every strip they read,
                                          # mount strips included

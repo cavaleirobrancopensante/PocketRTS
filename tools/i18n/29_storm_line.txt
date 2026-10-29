@@ -1,0 +1,29 @@
+# THE STORM LINE (0.21.0, docs/storm_line.md)
+
+> The Storm Sire's young: cheap, fast little flyers with a sharp bite, two to an egg (three with his BIGGER CLUTCH). They bite only FLYERS (they can't touch the ground): a flock to keep the enemy's flyers off. Fragile. A Hatchling MATURES into a Storm Challenger (the Brood Mother at stage 3).
+pt Os filhotes do Sire da Tempestade: voadores pequenos, baratos e rápidos com uma mordida afiada, dois por ovo (três com a NINHADA MAIOR dele). Só mordem VOADORES (não alcançam o chão): um bando para manter longe os voadores inimigos. Frágeis. Um Filhote AMADURECE num Desafiante da Tempestade (a Mãe da Ninhada no estágio 3).
+es Las crías del Señor de la Tormenta: voladores pequeños, baratos y rápidos con un mordisco afilado, dos por huevo (tres con su NIDADA MAYOR). Solo muerden VOLADORES (no alcanzan el suelo): una bandada para mantener lejos a los voladores enemigos. Frágiles. Una Cría MADURA en un Retador de la Tormenta (la Madre de la Camada en la etapa 3).
+
+> A Hatchling grown into a young Storm Sire: a flyer that SWOOPS down to bite, on flyers and on the ground alike, over cliffs and water. Tougher than a Hatchling, not a heavy hitter. Never laid: a Hatchling MATURES into it (the Brood Mother at stage 3).
+pt Um Filhote crescido num jovem Sire da Tempestade: um voador que MERGULHA para morder, em voadores e no chão por igual, por cima de penhascos e água. Mais resistente que um Filhote, sem golpe pesado. Nunca é posto: um Filhote AMADURECE nele (a Mãe da Ninhada no estágio 3).
+es Una Cría crecida hasta un joven Señor de la Tormenta: un volador que se LANZA EN PICADO a morder, a voladores y en el suelo por igual, sobre acantilados y agua. Más resistente que una Cría, sin golpe pesado. Nunca se pone: una Cría MADURA en él (la Madre de la Camada en la etapa 3).
+
+> Cheap, fast little flyers that bite only flyers. Two hatch from each egg (three with BIGGER CLUTCH). MATURE into a Storm Challenger.
+pt Voadores pequenos, baratos e rápidos que só mordem voadores. Dois nascem de cada ovo (três com NINHADA MAIOR). AMADURECEM num Desafiante da Tempestade.
+es Voladores pequeños, baratos y rápidos que solo muerden voladores. Nacen dos de cada huevo (tres con NIDADA MAYOR). MADURAN en un Retador de la Tormenta.
+
+> A matured Hatchling, a young Storm Sire: a flyer that swoops to bite flyers and ground units alike.
+pt Um Filhote amadurecido, um jovem Sire da Tempestade: um voador que mergulha para morder voadores e unidades no chão por igual.
+es Una Cría madurada, un joven Señor de la Tormenta: un volador que se lanza en picado a morder voladores y unidades de tierra por igual.
+
+> It bites only flyers: it can't touch the ground.
+pt Só morde voadores: não alcança o chão.
+es Solo muerde voladores: no alcanza el suelo.
+
+> It swoops down to bite flyers and ground units alike, over cliffs and water.
+pt Mergulha para morder voadores e unidades no chão por igual, por cima de penhascos e água.
+es Se lanza en picado a morder voladores y unidades de tierra por igual, sobre acantilados y agua.
+
+> STORM CHALLENGER
+pt DESAFIANTE DA TEMPESTADE
+es RETADOR DE LA TORMENTA

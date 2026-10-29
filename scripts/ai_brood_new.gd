@@ -10,7 +10,7 @@ extends AI
 ##  - a spent Rootmaw is uprooted (it spills what little it holds) and walked to new ground (ROOT like BUILD);
 ##  - grubs: enough to crew the rooted Rootmaws (idle grubs find work by themselves, Unit WORK);
 ##  - warriors: each line while its father is rooted beside her: Raptors and a Brute now and then (Tyrannosaur),
-##    Spitters behind them and a Mist Toad or two (Dilophosaurus), Skywings against flyers or as a share (Pterodactyl);
+##    Spitters behind them and a Mist Toad or two (Dilophosaurus), Hatchlings against flyers, matured into Storm Challengers at her stage 3 (Pterodactyl);
 ##  - waves: the army attack-moves to the nearest enemy once it is big enough (the strategy's wave size, growing), falls
 ##    back to the Mother when it is cut down; anything near the Mother is fought by everything, the father too.
 ## No cheating: it goes for the enemy's starting spot and what it meets on the way.
@@ -305,7 +305,7 @@ func _nb_one_father(q: Unit, f: Unit) -> void:
 
 # ------------------------------------------------------------------ eggs
 
-## GROW her (the owner's tiers, 12:20: Spitters need her stage 2; Brutes, Mist Toads and Skywings stage 3, the Storm
+## GROW her (the owner's tiers, 12:20: Hatchlings need her stage 2; Brutes, Mist Toads and Storm Challengers stage 3, the Storm
 ## Sire stage 2): from about 3:30 (stage 2) and 7:00 (stage 3) it SAVES for it (_nb_saving_growth: no warrior eggs
 ## meanwhile) and grows her once the price and a reserve are there; never while enemies are at her.
 func _nb_grow(q: Unit) -> void:
@@ -408,9 +408,11 @@ func _nb_lay(q: Unit) -> void:
 
 
 ## Which warrior egg: a mix by the fathers rooted beside her (each line only while its father is there) and by her
-## stage (the owner's tiers, 12:20 and 14:40: Raptors and Spitters from the start, Brutes, Mist Toads and Skywings at
-## stage 3). Raptors are the base; Spitters about one egg in three behind them; a Brute now and then; a Mist Toad per
-## 12 army supply (up to 3); Skywings when the enemy flies (or as one egg in five).
+## stage (the owner's tiers, 12:20 and 14:40: Raptors and Spitters from the start, Hatchlings at stage 2, Brutes and
+## Mist Toads at stage 3). Raptors are the base; Spitters about one egg in three behind them; a Brute now and then; a Mist
+## Toad per 12 army supply (up to 3); HATCHLINGS (they bite only flyers: docs/storm_line.md) against the enemy's flyers,
+## about two for each (HATCH_PER_FLYER, up to HATCH_MAX), and at her stage 3 a few more to mature into Storm
+## Challengers (the Storm line up to STORM_WANT) even when nothing flies.
 func _nb_warrior(gold: int) -> String:
 	var q := BroodNew.queen(game, team)
 	var st := BroodNew.stage(q) if q else 0
@@ -418,22 +420,25 @@ func _nb_warrior(gold: int) -> String:
 	# (a Sire researching fathers nothing meanwhile: his line is skipped, the others laid instead)
 	var trex := BroodNew.father_near(game, team, BroodNew.FATHER) and not BroodResearch.line_busy(game, team, BroodNew.FATHER)
 	var dilo := BroodNew.father_near(game, team, BroodNew.DILO) and st >= BroodNew.unit_stage("spitter") and not BroodResearch.line_busy(game, team, BroodNew.DILO)
-	var ptero := BroodNew.father_near(game, team, BroodNew.PTERO) and st >= BroodNew.unit_stage("skywing") and not BroodResearch.line_busy(game, team, BroodNew.PTERO)
+	var ptero := BroodNew.father_near(game, team, BroodNew.PTERO) and st >= BroodNew.unit_stage("hatchlings") and not BroodResearch.line_busy(game, team, BroodNew.PTERO)
 	var toads_ok := dilo and st >= BroodNew.unit_stage("mist_toad")
 	var brutes_ok := trex and st >= BroodNew.unit_stage("brute")
 	var raptors := BroodNew.count_of(game, team, "raptor")
 	var spitters := BroodNew.count_of(game, team, "spitter")
 	var toads := BroodNew.count_of(game, team, "mist_toad")
-	var wings := BroodNew.count_of(game, team, "skywing")
+	var hatch := BroodNew.count_of(game, team, "hatchlings")
+	var storm := BroodNew.count_of(game, team, "storm_challenger")
 	var army := 0
 	for u in _nb_army_units():
 		army += int(u.d["supply"])
-	var foe_air := 0
-	for u in game.units:
-		if game.hostile(u.team, team) and not u.dead and u.is_air():
-			foe_air += 1
-	if ptero and essence >= 40.0 and gold >= 100 and (wings < foe_air or (wings * 5 < raptors + spitters and wings < 8)):
-		return "skywing"
+	var foe_air := _nb_foe_air()
+	var hp: Array = game.unit_price(team, "hatchlings")
+	if ptero and essence >= float(hp[1]) and gold >= int(hp[0]) + 20:
+		# (an egg holds 2 or 3: counted in young; a Storm Challenger counts as two)
+		var air := hatch + storm * 2
+		if (foe_air > 0 and air < mini(HATCH_MAX, foe_air * HATCH_PER_FLYER)) \
+				or (st >= BroodNew.unit_stage("storm_challenger") and hatch + storm < STORM_WANT and raptors + spitters >= 6):
+			return "hatchlings"
 	if toads_ok and essence >= 25.0 and gold >= 100 and toads < mini(3, army / 12):
 		return "mist_toad"
 	var keep := float(Defs.NB["stages"][2]["cost2"]) if st == 1 and game.clock >= 360.0 else 0.0      # (her stage 3 needs essence: kept for it)
@@ -443,7 +448,7 @@ func _nb_warrior(gold: int) -> String:
 		return "brute" if brutes_ok and essence >= 20.0 and gold >= 180 and randi() % 3 == 0 else "raptor"
 	if dilo:
 		return "spitter"
-	return "skywing" if ptero else ""
+	return ""
 
 
 ## MATURE (YOUNG AND MATURE, scripts/brood_mature.gd): when food piles up (more than MATURE_FOOD unspent, not saving
@@ -452,6 +457,19 @@ func _nb_warrior(gold: int) -> String:
 const MATURE_FOOD := 350
 const MATURE_KEEP := 200
 const MATURE_EACH := 2
+## The Storm line (docs/storm_line.md): Hatchlings for each enemy flyer, at most; the Storm line it keeps at her stage 3
+const HATCH_PER_FLYER := 2
+const HATCH_MAX := 16
+const STORM_WANT := 4
+
+
+## How many enemy flyers there are now (the computer sees them as the Crown's and Clockwork's computers do).
+func _nb_foe_air() -> int:
+	var n := 0
+	for u in game.units:
+		if game.hostile(u.team, team) and not u.dead and u.is_air():
+			n += 1
+	return n
 
 
 func _nb_mature(q: Unit) -> void:
@@ -464,8 +482,11 @@ func _nb_mature(q: Unit) -> void:
 			continue
 		var young := _nb_mine(String(yk))
 		var grown := _nb_mine(mk).size()
+		# (Hatchlings bite only flyers: with none about, every one is worth more as a Storm Challenger; with enemy flyers,
+		# half stay a flock)
+		var all_up: bool = yk == "hatchlings" and _nb_foe_air() == 0
 		for u in young:
-			if n >= MATURE_EACH or grown * 2 >= young.size() + grown:
+			if n >= MATURE_EACH or (grown * 2 >= young.size() + grown and not all_up):
 				break
 			if u.moult_t >= 0.0 or (u.target != null and is_instance_valid(u.target)) or in_wave(u) \
 					or u.position.distance_to(q.position) > 20.0 * Defs.TILE:
@@ -488,7 +509,7 @@ func _nb_mature(q: Unit) -> void:
 ##  - PACK HUNT when an attack is coming (the army at 60% of the wave size) or under way;
 ##  - BATTERING HORNS before a siege: her stage 3 and 2 Brutes;
 ##  - the Venom line's BIGGER CLUTCH once Spitters are laid (4), SLITHER and LONG SPIT with 6 of the line and food to spare;
-##  - UPDRAFT with 4 Skywings;
+##  - the Storm line's BIGGER CLUTCH with 4 Hatchlings and enemy flyers about (3 or more); UPDRAFT with 4 of the line;
 ##  - QUICK ROOTS mid game (her stage 2, from 8:00), SWAMP MENDING later (from 10:00, food to spare).
 const RES_KEEP := 150
 
@@ -521,7 +542,9 @@ func _nb_research(q: Unit) -> void:
 		if line.call("spitter") + line.call("venom_challenger") >= 6 and gold >= 400:
 			want.append("nb_long_spit")
 			want.append("nb_slither")
-		if line.call("skywing") >= 4:
+		if line.call("hatchlings") >= 4 and _nb_foe_air() >= 3:
+			want.append("nb_clutch_hatchlings")
+		if line.call("hatchlings") + line.call("storm_challenger") >= 4:
 			want.append("nb_updraft")
 	if st >= 1 and game.clock >= 480.0:
 		want.append("nb_quick_roots")

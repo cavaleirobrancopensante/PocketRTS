@@ -537,6 +537,7 @@ func _run() -> void:
 	await _lures(q, p)
 	await _storm_arrival(q)
 	await _research(q, p)
+	await _storm_line(q, p)
 	# 8. killing the Mother loses
 	q.take_damage(999999.0, null)
 	var out: bool = await wait_for(func() -> bool: return bool(g.eliminated[0]), 3.0)
@@ -766,7 +767,7 @@ func _fixes_2(q: Unit, p: Dictionary) -> void:
 	for gr in mine("grub"):
 		gr.auto_work = false
 		gr.cmd_stop()
-	for k in ["raptor", "brute", "spore_mother", "mist_toad", "spitter", "skywing"]:
+	for k in ["raptor", "brute", "spore_mother", "mist_toad", "spitter", "skywing", "hatchlings"]:
 		for u in mine(k):
 			g.consume_unit(u)          # (room in the supply for the eggs below)
 	var grs: Array = mine("grub")
@@ -1147,7 +1148,7 @@ func _fathers(q: Unit, p: Dictionary) -> void:
 	for gr in mine("grub"):
 		gr.auto_work = false
 		gr.cmd_stop()
-	for k in ["raptor", "brute", "mist_toad", "spitter", "skywing", BroodNew.EGG, BroodNew.FATHER, BroodNew.DILO, BroodNew.PTERO]:
+	for k in ["raptor", "brute", "mist_toad", "spitter", "skywing", "hatchlings", BroodNew.EGG, BroodNew.FATHER, BroodNew.DILO, BroodNew.PTERO]:
 		for u in mine(k):
 			g.consume_unit(u)
 	while mine("grub").size() < 4:
@@ -1163,9 +1164,9 @@ func _fathers(q: Unit, p: Dictionary) -> void:
 	# the lines
 	check(BroodNew.father_of("raptor") == BroodNew.FATHER and BroodNew.father_of("brute") == BroodNew.FATHER
 		and BroodNew.father_of("spitter") == BroodNew.DILO and BroodNew.father_of("mist_toad") == BroodNew.DILO
-		and BroodNew.father_of("skywing") == BroodNew.PTERO and not BroodNew.hatch_list().has("bloater")
-		and BroodNew.hatch_list().has("skywing") and BroodRoot.morph_list().has(BroodNew.DILO) and BroodRoot.morph_list().has(BroodNew.PTERO),
-		"18. the lines: Tyrannosaur Raptor, Brute; Dilophosaurus Spitter, Mist Toad; Pterodactyl Skywing; no Bloater (her card: %s)" % str(BroodNew.hatch_list()))
+		and BroodNew.father_of("hatchlings") == BroodNew.PTERO and not BroodNew.hatch_list().has("bloater")
+		and BroodNew.hatch_list().has("hatchlings") and not BroodNew.hatch_list().has("skywing") and BroodRoot.morph_list().has(BroodNew.DILO) and BroodRoot.morph_list().has(BroodNew.PTERO),
+		"18. the lines: Tyrannosaur Raptor, Brute; Dilophosaurus Spitter, Mist Toad; Pterodactyl Hatchlings (no Skywing); no Bloater (her card: %s)" % str(BroodNew.hatch_list()))
 	# locked until her stage
 	var st0 := BroodNew.stage(q)
 	q.nb["stage"] = 0
@@ -1176,7 +1177,7 @@ func _fathers(q: Unit, p: Dictionary) -> void:
 	var tiers := {}
 	for st in 3:
 		q.nb["stage"] = st
-		for k in ["raptor", "spitter", "brute", "mist_toad", "skywing"]:
+		for k in ["raptor", "spitter", "brute", "mist_toad", "hatchlings"]:
 			tiers["%s%d" % [k, st]] = BroodNew.lay_problem(g, q, k).begins_with("Needs the Brood Mother at stage")
 	q.nb["stage"] = 1
 	var l_p1 := BroodRoot.morph_problem(g, 0, BroodNew.PTERO)
@@ -1185,17 +1186,17 @@ func _fathers(q: Unit, p: Dictionary) -> void:
 	q.nb["stage"] = st0
 	check(l_t0 == "" and l_d0 == "" and l_p0 == "Needs the Brood Mother at stage 2.", "    stage 1: the Tyrant and Venom Sires open, the Storm Sire locked (%s)" % l_p0)
 	check(l_p1 == "", "    stage 2: the Storm Sire too")
-	check(not tiers["raptor0"] and not tiers["spitter0"] and tiers["brute0"] and tiers["mist_toad0"] and tiers["skywing0"]
-		and not tiers["spitter1"] and tiers["brute1"] and tiers["mist_toad1"] and tiers["skywing1"]
-		and not tiers["brute2"] and not tiers["mist_toad2"] and not tiers["skywing2"] and why_b == "Needs the Brood Mother at stage 3.",
-		"    the warriors' tiers: Raptors and Spitters at stage 1, Brutes, Mist Toads, Skywings 3 (a Brute at stage 1: %s)" % why_b)
+	check(not tiers["raptor0"] and not tiers["spitter0"] and tiers["brute0"] and tiers["mist_toad0"] and tiers["hatchlings0"]
+		and not tiers["spitter1"] and tiers["brute1"] and tiers["mist_toad1"] and not tiers["hatchlings1"]
+		and not tiers["brute2"] and not tiers["mist_toad2"] and not tiers["hatchlings2"] and why_b == "Needs the Brood Mother at stage 3.",
+		"    the warriors' tiers: Raptors and Spitters at stage 1, Hatchlings 2, Brutes and Mist Toads 3 (a Brute at stage 1: %s)" % why_b)
 	check(st0 == 2 and BroodRoot.morph_problem(g, 0, BroodNew.PTERO) == "", "    stage 3: all three Sires")
 	# her card's refusals name the right father
 	q.nb["eggs"] = BroodNew.eggs_max(q)
 	var w_r := BroodNew.lay_problem(g, q, "raptor")
 	var w_s := BroodNew.lay_problem(g, q, "spitter")
 	var w_m := BroodNew.lay_problem(g, q, "mist_toad")
-	var w_k := BroodNew.lay_problem(g, q, "skywing")
+	var w_k := BroodNew.lay_problem(g, q, "hatchlings")
 	check(w_r.contains("Tyrant Sire") and w_s.contains("Venom Sire") and w_m.contains("Venom Sire") and w_k.contains("Storm Sire"),
 		"    no father: the refusals name each line's father (%s | %s | %s)" % [w_r, w_s, w_k])
 	# made from grubs: each walks to a spot beside her and morphs; one of each (the grub on its way counts)
@@ -1233,7 +1234,7 @@ func _fathers(q: Unit, p: Dictionary) -> void:
 	q.nb["eggs"] = BroodNew.eggs_max(q)
 	var before: Array = mine(BroodNew.EGG)
 	var why := ""
-	for k in ["spitter", "spitter", "mist_toad", "skywing", "raptor"]:
+	for k in ["spitter", "spitter", "mist_toad", "hatchlings", "raptor"]:
 		var w: String = q.cmd_lay(k)
 		if w != "":
 			why += k + ": " + w + " "
@@ -1245,15 +1246,15 @@ func _fathers(q: Unit, p: Dictionary) -> void:
 		var f2: Unit = made[fk2]
 		if bool(e.nb.get("nest", false)) and e.position.distance_to(BroodNew.nest_point(f2)) < BroodNew.NEST_GAP * 3.0 and e.position.y > BroodRoot.rect_of(f2).end.y:
 			right += 1
-	check(why == "" and new_eggs.size() == 5 and right == 5, "    5 eggs (2 Spitters, a Toad, a Skywing, Raptors): each in its own father's nest (%d of %d) %s" % [right, new_eggs.size(), why])
+	check(why == "" and new_eggs.size() == 5 and right == 5, "    5 eggs (2 Spitters, a Toad, Hatchlings, Raptors): each in its own father's nest (%d of %d) %s" % [right, new_eggs.size(), why])
 	check(BroodNew.nest_eggs(g, di).size() == 3 and BroodNew.nest_eggs(g, pt).size() == 1 and BroodNew.nest_eggs(g, tr).size() == 1,
 		"    nests: Dilophosaurus %d, Pterodactyl %d, Tyrannosaur %d" % [BroodNew.nest_eggs(g, di).size(), BroodNew.nest_eggs(g, pt).size(), BroodNew.nest_eggs(g, tr).size()])
 	await wait(float(Defs.NB["fert_time"]) * 0.5)
 	var half := BroodNew.nest_eggs(g, di).filter(func(e) -> bool: return float(e.nb.get("redden", 0.0)) > 0.2 or int(e.nb.get("fert", 0)) == 2).size()
 	var all_f: bool = await wait_for(func() -> bool: return new_eggs.all(func(e) -> bool: return e.dead or int(e.nb.get("fert", 0)) == 2), float(Defs.NB["fert_time"]) + 1.0)
 	check(half == 3 and all_f, "    each father fertilises all the eggs of his nest at once (%d of 3 under the Dilophosaurus' breath together)" % half)
-	var hatched: bool = await wait_for(func() -> bool: return mine("skywing").size() >= 1 and mine("spitter").size() >= 4 and mine("mist_toad").size() >= 1, 30.0)
-	check(hatched, "    they hatch: %d Spitters, %d Toads, %d Skywings" % [mine("spitter").size(), mine("mist_toad").size(), mine("skywing").size()])
+	var hatched: bool = await wait_for(func() -> bool: return mine("hatchlings").size() >= 2 and mine("spitter").size() >= 4 and mine("mist_toad").size() >= 1, 30.0)
+	check(hatched, "    they hatch: %d Spitters, %d Toads, %d Hatchlings" % [mine("spitter").size(), mine("mist_toad").size(), mine("hatchlings").size()])
 	# the Toad only staggers the fathers
 	var small_one: Unit = mine("spitter")[0] if not mine("spitter").is_empty() else shooter
 	check(Unit.too_heavy(tr) and Unit.too_heavy(di) and Unit.too_heavy(pt) and not Unit.too_heavy(small_one),
@@ -1270,7 +1271,7 @@ func _fathers(q: Unit, p: Dictionary) -> void:
 	var landed: bool = await wait_for(func() -> bool: return pt.tesla_mode == "deployed", 20.0)
 	check(landed and not pt.is_air() and pt.position.distance_to(spot2) < 2.0, "    ROOT: he flies to the spot and lands on his nest there (air %s, %.0f px off)" % [pt.is_air(), pt.position.distance_to(spot2)])
 	g.consume_unit(shooter)
-	for k in ["spitter", "mist_toad", "skywing", "raptor"]:
+	for k in ["spitter", "mist_toad", "skywing", "hatchlings", "raptor"]:
 		for u in mine(k):
 			g.consume_unit(u)
 
@@ -1485,7 +1486,7 @@ func _lures(q: Unit, p: Dictionary) -> void:
 	check(not wsh.is_empty() and wsh.all(func(c) -> bool: return absf(c.a - float(Defs.NB["egg_wash"])) < 0.02 and c.a < 0.5 and Color(c.r, c.g, c.b).is_equal_approx(vcol)),
 		"22. his fertilised eggs wear the Venom lure's faint yellow-green (%s)" % str(wsh))
 	var tcol := BroodNew.egg_col("raptor")
-	var scol := BroodNew.egg_col("skywing")
+	var scol := BroodNew.egg_col("hatchlings")
 	check(tcol.r > 0.8 and tcol.g < 0.4 and tcol.b < 0.4 and scol.r > 0.9 and scol.g > 0.9 and scol.b - scol.r < 0.05 and vcol.g > vcol.b + 0.5,
 		"    the Tyrant's eggs a faint red %s, the Storm's a faint storm-cloud white %s (no blue)" % [str(tcol), str(scol)])
 	var lc0 := BroodRoot.lure_col(BroodNew.PTERO)
@@ -1761,10 +1762,11 @@ func _research(q: Unit, p: Dictionary) -> void:
 	g.players[0]["tech"]["nb_clutch_spitter"] = true
 	check(g.unit_price(0, "spitter") == [135, 8] and BroodMature.price(g, 0, "spitter") == [105, 17], "    the Venom Sire's BIGGER CLUTCH: a Spitter egg %s, maturing still %s" % [str(g.unit_price(0, "spitter")), str(BroodMature.price(g, 0, "spitter"))])
 	var hk := "hatchlings"
-	check(BroodResearch.clutch_key(hk) == "nb_clutch_hatchlings" and BroodResearch.base_clutch(hk) == 2 and BroodResearch.problem(g, _sire(q, BroodNew.PTERO, 4.5), "nb_clutch_hatchlings") != "",
-		"    the Storm Sire's BIGGER CLUTCH: data for the Hatchlings (2, 3 with it), refused until they are in the game")
+	var hwhy := BroodResearch.problem(g, _sire(q, BroodNew.PTERO, 4.5), "nb_clutch_hatchlings")
+	check(BroodResearch.clutch_key(hk) == "nb_clutch_hatchlings" and BroodResearch.base_clutch(hk) == 2 and hwhy == "Needs the Brood Mother at stage 2.",
+		"    the Storm Sire's BIGGER CLUTCH: Hatchlings 2 to an egg, 3 with it; at her stage 1 it waits for stage 2 (%s)" % hwhy)
 	g.players[0]["tech"]["nb_clutch_hatchlings"] = true
-	check(BroodResearch.clutch(g, 0, hk) == 3, "    with it the Hatchlings would come 3 to an egg")
+	check(BroodResearch.clutch(g, 0, hk) == 3, "    with it the Hatchlings come 3 to an egg")
 	g.players[0]["tech"].erase("nb_clutch_hatchlings")
 	# PACK HUNT, SLITHER, UPDRAFT: speeds
 	var ra: Unit = mine("raptor")[0]
@@ -1946,3 +1948,162 @@ func _research_resumed() -> void:
 	var dn: bool = await wait_for(func() -> bool: return g.has_tech(0, "nb_long_spit"), 2.0)
 	var sp: Unit = g._add_unit("spitter", 0, d.position + Vector2(0, 80))
 	check(dn and float(sp.d["range"]) == float(Defs.UNITS["musketeer"]["range"]), "    then it finishes: Spitters reach %d (a Musketeer's)" % int(sp.d["range"]))
+
+
+## 23. THE STORM LINE (0.21.0, docs/storm_line.md): the Storm Sire fathers HATCHLINGS (stage 2, two to an egg, three
+## with his BIGGER CLUTCH) that bite only flyers; a Hatchling MATURES (stage 3) into a STORM CHALLENGER that hits flyers
+## and the ground; UPDRAFT speeds both (flying); the Skywing is no longer laid (an older save's Skywing egg holds
+## Hatchlings); the computer lays Hatchlings against flyers and matures them.
+func _storm_line(q: Unit, p: Dictionary) -> void:
+	for fk0 in BroodNew.FATHERS:
+		for u in mine(fk0):
+			g.consume_unit(u)
+	for k0 in [BroodNew.EGG, "raptor", "spitter", "brute", "skywing", "hatchlings", "storm_challenger", "tyrant_challenger", "venom_challenger", "mist_toad"]:
+		for u in mine(k0):
+			g.consume_unit(u)
+	for k0 in p["tech"].keys():
+		if String(k0).begins_with("nb_"):
+			p["tech"].erase(k0)
+	for u in g.units.filter(func(o) -> bool: return o.team == 1 and not o.dead and not o.is_building() and o.position.distance_to(q.position) < 30.0 * Defs.TILE):
+		g.consume_unit(u)
+	p["gold"] = 5000
+	p["res2"] = 500.0
+	q.nb["stage"] = 1
+	BroodNew.apply_stage(q)
+	q.nb["grow_t"] = 0.0
+	while int(g.players[0]["cap"]) - g.supply_used(0) < 30:
+		var tt := BroodRoot.cocoon(g, 0, BroodNew.TURTLE, free_spot(BroodNew.TURTLE, q.position, 18.0))
+		tt.nb.erase("coc")
+		BroodNew.recount(g, 0)
+	await wait(0.2)
+	# the data
+	check(BroodNew.father_of("hatchlings") == BroodNew.PTERO and BroodNew.hatch_list().has("hatchlings") and not BroodNew.hatch_list().has("skywing")
+		and BroodMature.mature_of("hatchlings") == "storm_challenger" and BroodNew.unit_stage("hatchlings") == 1 and BroodNew.unit_stage("storm_challenger") == 2
+		and (Defs.NB["lines_later"] as Dictionary).is_empty(),
+		"23. the Storm line: the Storm Sire fathers Hatchlings (stage 2), they mature into Storm Challengers (stage 3); no Skywing eggs")
+	check(g.unit_price(0, "hatchlings") == [80, 10] and BroodNew.young(g, 0, "hatchlings") == 2 and BroodMature.price(g, 0, "hatchlings") == [110, 25],
+		"    a Hatchling egg %s for 2; maturing one %s (the Challenger's 150 + 30 less its share)" % [str(g.unit_price(0, "hatchlings")), str(BroodMature.price(g, 0, "hatchlings"))])
+	# targets: the Hatchlings air only, the Challenger air and ground
+	var at := spot_near(q.position, 16.0)
+	var ht: Unit = g._add_unit("hatchlings", 0, at)
+	var sc: Unit = g._add_unit("storm_challenger", 0, at + Vector2(20, 0))
+	var bal: Unit = g._add_unit("balloon", 1, at + Vector2(0, 60))
+	var mus: Unit = g._add_unit("musketeer", 1, at + Vector2(60, 0))
+	check(ht.is_air() and sc.is_air() and ht.can_hit(bal) and not ht.can_hit(mus) and sc.can_hit(bal) and sc.can_hit(mus),
+		"    a Hatchling (a flyer) can bite a balloon, not a Musketeer; a Storm Challenger both")
+	for u in [ht, sc, bal, mus]:
+		g.consume_unit(u)
+	# the Storm Sire fathers them: an egg in his nest, two Hatchlings fly out
+	var pt := _sire(q, BroodNew.PTERO, 1.57)
+	await wait(0.3)
+	q.nb["eggs"] = BroodNew.eggs_max(q)
+	var h0 := mine("hatchlings").size()
+	var gl := int(p["gold"])
+	var w: String = q.cmd_lay("hatchlings")
+	await wait(0.1)
+	check(w == "" and gl - int(p["gold"]) == 80 and BroodNew.nest_eggs(g, pt).size() == 1, "    the Storm Sire rooted beside her: a Hatchling egg (80 food) in his nest %s (paid %d, nest %d, near %s)" % [w, gl - int(p["gold"]), BroodNew.nest_eggs(g, pt).size(), BroodNew.father_near(g, 0, BroodNew.PTERO)])
+	var two: bool = await wait_for(func() -> bool: return mine("hatchlings").size() >= h0 + 2, float(Defs.NB["fert_time"]) + BroodNew.egg_time("hatchlings") + 6.0)
+	await wait(0.2)
+	check(two and mine("hatchlings").size() == h0 + 2 and mine("hatchlings").all(func(u) -> bool: return u.is_air()), "    two Hatchlings hatch, flying (%d)" % (mine("hatchlings").size() - h0))
+	# BIGGER CLUTCH: three to an egg
+	var cw := BroodResearch.problem(g, pt, "nb_clutch_hatchlings")
+	check(cw == "", "    his BIGGER CLUTCH can be researched now (was 'Not in the Brood yet'): %s" % cw)
+	BroodResearch.done(g, 0, "nb_clutch_hatchlings")
+	check(g.unit_price(0, "hatchlings") == [120, 15] and BroodMature.price(g, 0, "hatchlings") == [110, 25], "    with it: an egg %s for 3, maturing still %s" % [str(g.unit_price(0, "hatchlings")), str(BroodMature.price(g, 0, "hatchlings"))])
+	var h1 := mine("hatchlings").size()
+	q.cmd_lay("hatchlings")
+	var three: bool = await wait_for(func() -> bool: return mine("hatchlings").size() >= h1 + 3, float(Defs.NB["fert_time"]) + BroodNew.egg_time("hatchlings") + 6.0)
+	await wait(0.2)
+	check(three and mine("hatchlings").size() == h1 + 3, "    an egg hatches 3 Hatchlings (%d)" % (mine("hatchlings").size() - h1))
+	# MATURE: locked at stage 2, then a Storm Challenger (a flyer still)
+	var hh: Unit = mine("hatchlings")[0]
+	hh.kills = 4
+	var mw := BroodMature.problem(hh)
+	check(mw == "Needs the Brood Mother at stage 3.", "    MATURE at her stage 2: %s" % mw)
+	q.nb["stage"] = 2
+	BroodNew.apply_stage(q)
+	var g2 := int(p["gold"])
+	var s2 := float(p["res2"])
+	var ow := BroodMature.order(g, [hh])
+	check(ow == "" and g2 - int(p["gold"]) == 110 and absf(s2 - float(p["res2"]) - 25.0) < 0.01, "    at stage 3 a Hatchling matures: paid 110 food and 25 spoils %s" % ow)
+	hh.moult_t = float(Defs.NB["moult"]) - 0.1
+	var grown: bool = await wait_for(func() -> bool: return hh.kind == "storm_challenger", 1.0)
+	check(grown and hh.is_air() and hh.kills == 4 and hh.art == "storm_challenger", "    ...a Storm Challenger, flying, its 4 kills kept")
+	# UPDRAFT: the line and the Storm Sire, flying only
+	var hy: Unit = mine("hatchlings")[0]
+	BroodResearch.done(g, 0, "nb_updraft")
+	check(is_equal_approx(BroodResearch.speed_add(hy), 20.0) and is_equal_approx(BroodResearch.speed_add(hh), 18.0) and BroodResearch.speed_add(pt) == 0.0,
+		"    UPDRAFT: Hatchlings 132 -> %d, a Storm Challenger 120 -> %d; the Storm Sire landed on his nest nothing" % [int(132.0 + BroodResearch.speed_add(hy)), int(120.0 + BroodResearch.speed_add(hh))])
+	await wait(0.2)
+	check(hy.speed >= 151.0, "    ...and the Hatchlings fly at it (%.0f px/s)" % hy.speed)
+	p["tech"].erase("nb_updraft")
+	# a Hatchling flock bites a flyer and leaves the ground alone
+	var fa := spot_near(q.position, 18.0)
+	var flock: Array = mine("hatchlings")
+	for u in flock:
+		u.position = fa + Vector2(randf_range(-20, 20), randf_range(-20, 20))
+		u.cmd_stop()
+	var sw: Unit = g._add_unit("cuckoo", 1, fa + Vector2(90, 0))
+	var mu2: Unit = g._add_unit("musketeer", 1, fa + Vector2(-60, 20))
+	sw.cmd_stop()
+	for u in flock:
+		u.cmd_attack(sw)
+	var bit: bool = await wait_for(func() -> bool: return sw.dead, 20.0)
+	check(bit, "    %d Hatchlings bite an enemy Swift out of the air (dead %s, %d Hatchlings left)" % [flock.size(), sw.dead, flock.filter(func(u) -> bool: return not u.dead).size()])
+	check(flock.all(func(u) -> bool: return u.dead or u.target != mu2), "    ...and never take the Musketeer on the ground for a target")
+	if is_instance_valid(mu2) and not mu2.dead:
+		g.consume_unit(mu2)
+	# a Storm Challenger swoops on the ground
+	var vic: Unit = g._add_unit("raptor", 1, hh.position + Vector2(50, 0))
+	var vhp := vic.hp
+	hh.cmd_attack(vic)
+	var hit: bool = await wait_for(func() -> bool: return vic.dead or vic.hp < vhp, 8.0)
+	check(hit, "    a Storm Challenger swoops on a Raptor on the ground (%.0f -> %.0f)" % [vhp, vic.hp])
+	if is_instance_valid(vic) and not vic.dead:
+		g.consume_unit(vic)
+	# an older save's Skywing egg holds Hatchlings now
+	var oe: Unit = g._add_unit(BroodNew.EGG, 0, spot_near(q.position, 6.0))
+	BroodNew.unit_load(oe, {"k": "skywing", "t": 0.0, "fert": 1, "wait": 0.0})
+	check(String(oe.nb["k"]) == "hatchlings", "    an older save's Skywing egg holds Hatchlings (%s)" % oe.nb["k"])
+	g.consume_unit(oe)
+	# THE COMPUTER: Hatchlings against flyers; at her stage 3 a few to mature even with none; it matures them
+	var ai = AIBroodNew.new()
+	ai.game = g
+	ai.team = 0
+	ai._attack_at = 24
+	for u in mine("hatchlings") + mine("storm_challenger"):
+		g.consume_unit(u)
+	while mine("raptor").size() < 8:
+		g._add_unit("raptor", 0, spot_near(q.position, 8.0))
+	var foe: Array = []
+	for i in 3:
+		foe.append(g._add_unit("balloon", 1, spot_near(q.position, 40.0)))
+	p["gold"] = 3000
+	p["res2"] = 300.0
+	var pick: String = ai._nb_warrior(3000)
+	check(pick == "hatchlings", "    the computer lays Hatchlings against 3 enemy balloons (%s)" % pick)
+	for u in foe:
+		g.consume_unit(u)
+	await wait(0.1)
+	pick = ai._nb_warrior(3000)
+	check(pick == "hatchlings", "    ...and at her stage 3 a few to mature, with no enemy flyers (%s)" % pick)
+	for u in mine("raptor"):
+		g.consume_unit(u)          # (else its Raptors mature first: two a think)
+	for i in 3:
+		g._add_unit("hatchlings", 0, spot_near(q.position, 6.0))
+	await wait(0.1)
+	ai._nb_mature(q)
+	var moulting := mine("hatchlings").filter(func(u) -> bool: return u.moult_t >= 0.0).size()
+	check(moulting >= 2, "    it matures its Hatchlings into Storm Challengers when nothing flies (%d moulting; %s, foe air %d)" % [moulting, BroodMature.problem(mine("hatchlings")[0]) if not mine("hatchlings").is_empty() else "none", ai._nb_foe_air()])
+	ai.free()
+	for u in mine("hatchlings") + mine("storm_challenger") + mine("raptor"):
+		g.consume_unit(u)
+	for fk0 in BroodNew.FATHERS:
+		for u in mine(fk0):
+			g.consume_unit(u)
+	for k0 in p["tech"].keys():
+		if String(k0).begins_with("nb_"):
+			p["tech"].erase(k0)
+	q.nb["stage"] = 0
+	BroodNew.apply_stage(q)
+	g.set_selection([])

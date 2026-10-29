@@ -27,8 +27,8 @@ ICON_LIST = {
     "nbr_clutch_spitter": ("spitter", "eggs"),
     "nbr_slither": ("spitter", "fast"),
     "nbr_long_spit": ("venom_challenger", "range"),
-    "nbr_clutch_hatchlings": ("pterodactyl", "eggs"),
-    "nbr_updraft": ("skywing", "up"),
+    "nbr_clutch_hatchlings": ("hatchlings", "eggs"),
+    "nbr_updraft": ("storm_challenger", "up"),
     "nbr_quick_roots": ("brood_mother", "roots"),
     "nbr_swamp_mending": ("brood_mother", "mend"),
 }
