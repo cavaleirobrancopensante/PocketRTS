@@ -34,3 +34,10 @@ Second draft:
 - Venom Sire: BIGGER CLUTCH (Spitters 3 per egg); SLITHER (Spitters and Challengers faster); LONG SPIT (+range); LONG TONGUE (Toad) as a maybe.
 - Storm Sire: BIGGER CLUTCH (Hatchlings 3 per egg); UPDRAFT (fliers faster); in place of flat damage, one of: SNATCH (a Storm Challenger grabs a light ground unit, lifts it and drops it a short way off: melee, telegraphed) or HARRY (Hatchling bites slow the target briefly).
 - Mother: QUICK ROOTS (root and uproot much faster); SWAMP MENDING (creatures heal slowly on swamp); a third to choose.
+
+## DECIDED (owner, 2026-10-29 18:59)
+- Tyrant Sire: BIGGER CLUTCH (Raptors 3 per egg; 2 without); PACK HUNT (the Raptors' and Tyrant Challengers' standard speed is LOWERED a bit, and with Pack Hunt they end a bit FASTER than today's standard); the Brute's wall-breaker research stays (a ram for structures) under a new name (Claude suggests BATTERING HORNS: the Brute is a triceratops). POUNCE is DROPPED (too strong).
+- Venom Sire: BIGGER CLUTCH (Spitters 3 per egg), SLITHER (Spitters and Venom Challengers faster), LONG SPIT (more range). LONG TONGUE DROPPED (too strong).
+- Storm Sire: only two: BIGGER CLUTCH (Hatchlings 3 per egg) and UPDRAFT (fliers faster).
+- Mother: QUICK ROOTS and SWAMP MENDING (from the second draft, not objected to).
+- TARGETS (owner): Spitters CANNOT shoot air (today Defs has anti_air true: fix); Venom Challengers can hit air; Hatchlings attack AIR ONLY (anti-air, can't hit ground); Storm Challengers hit air and ground.
