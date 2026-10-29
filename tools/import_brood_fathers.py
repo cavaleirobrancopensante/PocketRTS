@@ -46,7 +46,7 @@ DIRS = ["s", "e", "ne", "n"]
 # Pterodactyl's wingspan a little wider than the Tyrannosaur
 TARGET_W = {"dilophosaurus": 112, "pterodactyl": 150}
 # the parts of a nest frame left as drawn (the red eggs and the fire are not team colour): fractions of the frame
-NEST_KEEP = {"dilophosaurus": [(0.25, 0.62, 1.0, 1.0)], "pterodactyl": [(0.55, 0.62, 1.0, 1.0), (0.66, 0.4, 1.0, 0.75)]}
+NEST_KEEP = {"dilophosaurus": [(0.25, 0.62, 1.0, 1.0)], "pterodactyl": [(0.3, 0.58, 1.0, 1.0), (0.62, 0.4, 1.0, 0.75)]}
 # the concepts (x0, y0, x1, y1 on the sheet): the Pterodactyl's flying figure (scale) and landed fertilising figure;
 # the heads for the stand-in portraits
 PT_CONCEPT = "pterodactyl_concept_chatgpt.png"
@@ -64,6 +64,15 @@ DI_SPIT = {"ne": "dilophosaurus_spit_ne_marked_chatgpt.png", "n": "dilophosaurus
 # (each sheet: the circle's box, then frame 3's legs and tail below it, kept clear of frame 4's tail)
 PEN_BOX = {"dilophosaurus_spit_ne_marked_chatgpt.png": [(688, 60, 1028, 400), (640, 400, 962, 667)],
            "dilophosaurus_spit_n_marked_chatgpt.png": [(605, 25, 1000, 410), (700, 410, 965, 667)]}
+# THE PTERODACTYL'S DIRECTIONS (the owner's sheets, one row of 6 each; frames counted from 0 here):
+#  - fly S, NE, N: all 6 (in NE and N the first and last are near-copies with the wings up: the loop's ends);
+#  - fly E: the owner's JPEG photo pterodactyl_fly_e_marked_chatgpt.png, his RED PEN over frame 2 (a third wing): the
+#    whole of frame 2 is painted out (PEN_BOX) and the loop is frames 1, 3, 4, 5 (the 6th copies the 5th);
+#  - dive S: frame 2 (the body seen from below, another pose) pops: dropped, frame 1 held twice instead (same timing);
+#  - dive E, NE, N: all 6.
+PT_SHEET = {("walk", "e"): "pterodactyl_fly_e_marked_chatgpt.png"}
+PT_FRAMES = {("walk", "e"): [0, 1, 2, 3], ("attack", "s"): [0, 0, 2, 3, 4, 5]}
+PEN_BOX["pterodactyl_fly_e_marked_chatgpt.png"] = [(300, 225, 600, 580)]
 ibn.JPEG_SHEETS |= set(PEN_BOX)        # (photos: softer, noisy; cleaned as the turtle's JPEG walks)
 _load = ia.load
 
@@ -97,8 +106,33 @@ def rows_of(f):
 def one_row(f):
     """A one-row sheet whose frames sit at different heights (the fly's wings-down frame drops below the others): all
     its frames left to right."""
-    px, rows = ibn.sheet_rows(f)
+    sw = ibn.split_wide
+    hole = ibn.HOLE
+    ibn.split_wide = lambda row: row       # (no splitting: a flight's wings-spread frames are twice as wide as its wings-up ones)
+    if f in PEN_BOX:
+        ibn.HOLE = 120          # (the photos: the gap under a wing is background, not dark shading to fill back in)
+    try:
+        px, rows = ibn.sheet_rows(f)
+    finally:
+        ibn.split_wide = sw
+        ibn.HOLE = hole
     sprites = sorted([s for r in rows for s in r], key=lambda s: s["cx"])
+    # (two neighbours whose spread wings touch come out as one piece: the sheets hold 6 frames, 5 with the pen's frame
+    # painted out; the widest piece is cut where its columns are emptiest round its middle until the count is right)
+    expect = 6 - (1 if f in PEN_BOX else 0)
+    while len(sprites) < expect:
+        wi = max(range(len(sprites)), key=lambda i: sprites[i]["x1"] - sprites[i]["x0"])
+        s = sprites[wi]
+        w = s["x1"] - s["x0"]
+        col = s["mask"][:, s["x0"]:s["x1"]].sum(0).astype(float)
+        cut = s["x0"] + int(w * 0.3) + int(np.argmin(col[int(w * 0.3):int(w * 0.7)]))
+        parts = []
+        for a, b in ((s["x0"], cut), (cut, s["x1"])):
+            m = s["mask"].copy()
+            m[:, :a] = False
+            m[:, b:] = False
+            parts.append(ibn._piece(m))
+        sprites = sorted(sprites[:wi] + parts + sprites[wi + 1:], key=lambda o: o["cx"])
     print(f"  {f}: {len(sprites)} frames in one row")
     return [ia.cutout(px, s) for s in sprites]
 
@@ -226,10 +260,13 @@ def pterodactyl(stand_ins):
     # (the other directions: their first frame as wide as the south-east fly's)
     for prefix, anim in (("pterodactyl_fly", "walk"), ("pterodactyl_dive", "attack")):
         for d in DIRS:
-            f = f"{prefix}_{d}_chatgpt.png"
+            f = PT_SHEET.get((anim, d), f"{prefix}_{d}_chatgpt.png")
             if have(f):
                 fr = one_row(f)
-                small[(anim, d)] = shrink_all(fr, H / fr[0].shape[0])
+                sc = H / fr[0].shape[0]
+                if (anim, d) in PT_FRAMES:
+                    fr = [fr[i] for i in PT_FRAMES[(anim, d)] if i < len(fr)]
+                small[(anim, d)] = shrink_all(fr, sc, jpeg=f in ibn.JPEG_SHEETS)
             else:
                 stand_ins.append(f"pterodactyl {'fly' if anim == 'walk' else 'dive'} {d.upper()}: the south-east one until {f}")
     for d in ["se"] + DIRS:
@@ -255,9 +292,20 @@ def pterodactyl(stand_ins):
     for name in ["root", "rooted", "uproot"]:
         for k, im in enumerate(small.get((name, "se"), [])):
             ibn.FEET[((name, "se"), k)] = ibn.claw_feet(im)
+    # IN THE AIR the frames are lined up on the body's middle (its centre of mass), not on the lowest pixel: a wing beat
+    # whose wingtips sweep down would lift the body otherwise. The anchor (his place on the ground, his shadow) is
+    # FLY_DROP of the fly's height under that middle.
+    for (anim, d), lst in small.items():
+        if anim in ("walk", "idle", "attack"):
+            for k, im in enumerate(lst):
+                ys, xs = np.nonzero(im[..., 3] > 0)
+                ibn.FEET[((anim, d), k)] = (float(xs.mean()), float(ys.mean()) + FLY_DROP * H)
     small[("glow_rooted", "se")] = [ibn.glow_of("tyrannosaur", im) for im in small[("rooted", "se")]]
     eggs_and_bottom(kind, small, ("rooted", "se"))
     return small
+
+
+FLY_DROP = 0.4
 
 
 def portrait(kind, stand_ins):

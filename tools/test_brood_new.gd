@@ -179,8 +179,8 @@ func _run() -> void:
 	q.nb["eggs"] = 8
 	p["gold"] = 2000
 	p["res2"] = 200.0
-	check(BroodNew.lay_problem(g, q, "raptor").contains("Tyrannosaur"), "3. no father: a Raptor's egg is refused (%s)" % BroodNew.lay_problem(g, q, "raptor"))
-	check(BroodNew.lay_problem(g, q, "spitter").contains("Dilophosaurus"), "   a Spitter's egg is in the new Brood too, fathered by the Dilophosaurus (%s)" % BroodNew.lay_problem(g, q, "spitter"))
+	check(BroodNew.lay_problem(g, q, "raptor").contains("Tyrant Sire"), "3. no father: a Raptor's egg is refused (%s)" % BroodNew.lay_problem(g, q, "raptor"))
+	check(BroodNew.lay_problem(g, q, "spitter").contains("Venom Sire"), "   a Spitter's egg is in the new Brood too, fathered by the Dilophosaurus (%s)" % BroodNew.lay_problem(g, q, "spitter"))
 	check(not BroodNew.hatch_list().has("spore_mother") and BroodNew.hatch_list().has("spitter"), "   on her card: Spitters, not the retired Spore Mother")
 	var far := spot_near(q.position, 20.0)
 	var f: Unit = g._add_unit(BroodNew.FATHER, 0, far)
@@ -1161,7 +1161,7 @@ func _fathers(q: Unit, p: Dictionary) -> void:
 	var w_s := BroodNew.lay_problem(g, q, "spitter")
 	var w_m := BroodNew.lay_problem(g, q, "mist_toad")
 	var w_k := BroodNew.lay_problem(g, q, "skywing")
-	check(w_r.contains("Tyrannosaur") and w_s.contains("Dilophosaurus") and w_m.contains("Dilophosaurus") and w_k.contains("Pterodactyl"),
+	check(w_r.contains("Tyrant Sire") and w_s.contains("Venom Sire") and w_m.contains("Venom Sire") and w_k.contains("Storm Sire"),
 		"    no father: the refusals name each line's father (%s | %s | %s)" % [w_r, w_s, w_k])
 	# made from grubs: each walks to a spot beside her and morphs; one of each (the grub on its way counts)
 	var made := {}

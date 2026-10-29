@@ -1150,7 +1150,7 @@ const UNITS := {
 	},
 	"tyrannosaur": {
 		"tags": ["armored"],
-		"name": "Tyrannosaur", "hp": 1000, "armor": 2, "speed": 64, "cost": 200, "time": 35.0, "supply": 4,
+		"name": "Tyrant Sire", "hp": 1000, "armor": 2, "speed": 64, "cost": 200, "time": 35.0, "supply": 4,
 		"sight": 9, "range": 40, "damage": 42, "cooldown": 1.9, "aim": 0.35, "radius": 30, "from": "brood_mother",
 		"building_bonus": 1.4, "faction": "brood", "new_brood": true, "father": true,
 		"about": "A FATHER: rooted on his nest beside the Brood Mother, he breathes on the eggs of his line (Raptors, Brutes) to fertilise them; an egg no father reaches in time hatches as a grub. Only one at a time. A terrible biter, but away from her no Raptors or Brutes are fathered.",
@@ -1158,14 +1158,14 @@ const UNITS := {
 	# THE SECOND AND THIRD FATHERS (the owner, 2026-10-29 11:10: the father lines; numbers: Claude's choice, docs/brood_new.md)
 	"dilophosaurus": {
 		"tags": ["armored"],
-		"name": "Dilophosaurus", "hp": 650, "armor": 1, "speed": 78, "cost": 150, "cost2": 25, "time": 30.0, "supply": 4,
+		"name": "Venom Sire", "hp": 650, "armor": 1, "speed": 78, "cost": 150, "cost2": 25, "time": 30.0, "supply": 4,
 		"sight": 9, "range": 140, "damage": 20, "cooldown": 1.6, "aim": 0.4, "radius": 22, "from": "brood_mother",
 		"acid": 4.0, "anti_air": true, "building_bonus": 1.2, "faction": "brood", "new_brood": true, "father": true,
 		"about": "A FATHER, unlocked when the Brood Mother reaches stage 2: rooted on his nest beside her, he fertilises the eggs of his line (Spitters, Mist Toads). Uprooted he walks and SPITS venom from afar (on flyers too), a strong Spitter of his own. Only one at a time.",
 	},
 	"pterodactyl": {
 		"tags": ["armored"],
-		"name": "Pterodactyl", "hp": 700, "armor": 1, "speed": 110, "cost": 200, "cost2": 50, "time": 40.0, "supply": 4,
+		"name": "Storm Sire", "hp": 700, "armor": 1, "speed": 110, "cost": 200, "cost2": 50, "time": 40.0, "supply": 4,
 		"sight": 10, "range": 30, "damage": 30, "cooldown": 1.7, "aim": 0.3, "radius": 26, "from": "brood_mother",
 		"air": true, "anti_air": true, "faction": "brood", "new_brood": true, "father": true,
 		"about": "A FLYING FATHER, unlocked when the Brood Mother reaches stage 3. Uprooted he flies and DIVES to bite, on the ground and in the air. ROOT: he lands on a nest beside her and fertilises the eggs of his line (Skywings); landed he is a ground creature anything can hit. Only one at a time.",
@@ -1879,19 +1879,19 @@ const NB := {
 	"lines": {"tyrannosaur": ["raptor", "brute"], "dilophosaurus": ["spitter", "mist_toad"], "pterodactyl": ["skywing"]},
 	"father_stage": {"tyrannosaur": 0, "dilophosaurus": 1, "pterodactyl": 2},
 	# where the eggs in each father's nest lie, from his feet (art px, measured by the importers on his rooted frame)
-	"nest_at": {"tyrannosaur": [26, 2], "dilophosaurus": [23, 3], "pterodactyl": [58, -15]},
+	"nest_at": {"tyrannosaur": [26, 2], "dilophosaurus": [23, 3], "pterodactyl": [39, -16]},
 	# ROOTED = A BUILDING (the owner's playtest of 0.15.13, 19:19; scripts/brood_root.gd): the footprint each creature
 	# takes on the grid while rooted (tiles wide, tiles deep) and where its middle lies from the creature's feet (px).
 	# The owner's sizes: the Rootmaw a bit bigger than a Cottage (2x2), the Mother about the Clocktower's gear ring (her
 	# nest's ground; it grows with her stages), the Tyrannosaur a Barracks (4x3), the turtle about a Clutch Mound but
 	# wide enough to close a 3-wide ramp either way.
 	"fp": {"brood_mother": [9, 4, 0, -40], "rootmaw": [3, 2, 0, -24], "tyrannosaur": [4, 3, 8, -16], "mound_turtle": [3, 3, 0, -24],
-		"dilophosaurus": [3, 3, 0, -21], "pterodactyl": [4, 3, 24, -39]},
+		"dilophosaurus": [3, 3, 0, -21], "pterodactyl": [4, 3, 20, -33]},
 	# THE ROOTED ART SITS ON ITS FOOTPRINT (the owner, 2026-10-29): where the bottom of the rooted picture (her nest's
 	# rubble, the turtle's mud, the Tyrannosaur's nest) lies from the creature's feet in its sheet (art px, measured on
 	# the rooted strips: the lowest row a sixth as wide as the picture); rooted, the pictures are drawn that much lower
 	# (BroodRoot.drop) so that bottom touches the footprint's bottom edge, as a building stands on its tiles.
-	"nest_y": {"brood_mother": -8, "rootmaw": -1, "tyrannosaur": 26, "mound_turtle": 0, "dilophosaurus": 21, "pterodactyl": 3},
+	"nest_y": {"brood_mother": -8, "rootmaw": -1, "tyrannosaur": 26, "mound_turtle": 0, "dilophosaurus": 21, "pterodactyl": 9},
 }
 
 

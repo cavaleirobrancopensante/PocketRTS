@@ -467,7 +467,7 @@ func _fathers() -> void:
 	g.camera.zoom = Vector2(1.3, 1.3)
 	g.hud.page = "build"
 	await _snap("grub_build_locked", 0.8)
-	await _tip_snap("grub_build_locked_tip", "PTERODACTYL")
+	await _tip_snap("grub_build_locked_tip", "STORM SIRE")
 	g.hud.page = ""
 	# her card at stage 1 with no father: each line refused, naming its father
 	q.nb["eggs"] = 10
@@ -491,11 +491,12 @@ func _fathers() -> void:
 		var tu: Unit = BroodRoot.cocoon(g, 0, BroodNew.TURTLE, spot(BroodNew.TURTLE, q.position + Vector2(16.0 * Defs.TILE, 0.0), 2.0 + 4.0 * i))
 		tu.nb["coc"] = BroodRoot.cocoon_time(tu) - 0.05
 	await wait(0.3)
-	var ang := {BroodNew.FATHER: -0.2, BroodNew.DILO: 2.0, BroodNew.PTERO: 0.8}
-	for fk in BroodNew.FATHERS:
+	var ang := {BroodNew.FATHER: 1.0, BroodNew.DILO: 2.2, BroodNew.PTERO: -0.1}
+	for fk in [BroodNew.PTERO, BroodNew.FATHER, BroodNew.DILO]:
 		var c: Unit = BroodRoot.cocoon(g, 0, fk, father_spot(q, fk, float(ang[fk])))
 		c.nb["coc"] = BroodRoot.cocoon_time(c) - 0.05
 		made[fk] = c
+		print("father %s at %s (Mother %s, %.1f tiles)" % [fk, str(c.position), str(q.position), c.position.distance_to(q.position) / Defs.TILE])
 	await wait(0.5)
 	q.nb["eggs"] = BroodNew.eggs_max(q)
 	for k in ["raptor", "raptor", "brute", "spitter", "spitter", "mist_toad", "skywing", "skywing"]:
@@ -529,13 +530,19 @@ func _fathers() -> void:
 	g.camera.zoom = Vector2(2.0, 2.0)
 	await _snap("ptero_takeoff", 0.05)
 	await wait(float(Defs.NB["father_switch"]) * 0.5 + 0.3)
-	var far: Vector2 = q.position + Vector2(-13.0 * Defs.TILE, 9.0 * Defs.TILE)
-	far = g.cell_center(g.nearest_free(g.cell_of(far), 10))
-	pt.cmd_move(far)
-	await wait(1.2)
+	# out over open ground east of her (clear of the nests, for the pictures)
+	var open: Vector2 = g.cell_center(g.nearest_free(g.cell_of(q.position + Vector2(20.0 * Defs.TILE, 4.0 * Defs.TILE)), 10))
+	pt.cmd_move(open)
+	await wait(1.6)
 	g.camera.position = pt.position + Vector2(0, -30)
 	await _snap("ptero_flying", 0.05)
-	var foe: Unit = g._add_unit("musketeer", 1, pt.position + Vector2(60, 40))
+	for i in 300:
+		if pt.position.distance_to(open) < 12.0:
+			break
+		await physics_frame
+	var foe: Unit = g._add_unit("musketeer", 1, open + Vector2(70, 30))
+	foe.hp = 99999.0
+	foe.max_hp = 99999.0
 	foe.cmd_stop()
 	pt.cmd_attack(foe)
 	var dived := false
@@ -548,17 +555,22 @@ func _fathers() -> void:
 	await _snap("ptero_diving", 0.0)
 	print("dive caught: ", dived)
 	g.consume_unit(foe)
-	# the Dilophosaurus gets up and spits at an enemy
+	pt.cmd_move(open + Vector2(-6.0 * Defs.TILE, -3.0 * Defs.TILE))
+	# the Dilophosaurus gets up and spits at an enemy (out on the open ground too)
 	var di: Unit = made[BroodNew.DILO]
 	di.cmd_uproot(false)
 	await wait(float(Defs.NB["father_switch"]) + 0.3)
-	var foe2: Unit = g._add_unit("musketeer", 1, di.position + Vector2(110, 60))
+	di.position = g.cell_center(g.nearest_free(g.cell_of(open + Vector2(0.0, 5.0 * Defs.TILE)), 10))
+	g.note_move(di)
+	di.cmd_stop()
+	await wait(0.2)
+	var foe2: Unit = g._add_unit("musketeer", 1, di.position + Vector2(150, 50))
 	foe2.hp = 99999.0
 	foe2.max_hp = 99999.0
 	foe2.cmd_stop()
 	di.cmd_attack(foe2)
 	var spat := false
-	for i in 150:
+	for i in 300:
 		await physics_frame
 		if di.anim == "attack" and di.sprite.frame >= 3:
 			spat = true
