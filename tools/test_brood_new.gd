@@ -35,6 +35,10 @@ extends SceneTree
 ##     there, the pheromones of three fathers stack, the Pterodactyl a ground structure rooted (a Musketeer can shoot
 ##     it, its footprint solid) and a flyer uprooted (it flies over and lands again on its nest), the Toad only
 ##     staggers every father
+##  19. YOUNG AND MATURE (the owner, 2026-10-29 12:40-14:40): eggs lay only the young; MATURE locked until her stage 2,
+##     its price, the moult (can't move or fight, supply held), then the Challenger with its kills and health share; a
+##     group as far as the food allows; both Challengers fight (the Venom one splashes); the MATURE button; the Mother's
+##     own art at each stage; the computer matures
 ## Prints PASS / FAIL lines and "brood_new: N failures".
 var main: Node
 var t := 0.0
@@ -182,7 +186,7 @@ func _run() -> void:
 	p["gold"] = 2000
 	p["res2"] = 200.0
 	check(BroodNew.lay_problem(g, q, "raptor").contains("Tyrant Sire"), "3. no father: a Raptor's egg is refused (%s)" % BroodNew.lay_problem(g, q, "raptor"))
-	check(BroodNew.lay_problem(g, q, "spitter") == "Needs the Brood Mother at stage 2.", "   a Spitter's egg waits for her stage 2 (the owner's tiers: %s)" % BroodNew.lay_problem(g, q, "spitter"))
+	check(BroodNew.lay_problem(g, q, "spitter").contains("Venom Sire"), "   a Spitter's egg (stage 1 since the owner's 14:40) waits for the Venom Sire (%s)" % BroodNew.lay_problem(g, q, "spitter"))
 	check(not BroodNew.hatch_list().has("spore_mother") and BroodNew.hatch_list().has("spitter"), "   on her card: Spitters, not the retired Spore Mother")
 	var far := spot_near(q.position, 20.0)
 	var f: Unit = g._add_unit(BroodNew.FATHER, 0, far)
@@ -518,6 +522,7 @@ func _run() -> void:
 	await _fixes_2(q, p)
 	await _rooted_art(q)
 	await _fathers(q, p)
+	await _mature(q, p)
 	# 8. killing the Mother loses
 	q.take_damage(999999.0, null)
 	var out: bool = await wait_for(func() -> bool: return bool(g.eliminated[0]), 3.0)
@@ -1163,10 +1168,10 @@ func _fathers(q: Unit, p: Dictionary) -> void:
 	q.nb["stage"] = st0
 	check(l_t0 == "" and l_d0 == "" and l_p0 == "Needs the Brood Mother at stage 2.", "    stage 1: the Tyrant and Venom Sires open, the Storm Sire locked (%s)" % l_p0)
 	check(l_p1 == "", "    stage 2: the Storm Sire too")
-	check(not tiers["raptor0"] and tiers["spitter0"] and tiers["brute0"] and tiers["mist_toad0"] and tiers["skywing0"]
+	check(not tiers["raptor0"] and not tiers["spitter0"] and tiers["brute0"] and tiers["mist_toad0"] and tiers["skywing0"]
 		and not tiers["spitter1"] and tiers["brute1"] and tiers["mist_toad1"] and tiers["skywing1"]
 		and not tiers["brute2"] and not tiers["mist_toad2"] and not tiers["skywing2"] and why_b == "Needs the Brood Mother at stage 3.",
-		"    the warriors' tiers: Raptors at stage 1, Spitters 2, Brutes, Mist Toads, Skywings 3 (a Brute at stage 1: %s)" % why_b)
+		"    the warriors' tiers: Raptors and Spitters at stage 1, Brutes, Mist Toads, Skywings 3 (a Brute at stage 1: %s)" % why_b)
 	check(st0 == 2 and BroodRoot.morph_problem(g, 0, BroodNew.PTERO) == "", "    stage 3: all three Sires")
 	# her card's refusals name the right father
 	q.nb["eggs"] = BroodNew.eggs_max(q)
@@ -1254,6 +1259,127 @@ func _fathers(q: Unit, p: Dictionary) -> void:
 
 
 ## A spot beside the Mother where a father of kind k may nest, looked for round her from the angle a.
+## 19. YOUNG AND MATURE (the owner, 2026-10-29 12:40-14:40; scripts/brood_mature.gd): eggs lay only the young; MATURE
+## locked until her stage; the price paid (the mature form's less the young one's share of its egg); the moult (it can't
+## move or fight, its supply held); then it is the mature unit with its kills and health share; MATURE on a group as far
+## as the food allows; both Challengers fight (the Venom Challenger's glob splashes); the MATURE button on the card; the
+## Mother's own art at each stage; the computer matures its young when food piles up.
+func _mature(q: Unit, p: Dictionary) -> void:
+	var T := Defs.TILE
+	for k in ["raptor", "spitter", "tyrant_challenger", "venom_challenger", "musketeer", BroodNew.EGG]:
+		for u in g.units.filter(func(u) -> bool: return not u.dead and u.kind == k):
+			g.consume_unit(u)
+	p["gold"] = 5000
+	p["res2"] = 500.0
+	var st0 := BroodNew.stage(q)
+	# eggs lay only the young
+	check(not BroodNew.hatch_list().has("tyrant_challenger") and not BroodNew.hatch_list().has("venom_challenger")
+		and BroodNew.lay_problem(g, q, "tyrant_challenger") != "" and BroodNew.lay_problem(g, q, "venom_challenger") != ""
+		and BroodMature.mature_of("raptor") == "tyrant_challenger" and BroodMature.mature_of("spitter") == "venom_challenger",
+		"19. eggs lay only the young: no Challenger on her card (%s)" % BroodNew.lay_problem(g, q, "tyrant_challenger"))
+	var home := spot_near(q.position, 14.0)
+	var r: Unit = g._add_unit("raptor", 0, home)
+	q.nb["stage"] = 0
+	var why0 := BroodMature.problem(r)
+	check(why0 == "Needs the Brood Mother at stage 2.", "    MATURE locked until her stage 2 (%s)" % why0)
+	q.nb["stage"] = 1
+	BroodNew.apply_stage(q)
+	await wait(0.2)
+	# the price: the Tyrant Challenger's 100 + 10 less a third of a 75-food Raptor egg
+	var pr := BroodMature.price(g, 0, "raptor")
+	var pv := BroodMature.price(g, 0, "spitter")
+	check(pr == [75, 10] and pv == [105, 17], "    the price: a Raptor %s, a Spitter %s (the mature form's less the young one's share of its egg)" % [str(pr), str(pv)])
+	r.kills = 5
+	r.hp = r.max_hp * 0.5
+	var g0 := int(p["gold"])
+	var e0 := float(p["res2"])
+	var s0: int = g.supply_used(0)
+	var w: String = g.mature_order([r])
+	check(w == "" and r.moult_t >= 0.0 and int(p["gold"]) == g0 - 75 and absf(float(p["res2"]) - (e0 - 10.0)) < 0.01 and g.supply_used(0) == s0 + 1,
+		"    MATURE: paid 75 food + 10 spoils, the moult begins, its supply held (+1: %d -> %d)" % [s0, g.supply_used(0)])
+	var at := r.position
+	r.cmd_move(at + Vector2(8.0 * T, 0.0))
+	await wait(3.0)
+	check(r.position.distance_to(at) < 2.0 and r.kind == "raptor" and not r.can_hit(BroodNew.queen(g, 0)) and r.moult_t > 2.5,
+		"    moulting it can't move or fight (moved %.1f px in 3 s)" % r.position.distance_to(at))
+	await wait_for(func() -> bool: return r.kind == "tyrant_challenger", float(Defs.NB["moult"]))
+	check(r.kind == "tyrant_challenger" and r.kills == 5 and absf(r.hp / r.max_hp - 0.5) < 0.02 and r.art == "tyrant_challenger" and r.moult_t < 0.0,
+		"    after %.0f s it IS a Tyrant Challenger: kills %d kept, health %.0f%% kept, its own art" % [float(Defs.NB["moult"]), r.kills, r.hp / r.max_hp * 100.0])
+	# MATURE on a group: as far as the food allows
+	var rs: Array = []
+	for i in 4:
+		rs.append(g._add_unit("raptor", 0, home + Vector2(20.0 * i, 30.0)))
+	p["gold"] = 160
+	var w2: String = g.mature_order(rs)
+	var n2 := rs.filter(func(u) -> bool: return u.moult_t >= 0.0).size()
+	check(w2 == "" and n2 == 2 and int(p["gold"]) == 10, "    MATURE on 4 Raptors with 160 food: %d moult (each pays for itself), %d food left" % [n2, int(p["gold"])])
+	# the MATURE button on a young unit's card
+	g.selection.clear()
+	for u in rs:
+		u.selected = true
+		g.selection.append(u)
+	var labs := card_labels()
+	check(labs.has("MATURE"), "    the MATURE button on the Raptors' card (%s)" % ", ".join(labs))
+	g.selection.clear()
+	for u in rs:
+		u.selected = false
+	# the Venom Challenger
+	p["gold"] = 5000
+	var sp: Unit = g._add_unit("spitter", 0, home + Vector2(0.0, -40.0))
+	g.mature_order([sp])
+	await wait_for(func() -> bool: return sp.kind == "venom_challenger", float(Defs.NB["moult"]) + 1.0)
+	check(sp.kind == "venom_challenger" and sp.art == "venom_challenger", "    a Spitter matures into a Venom Challenger")
+	# both fight: the Tyrant Challenger bites a Musketeer; the Venom Challenger's glob splashes on a cluster
+	var tc: Unit = r
+	var foe_at := home + Vector2(5.0 * T, 0.0)
+	var m1: Unit = g._add_unit("musketeer", 1, foe_at)
+	var cl: Array = []
+	for i in 3:
+		cl.append(g._add_unit("musketeer", 1, home + Vector2(-5.0 * T, -40.0) + Vector2(10.0 * i, 6.0 * (i % 2))))
+	for u in [m1] + cl:
+		u.cmd_stop()
+	tc.cmd_attack(m1)
+	sp.cmd_attack(cl[1])
+	var hp_m := m1.hp
+	var hp_c: Array = cl.map(func(u) -> float: return u.hp)
+	await wait(6.0)
+	var hit_c := 0
+	for i in cl.size():
+		if cl[i].dead or cl[i].hp < hp_c[i] - 0.5:
+			hit_c += 1
+	check(m1.dead or m1.hp < hp_m - 10.0, "    the Tyrant Challenger bites (the Musketeer %.0f -> %.0f)" % [hp_m, m1.hp if not m1.dead else 0.0])
+	check(hit_c >= 2, "    the Venom Challenger's glob splashes: %d of 3 clustered Musketeers hurt" % hit_c)
+	for u in [m1] + cl:
+		if not u.dead:
+			g.consume_unit(u)
+	# the Mother's own art at each stage
+	var arts := []
+	for st in 3:
+		q.nb["stage"] = st
+		BroodNew.apply_stage(q)
+		arts.append(q.art)
+	check(arts == ["brood_mother", "brood_mother_2", "brood_mother_3"], "    the Mother's own art at each stage: %s" % str(arts))
+	q.nb["stage"] = st0
+	BroodNew.apply_stage(q)
+	# the computer matures its young when food piles up (its plan run for side 0 here)
+	q.nb["stage"] = 1
+	for u in mine("raptor"):
+		g.consume_unit(u)
+	var ys: Array = []
+	for i in 6:
+		ys.append(g._add_unit("raptor", 0, home + Vector2(15.0 * i, -70.0)))
+	p["gold"] = 900
+	var ai = AIBroodNew.new()
+	ai.game = g
+	ai.team = 0
+	ai._nb_mature(q)
+	var na := ys.filter(func(u) -> bool: return u.moult_t >= 0.0).size()
+	check(na >= 1 and int(p["gold"]) >= AIBroodNew.MATURE_KEEP, "    the computer matures young units when food piles up: %d of 6 Raptors, %d food kept" % [na, int(p["gold"])])
+	ai.free()
+	q.nb["stage"] = st0
+	BroodNew.apply_stage(q)
+
+
 func _father_spot(q: Unit, k: String, a: float) -> Vector2:
 	var reach := float(Defs.NB["father_r"]) * Defs.TILE
 	for frac in [0.75, 0.6, 0.9, 0.5]:

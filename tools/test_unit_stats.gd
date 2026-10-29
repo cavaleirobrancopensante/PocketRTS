@@ -127,11 +127,15 @@ func _run() -> void:
 		var up := UnitStats.of_unit(u)
 		var a0 := float(chip(up, "armour")["text"])
 		var atk := chip(up, "melee")
+		var how := "bites"
+		if atk.is_empty():
+			atk = chip(up, "ranged")     # (the Venom Sire spits from afar: his venom glob, not a bite)
+			how = "spits"
 		u.tesla_mode = "deployed"
 		var dn := UnitStats.of_unit(u)
 		var na := chip(dn, "no_attack")
 		say(not atk.is_empty() and float(atk["text"]) > 0.0 and not na.is_empty() and float(chip(dn, "armour")["text"]) == a0 + float(Defs.NB["root_armor"]),
-			"4. %s: uprooted bites for %s; rooted '%s' (cannot attack), armour %s -> %s" % [k, atk.get("text", "?"), na.get("text", "?"), a0, chip(dn, "armour").get("text", "?")])
+			"4. %s: uprooted %s for %s; rooted '%s' (cannot attack), armour %s -> %s" % [k, how, atk.get("text", "?"), na.get("text", "?"), a0, chip(dn, "armour").get("text", "?")])
 	# 5. the row in a narrow and a wide rect
 	for w in [200.0, 1100.0]:
 		var bad := 0

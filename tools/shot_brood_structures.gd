@@ -36,6 +36,13 @@ extends SceneTree
 ## ptero_takeoff.png, ptero_flying.png, ptero_diving.png  the Pterodactyl taking off, flying, diving on a Musketeer
 ## dilo_spitting.png, dilo_spit_glob.png  the Dilophosaurus spitting venom
 ## grub_build_stage3.png  the BUILD menu at stage 3 (one of each: the fathers alive say so)
+## With a second argument "mature" (YOUNG AND MATURE and the Mother's stage art, 2026-10-29; docs/shots/brood_mature/;
+## tools/brood_mature_sheet.py then puts the Mother's stages side by side):
+##   xvfb-run -a godot ... --script res://tools/shot_brood_structures.gd -- <outdir> mature
+## mother_s<N>_rooted.png, mother_s<N>_walk.png  the Mother at each stage, rooted and walking (the same zoom)
+## moult_<N>.png         a Raptor maturing: before, moulting (twice), a Tyrant Challenger beside two Raptors
+## venom_<N>.png         a Venom Challenger spitting at Musketeers (and a Spitter beside it)
+## card_mature(_tip).png the MATURE button on the Raptors' card (and its tooltip)
 var main: Node
 var g
 var out := ""
@@ -108,6 +115,11 @@ func _run() -> void:
 		return
 	if mode == "fathers":
 		await _fathers()
+		print("shots done")
+		quit(0)
+		return
+	if mode == "mature":
+		await _mature()
 		print("shots done")
 		quit(0)
 		return
@@ -450,6 +462,98 @@ func _tip_snap(name: String, lab: String) -> void:
 		await process_frame
 	root.get_viewport().get_texture().get_image().save_png("%s/%s.png" % [out, name])
 	g.hud._tip = {}
+
+
+func _mature() -> void:
+	await wait(2.5)
+	var q: Unit = BroodNew.queen(g, 0)
+	var T := Defs.TILE
+	g.players[0]["gold"] = 9000
+	g.players[0]["res2"] = 900.0
+	for gr in mine("grub"):
+		gr.auto_work = false
+		gr.cmd_stop()
+		gr.position = q.position + Vector2(randf_range(-200, 200), 16.0 * T)
+		g.note_move(gr)
+	# (supply: Mound Turtles out of the way)
+	for i in 3:
+		var tu: Unit = BroodRoot.cocoon(g, 0, BroodNew.TURTLE, spot(BroodNew.TURTLE, q.position + Vector2(18.0 * T, 0.0), 2.0 + 4.0 * i))
+		tu.nb["coc"] = BroodRoot.cocoon_time(tu) - 0.05
+	await wait(0.5)
+	var home := q.position
+	# the Mother at each stage, rooted and walking, at one zoom
+	for st in 3:
+		q.nb["stage"] = st
+		BroodNew.apply_stage(q)
+		if q.tesla_mode != "packed":
+			BroodRoot.footprint_on(g, q)
+		g.swamp_dirty = true
+		await wait(0.4)
+		q.nb["eggs"] = BroodNew.eggs_max(q)
+		g.set_selection([])
+		g.camera.position = home + Vector2(0, -40)
+		g.camera.zoom = Vector2(1.1, 1.1)
+		await _snap("mother_s%d_rooted" % (st + 1), 0.6)
+		q.cmd_uproot(true)
+		await wait(float(Defs.NB["queen_switch"]) + 0.3)
+		q.cmd_move(home + Vector2(3.0 * T, 2.0 * T))
+		await wait(1.6)
+		g.camera.position = q.position + Vector2(0, -40)
+		await _snap("mother_s%d_walk" % (st + 1), 0.3)
+		q.cmd_stop()
+		q.position = home
+		g.note_move(q)
+		q.facing = BroodNew.SE
+		q.cmd_deploy()
+		await wait(float(Defs.NB["queen_switch"]) + 0.5)
+	q.nb["stage"] = 1
+	BroodNew.apply_stage(q)
+	BroodRoot.footprint_on(g, q)
+	await wait(0.3)
+	# a Raptor maturing into a Tyrant Challenger (two Raptors beside it for its size)
+	var at := Vector2(home.x - 4.0 * T, BroodRoot.rect_of(q).end.y + 4.0 * T)      # (in front of her nest, in sight)
+	var r: Unit = g._add_unit("raptor", 0, at)
+	var r2: Unit = g._add_unit("raptor", 0, at + Vector2(-40, 18))
+	var r3: Unit = g._add_unit("raptor", 0, at + Vector2(-40, -18))
+	for u in [r, r2, r3]:
+		u.facing = BroodNew.SE
+	await wait(0.4)
+	g.camera.position = at + Vector2(-10, -10)
+	g.camera.zoom = Vector2(3.2, 3.2)
+	await _snap("moult_1_before", 0.4)
+	g.set_selection([r, r2, r3])
+	await _snap("card_mature", 0.5)
+	await _tip_snap("card_mature_tip", "MATURE")
+	g.set_selection([])
+	g.mature_order([r])
+	await wait(2.0)
+	await _snap("moult_2_moulting", 0.1)
+	await wait(5.0)
+	await _snap("moult_3_moulting", 0.1)
+	await wait(float(Defs.NB["moult"]) - 6.5)
+	r.facing = BroodNew.SE
+	await wait(0.4)
+	await _snap("moult_4_after", 0.3)
+	# a Venom Challenger (a matured Spitter) spitting at Musketeers, a Spitter beside it
+	var vat := Vector2(home.x + 4.0 * T, BroodRoot.rect_of(q).end.y + 4.0 * T)
+	var sp: Unit = g._add_unit("spitter", 0, vat)
+	var sp2: Unit = g._add_unit("spitter", 0, vat + Vector2(-10, 80))
+	g.mature_order([sp])
+	await wait(float(Defs.NB["moult"]) + 0.5)
+	var foes: Array = []
+	for i in 3:
+		foes.append(g._add_unit("musketeer", 1, vat + Vector2(4.5 * T, -10.0 + 14.0 * i)))
+	for u in foes:
+		u.cmd_stop()
+	sp.cmd_attack(foes[1])
+	sp2.cmd_attack(foes[0])
+	g.camera.position = vat + Vector2(2.0 * T, 0)
+	g.camera.zoom = Vector2(2.4, 2.4)
+	g.set_selection([])
+	for i in 12:
+		await wait(0.2)
+		await _snap("venom_%d" % i, 0.05)
+	print("venom challenger kind %s, foes hp %s" % [sp.kind, str(foes.map(func(u) -> float: return u.hp if not u.dead else 0.0))])
 
 
 func _fathers() -> void:

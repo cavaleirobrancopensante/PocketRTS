@@ -2954,4 +2954,5 @@ const T := {
 	"Its venom strips 2 armour for %.1f s.": "Su veneno quita 2 de armadura durante %.1f s.",
 	"Half the blow splashes on enemies within %.1f tiles of its target.": "La mitad del golpe salpica a los enemigos a %.1f casillas o menos del blanco.",
 	"In the new Brood it grows into a %s (the Brood Mother at stage %d).": "En la nueva Camada crece en un %s (la Madre de la Camada en la etapa %d).",
+	"Storm Challenger": "Retador de la Tormenta",
 }

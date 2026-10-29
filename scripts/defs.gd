@@ -1183,7 +1183,7 @@ const UNITS := {
 	"venom_challenger": {
 		"tags": ["armored"],
 		"name": "Venom Challenger", "hp": 220, "armor": 1, "speed": 58, "cost": 150, "cost2": 20, "time": 22.0, "supply": 2,
-		"sight": 9, "range": 180, "damage": 18, "cooldown": 2.0, "aim": 0.4, "radius": 16, "from": "brood_mother",
+		"sight": 9, "range": 180, "damage": 18, "cooldown": 2.0, "aim": 0.4, "radius": 18, "from": "brood_mother",
 		"acid": 4.0, "splash": 24, "anti_air": true, "venom": true, "plain_attack": true, "faction": "brood", "mature": true,
 		"about": "A Spitter grown into a young Venom Sire: a heavier venom glob than a Spitter's, a little farther, that strips armour and splashes a little round its target; it reaches flyers too. Tougher and slower than a Spitter. Never laid: a Spitter MATURES into it (the Brood Mother at stage 2).",
 	},
@@ -1907,12 +1907,12 @@ const NB := {
 	"moult": 9.0,
 	# COMING (the owner, 12:20 to 12:45; not in the game yet): their place in the lines, their stage and, for a MATURE
 	# form (YOUNG AND MATURE, 12:40: eggs lay only the young; a MATURE button turns a young unit into it at its stage),
-	# the young unit it grows from. A kind here moves to "lines" and "unit_stage" when it is built. The mature Pterodactyl
-	# replaces the Skywing (its id must differ from the Storm Sire's "pterodactyl"); the Dread Croc is dropped.
+	# the young unit it grows from. A kind here moves to "lines" and "unit_stage" when it is built. The STORM CHALLENGER
+	# (the owner, 14:42: the Storm line's mature form, a young Storm Sire) replaces the Skywing; the Dread Croc is dropped.
 	# ([kind, stage (-1: to confirm), young form])
 	# (the Tyrant and Venom Challengers are in since 0.17.0: "unit_stage", "mature"; the owner, 14:40: the Spitter is the
 	# Venom line's young, from stage 1; the Viper and the Hooded Serpent are dropped, their sheets kept in art/redraws)
-	"lines_later": {"pterodactyl": [["hatchlings", 1, ""], ["mature_pterodactyl", 2, "hatchlings"]]},
+	"lines_later": {"pterodactyl": [["hatchlings", 1, ""], ["storm_challenger", 2, "hatchlings"]]},
 	# where the eggs in each father's nest lie, from his feet (art px, measured by the importers on his rooted frame)
 	"nest_at": {"tyrannosaur": [26, 2], "dilophosaurus": [23, 3], "pterodactyl": [39, -16]},
 	# ROOTED = A BUILDING (the owner's playtest of 0.15.13, 19:19; scripts/brood_root.gd): the footprint each creature
@@ -1927,7 +1927,7 @@ const NB := {
 	# the rooted strips: the lowest row a sixth as wide as the picture); rooted, the pictures are drawn that much lower
 	# (BroodRoot.drop) so that bottom touches the footprint's bottom edge, as a building stands on its tiles.
 	# (her stage-2 and stage-3 art, "brood_mother_2" / "_3", tools/import_brood_mature.py, by art key)
-	"nest_y": {"brood_mother": -8, "brood_mother_2": -15, "brood_mother_3": -9, "rootmaw": -1, "tyrannosaur": 26, "mound_turtle": 0, "dilophosaurus": 21, "pterodactyl": 9},
+	"nest_y": {"brood_mother": -8, "brood_mother_2": -13, "brood_mother_3": -9, "rootmaw": -1, "tyrannosaur": 26, "mound_turtle": 0, "dilophosaurus": 21, "pterodactyl": 9},
 }
 
 

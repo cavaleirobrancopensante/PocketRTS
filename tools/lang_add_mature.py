@@ -27,6 +27,7 @@ EDITS = [
 T = {
     "Tyrant Challenger": ("Desafiante Tirano", "Retador Tirano"),
     "Venom Challenger": ("Desafiante Venenoso", "Retador Venenoso"),
+    "Storm Challenger": ("Desafiante da Tempestade", "Retador de la Tormenta"),
     "MATURE": ("AMADURECER", "MADURAR"),
     "Mature": ("Amadurecer", "Madurar"),
     "VENOM": ("VENENO", "VENENO"),

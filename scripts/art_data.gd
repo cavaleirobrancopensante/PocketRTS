@@ -1205,7 +1205,7 @@ const BASE_UNITS := {
 		"walk_s": 6,
 		"walk_se": 4,
 	}},
-	"brood_mother_2": {"cell": Vector2i(544, 373), "anchor": Vector2(272, 371), "frames": {
+	"brood_mother_2": {"cell": Vector2i(528, 373), "anchor": Vector2(264, 371), "frames": {
 		"attack_e": 6,
 		"attack_n": 6,
 		"attack_ne": 6,
@@ -1275,7 +1275,7 @@ const BASE_UNITS := {
 		"walk_s": 6,
 		"walk_se": 6,
 	}},
-	"venom_challenger": {"cell": Vector2i(104, 87), "anchor": Vector2(52, 67), "frames": {
+	"venom_challenger": {"cell": Vector2i(142, 118), "anchor": Vector2(71, 91), "frames": {
 		"attack_e": 6,
 		"attack_n": 6,
 		"attack_ne": 6,

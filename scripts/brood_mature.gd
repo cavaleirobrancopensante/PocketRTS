@@ -226,7 +226,7 @@ static func stage_of_scale(sc: float) -> int:
 
 ## Where her laying frames draw the new egg (its bottom), from her feet, at stage 1's size (the game scales by the
 ## stage): tools/import_brood_new.py and import_brood_mature.py measure it.
-const LAY_EGG := {"brood_mother": Vector2(14.0, -57.0), "brood_mother_2": Vector2(44.0, -47.0), "brood_mother_3": Vector2(41.0, -42.0)}
+const LAY_EGG := {"brood_mother": Vector2(14.0, -57.0), "brood_mother_2": Vector2(38.0, -41.0), "brood_mother_3": Vector2(41.0, -43.0)}
 
 
 static func lay_egg_at(art: String) -> Vector2:

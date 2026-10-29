@@ -3734,7 +3734,15 @@ func _tick_unit(delta: float) -> void:
 			else:
 				want = _follow(delta)
 				if _arrived():
-					_finish_move()
+					# (the path ended at an enemy wall or gate short of the goal: the way is walled off, so it breaks the
+					# piece in the way instead of stopping there; before, it stood at the gate when the path's end came
+					# before _walled_check's next look: tools/test_sire_reach.gd)
+					var bw: Building = game.blocking_wall(self) if has_attack() and not is_air() and not is_worker() \
+							and position.distance_to(order_point) > 2.0 * Defs.TILE else null
+					if bw:
+						target = bw
+					else:
+						_finish_move()
 		"attack":
 			if order_target == null or not _valid_target(order_target):
 				if not _next_order():

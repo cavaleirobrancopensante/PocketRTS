@@ -12,7 +12,8 @@ views are the east ones mirrored by the game).
 SIZES (game px; the Raptor's south-east walk is 21 tall, the Brute's east walk about 64 tall):
   - TYRANT CHALLENGER: about twice a Raptor: its south-east run TYRANT_H tall; every other view so its first run frame
     covers as much as the south-east one (the north-east, drawn upright and stretched, keeps the same body size).
-  - VENOM CHALLENGER: the Venom Sire scaled to VENOM_SCALE (a young Venom Sire) until its own sheets come.
+  - VENOM CHALLENGER: about twice a Spitter (the owner's concept): the Venom Sire scaled to VENOM_SCALE (a young Venom
+    Sire) until its own sheets come.
   - THE MOTHER'S STAGES: each stage's art is brought to her STAGE-1 BODY (its south-east walk's first frame covers as
     much as stage 1's); the game still scales her sprite by her stage (Defs.NB "stages" scale: x1.15, x1.3), so stage 2 is
     drawn 1.15x and stage 3 1.3x her stage-1 body, whatever size ChatGPT drew them (no double scaling).
@@ -27,8 +28,8 @@ SHEETS
     dropped, frame 2 held twice), death 5; brood_mother_stage<N>_se_nest_chatgpt.png: rooting 5, rooted loop 4 (stage 3:
     5), laying 6, uprooting 5. The other views (walk and swipe S, E, NE, N) are her stage-1 frames (the same body size):
     stand-ins until the owner's sheets come.
-Portraits: the owner's <kind>_portrait_chatgpt.png when it comes; until then a crop of the concept's head (the Tyrant
-Challenger) or the Venom Sire's portrait (the Venom Challenger).
+Portraits: the owner's <kind>_portrait_chatgpt.png when it comes; until then a crop of the concept's head
+(young_tyrant_concept_chatgpt.png, venom_challenger_concept_chatgpt.png: a JPEG screenshot).
 Prints, for Defs.NB / BroodMature: each stage's rooted art bottom from her feet (nest_y) and where her last laying frame
 draws the new egg (lay_egg).
 """
@@ -47,9 +48,13 @@ import import_brood_fathers as ibf  # noqa: E402
 R = ibn.R
 DIRS = ["se", "s", "e", "ne", "n"]
 TYRANT_H = 42.0
-VENOM_SCALE = 0.58
+# (the owner's concept, venom_challenger_concept_chatgpt.png: "about twice a Spitter"; the Venom Sire's frames at this
+# scale give an east walk about 1.75x the Spitter's length (101 px against 58), a young Sire still clearly smaller than
+# the Sire himself)
+VENOM_SCALE = 0.8
 # concept heads for the stand-in portraits (x0, y0, x1, y1 on the sheet)
-HEADS = {"tyrant_challenger": ("young_tyrant_concept_chatgpt.png", (430, 300, 620, 490))}
+HEADS = {"tyrant_challenger": ("young_tyrant_concept_chatgpt.png", (430, 300, 620, 490)),
+         "venom_challenger": ("venom_challenger_concept_chatgpt.png", (695, 190, 875, 370))}
 
 
 def have(f):
@@ -193,8 +198,11 @@ def mother_stage(n, s1, stand_ins):
     sw = [sw[0], sw[1], sw[1]] + sw[3:] if len(sw) >= 6 else sw      # (frame 3: a paw out of her back)
     small[("attack", "se")] = shrink_all(sw, sc)
     small[("death", "se")] = shrink_all(ws[2], sc)
-    # the nest sheet: its first rooting frame (standing) as tall as her walk's first
-    scn = small[("walk", "se")][0].shape[0] / float(ns[0][0].shape[0])
+    # the nest sheet: her rooted loop's first frame (her curled body and nest) covers as much as stage 1's rooted frame,
+    # so her rooted picture is x1.15 / x1.3 her stage-1 nest in the game (the stage's scale) whatever size the sheet drew
+    # her (a first try matched the standing rooting frame to the walk: the stage-2 nest came out 1.4x stage 1's)
+    a1r = float((s1[("rooted", "se")][0][..., 3] > 0).sum())
+    scn = (a1r / float((ns[1][0][..., 3] > 0).sum())) ** 0.5
     for name, ri in (("root", 0), ("rooted", 1), ("lay", 2), ("uproot", 3)):
         if ri < len(ns):
             small[(name, "se")] = shrink_all(ns[ri], scn)
