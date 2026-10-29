@@ -6739,7 +6739,10 @@ func musket_shot(u: Unit, e: Entity, dmg: float, from := Vector2.INF) -> void:
 ## The cavalry's pistol (Defs.PISTOL): one ball, a single ranged blow like a musket's (so a
 ## rider it kills may leave his horse loose); from the saddle it leaves the rider's hand.
 func pistol_shot(u: Unit, e: Entity, dmg: float) -> void:
-	var muzzle := u.center() + u.facing * 18.0 + Vector2(0, -16.0 if u.is_mounted() else -2.0)
+	var muzzle := u.center() + u.facing * 18.0 + Vector2(0, -16.0)
+	if not u.is_mounted():
+		# on foot: at his raised hand, where the drawn flash is (the Armoured Officer's fire strips: ~15 px out, 24 up)
+		muzzle = u.center() + u.facing * 15.0 + Vector2(0, -22.0)
 	musket_shot(u, e, dmg, muzzle)
 	if mlog and not _first_of.has("%d:pistol" % u.team):
 		_first_of["%d:pistol" % u.team] = true

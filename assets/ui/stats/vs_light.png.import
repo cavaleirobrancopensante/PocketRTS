@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bmvlw5qahnqdm"
-path="res://.godot/imported/aim_se.png-93396aeedb7b174cb6918c67592b5d39.ctex"
+uid="uid://cj3uclywmkisa"
+path="res://.godot/imported/vs_light.png-36ba0a0828f136be3ec8cd6ed97e4195.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/redraws/officer_white_src/dismounted_armoured/aim_se.png"
-dest_files=["res://.godot/imported/aim_se.png-93396aeedb7b174cb6918c67592b5d39.ctex"]
+source_file="res://assets/ui/stats/vs_light.png"
+dest_files=["res://.godot/imported/vs_light.png-36ba0a0828f136be3ec8cd6ed97e4195.ctex"]
 
 [params]
 

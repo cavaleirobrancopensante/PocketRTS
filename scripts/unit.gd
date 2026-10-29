@@ -6697,6 +6697,11 @@ const WALK_FPS_ART := {"musketeer": 12.0, "musketeer_armoured": 12.0, "dismounte
 		# (GreatWinder.walk_fps; tools/test_great_winder.gd checks they agree); played on a 30 Hz tick (_animate)
 		"great_winder": 16.0}
 
+## Arts whose WALK_FPS_ART was set for a strip of this many frames: a walk strip with fewer or more plays slower or
+## faster so one stride takes the same time (the dismounted Cuirassier's ChatGPT walks have 6 frames, his old walk
+## had 8: tools/import_cuirassier_dismounted.py; 6 frames at 9 fps, a stride in 0.67 s as before).
+const WALK_CYCLE_ART := {"dismounted_armoured": 8}
+
 
 ## Frames a second of art `a`'s walk strip at full speed.
 static func walk_fps_for(a: String) -> float:
@@ -7313,7 +7318,10 @@ func _set_anim(a: String, force: bool) -> void:
 		var anchor: Vector2 = ArtData.UNITS[sa]["anchor"]
 		# some sheets (aiming up) have extra room on top: the feet stay where they were
 		var cell: Vector2i = ArtData.UNITS[sa]["cell"]
-		ce = [tx, int(frames.get(key, 1)), -anchor - Vector2(0, tx.get_height() - cell.y), walk_fps_for(sa)]
+		var wfps := walk_fps_for(sa)
+		if a == "walk" and WALK_CYCLE_ART.has(sa):
+			wfps *= float(frames.get(key, 1)) / float(WALK_CYCLE_ART[sa])      # (one stride, the same time in every view)
+		ce = [tx, int(frames.get(key, 1)), -anchor - Vector2(0, tx.get_height() - cell.y), wfps]
 		_STRIPS[ck] = ce
 	sprite.texture = ce[0]
 	_an_n = ce[1]

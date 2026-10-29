@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cqaqemf86p33w"
-path="res://.godot/imported/aim_n.png-ca77db515cbcaa528babd0bf25f5f027.ctex"
+uid="uid://cqga58ynh55a3"
+path="res://.godot/imported/cuirassier_dismounted_se_chatgpt.png-f1fa443b4e5fd59efffb65dd3e1a44f6.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/redraws/officer_white_src/dismounted_armoured/aim_n.png"
-dest_files=["res://.godot/imported/aim_n.png-ca77db515cbcaa528babd0bf25f5f027.ctex"]
+source_file="res://art/redraws/cuirassier_dismounted_se_chatgpt.png"
+dest_files=["res://.godot/imported/cuirassier_dismounted_se_chatgpt.png-f1fa443b4e5fd59efffb65dd3e1a44f6.ctex"]
 
 [params]
 

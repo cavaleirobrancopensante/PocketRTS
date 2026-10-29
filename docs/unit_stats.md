@@ -35,7 +35,7 @@ For a group, the row shows the first unit's stats. On a computer, hovering over 
 
 ## The icons
 
-The icons are the owner's ChatGPT sheet, with the melee icon taken from his redo. The tool `tools/import_stat_icons.py` cuts them into `assets/ui/stats`. It cuts away the brass frames, because at 18 pixels a frame leaves the picture too small. Two stats have no icon of their own on the sheet: bonus against light units, and named bonuses. They borrow the bonus-against-armoured icon. Damage a second has no icon, only its letters.
+The icons are the owner's ChatGPT sheet, with the melee icon taken from his redo. His second sheet, `art/redraws/stat_icons_light_dps_chatgpt.png`, adds two: bonus against light units (a sword striking a cloth tunic) and damage a second (an hourglass with a blood drop). The damage-a-second chip now shows that icon and the number, without the letters DPS. The tool `tools/import_stat_icons.py` cuts both sheets into `assets/ui/stats`. It cuts away the brass frames, because at 18 pixels a frame leaves the picture too small. Named bonuses still have no icon of their own and borrow the bonus-against-armoured icon.
 
 ## Checks and pictures
 

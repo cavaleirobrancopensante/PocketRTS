@@ -18,7 +18,7 @@ const NEEDS_ART := {
 	"musketeer": "front and back walks barely step",
 	"musketeer_armoured": "pasted legs, mixed style (prompt 16)",
 	"dismounted": "officer idle / aim / fire / death poses are code-made (prompts 10-13)",
-	"dismounted_armoured": "armoured officer poses are code-made (prompts 12, 13)",
+	"dismounted_armoured": "idle / walk / aim / fire are the new ChatGPT sheets; melee (sabre) and death are the old art",
 	"missionary": "cassock hides the legs: whole-figure walk redraw",
 	"windup_soldier": "walk legs are code-built, tiny sprite",
 	"winder": "wind / repair: the crank turning in his hands is code-drawn",
@@ -110,6 +110,8 @@ static func fps_for(a: String, an: String, n: int) -> float:
 	var fps := Unit.walk_fps_for(a)
 	if an == "walk" and Unit.GALLOPERS.has(a):
 		fps *= Unit.CUIRASSIER_GALLOP_FPS / Unit.WALK_FPS * n / 8.0
+	if an == "walk" and Unit.WALK_CYCLE_ART.has(a):
+		fps *= float(n) / float(Unit.WALK_CYCLE_ART[a])
 	match an:
 		"idle", "idle_carry", "gidle", "idle_cocoon", "graze":
 			fps = 2.0 if an != "gidle" and an != "idle_cocoon" else 3.0

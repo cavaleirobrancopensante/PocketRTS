@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.15.21", "items": [
+		"TWO NEW STAT ICONS on the unit card, from the designer's sheet: BONUS VS LIGHT (a sword striking a cloth tunic, on the Pendulum) and DAMAGE A SECOND (an hourglass with a blood drop), which takes the place of the letters DPS.",
+		"THE DISMOUNTED CUIRASSIER, NEW ART: in every direction, the Armoured Officer on foot is the designer's new drawing, made to match the mounted Cuirassier: steel helmet and breastplate, white sleeves, sash and breeches in the team colour, the same size in every view. He stands with 4 frames, walks with 6 (at the same pace as before), and his pistol shot raises the pistol, aims, fires with a flash as the ball leaves, then lowers it; the smoke of an Officer's shot on foot now comes from his hand, not his feet. His sabre and his fall are the old drawing until they are redrawn.",
+	]},
 	{"v": "0.15.20", "items": [
 		"THE MIST TOAD HOPS: it no longer walks, it hops in every direction (front, back, sides and diagonals), the designer's own drawings: a crouch, the push off, high in the air over its shadow, then it lands with a small splash. One hop for every stretch of ground it covers, so its feet never slide; its spell casting, tongue, idle and death are as before.",
 	]},

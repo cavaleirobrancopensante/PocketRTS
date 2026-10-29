@@ -93,6 +93,8 @@ python3 tools/recolour_officers.py       # the Officers and the riders (Horseman
                                          # team-colour breeches, sash, plume and saddle cloth, their portraits too (after
                                          # every sheet of theirs and the coat masks; before the Barracks drill strips and the
                                          # veterancy trim masks, which read these strips; pristine copies in art/redraws/officer_white_src/)
+python3 tools/import_cuirassier_dismounted.py   # the dismounted Cuirassier's idle / walk / aim / fire in all five views from the owner's
+                                         # ChatGPT sheets (after the recolour: its coat is white already; before the trim masks)
 python3 tools/import_powder_mill.py      # the Crown Powder Mill as a horse mill (art/crown/powder_mill_horse.png:
                                          # replaces structures2's water mill, which import_art skips), its
                                          # millstone overlays, icon and the bay mill horse cut from the team

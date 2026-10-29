@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b3uvd2nuf0oet"
-path="res://.godot/imported/aim_ne.png-f42529f9f8423803582e7ce1937dd5a0.ctex"
+uid="uid://cm8t3rshfs51y"
+path="res://.godot/imported/stat_icons_light_dps_chatgpt.png-dbb8e3f3cd7e0b480be11959d0641b49.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/redraws/officer_white_src/dismounted_armoured/aim_ne.png"
-dest_files=["res://.godot/imported/aim_ne.png-f42529f9f8423803582e7ce1937dd5a0.ctex"]
+source_file="res://art/redraws/stat_icons_light_dps_chatgpt.png"
+dest_files=["res://.godot/imported/stat_icons_light_dps_chatgpt.png-dbb8e3f3cd7e0b480be11959d0641b49.ctex"]
 
 [params]
 

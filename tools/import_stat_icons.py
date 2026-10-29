@@ -5,6 +5,9 @@ art/redraws/stat_icons_chatgpt.png, 14 square icons on a dark background, into a
 Names, in reading order (row by row, left to right), the order the sheet was asked for:
   melee, ranged, area, range, attack_speed, armour, health, speed, sight, vs_armoured, vs_buildings, hits_air,
   supply, no_attack
+A second sheet, art/redraws/stat_icons_light_dps_chatgpt.png (two framed icons side by side), gives:
+  vs_light (a sword striking a cloth tunic), dps (an hourglass with a blood drop)
+(EXTRA below: the default run cuts both sheets.)
 
 Robust to the spacing and the grid (2 rows of 7, 4 + 4 + 4 + 2, one long row...): the background colour is taken
 from the sheet's border, everything that differs from it is a picture; nearby pieces of one picture (a gap inside an
@@ -30,6 +33,8 @@ NAMES = ["melee", "ranged", "area", "range", "attack_speed", "armour", "health",
 SHEET = "art/redraws/stat_icons_chatgpt.png"
 # single-icon redos that replace the sheet's picture (one framed icon on the same ground each)
 REDOS = {"melee": "art/redraws/stat_icon_melee_chatgpt.png"}      # (the sheet's first, a sword and a claw, was bad)
+# later sheets with icons the first one lacks: (sheet, names in reading order)
+EXTRA = [("art/redraws/stat_icons_light_dps_chatgpt.png", ["vs_light", "dps"])]
 INSET = 0.14        # the brass frame round each icon: cut away (its share of the frame's side), the picture kept
 OUT = "assets/ui/stats"
 SIZE = 64
@@ -178,12 +183,29 @@ def cut(px, box, bg, keep_bg=False, framed=False):
     return Image.fromarray(np.dstack([rgb, alpha]).round().clip(0, 255).astype(np.uint8), "RGBA")
 
 
-def run(sheet, out, contact=None, keep_bg=False, framed=False, redos=None):
-    px = np.array(Image.open(sheet).convert("RGB")).astype(float)
-    boxes, bg = find_icons(px)
+def run(sheet, out, contact=None, keep_bg=False, framed=False, redos=None, extra=()):
     os.makedirs(out, exist_ok=True)
+    icons, names = [], []
+    for sh, nm in [(sheet, NAMES)] + list(extra):
+        i, n = cut_sheet(sh, nm, out, keep_bg, framed, redos if sh == sheet else None)
+        icons += i
+        names += n
+    if contact:
+        sheet_im = Image.new("RGBA", (len(icons) * (SIZE + 30) + 10, SIZE + 40), (40, 34, 28, 255))
+        d = ImageDraw.Draw(sheet_im)
+        for i, (ic, name) in enumerate(zip(icons, names)):
+            sheet_im.alpha_composite(ic, (10 + i * (SIZE + 30), 6))
+            d.text((10 + i * (SIZE + 30), SIZE + 14), name[:12], fill=(240, 230, 200, 255))
+        sheet_im.save(contact)
+    print("%d icons -> %s" % (len(icons), out))
+
+
+def cut_sheet(sheet, names, out, keep_bg=False, framed=False, redos=None):
+    """Cuts the len(names) icons of one sheet into out/<name>.png; returns (images, names)."""
+    px = np.array(Image.open(sheet).convert("RGB")).astype(float)
+    boxes, bg = find_icons(px, len(names))
     icons = []
-    for name, b in zip(NAMES, boxes):
+    for name, b in zip(names, boxes):
         src = px
         if redos and name in redos and os.path.exists(redos[name]):
             src = np.array(Image.open(redos[name]).convert("RGB")).astype(float)
@@ -196,14 +218,7 @@ def run(sheet, out, contact=None, keep_bg=False, framed=False, redos=None):
         ic.save(os.path.join(out, name + ".png"))
         icons.append(ic)
         print("%-13s from %4d,%4d  %dx%d" % (name, b[2], b[0], b[3] - b[2], b[1] - b[0]))
-    if contact:
-        sheet_im = Image.new("RGBA", (len(icons) * (SIZE + 30) + 10, SIZE + 40), (40, 34, 28, 255))
-        d = ImageDraw.Draw(sheet_im)
-        for i, (ic, name) in enumerate(zip(icons, NAMES)):
-            sheet_im.alpha_composite(ic, (10 + i * (SIZE + 30), 6))
-            d.text((10 + i * (SIZE + 30), SIZE + 14), name[:12], fill=(240, 230, 200, 255))
-        sheet_im.save(contact)
-    print("%d icons -> %s" % (len(icons), out))
+    return icons, list(names)
 
 
 def selftest():
@@ -249,4 +264,4 @@ if __name__ == "__main__":
     keep = "--keep-bg" in args
     framed = "--framed" in args
     args = [a for a in args if a not in ("--keep-bg", "--framed")]
-    run(args[0] if args else SHEET, OUT, contact, keep, framed, None if args else REDOS)
+    run(args[0] if args else SHEET, OUT, contact, keep, framed, None if args else REDOS, () if args else EXTRA)

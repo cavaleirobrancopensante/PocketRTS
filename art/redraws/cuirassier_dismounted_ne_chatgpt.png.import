@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dchsccxocuccx"
-path="res://.godot/imported/idle_e.png-ad50f16cbbd5f0df76578dcaa6499a47.ctex"
+uid="uid://euo4ru2k0npx"
+path="res://.godot/imported/cuirassier_dismounted_ne_chatgpt.png-be892ed2a4d7c6802fc96586eb65666f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/redraws/officer_white_src/dismounted_armoured/idle_e.png"
-dest_files=["res://.godot/imported/idle_e.png-ad50f16cbbd5f0df76578dcaa6499a47.ctex"]
+source_file="res://art/redraws/cuirassier_dismounted_ne_chatgpt.png"
+dest_files=["res://.godot/imported/cuirassier_dismounted_ne_chatgpt.png-be892ed2a4d7c6802fc96586eb65666f.ctex"]
 
 [params]
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cxid1a4e01p7y"
-path="res://.godot/imported/walk_e.png-22208b11fad58cef43bc7786e649cd90.ctex"
+uid="uid://bhnsyn545k4mw"
+path="res://.godot/imported/cuirassier_dismounted_e_chatgpt.png-c4318ee09eca8ae56d97232e8cdbac59.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/redraws/officer_white_src/dismounted_armoured/walk_e.png"
-dest_files=["res://.godot/imported/walk_e.png-22208b11fad58cef43bc7786e649cd90.ctex"]
+source_file="res://art/redraws/cuirassier_dismounted_e_chatgpt.png"
+dest_files=["res://.godot/imported/cuirassier_dismounted_e_chatgpt.png-c4318ee09eca8ae56d97232e8cdbac59.ctex"]
 
 [params]
 
