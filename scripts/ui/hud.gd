@@ -1567,6 +1567,12 @@ func _nb_research_buttons(list: Array, units: Array) -> void:
 					toast(w), why == "", why, _price_chip([int(info["cost"]), int(info.get("cost2", 0))], false)])
 
 
+## A Sire's button on the grub's BUILD card (the only card button with a Sire's kind) shows his lure
+## (assets/icons/brood/lure_<sire>.png, tools/import_round14.py; _draw_card). The button keeps his kind as its id (its
+## key); his own portrait stays on his card and in the army bar.
+const LURE_ICON := {"tyrannosaur": "lure_tyrant", "dilophosaurus": "lure_venom", "pterodactyl": "lure_storm"}
+
+
 ## THE BROOD'S GRUB BUILD MENU (B / BUILD; the owner, 19:19 and 21:28): the structure-units a grub turns into (the
 ## Rootmaw, the Mound Turtle, the fathers: BroodRoot.morph_list), then the ROOT ghost; the grub walks there, pays and
 ## morphs (scripts/brood_root.gd). No old Brood buildings.
@@ -3671,7 +3677,7 @@ func _draw_card(font: Font) -> void:
 		var it: Array = bt["item"]
 		var br: Rect2 = bt["rect"]
 		var enabled: bool = it[3]
-		var ic := _icon(it[0])
+		var ic := _icon(String(LURE_ICON.get(it[0], it[0])))     # (a Sire's button: his lure)
 		var hov := br.has_point(hover)
 		var on := String(it[1]).begins_with("> ")
 		var pushed := _card_flash != "" and String(it[1]).trim_prefix("> ").trim_prefix("~ ") == _card_flash

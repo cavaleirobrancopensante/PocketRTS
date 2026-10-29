@@ -353,9 +353,15 @@ The Clockwork's coming roster:
 42. `assets/icons/clockwork/ab_owl_bomb.png` (if the Owl gets a bomb at a spot): the pendulum weight dropping onto a
     brass ring.
 
-THE BROOD'S RESEARCH (0.20.0, docs/brood_research.md): code-made placeholders today (the creature's portrait darkened,
-with a round badge: `tools/make_brood_research_icons.py`). Brood style (bronze frame, dark navy ground, creatures, bone,
-acid green); drop each in under the same name in `assets/icons/brood/` (it wins over the placeholder, no code):
+THE BROOD'S RESEARCH (0.20.0, docs/brood_research.md): **Round 14 (2026-10-29): 43-52 drawn and in the game**
+(0.20.2; the owner's ChatGPT sheets in `art/ui/icons4/`, cut by `tools/import_round14.py` exactly like round 13's bronze
+sheets and set in the Brood's own frame, `assets/icons/nbr_*.png`; the code-made placeholders and their maker,
+tools/make_brood_research_icons.py, are gone). Contact picture at card size: `docs/shots/brood_icons/`.
+The same sheets drew the three SIRE LURES for the grub's BUILD card: `assets/icons/brood/lure_tyrant.png` (the red
+spiked lure under a red haze), `lure_venom.png` (yellow-green, dripping, green haze), `lure_storm.png` (the crest-fin
+and little red wings in a storm-cloud white haze). The Sire's button keeps his kind as its id (its key); only its
+picture is the lure (`hud.gd` LURE_ICON, `_draw_card`); his own portrait stays on his card and in the army bar.
+The prompts as they were:
 
 43. `nbr_clutch_raptor.png`: BIGGER CLUTCH (Tyrant Sire), a red-spotted egg cracking with THREE Raptor heads peeking out.
 44. `nbr_pack_hunt.png`: PACK HUNT, three Raptors running in a line, speed streaks behind them.
