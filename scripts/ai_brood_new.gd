@@ -1,6 +1,6 @@
 class_name AIBroodNew
 extends AI
-## The computer's simple plan for THE BROOD (an experiment: scripts/brood_new.gd, docs/brood_new.md). It plays it
+## The computer's simple plan for THE BROOD (scripts/brood_new.gd, docs/brood_new.md; the only Brood since 0.18.0). It plays it
 ## plainly, so a match against it is possible; it is not clever yet (what it lacks: docs/brood_new.md).
 ##  - the Brood Mother stays rooted at home (she starts rooted); she gets up only to fight off an attack at her nest;
 ##  - the STRUCTURE-UNITS come from grubs (the owner, 19:19; scripts/brood_root.gd): Mound Turtles for supply ahead of

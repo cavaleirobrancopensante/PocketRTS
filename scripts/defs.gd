@@ -1080,7 +1080,7 @@ const UNITS := {
 		"air": true, "anti_air": true, "air_only": true, "faction": "brood",
 		"about": "Flying, it hunts other flyers with volleys of spines (it can't touch the ground). LAND it (1.2 s) to fight on the ground with its bite: then it walks, can't cross cliffs, and anything can hit it. Costs spoils.",
 	},
-	# ---- THE BROOD (experiment, scripts/brood_new.gd, docs/brood_new.md): creatures only, no buildings
+	# ---- THE BROOD (scripts/brood_new.gd, docs/brood_new.md): creatures only, no buildings
 	"brood_mother": {
 		"tags": ["armored"],
 		"name": "Brood Mother", "hp": 2400, "armor": 1, "speed": 24, "cost": 0, "time": 0.0, "supply": 0,
@@ -1766,6 +1766,12 @@ const ROT := {"base": 0.2696, "double": 60.0}
 ## otherwise the ground. Units reaching under `ranged` px strike as melee. It goes on until another order.
 const GROUND := {"click": 1.5, "lane": 0.5, "near": 0.5, "ranged": 60.0, "scan": 0.5,
 	"not": ["netter"]}
+## THE VENOM LINE'S COLOURS (the owner, 2026-10-29 15:17): these creatures wear their SCALES in the team colour and
+## their spikes and frill in olive, the other way round from the rest of the Brood (shaders/team.gdshader venom_swap,
+## tools/import_venom_colours.py, VetLook). By art key: a stand-in drawn with another's frames goes by its own.
+const VENOM_SWAP := ["spitter", "venom_challenger", "dilophosaurus", "mist_toad"]
+
+
 ## THE BROOD (scripts/brood_new.gd, docs/brood_new.md; the only Brood since 0.18.0, docs/brood_replace.md). Its
 ## numbers. BROOD_NEW is the faction value the experiment's slots had before 0.18.0 (old cfgs, saves and replays): it
 ## is read as "brood" (base_faction).

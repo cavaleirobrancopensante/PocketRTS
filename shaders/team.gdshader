@@ -20,6 +20,12 @@ uniform int vet_level = 0;
 uniform sampler2D vet_mask : filter_nearest, repeat_disable, hint_default_black;
 // a Powder Wagon whose horse was released (RELEASE HORSE): its painted horse isn't drawn
 uniform bool hide_horse = false;
+// THE VENOM LINE (the Spitter, the Venom Challenger, the Venom Sire, the Mist Toad; tools/import_venom_colours.py):
+// SCALES in the team colour and SPIKES and FRILL in olive, the other way round from the rest of the Brood. A mask beside
+// each strip: R = a scale pixel and G its tone (dark 0 .. light 1), B = 0 or 1 + a spike pixel's tone. A veteran's
+// scales mix half of the veterancy skin into the team colour (the side still reads).
+uniform bool venom_swap = false;
+uniform sampler2D venom_mask : filter_nearest, repeat_disable, hint_default_black;
 
 vec3 coat_ramp(int row, float t) {
 	return texture(coat_ramps, vec2(t * (63.0 / 64.0) + 0.5 / 64.0, (float(row) + 0.5) / 5.0)).rgb;
@@ -42,6 +48,17 @@ vec3 vet_skin(int level, float t) {
 	return mix(c, vec3(0.48, 0.45, 0.64), smoothstep(0.86, 1.0, t));
 }
 
+// (keep the two ramps in step with tools/import_venom_colours.py)
+vec3 team_ramp(vec3 t, float x) {
+	vec3 c = mix(t * 0.24, t * 0.85, smoothstep(0.0, 0.7, x));
+	return mix(c, mix(t, vec3(1.0), 0.35), smoothstep(0.7, 1.0, x));
+}
+
+vec3 olive_ramp(float x) {
+	vec3 c = mix(vec3(0.235, 0.243, 0.078), vec3(0.435, 0.443, 0.129), smoothstep(0.0, 0.5, x));
+	return mix(c, vec3(0.675, 0.682, 0.31), smoothstep(0.5, 1.0, x));
+}
+
 void fragment() {
 	vec4 c = texture(TEXTURE, UV);
 	vec3 o = c.rgb;
@@ -56,7 +73,20 @@ void fragment() {
 			o = mix(c.rgb, col, smoothstep(0.035, 0.10, l));
 		}
 	}
-	if (vet_style > 0) {
+	bool venom_scale = false;
+	if (venom_swap) {
+		vec4 nm = texture(venom_mask, UV);
+		if (nm.b > 0.0) o = olive_ramp((nm.b * 255.0 - 1.0) / 254.0);
+		else if (nm.r > 0.5) {
+			vec3 sc = team_ramp(team.rgb, nm.g);
+			if (vet_style == 2 && vet_level > 0) sc = mix(sc, vet_skin(vet_level, nm.g), 0.5);
+			// the scales' outline darks stay as painted
+			float l = dot(c.rgb, vec3(0.299, 0.587, 0.114));
+			o = mix(c.rgb, sc, smoothstep(0.035, 0.10, l));
+			venom_scale = true;
+		}
+	}
+	if (vet_style > 0 && !venom_scale) {
 		vec4 vm = texture(vet_mask, UV);
 		if (vm.r > 0.5) {
 			if (vet_style == 1) o = vet_trim(vet_level, vm.g);

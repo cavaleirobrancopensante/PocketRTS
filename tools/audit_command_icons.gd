@@ -147,10 +147,6 @@ func _sweep(g: Game, f: String) -> void:
 			await physics_frame
 			g.set_selection([b])
 			_card(g, fac, "building %s" % k)
-			if b.is_leveled():
-				for lv in [2, 3]:
-					b.set_level(lv)
-					_card(g, fac, "building %s level %d" % [k, lv])
 			if k == "gate":
 				b.locked = true
 				_card(g, fac, "building gate (locked)")

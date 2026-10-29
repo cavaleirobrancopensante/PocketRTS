@@ -786,15 +786,14 @@ func _fixes_2(q: Unit, p: Dictionary) -> void:
 	# (6) the grub's own text: no old Brood building in it
 	card_labels()
 	var texts := {"its card": String(gr0.d["about"]), "its tooltip": Defs.tip("grub"), "the BUILD tip": String(g.hud._tip_for.get("BUILD", ["", ""])[1]),
-		"HARVEST": String(g.hud._tip_for.get("HARVEST", ["", ""])[1]), "the food": String(g.hud._res_tip(0).get("body", "")),
+		"HARVEST": String(g.hud._tip_for.get("HARVEST", ["", g.hud.CMD_TIPS.get("HARVEST", "")])[1]), "the food": String(g.hud._res_tip(0).get("body", "")),
 		"the essence": String(g.hud._res_tip(1).get("body", "")), "the supply": String(g.hud._res_tip(2).get("body", ""))}
 	var bad := ""
 	for k in texts:
 		if _old_word(String(texts[k])) != "" or String(texts[k]) == "":
 			bad += "%s (%s) " % [k, _old_word(String(texts[k]))]
 	check(bad == "" and String(gr0.d["about"]).contains("Brood Mother"), "    the new Brood's grub text says the Rootmaws and the Brood Mother, no old Brood word: %s" % (bad if bad != "" else String(gr0.d["about"]).left(70)))
-	var old_gr: Dictionary = Defs.UNITS["grub"]
-	check(String(old_gr["about"]).contains("Burrow"), "    (the old Brood keeps its own grub text)")
+	check(_old_word(Defs.tip("grub")) == "" and _old_word(String(Defs.UNITS["grub"]["about"])) == "", "    (0.18.0: the Brood's only grub text has no old Brood word either)")
 	# (4) the expansion spots for the new Brood: its best TURTLE spots (fresh ground 15+ tiles from her, room for Rootmaws)
 	Settings.expansion_spots = true
 	g.exp_spots._key = "-"

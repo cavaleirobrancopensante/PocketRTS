@@ -72,7 +72,6 @@ var lost_peers := {}              # host: relay ids of guests who left
 var count_diff_max := 0           # guest (tests): the most entities a snapshot left different from the host's list
 var count_diff_snaps := 0
 var line_fp := -1                 # host: fingerprint of the Line in the last snapshot that carried it
-var pit_fp := -1                  # host: fingerprint of the Brood's old pit ground (Game.pit_spots) last sent
 var keg_fp := -1                  # host: fingerprint of the powder kegs on the ground (PowderKeg) last sent
 var _last_snap_ms := 0
 # The start: both sides hold the 3-2-1 countdown until every guest's match has loaded (a phone loads slower

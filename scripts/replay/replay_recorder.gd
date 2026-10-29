@@ -190,8 +190,7 @@ func record(force_key := false) -> void:
 	snap_n += 1
 	if key:
 		snap_n = (snap_n / NetSnapshot.KEY_EVERY + 1) * NetSnapshot.KEY_EVERY + 1
-		line_fp = -1               # (the Line and the old pit ground in every keyframe: a seek starts from one)
-		pit_fp = -1
+		line_fp = -1               # (the Line in every keyframe: a seek starts from one)
 		last_key = clk
 		chunk_t0 = clk
 		n_keys += 1

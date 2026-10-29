@@ -137,6 +137,7 @@ python3 tools/import_vet_trim.py         # veterancy trim masks (hat lace / band
                                          # for the Crown's soldiers: after every strip they read,
                                          # mount strips included
 python3 tools/import_vet_skin.py         # veterancy skin masks for the Brood's fighting creatures
+python3 tools/import_venom_colours.py     # the venom line's colour swap masks (scales team, spikes olive): after the skin masks
 python3 tools/import_cursors.py          # the mouse cursors (art/ui/cursors.png) and their hotspots
 python3 tools/press_anim/escapement_work.py          # the Escapement's tick-tock from its painted cell (art/redraws/escapement.png):
                                                      # art/clockwork/gear/escapement_built.png and _work_0..23.png (wheel and anchor in code)

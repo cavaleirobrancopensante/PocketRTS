@@ -4,6 +4,12 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.18.0", "items": [
+		"THE BROOD IS NOW THE BROOD OF CREATURES: the experiment's Brood (the Brood Mother, the fathers, rooting) replaces the old one everywhere a faction is picked, and the \"(new, experiment)\" entry is gone. The old Brood's buildings (Burrow, Warren, Broodmound, Clutch Mound, Feeding Pit, Gorge Pit, Brood Pen, Roost), its Spore Mother and Bloater, its swamp and its old computer are removed.",
+		"OLD SAVES AND REPLAYS: a saved match or a replay with the old Brood in it can no longer be continued or watched; the game says so instead of failing. Ones with the experiment's Brood still work.",
+		"THE VENOM LINE'S COLOURS: the Spitter, the Venom Challenger, the Venom Sire and the Mist Toad now wear their scales in the team colour and their spikes and frill in olive; the venom keeps its yellow-green glow.",
+		"The Crown's and the Clockwork's computers scout the Brood of creatures: the Brood Mother counts as its hall, rooted Rootmaws as its economy, the fathers as its tech.",
+	]},
 	{"v": "0.17.0", "items": [
 		"THE NEW BROOD (EXPERIMENT): YOUNG AND MATURE. The Brood Mother lays only the young; from her stage 2 a young warrior MATURES into a CHALLENGER, a young Sire: MATURE on its card (on a group, each as far as the food allows). It pays the Challenger's price less its own share of its egg, MOULTS 9 s where it stands (it cannot move or fight; a shimmer for now), then it is the Challenger, its veterancy and wounds kept. A Raptor grows into a TYRANT CHALLENGER (a medium all-round biter between the Raptor and the Brute: 130 health, armour 1, 15 a bite; 75 food and 10 spoils to mature). A Spitter grows into a VENOM CHALLENGER (a heavier glob a little farther, 180, that splashes a little and strips armour, flyers too: 220 health, armour 1, slower; 105 food and 17 spoils). The computer matures its young when food piles up.",
 		"THE TIERS: the Spitter is now the Venom Sire's young, laid from the start (stage 1); the Challengers come at stage 2; the Brute and the Mist Toad stay at stage 3.",

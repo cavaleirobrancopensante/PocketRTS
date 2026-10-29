@@ -65,7 +65,7 @@ func _away(us: Array) -> void:
 
 
 ## A sandbox game (no fog, no HUD, the starting workers out of the way); returns open ground by side 0's hall.
-func _game(facs: Array, nbs: Array = []) -> Vector2:
+func _game(facs: Array) -> Vector2:
 	if g != null:
 		g.queue_free()
 		await process_frame
@@ -136,8 +136,8 @@ func _run() -> void:
 	await _frozen("4_balloon_over_the_toad", toad3)
 	_away([bal, toad3])
 	# ---- 5. the Tyrannosaur (a father) staggered, not pulled, and the GIF
-	at = await _game(["brood", "brood"], [false, true])
-	at += Vector2(0, 140)            # (clear of the Brood's hall)
+	at = await _game(["crown", "brood"])
+	at += Vector2(0, 140)            # (clear of the Town Hall)
 	var rex := _dummy("tyrannosaur", 1, at)
 	rex.facing = Vector2(0.3, 1.0).normalized()      # (its head toward us)
 	var toad2 := _dummy("mist_toad", 0, at + Vector2(120, 110))
