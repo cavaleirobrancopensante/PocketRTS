@@ -542,20 +542,103 @@ static func layer(u: Unit) -> void:
 			u.add_child(srt)
 			u.move_child(srt, u.sprite.get_index())
 			u.y_sort_enabled = true
+			# its selection and hover frame, drawn UNDER its pictures (as a building's): only the parts outside the art show
+			var fpn := Node2D.new()
+			fpn.name = FP_NODE
+			fpn.draw.connect(_draw_frame.bind(u, fpn))
+			srt.add_child(fpn)
 		srt.position = Vector2(0.0, dy)
 		for n in [u.sprite, u.get_node_or_null("Glow"), u.get_node_or_null("Xf"), u.get_node_or_null(COC)]:
 			if n != null and n.get_parent() != srt:
 				n.reparent(srt, false)
 		u.sprite.position.y -= dy        # (Unit._animate put it at the feet: under the node it is drawn there again)
+		var fpn2 := srt.get_node_or_null(FP_NODE) as Node2D
+		if fpn2 != null:
+			srt.move_child(fpn2, 0)
+			var hov: bool = u.game != null and u.game.hover_target == u
+			var key := "%s|%s|%s" % [u.selected, hov, str(rect_of(u))]
+			if hov or String(fpn2.get_meta("k", "")) != key:
+				fpn2.set_meta("k", key)
+				fpn2.position = Vector2(0.0, -dy)        # (in the creature's own space again: its feet at the origin)
+				fpn2.queue_redraw()
 	elif srt != null:
 		var at := srt.get_index()
 		for n in srt.get_children():
+			if n.name == FP_NODE:
+				continue
 			n.reparent(u, false)
 			u.move_child(n, at)
 			at += 1
 		srt.queue_free()
 		u.remove_child(srt)
 		u.y_sort_enabled = false
+	# THE ROOTED ART ON ITS FOOTPRINT (the owner, 2026-10-29): rooted, its pictures are drawn lower, the bottom of the
+	# nest on the footprint's bottom edge (eased in and out over the rooting and uprooting frames; a dead creature keeps it)
+	var sh := art_dy(u)
+	if not u.dead:
+		u.nb["ady"] = sh
+	u.sprite.position.y += sh
+
+
+const FP_NODE := "NbFrame"
+
+
+## How much lower than its feet a rooted creature's pictures are drawn now: its full drop rooted (and in its cocoon),
+## eased over the rooting / uprooting frames (no jump where the walking picture and the rooted one meet), 0 walking.
+static func art_dy(u: Unit) -> float:
+	if not BroodNew.ROOTERS.has(u.kind):
+		return 0.0
+	if u.dead:
+		return float(u.nb.get("ady", 0.0))
+	if not has_fp(u) or u.tesla_mode == "packed":
+		return 0.0
+	var full := drop(u)
+	if u.tesla_mode == "deploying" or u.tesla_mode == "packing":
+		var p := clampf(1.0 - u.tesla_t / maxf(u.switch_time(), 0.01), 0.0, 1.0)
+		p = p * p * (3.0 - 2.0 * p)          # (eased)
+		return full * (p if u.tesla_mode == "deploying" else 1.0 - p)
+	return full
+
+
+## A rooted creature's full drop: from its feet to where the bottom of its rooted art meets its footprint's bottom edge.
+static func drop(u: Unit) -> float:
+	if not has_fp(u):
+		return 0.0
+	return rect_of(u).end.y - u.position.y - nest_y(u.kind, scale_of(u))
+
+
+## The same for a `k` rooted on the grid (snapped feet: the ROOT ghost).
+static func drop_for(k: String, sc := 1.0) -> float:
+	var f := fp(k, sc)
+	return (f[1] as Vector2).y + float((f[0] as Vector2i).y) * T * 0.5 - nest_y(k, sc)
+
+
+## Where the bottom of a `k`'s rooted picture lies from its feet, as drawn (her stage's scale, the art scale).
+static func nest_y(k: String, sc := 1.0) -> float:
+	return float(Defs.NB["nest_y"].get(k, 0)) * sc * float(Defs.UNITS[k].get("art_scale", 1.0))
+
+
+## The selection frame round its footprint (a building's green rectangle) and the hover corners, under its pictures.
+static func _draw_frame(u: Unit, n: Node2D) -> void:
+	if not is_instance_valid(u) or u.dead or not has_fp(u):
+		return
+	var r := rect_of(u)
+	var lr := Rect2(r.position - u.position, r.size)
+	if u.selected:
+		n.draw_rect(lr.grow(3), Color(0.4, 1.0, 0.4, 0.8), false, 2.0)
+	var g := u.game
+	if g != null and g.hover_target == u:
+		var col := Color(0.4, 1.0, 0.4)
+		if u.team >= 0 and g.hostile(g.human, u.team):
+			col = Color(1.0, 0.3, 0.25)
+		var pulse := 0.75 + 0.25 * sin(g.clock * 8.0)
+		var rc := lr.grow(4)
+		var L := 12.0
+		for c in [[rc.position, Vector2(1, 0), Vector2(0, 1)], [rc.position + Vector2(rc.size.x, 0), Vector2(-1, 0), Vector2(0, 1)],
+				[rc.position + Vector2(0, rc.size.y), Vector2(1, 0), Vector2(0, -1)], [rc.end, Vector2(-1, 0), Vector2(0, -1)]]:
+			var p0: Vector2 = c[0]
+			n.draw_polyline(PackedVector2Array([p0 + c[1] * L, p0, p0 + c[2] * L]), Color(0, 0, 0, 0.6), 5.0)
+			n.draw_polyline(PackedVector2Array([p0 + c[1] * L, p0, p0 + c[2] * L]), Color(col, pulse), 2.5)
 
 
 ## SELECTING A ROOTER BY ITS BODY (the owner, 21:28: the Mother was hard to pick): an ellipse over what its current
@@ -643,7 +726,8 @@ static func cocoon_look(u: Unit) -> void:
 	var tt := cocoon_time(u)
 	var p := clampf(el / maxf(tt, 0.1), 0.0, 1.0)
 	var r := rect_of(u)
-	var base := Vector2(r.get_center().x, r.end.y - 6.0) - u.position + s.position      # (the footprint's front, in the picture's space)
+	var at := s.position - Vector2(0.0, art_dy(u))        # (the feet in the picture's space: not the rooted art's drop)
+	var base := Vector2(r.get_center().x, r.end.y - 6.0) - u.position + at      # (the footprint's front, in the picture's space)
 	if el < MORPH_GRUB:
 		# the grub curls into its cocoon (the old Brood's morph strip)
 		var gt := Game.tex("res://assets/units/grub/morph_e.png")
@@ -653,7 +737,7 @@ static func cocoon_look(u: Unit) -> void:
 		var anc: Vector2 = ArtData.UNITS["grub"]["anchor"]
 		cs.offset = -anc
 		cs.scale = Vector2.ONE * 1.4
-		cs.position = r.get_center() - u.position + s.position + Vector2(0, 10)
+		cs.position = r.get_center() - u.position + at + Vector2(0, 10)
 		cs.self_modulate.a = 1.0
 		s.self_modulate.a = 0.0
 		return
@@ -708,9 +792,11 @@ static func draw_overlay(g: Game, ov: Node2D) -> void:
 			ov.draw_circle(q.position, rr, Color(1.0, 0.55, 0.25, 0.07))
 			ov.draw_arc(q.position, rr, 0, TAU, 96, Color(1.0, 0.6, 0.3, 0.85), 2.5)
 			var font := ThemeDB.fallback_font
-			var lp := q.position + Vector2(-58.0, -rr - 8.0)
-			ov.draw_string_outline(font, lp, Loc.t("FATHER RANGE"), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, 4, Color(0, 0, 0, 0.8))
-			ov.draw_string(font, lp, Loc.t("FATHER RANGE"), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1.0, 0.75, 0.45))
+			# (just inside the ring's bottom, far from her body: over its top the label ran across her, the owner 2026-10-29)
+			var lt := Loc.t("FATHER RANGE")
+			var lp := q.position + Vector2(-font.get_string_size(lt, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x * 0.5, rr - 10.0)
+			ov.draw_string_outline(font, lp, lt, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, 4, Color(0, 0, 0, 0.8))
+			ov.draw_string(font, lp, lt, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1.0, 0.75, 0.45))
 	if g.controls and String(g.controls.mode) == "nb_root" and g.controls.ghost_cell.x >= 0:
 		draw_ghost(g, ov, String(g.controls.place_kind), g.controls.ghost_cell, g.controls.nb_sc)
 
@@ -751,6 +837,7 @@ static func draw_ghost(g: Game, ov: Node2D, k: String, c: Vector2i, sc := 1.0) -
 		var anc: Vector2 = ArtData.UNITS[art]["anchor"]
 		var sk := sc * float(Defs.UNITS[k].get("art_scale", 1.0))
 		var off := (-anc - Vector2(0, tx.get_height() - cell.y)) * sk
+		off.y += drop_for(k, sc)        # (rooted, its art sits on the footprint: BroodRoot.drop)
 		var region := Rect2(0, 0, fw, tx.get_height())
 		var dst := Rect2(p + off, Vector2(fw, tx.get_height()) * sk)
 		ov.draw_texture_rect_region(tx, dst, region, Color(1, 1, 1, 0.55) if ok else Color(1, 0.5, 0.5, 0.5))

@@ -77,7 +77,7 @@ const DRILL_ART := {
 const DRILL_MEN := {
 	"musketeer": {"act": "shoot", "art": "musketeer", "art_a": "musketeer_armoured", "muzzle": Vector2(22, -15),
 		"anims": [["aim_e", 0.25], ["fire_e", 0.15], ["reload_e", 0.2], ["idle_e", 0.35]]},
-	"dismounted": {"act": "shoot", "art": "dismounted", "art_a": "dismounted_armoured", "muzzle": Vector2(9, -14), "muzzle_a": Vector2(17, -16),
+	"dismounted": {"act": "shoot", "art": "dismounted", "art_a": "dismounted_armoured", "muzzle": Vector2(9, -14), "muzzle_a": Vector2(15, -24),
 		"anims": [["aim_e", 0.55], ["fire_e", 0.15], ["idle_e", 0.35]]},
 	"cuirassier": {"act": "sabre", "art": "horseman", "art_a": "cuirassier", "foot": "dismounted", "foot_a": "dismounted_armoured"},
 	"dragoon": {"act": "mount", "art": "dragoon", "art_a": "dragoon_armoured", "foot": "musketeer", "foot_a": "musketeer_armoured"},

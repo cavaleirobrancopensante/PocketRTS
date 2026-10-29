@@ -271,6 +271,15 @@ static func capture(game: Game, cfg: Dictionary) -> Dictionary:
 		var s: Building = u.crate_site
 		if not u.dead and s and is_instance_valid(s) and not s.dead and not s.built and s.crate == "carried" and s.crate_carrier == u:
 			d["crates"].append([u.position.x, u.position.y, u.team, s.cell.x, s.cell.y, float(Defs.CRATE["hp"])])
+	# powder kegs on the ground (PowderKeg), and the ones in a hauler's hands (they come back lying where he stood):
+	# [x, y, team, shots, hp]
+	d["kegs"] = []
+	for k in game.kegs:
+		if not k.dead:
+			d["kegs"].append([k.position.x, k.position.y, k.team, k.powder, k.hp])
+	for u in game.units:
+		if not u.dead and u.keg:
+			d["kegs"].append([u.position.x, u.position.y, u.team, u.keg_shots if u.keg_shots > 0.0 else float(Defs.WAGON["keg"]), float(Defs.KEG["hp"])])
 	d["trains"] = game.line_net.rails.save()    # the Clockwork's trains (and the soldiers riding them)
 	d["line"] = game.line_net.save()           # the Clockwork Line: [x, y, team, hp, progress, built]
 	return d
@@ -347,6 +356,9 @@ static func restore(game: Game, d: Dictionary) -> void:
 	for c in game.crates.duplicate():
 		c.queue_free()
 	game.crates.clear()
+	for k in game.kegs.duplicate():
+		k.queue_free()
+	game.kegs.clear()
 	game.gate_team.clear()
 	game.ghost_cells.clear()
 	game.clock = float(d["clock"])
@@ -479,6 +491,8 @@ static func restore(game: Game, d: Dictionary) -> void:
 			if b.team == int(cd[2]) and b.cell == cc and not b.built and b.crate_obj == null:
 				game.drop_crate(b, Vector2(float(cd[0]), float(cd[1])), float(cd[5]))
 				break
+	for kd in d.get("kegs", []):           # (older saves: none)
+		game.drop_keg(int(kd[2]), Vector2(float(kd[0]), float(kd[1])), float(kd[3]), float(kd[4]))
 	for b in game.buildings:
 		if b.crate == "ground" and b.crate_obj == null:
 			b.crate = "tower"       # (its crate wasn't found: a Winder fetches another)

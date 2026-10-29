@@ -7319,7 +7319,8 @@ func _horses() -> void:
 
 ## Crown: workers assigned to the Town Hall as haulers (Game.haul_dispatch: they lead the
 ## horses to the Barracks and Foundries and carry kegs to the wagons). One once there is a
-## Horse Breeder, a gun or a wagon, two from 6 horse-using units, three from 12. The man comes
+## Horse Breeder, a gun or a wagon, two from 6 horse-using units, three from 12, or the halls' hauler need if more
+## (WorkerLabels.hauler_need, at most 6 a hall). The man comes
 ## from the idle ones first, else a farm hand (never the Mill, never a builder); the farm is
 ## refilled by the next hire, as haulers aren't counted among game.workers.
 func _assign_haulers() -> void:
@@ -7330,9 +7331,21 @@ func _assign_haulers() -> void:
 	var want := 0
 	if users > 0 or not _mine("horse_breeder").is_empty():
 		want = 1 + (1 if users >= 6 else 0) + (1 if users >= 12 else 0)
+	# up to the halls' need (WorkerLabels.hauler_need: the breeders, and the wagons' kegs now that any number may be on
+	# the way to one wagon), never more: one man a call, at the hall short of the most
+	var need := 0
+	var hall: Building = halls[0]
+	var short := -INF
+	for h in halls:
+		var hn := WorkerLabels.hauler_need(game, h)
+		need += hn
+		var gap := float(hn - h.haulers().size())
+		if gap > short:
+			short = gap
+			hall = h
+	want = maxi(want, need)
 	if game.haulers_of(team).size() >= want:
 		return
-	var hall: Building = halls[0]
 	var best: Unit = null
 	var bd := INF
 	for u in game.workers(team):

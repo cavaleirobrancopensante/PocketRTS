@@ -159,7 +159,11 @@ func _initialize() -> void:
 			check(worst <= 2, "%s walk_%s: no oversized frame (worst %d px off the median)" % [art, d, worst])
 	for art in ["dismounted", "dismounted_armoured"]:
 		for d in ["s", "se", "e", "ne", "n"]:
-			check(ArtData.UNITS[art]["frames"]["walk_" + d] == 8, "%s walks in 8 frames (%s)" % [art, d])
+			# (the dismounted Cuirassier's new ChatGPT walks have 6 frames, played in the old 8-frame walk's stride time)
+			var want := 6 if art == "dismounted_armoured" else 8
+			check(ArtData.UNITS[art]["frames"]["walk_" + d] == want, "%s walks in %d frames (%s)" % [art, want, d])
+	check(is_equal_approx(AnimViewer.fps_for("dismounted_armoured", "walk", 6) * 8.0 / 6.0, Unit.walk_fps_for("dismounted_armoured")),
+		"the dismounted Cuirassier's 6-frame walk takes as long a stride as the old 8-frame one")
 	for d in ["s", "se", "e", "ne", "n"]:
 		# (the Musketeer's ChatGPT walk was dropped for the tricorne walk with the musket in his hands: 3/4/6/5/7 frames)
 		var mn: int = ArtData.UNITS["musketeer"]["frames"]["walk_" + d]

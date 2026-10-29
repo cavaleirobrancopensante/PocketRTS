@@ -58,6 +58,8 @@ python3 tools/import_windmill.py         # the Farm's windmill (replaces import_
 python3 tools/make_farm_field.py         # the Farm's crop fields round the windmill
 python3 tools/import_mist_toad.py       # Mist Toad (its own pass: black sheet, fog cloud keyed out),
                                          # its portrait and the FOG / TONGUE ability icons
+python3 tools/import_toad_hop.py         # the Mist Toad's hop (art/redraws/mist_toad_hop_*_chatgpt.png): walk_s/se/e/ne/n
+                                         # replace the side-on walk; the cell grows for the hop (after import_mist_toad)
 python3 tools/import_mortar_walk.py      # the Mortar's towed walk (replaces round 10's walk; its side-on
                                          # horse is the Field Cannon's limber horse)
 python3 tools/fix_mortar_crew.py         # the Mortar's crew: two men in every view, and no pennant
@@ -91,6 +93,8 @@ python3 tools/recolour_officers.py       # the Officers and the riders (Horseman
                                          # team-colour breeches, sash, plume and saddle cloth, their portraits too (after
                                          # every sheet of theirs and the coat masks; before the Barracks drill strips and the
                                          # veterancy trim masks, which read these strips; pristine copies in art/redraws/officer_white_src/)
+python3 tools/import_cuirassier_dismounted.py   # the dismounted Cuirassier's idle / walk / aim / fire in all five views from the owner's
+                                         # ChatGPT sheets (after the recolour: its coat is white already; before the trim masks)
 python3 tools/import_powder_mill.py      # the Crown Powder Mill as a horse mill (art/crown/powder_mill_horse.png:
                                          # replaces structures2's water mill, which import_art skips), its
                                          # millstone overlays, icon and the bay mill horse cut from the team

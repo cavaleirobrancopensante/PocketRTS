@@ -195,6 +195,15 @@ static func build(s: NetSession) -> Dictionary:
 	if fp != s.line_fp or s.snap_n % 20 == 0:
 		s.line_fp = fp
 		m["ln"] = g.line_net.save()            # the Clockwork Line (pipe segments), sent when it changes
+	# powder kegs on the ground (PowderKeg): [x, y, team, shots, hp], sent when they change (and now and then)
+	var krows: Array = []
+	for k in g.kegs:
+		if not k.dead:
+			krows.append([snappedf(k.position.x, 0.1), snappedf(k.position.y, 0.1), k.team, snappedf(k.powder, 0.1), snappedf(k.hp, 0.1)])
+	var kfp := hash(krows)
+	if kfp != s.keg_fp or key or s.snap_n % 20 == 0:
+		s.keg_fp = kfp
+		m["kg"] = krows
 	var pfp := hash(g.pit_spots)
 	if pfp != s.pit_fp or s.snap_n % 20 == 0:
 		s.pit_fp = pfp
@@ -216,6 +225,27 @@ static func build(s: NetSession) -> Dictionary:
 		m["quit"] = g.end_quitter
 		m["ahead"] = g.end_ahead
 	return m
+
+
+## The guest (or a replay) puts the host's kegs on the ground: the rows replace what lay there.
+static func apply_kegs(g: Game, rows: Array) -> void:
+	var have: Array = g.kegs.duplicate()
+	for i in rows.size():
+		var r: Array = rows[i]
+		var p := Vector2(float(r[0]), float(r[1]))
+		if i < have.size() and is_instance_valid(have[i]) and int(have[i].team) == int(r[2]):
+			var k: PowderKeg = have[i]
+			k.position = p
+			k.powder = float(r[3])
+			k.hp = float(r[4])
+		else:
+			if i < have.size() and is_instance_valid(have[i]):
+				have[i].remove()
+			var k2 := g.drop_keg(int(r[2]), p, float(r[3]), float(r[4]))
+			k2.position = p
+	for i in range(rows.size(), have.size()):
+		if is_instance_valid(have[i]):
+			have[i].remove()
 
 
 ## Can a guest see this unit? Its own side's always; another's where a guest's side sees (as the guest's fog will).
@@ -355,6 +385,8 @@ static func apply(s: NetSession, m: Dictionary) -> void:
 			s.count_diff_snaps += 1
 	if m.has("ln"):
 		g.line_net.load_rows(m["ln"])
+	if m.has("kg"):
+		apply_kegs(g, m["kg"])
 	if m.has("ps"):
 		g.pit_spots = (m["ps"] as Array).map(func(sp: Array) -> Array: return [sp[0] as Vector2, float(sp[1]), int(sp[2])])
 	if m.has("cpl") and Defs.cw_roster:

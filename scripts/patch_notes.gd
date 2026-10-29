@@ -4,6 +4,22 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.15.21", "items": [
+		"TWO NEW STAT ICONS on the unit card, from the designer's sheet: BONUS VS LIGHT (a sword striking a cloth tunic, on the Pendulum) and DAMAGE A SECOND (an hourglass with a blood drop), which takes the place of the letters DPS.",
+		"THE DISMOUNTED CUIRASSIER, NEW ART: in every direction, the Armoured Officer on foot is the designer's new drawing, made to match the mounted Cuirassier: steel helmet and breastplate, white sleeves, sash and breeches in the team colour, the same size in every view. He stands with 4 frames, walks with 6 (at the same pace as before), and his pistol shot raises the pistol, aims, fires with a flash as the ball leaves, then lowers it; the smoke of an Officer's shot on foot now comes from his hand, not his feet. His sabre and his fall are the old drawing until they are redrawn.",
+	]},
+	{"v": "0.15.20", "items": [
+		"THE MIST TOAD HOPS: it no longer walks, it hops in every direction (front, back, sides and diagonals), the designer's own drawings: a crouch, the push off, high in the air over its shadow, then it lands with a small splash. One hop for every stretch of ground it covers, so its feet never slide; its spell casting, tongue, idle and death are as before.",
+	]},
+	{"v": "0.15.19", "items": [
+		"WORKER LABELS SAY WHOSE THEY ARE: the count over each economy building has its job word: HAULERS on a Town Hall, FARMERS on a Farm, POWDER MAKERS on a Powder Mill, WINDERS on a Cog Press and a Mainspring, GRUBS on a Feeding Pit, a Rootmaw and a food pile. Rest the mouse on it for half a second (a long press on a phone) and a tooltip says what those workers do, with the real numbers: gold a minute for each farmer, powder a minute for each powder maker, cogs and Tension for each Winder and what the % means (crew x drive x brass), food a trip and a minute for each grub. A click on a label still selects the building.",
+		"HAULERS: the Town Hall's label now reads assigned / needed. The second number is how many haulers the base can use: 1 for each Horse Breeder, and for each Powder Wagon on SUPPLY that is being drawn from, its kegs a second x the walk from the Mill and back (a far wagon under heavy fire needs a long line of haulers), up to 6 a hall. It is worked out every few seconds and does not flicker. White below the need, green at it, orange over it (Labourers who could be farming). Its tooltip says how many are free and what the need is made of. The computer assigns haulers up to the need.",
+		"KEGS GO BY THE NEED: there is no longer a limit of 2 kegs on the way to one wagon, nor of its room. As many haulers carry kegs to a wagon as its recent powder use calls for. A hauler who finds it full waits by it, keg in hand, follows it as it moves, and hands the keg over as soon as there is room, first come first served (his card says so). A full wagon nobody draws from pulls no kegs.",
+		"DROPPED KEGS: a keg never goes back into the stores. A hauler who cannot deliver it (the wagon destroyed, ordered away, his job cut short) sets it down where he stands. On the ground it is a powder supply: your soldiers nearby refill from it as from a wagon until it is empty. It is also a bomb: enemies shoot it and it blows up, scaled by the powder left. A free hauler picks it up and delivers it before fetching a new keg from the Mill. A hauler killed with a keg on his back still blows up. Saves, replays and online games keep the kegs.",
+	]},
+	{"v": "0.15.18", "items": [
+		"THE NEW BROOD (EXPERIMENT), from the designer's screenshot: a rooted creature's picture now sits on its footprint like a building on its tiles: the bottom of the Brood Mother's nest (at every growth stage), the Rootmaw, the Mound Turtle's mud and the Tyrannosaur's nest touch the bottom edge of their green rectangle, sliding down smoothly as they root (no jump), and the selection rectangle and the pointer's corners are drawn under the creature, not across it. The eggs she lays in her nest and the Tyrannosaur's nest eggs moved with the pictures, and the FATHER RANGE label sits at the bottom of its ring, off her body.",
+	]},
 	{"v": "0.15.17", "items": [
 		"THE NEW BROOD (EXPERIMENT): a father fertilises ALL the warrior eggs in his nest at once, not one at a time: a queue of 10 Raptor eggs is fathered together and hatches together. The same for every father.",
 	]},

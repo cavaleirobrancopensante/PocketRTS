@@ -9,9 +9,10 @@ extends RefCounted
 ## Icons: assets/ui/stats/<name>.png, the owner's ChatGPT sheet cut by tools/import_stat_icons.py; the shapes drawn in
 ## draw_icon are only a fallback for a missing file.
 
-## The icons, in the order of the owner's sheet (art/redraws/stat_icons_chatgpt.png).
+## The icons, in the order of the owner's sheet (art/redraws/stat_icons_chatgpt.png), then his second sheet's
+## (art/redraws/stat_icons_light_dps_chatgpt.png: bonus vs light, damage a second).
 const ICONS := ["melee", "ranged", "area", "range", "attack_speed", "armour", "health", "speed", "sight",
-	"vs_armoured", "vs_buildings", "hits_air", "supply", "no_attack"]
+	"vs_armoured", "vs_buildings", "hits_air", "supply", "no_attack", "vs_light", "dps"]
 const DIR := "res://assets/ui/stats/"
 ## The row's height on the card (the selection panel is this much taller than it was: Hud._layout).
 const ROW_H := 22.0
@@ -221,7 +222,7 @@ static func build(st: Dictionary) -> Dictionary:
 			chips.append({"icon": "attack_speed", "text": "%.1fs" % cycle, "title": "Attack speed",
 				"stats": Loc.t("One attack every %.1f s") % cycle + ("  ·  " + Loc.t("trained: %.1f s") % bcycle if absf(cycle - bcycle) > 0.01 else ""),
 				"body": cbody, "col": _col(bcycle, cycle)})
-			chips.append({"icon": "", "text": Loc.t("DPS %s") % _num(dps), "title": "Damage a second",
+			chips.append({"icon": "dps", "text": _num(dps), "title": "Damage a second",
 				"stats": Loc.t("%.1f damage a second") % dps,
 				"body": Loc.t("Damage a hit / time between attacks, on one target with no armour (armour takes its value off every hit).") \
 					+ ("\n" + Loc.t("Every enemy in its blow takes this.") if typ == "area" else "")})
@@ -348,7 +349,7 @@ static func _bonuses(kind: String, d: Dictionary) -> Array:
 	if kind == Defs.PENDULUM:
 		light = float(Defs.PENDULUM_SWING["vs_light"])
 	if light > 1.0:
-		out.append({"icon": "vs_armoured", "text": Loc.t("x%s light") % _num(light), "title": "Bonus vs light",
+		out.append({"icon": "vs_light", "text": "x%s" % _num(light), "title": "Bonus vs light",
 			"stats": Loc.t("x%s damage against light units") % _num(light), "body": ""})
 	if float(d.get("vs_air", 1.0)) > 1.0:
 		out.append({"icon": "hits_air", "text": "x%s" % _num(float(d["vs_air"])), "title": "Bonus vs flyers",
