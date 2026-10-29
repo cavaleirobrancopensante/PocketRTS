@@ -484,3 +484,10 @@ Notes. The ChatGPT north and north-east sword attacks swing down to his right (a
 ## The stun mark (code, 0.15.24; scripts/stun_mark.gd, docs/stun_mark.md)
 
 The stars circling over a stunned unit's head are drawn in code: one 15 px five-pointed star (drawn 8.5 to 13 px wide, by the unit's size) (white centre to warm yellow, a dark brown outline so it reads on any ground; StunMark.star_image), 3 stars over a small unit and 4 over a bigger one, on an ellipse just over its health bar, the ones behind its head smaller and dimmer. For ChatGPT art later: put one square star, or a strip of square frames side by side (it steps through them at 10 a second), at assets/ui/stun_stars.png and the game uses it instead (StunMark._load_tex), no code change. Pictures: docs/shots/stun_mark/.
+
+## Young and mature (code and stand-ins, 0.17.0; docs/brood_new.md "Young and mature")
+
+- THE MOULT (code): a young Brood unit maturing is drawn still, its skin shimmering pale green-gold (sprite modulate), with a glowing slime shell round it that swells, rings rising and cracks at the end (BroodMature.look, BroodMature.draw). To redraw: a moult/cocoon strip per young kind (a Raptor, a Spitter).
+- THE VENOM CHALLENGER (stand-in): the Venom Sire's walk, spit and death at 80% until venom_challenger_<d>_chatgpt.png come; its portrait a crop of the owner's concept.
+- THE TYRANT CHALLENGER: the owner's sheets (young_tyrant_<d>_chatgpt.png); weak SE run legs and a weak N sheet, used as drawn; its portrait a crop of the concept.
+- THE BROOD MOTHER AT STAGES 2 AND 3: the owner's south-east sheets; her S, E, NE and N walks and swipes are her stage-1 frames scaled by the stage until those views are drawn.

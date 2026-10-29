@@ -4,6 +4,12 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.17.0", "items": [
+		"THE NEW BROOD (EXPERIMENT): YOUNG AND MATURE. The Brood Mother lays only the young; from her stage 2 a young warrior MATURES into a CHALLENGER, a young Sire: MATURE on its card (on a group, each as far as the food allows). It pays the Challenger's price less its own share of its egg, MOULTS 9 s where it stands (it cannot move or fight; a shimmer for now), then it is the Challenger, its veterancy and wounds kept. A Raptor grows into a TYRANT CHALLENGER (a medium all-round biter between the Raptor and the Brute: 130 health, armour 1, 15 a bite; 75 food and 10 spoils to mature). A Spitter grows into a VENOM CHALLENGER (a heavier glob a little farther, 180, that splashes a little and strips armour, flyers too: 220 health, armour 1, slower; 105 food and 17 spoils). The computer matures its young when food piles up.",
+		"THE TIERS: the Spitter is now the Venom Sire's young, laid from the start (stage 1); the Challengers come at stage 2; the Brute and the Mist Toad stay at stage 3.",
+		"THE BROOD MOTHER'S STAGES: she has her own pictures at stage 2 and stage 3 (walking, her swipe, her death, rooting, her nest, laying), bigger and more terrible at each stage. The other walking views borrow her stage-1 frames for now.",
+		"FIX: a unit on ATTACK-MOVE whose way ends at an enemy wall or gate short of its goal now breaks the piece in the way, instead of sometimes stopping there.",
+	]},
 	{"v": "0.16.3", "items": [
 		"THE MIST TOAD'S TONGUE no longer pulls a Field Cannon or a Mortar: it only staggers them, and every stagger now lasts 2.5 s (was 1 s; the Brood Mother and the Sires too). The Crown keeps its guns, but must kill the marked Toad by hand.",
 	]},

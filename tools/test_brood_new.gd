@@ -28,7 +28,7 @@ extends SceneTree
 ##     drop eased over the rooting frames), the father's nest point and the ghost's picture moved with the art
 ##  18. THE THREE FATHERS (the owner, 2026-10-29 11:10): the lines (Tyrannosaur: Raptor, Brute; Dilophosaurus:
 ##     Spitter, Mist Toad; Pterodactyl: Skywing; no Bloater), THE TIERS (the owner, 12:20: the Tyrant and Venom Sires
-##     from the start, the Storm Sire at her stage 2; Raptors at stage 1, Spitters 2, Brutes, Mist Toads, Skywings 3;
+##     from the start, the Storm Sire at her stage 2; Raptors and Spitters (since 0.17.0) at stage 1, Brutes, Mist Toads, Skywings 3;
 ##     the reasons name the stage), each father
 ##     made from a grub (a cocoon that opens rooted beside her), one of each (the morphing grub counts), her card's
 ##     refusals name the right father, each line's eggs go to its own father's nest and are fertilised all at once
