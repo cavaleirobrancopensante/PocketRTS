@@ -26,3 +26,11 @@ Note: Raptors hatch 3 per egg today (75 food); with the rule they become 2 per e
 3. DEEP ROOTS: rooted creatures +1 armour more while rooted. 100 + 30, 45 s. Stage 2.
 
 Brakes (design principles 2): two levels only; research blocks that creature's eggs while it runs; a Sire's research is lost with him only if unfinished (finished research stays).
+
+## Owner's feedback (2026-10-29 18:40) and Claude's second draft
+Owner: learn from StarCraft 2 (movement speed and attack range upgrades). Venom: speed and range. Tyrant: speed and POUNCE for both Raptors and Challengers: a Raptor's pounce stuns ONE LIGHT unit for under a second; a Challenger's knocks down an AREA (a few light units, or even one medium or heavy) for a few moments. Mother: no "+1" upgrades; maybe faster root/uproot, maybe regeneration in the swamp. Storm: speed is good; no flat damage.
+Second draft:
+- Tyrant Sire: BIGGER CLUTCH (Raptors 3 per egg); PACK HUNT (Raptors and Challengers faster); POUNCE (Raptors: one light unit, ~0.6 s; Challengers: a small area, light units ~1 s, one medium/heavy ~0.5 s; telegraphed crouch); BONE BREAKER (Brute) kept as a maybe.
+- Venom Sire: BIGGER CLUTCH (Spitters 3 per egg); SLITHER (Spitters and Challengers faster); LONG SPIT (+range); LONG TONGUE (Toad) as a maybe.
+- Storm Sire: BIGGER CLUTCH (Hatchlings 3 per egg); UPDRAFT (fliers faster); in place of flat damage, one of: SNATCH (a Storm Challenger grabs a light ground unit, lifts it and drops it a short way off: melee, telegraphed) or HARRY (Hatchling bites slow the target briefly).
+- Mother: QUICK ROOTS (root and uproot much faster); SWAMP MENDING (creatures heal slowly on swamp); a third to choose.
