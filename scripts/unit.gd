@@ -53,8 +53,8 @@ var path_goal := Vector2.INF
 var path_pending := false
 var stuck_t := 0.0
 var squeeze_t := 0.0            # > 0: walking out of a sealed pocket through a building's edge (last resort)
-var nb_pass := 0.0              # > 0: a new-Brood creature walking out through its own side's rooted creatures (BroodRoot.pass_move)
-var _nb_top := -9999.0          # the new Brood: where its bar sits over its drawn body (Unit._draw)
+var nb_pass := 0.0              # > 0: a Brood creature walking out through its own side's rooted creatures (BroodRoot.pass_move)
+var _nb_top := -9999.0          # the Brood: where its bar sits over its drawn body (Unit._draw)
 var wall_flee_t := 0.0          # (computer) pulled back from a wall that shooters behind it cover
 var siege_t := 0.0              # (computer) its army is breaking in at a wall: the AI's siege gives the orders
 var _wall_chk := 0.0
@@ -241,7 +241,7 @@ var last_tip := Vector2.ZERO    # Springer: where its last screw left from (the 
 var arm := 0                    # Springer: the launcher of the shot under way (0 its right, 1 its left: Springer.ARMS, in turn); Pendulum: the arm of the blow under way (the same)
 var _springer_t := 0.0              # Springer (the computer's): when it next thinks of jumping away
 var owl_t := -1.0               # Swift: seconds into turning into a Ticking Owl (-1: not; scripts/cw_air.gd)
-var moult_t := -1.0             # the new Brood's young unit: seconds into its MATURE moult (-1: not; scripts/brood_mature.gd)
+var moult_t := -1.0             # the Brood's young unit: seconds into its MATURE moult (-1: not; scripts/brood_mature.gd)
 var bombs := 0                  # Ticking Owl: bombs let go (tests)
 var last_bomb: OwlBomb = null   # Ticking Owl: its last bomb (tests, screenshots)
 var _owl_bomb := false          # Ticking Owl: this attack is a bomb on a building (else the talon swoop)
@@ -1022,10 +1022,10 @@ var _k_musket := false           # foot_musket()
 var _k_pistol := false           # has_pistol()
 var _k_ride := false             # one of the kinds that ride by (Defs.RIDE_BY "kinds")
 var _k_fac := ""                 # (d["faction"]: the kind's faction)
-var _k_nb := false               # a creature of the NEW BROOD (scripts/brood_new.gd)
+var _k_nb := false               # one of the Brood's own kinds (BroodNew.KINDS: the Mother, the rooters, eggs, food piles)
 var _k_still := false            # (its egg or a food pile: stands where it is, BroodNew.still_tick)
 var _k_shell := false            # (a Mound Turtle: rooted, its own side climbs over it: Game.separation)
-## The new Brood's own state (scripts/brood_new.gd: the Mother's eggs, a Rootmaw's food and ground, an egg's kind and
+## The Brood's own state (scripts/brood_new.gd: the Mother's eggs, a Rootmaw's food and ground, an egg's kind and
 ## incubation, the father's breath); saved and streamed as it is.
 var nb := {}
 var nb_mass := 1.0               # (Game.separation: how hard it is to shove; rooted and still things are not shoved)
@@ -1071,7 +1071,7 @@ func can_hit(e: Entity) -> bool:
 	if _d_medic or _d_noatk or e.untouchable():
 		return false
 	if _k_nb and tesla_mode != "packed" and BroodNew.ROOTERS.has(kind):
-		return false            # (the new Brood: no rooted creature attacks, rooted is a building; to fight it uproots)
+		return false            # (the Brood: no rooted creature attacks, rooted is a building; to fight it uproots)
 	if kind == "skywing" and sky != "air" and sky != "ground":
 		return false            # a Skywing landing or taking off
 	if owl_t >= 0.0 or moult_t >= 0.0:
@@ -1794,7 +1794,7 @@ func _ready() -> void:
 
 func rect() -> Rect2:
 	if _k_nb and nb.has("fpx"):
-		return BroodRoot.rect_of(self)      # (a rooted new-Brood creature: its footprint, as a building's)
+		return BroodRoot.rect_of(self)      # (a rooted Brood creature: its footprint, as a building's)
 	return Rect2(global_position - Vector2(radius, radius), Vector2(radius, radius) * 2.0)
 
 
@@ -1902,7 +1902,7 @@ func cmd_deploy() -> void:
 		return
 	cmd_stop()
 	if _k_nb:
-		var nwhy := BroodNew.on_root(game, self)     # (the new Brood: facing south-east, a Rootmaw's ground)
+		var nwhy := BroodNew.on_root(game, self)     # (the Brood: facing south-east, a Rootmaw's ground)
 		if nwhy != "":
 			game.tell(team, nwhy)
 			return
@@ -1912,26 +1912,26 @@ func cmd_deploy() -> void:
 		Sfx.play("combat/tesla_deploy", position)
 
 
-## THE NEW BROOD: the Brood Mother lays an egg for `k` (scripts/brood_new.gd); "" or why not.
+## THE BROOD: the Brood Mother lays an egg for `k` (scripts/brood_new.gd); "" or why not.
 func cmd_lay(k: String) -> String:
 	if game.net_forward(self, "cmd_lay", [k]): return ""
 	return BroodNew.lay(game, self, k)
 
 
-## THE NEW BROOD: the Brood Mother grows to her next stage (scripts/brood_new.gd); "" or why not.
+## THE BROOD: the Brood Mother grows to her next stage (scripts/brood_new.gd); "" or why not.
 func cmd_grow() -> String:
 	if game.net_forward(self, "cmd_grow", []): return ""
 	return BroodNew.grow(game, self)
 
 
-## THE NEW BROOD: STOP GROWING (the Mother's growth, as a hall's STOP UPGRADE: all of it paid back).
+## THE BROOD: STOP GROWING (the Mother's growth, as a hall's STOP UPGRADE: all of it paid back).
 func cmd_grow_stop() -> void:
 	if game.net_forward(self, "cmd_grow_stop", []): return
 	if kind == BroodNew.QUEEN:
 		BroodNew._grow_cancel(game, self, false)
 
 
-## THE NEW BROOD: UPROOT (spill: a Rootmaw spills its food) or HAUL (it keeps it).
+## THE BROOD: UPROOT (spill: a Rootmaw spills its food) or HAUL (it keeps it).
 func cmd_uproot(spill: bool) -> void:
 	if game.net_forward(self, "cmd_uproot", [spill]): return
 	if tesla_mode != "deployed" or nb.has("coc"):
@@ -1939,7 +1939,7 @@ func cmd_uproot(spill: bool) -> void:
 	BroodNew.uproot(self, spill)
 
 
-## THE NEW BROOD: a rooted creature's (or an egg's) RALLY POINT (scripts/brood_root.gd); Vector2.INF clears it.
+## THE BROOD: a rooted creature's (or an egg's) RALLY POINT (scripts/brood_root.gd); Vector2.INF clears it.
 func cmd_nb_rally(p: Vector2) -> void:
 	if game.net_forward(self, "cmd_nb_rally", [p]): return
 	if BroodRoot.fixed(self):
@@ -2552,7 +2552,7 @@ func cmd_gather(site: Entity) -> void:
 	if aboard:
 		return      # riding in a balloon
 	if kind == "grub" and BroodNew.is_source(site) and not site.dead:
-		# the new Brood: a Rootmaw (its own side's, rooted) or a food pile
+		# the Brood: a Rootmaw (its own side's, rooted) or a food pile
 		var src := site as Unit
 		if (src.kind == BroodNew.MAW and (src.team != team or not BroodNew.rooted(src))) \
 				or (BroodNew.crew(game, src) >= BroodNew.crew_max(game, src) and src != home_mine):
@@ -2772,12 +2772,12 @@ func _start(o: Dictionary) -> bool:
 		"hold":
 			cmd_hold()
 		"nb_root":
-			# the new Brood: walk to the spot and root there (BroodRoot); only a creature that is up
+			# the Brood: walk to the spot and root there (BroodRoot); only a creature that is up
 			if not BroodNew.ROOTERS.has(kind) or tesla_mode != "packed":
 				return false
 			BroodRoot.start_root(self, o["p"])
 		"nb_morph":
-			# the new Brood: a grub walks to the spot, pays and turns into the creature there (BroodRoot)
+			# the Brood: a grub walks to the spot, pays and turns into the creature there (BroodRoot)
 			if kind != "grub":
 				return false
 			BroodRoot.start_morph(self, String(o["k"]), o["p"])
@@ -3371,7 +3371,7 @@ func _tick_unit(delta: float) -> void:
 	if dead:
 		return
 	if _k_still:
-		# the new Brood's eggs and food piles: no orders, no walking (scripts/brood_new.gd)
+		# the Brood's eggs and food piles: no orders, no walking (scripts/brood_new.gd)
 		BroodNew.still_tick(game, self, delta)
 		if dead or not is_inside_tree():
 			return
@@ -3433,7 +3433,7 @@ func _tick_unit(delta: float) -> void:
 		if hp < max_hp:
 			hp = minf(max_hp, hp + 2.0 * delta)
 	if _k_nb:
-		BroodNew.tick(game, self, delta)      # (the new Brood: eggs, food, fertilising, HAUL's pace)
+		BroodNew.tick(game, self, delta)      # (the Brood: eggs, food, fertilising, HAUL's pace)
 	if not game.zones.is_empty() or sight != int(d["sight"]):
 		# a fog bank: inside it you see only a couple of tiles
 		sight = int(Defs.FOG["sight"]) if game.in_fog(position) else int(d["sight"])
@@ -3634,7 +3634,7 @@ func _tick_unit(delta: float) -> void:
 				want = _engage(target, delta, true)
 				if position.distance_to(leash_from) > 320.0 and not (_k_nb and tesla_mode != "packed"):
 					target = null
-					cmd_move(leash_from)       # (not a rooted new-Brood creature: it can't chase, and the move would uproot it)
+					cmd_move(leash_from)       # (not a rooted Brood creature: it can't chase, and the move would uproot it)
 		"hold":
 			if scan_t <= 0.0:
 				scan_t = 0.3
@@ -3840,7 +3840,7 @@ func _tesla(want: Vector2, delta: float) -> Vector2:
 			return Vector2.ZERO
 		"deployed":
 			if _k_nb:
-				# a rooted new-Brood creature is a building: no order walks it off (only UPROOT does, the owner 19:19)
+				# a rooted Brood creature is a building: no order walks it off (only UPROOT does, the owner 19:19)
 				if order in ["move", "amove", "patrol", "attack"]:
 					cmd_stop()
 				return Vector2.ZERO
@@ -4111,7 +4111,7 @@ func _arrived() -> bool:
 
 func _move(want: Vector2, delta: float) -> void:
 	if work == "feeding" or (_k_nb and tesla_mode != "packed"):
-		velocity = Vector2.ZERO      # (a new-Brood creature rooting or rooted stands in its own footprint: it never slides)
+		velocity = Vector2.ZERO      # (a Brood creature rooting or rooted stands in its own footprint: it never slides)
 		return
 	# neighbours only nudge each other: a unit on the move works it out every other tick, one
 	# standing still every third
@@ -4124,7 +4124,7 @@ func _move(want: Vector2, delta: float) -> void:
 	if want == Vector2.ZERO:
 		v = push
 	if stun_t > 0.0 or braced or tongue_stage != "" or (_k_nb and tesla_mode != "packed"):
-		v = Vector2.ZERO           # (a Mist Toad aiming its tongue squats: friends flow round it; a rooted new-Brood creature is dug in: her own eggs don't shove the Mother)
+		v = Vector2.ZERO           # (a Mist Toad aiming its tongue squats: friends flow round it; a rooted Brood creature is dug in: her own eggs don't shove the Mother)
 	velocity = velocity.lerp(v, clampf(delta * 12.0, 0.0, 1.0))
 	if knock.length_squared() > 25.0 and not (_k_nb and tesla_mode != "packed"):
 		position = game.resolve_terrain(position + knock * delta, position, radius, team)
@@ -4183,7 +4183,7 @@ func _move(want: Vector2, delta: float) -> void:
 	last_pos = position
 
 
-## Stuck against a rooted new-Brood creature (the Brood Mother, a Rootmaw, an enemy's Mound Turtle) or the Tyrannosaur
+## Stuck against a rooted Brood creature (the Brood Mother, a Rootmaw, an enemy's Mound Turtle) or the Tyrannosaur
 ## standing at her eggs, where her hatchlings come out: paths go straight
 ## through it, as it is not in the path grid, and a repath gave the same line, so a walker stood pressed to her side
 ## for minutes. A waypoint round its flank, on the goal's side (the other side the next time).
@@ -4515,7 +4515,7 @@ func _engage(e: Entity, delta: float, may_move: bool) -> Vector2:
 	var rng := _range()
 	var min_r := 0.0 if mode == "canister" else float(d.get("min_range", 0.0))
 	if deploys() and not _k_nb and tesla_mode != "deployed":
-		# (a gun sets up to shoot; the new Brood's rooters fight uprooted: rooted they don't attack at all)
+		# (a gun sets up to shoot; the Brood's rooters fight uprooted: rooted they don't attack at all)
 		if tesla_mode == "packed" and dist <= rng and dist >= min_r and game.target_seen(team, e, position):
 			tesla_mode = "deploying"
 			tesla_t = switch_time()
@@ -4886,9 +4886,9 @@ func _gather(delta: float) -> Vector2:
 	if not is_instance_valid(home_mine):
 		home_mine = null          # (its Rootmaw or food pile is gone and freed; a freed one even compares equal to null)
 		if _k_worker_nb():
-			return BroodNew.grub_tick(game, self, delta)      # (the new Brood: it finds other food)
+			return BroodNew.grub_tick(game, self, delta)      # (the Brood: it finds other food)
 	if home_mine is Unit:
-		return BroodNew.grub_tick(game, self, delta)      # (the new Brood: a Rootmaw or a food pile)
+		return BroodNew.grub_tick(game, self, delta)      # (the Brood: a Rootmaw or a food pile)
 	var site := home_mine as Building
 	if site == null or not is_instance_valid(site) or site.dead or not site.built:
 		_leave_mine()
@@ -7423,7 +7423,7 @@ func _draw_haul(ci: CanvasItem) -> void:
 
 
 ## Where its health bar goes, over its drawn body (unit space; up is negative): over the picture as drawn now, the
-## Swift's bird, a raised Tesla coil, a rooted new-Brood creature. `lifted`: how high a Springer is in the air. The
+## Swift's bird, a raised Tesla coil, a rooted Brood creature. `lifted`: how high a Springer is in the air. The
 ## stun mark (StunMark) sits over it.
 func bar_top(lifted := 0.0) -> float:
 	var top := -float(ArtData.UNITS[art]["anchor"].y) * float(d.get("art_scale", 1.0)) - 4.0 - lifted
@@ -7438,7 +7438,7 @@ func bar_top(lifted := 0.0) -> float:
 	elif kind == "cannon":
 		top = -64.0 if not ArtData.UNITS["cannon"]["frames"].has("walk_e") else -float(ArtData.UNITS[kind]["anchor"].y) * 0.75
 	if _k_nb and BroodNew.ROOTERS.has(kind):
-		# (the new Brood's rooting creatures: their rooted pictures and the Mother's growth stages are not their walk sheet's
+		# (the Brood's rooting creatures: their rooted pictures and the Mother's growth stages are not their walk sheet's
 		# size: the bar and the labels go just over the body as drawn now, BroodRoot.body_rect; steady within 14 px)
 		var br := BroodRoot.body_rect(self)
 		if br.size.x > 2.0:
@@ -7477,7 +7477,7 @@ func _draw_unit() -> void:
 	if kind == "mist_toad" and sprite:
 		ring_at = sprite.position      # (the hop's shift: the shadow stays under the drawn toad, scripts/toad_hop.gd)
 	if not (_k_nb and nb.has("fpx")):
-		# (a rooted new-Brood creature is drawn in the building layer, under this: no shadow on its body; selected, its
+		# (a rooted Brood creature is drawn in the building layer, under this: no shadow on its body; selected, its
 		# footprint is outlined: BroodNew.draw)
 		draw_set_transform(ring_at, 0.0, Vector2(1.0, 0.45))
 		draw_circle(Vector2.ZERO, (radius + 2.0) * shade, Color(0, 0, 0, 0.25 + 0.3 * clampf(lifted / 30.0, 0.0, 1.0)))

@@ -443,7 +443,7 @@ static func _specials(kind: String, d: Dictionary, st: Dictionary) -> Array:
 			+ ((" " + Loc.t("Half the blow splashes on enemies within %.1f tiles of its target.") % (float(d.get("splash", 0)) / Defs.TILE)) if float(d.get("splash", 0)) > 0.0 else ""))
 	if BroodMature.mature_of(kind) != "":
 		var mk := BroodMature.mature_of(kind)
-		add.call("MATURE", Loc.t("In the new Brood it grows into a %s (the Brood Mother at stage %d).") % [Loc.t(String(Defs.UNITS[mk]["name"])), BroodNew.unit_stage(mk) + 1])
+		add.call("MATURE", Loc.t("It grows into a %s (MATURE: the Brood Mother at stage %d).") % [Loc.t(String(Defs.UNITS[mk]["name"])), BroodNew.unit_stage(mk) + 1])
 	if BroodNew.ROOTERS.has(kind):
 		add.call("ROOT", Loc.t("Rooted: +%d armour, it takes %d%% of each hit, and it cannot attack.") % [int(Defs.NB["root_armor"]), int(round(float(Defs.NB["root_taken"]) * 100.0))])
 	if String(d.get("faction", "")) == "clockwork" and not Defs.is_worker(kind) and attack_type(kind, d) != "none":

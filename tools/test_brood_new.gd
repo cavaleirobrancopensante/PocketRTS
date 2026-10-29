@@ -785,7 +785,7 @@ func _fixes_2(q: Unit, p: Dictionary) -> void:
 	g.hud.page = ""
 	# (6) the grub's own text: no old Brood building in it
 	card_labels()
-	var texts := {"its card": String(gr0.d["about"]), "its tooltip": Defs.tip("grub", true), "the BUILD tip": String(g.hud._tip_for.get("BUILD", ["", ""])[1]),
+	var texts := {"its card": String(gr0.d["about"]), "its tooltip": Defs.tip("grub"), "the BUILD tip": String(g.hud._tip_for.get("BUILD", ["", ""])[1]),
 		"HARVEST": String(g.hud._tip_for.get("HARVEST", ["", ""])[1]), "the food": String(g.hud._res_tip(0).get("body", "")),
 		"the essence": String(g.hud._res_tip(1).get("body", "")), "the supply": String(g.hud._res_tip(2).get("body", ""))}
 	var bad := ""

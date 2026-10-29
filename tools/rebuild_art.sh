@@ -114,7 +114,6 @@ python3 tools/import_armoury_anims.py    # the Armoury's nine research experimen
                                          # strips, assets/buildings/armoury_anim_<research>.png) from
                                          # art/crown/armoury_anim/ (after import_buildings_v2: same roof patch)
 python3 tools/recolour_crown_buildings.py  # Crown buildings: red cloth in the player's colour, bricks / fire off the key reds, slate roofs (and the portraits') to terracotta (after every Crown building pass)
-python3 tools/import_queen.py           # the Brood Queen at the capital Burrow (art/brood/queen.png: still, backdrop keyed out)
 python3 tools/import_mound_chatgpt.py   # the Clutch Mound with the vent chimneys (art/redraws/clutch_mound_vent_chatgpt.png; built from the drawing, other states derived in code; after import_art, which writes the plain mound)
 python3 tools/import_winder_v2.py       # the new Winder (art/redraws/winder_*: idle, walk, wind (= repair), attack, death): its strips,
                                          # art_data entry and card portrait (after import_art, which no longer writes him, and
@@ -153,5 +152,7 @@ python3 tools/import_ballista.py         # the Spring Ballista (art/redraws/ball
 python3 tools/import_great_winder.py     # the Great Winder (tools/great_winder_guide/anim.py's layers, recoloured at sheet size):
                                          # walk / wind / sweep strips, idle and death made in code, MEND and SWEEP buttons
                                          # (after round 13: the same bronze frame; its portrait is round 13's)
+python3 tools/prune_old_brood_art.py      # LAST: the old Brood (gone in 0.18.0) out of the game again: what the older importers
+                                         # above still write for it (docs/brood_replace.md)
 echo "Now run: godot --headless --import"
 python3 tools/make_calm_grass.py

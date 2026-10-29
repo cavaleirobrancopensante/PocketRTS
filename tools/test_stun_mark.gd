@@ -17,7 +17,6 @@ func _initialize() -> void:
 
 func make(facs: Array, nbs: Array = []) -> Game:
 	var g := Game.new()
-	g.nb_teams = nbs
 	g.map_id = "ashford_crossing"
 	g.demo = true
 	g.factions = facs

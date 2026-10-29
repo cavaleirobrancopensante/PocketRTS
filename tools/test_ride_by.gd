@@ -259,7 +259,7 @@ func _fleeing() -> void:
 
 func _building() -> void:
 	await _clear_units()
-	var b: Building = g._add_building("clutch_mound", 1, origin + Vector2i(12, 8), true)
+	var b: Building = g._add_building("cottage", 1, origin + Vector2i(12, 8), true)
 	b.max_hp = 50000.0
 	b.hp = 50000.0
 	var c := rider(at(120, 330))

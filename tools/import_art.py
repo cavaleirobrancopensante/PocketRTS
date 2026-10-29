@@ -68,7 +68,7 @@ BROOD_BUILDINGS = ["hive", "clutch_mound", "warren", "gorge_pit"]
 # The Brood hall's upgraded levels (Defs.HALL_LEVELS: the Warren and the Broodmound), each a
 # sheet of 4 states left to right (built, construction, damaged, destroyed) like hive.png,
 # on black or real alpha. Skipped while the sheet isn't there (the game then draws the
-# Burrow bigger). tools/import_brood_halls.py imports just these two.
+# Burrow bigger). (The old Brood is gone since 0.18.0: tools/prune_old_brood_art.py takes these out again.)
 BROOD_HALLS = ["warren_hall", "broodmound"]
 
 # Brood sheets: row 0 = idle facing each direction; every other row is drawn

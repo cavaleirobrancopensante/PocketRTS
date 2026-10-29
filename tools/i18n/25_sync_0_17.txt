@@ -1,0 +1,167 @@
+# Strings added to the tables directly in 0.15-0.17 (tools/lang_add_*.py one-offs), brought back into the txt
+# sources in 0.18.0 so tools/i18n_build.py rebuilds the same tables.
+
+> Tyrant Sire
+pt Sire Tirano
+es Señor Tirano
+
+> A FATHER, open from the start: rooted on his nest beside the Brood Mother, he breathes on the eggs of his line (Raptors; Brutes from her stage 3) to fertilise them; an egg no father reaches in time hatches as a grub. Only one at a time. A terrible biter, but away from her no Raptors or Brutes are fathered.
+pt Um PAI, aberto desde o início: enraizado no seu ninho ao lado da Mãe da Ninhada, ele sopra sobre os ovos da sua linhagem (Raptores; Brutamontes a partir do estágio 3 dela) para fertilizá-los; um ovo que nenhum pai alcança a tempo choca como larva. Só um por vez. Morde terrivelmente, mas longe dela nenhum Raptor ou Brutamontes é gerado.
+es Un PADRE, abierto desde el principio: arraigado en su nido junto a la Madre de la Camada, sopla sobre los huevos de su linaje (Raptores; Brutos desde su etapa 3) para fecundarlos; un huevo al que ningún padre llega a tiempo eclosiona como larva. Solo uno a la vez. Muerde terriblemente, pero lejos de ella no se engendra ningún Raptor ni Bruto.
+
+> Pick where it roots (a ghost on the grid, as a building's): it walks there and roots on that spot. Rooted it is a building: armour and a quarter less damage, its footprint blocks the way, it takes no move orders (UPROOT gets it up). A Rootmaw roots only on your swamp, its 5-tile circle clear of another's; a Mound Turtle gives 12 supply and swamp and can close a ramp; a father (the Tyrant Sire, the Venom Sire, the Storm Sire, who lands) nests within %d tiles of the Mother. No rooted creature attacks.
+pt Escolha onde ele enraíza (um fantasma na grade, como o de uma construção): ele vai até lá e enraíza naquele ponto. Enraizado, é uma construção: armadura e um quarto a menos de dano, sua área bloqueia a passagem, não aceita ordens de mover (DESENRAIZAR o levanta). Um Bocarraiz só enraíza no seu pântano, com seu círculo de 5 quadrados livre do de outro; uma Tartaruga-Montículo dá 12 de suprimento e pântano e pode fechar uma rampa; um pai (o Sire Tirano, o Sire do Veneno, o Sire da Tempestade, que pousa) faz o ninho a até %d quadrados da Mãe. Nenhuma criatura enraizada ataca.
+es Elige dónde arraiga (un fantasma en la cuadrícula, como el de un edificio): va allí y arraiga en ese punto. Arraigado es un edificio: armadura y un cuarto menos de daño, su planta cierra el paso, no acepta órdenes de mover (DESARRAIGAR lo levanta). Un Bocarraíz solo arraiga en tu pantano, con su círculo de 5 casillas libre del de otro; una Tortuga Montículo da 12 de suministro y pantano y puede cerrar una rampa; un padre (el Señor Tirano, el Señor del Veneno, el Señor de la Tormenta, que se posa) anida a %d casillas de la Madre como mucho. Ninguna criatura arraigada ataca.
+
+> Where what comes out goes: the Mother's eggs (and their hatchlings), the warriors hatching in a father's nest, an egg's own hatchling. Right-click the ground does the same; it never uproots.
+pt Para onde vai o que sai: os ovos da Mãe (e seus filhotes), os guerreiros que eclodem no ninho de um pai, o filhote de um ovo. Clicar com o botão direito no chão faz o mesmo; nunca desenraiza.
+es Adónde va lo que sale: los huevos de la Madre (y sus crías), los guerreros que eclosionan en el nido de un padre, la cría de un huevo. El clic derecho en el suelo hace lo mismo; nunca desarraiga.
+
+> THE NEW BROOD (an experiment: pick "The Brood (new, experiment)" in the skirmish setup) has no buildings, only creatures. The Brood Mother is its heart: kill her and that side is out. Only she lays eggs, walking or rooted. Grubs carry food to her from the Rootmaws, swamp lizards that root on fresh ground on your swamp and drink it (the farther from her, the more a trip pays). A grub's BUILD (B) turns it into a Rootmaw, a Mound Turtle (supply and swamp; rooted 15 tiles or more from her it makes her lay faster) or a FATHER, each the father of a line of warriors (the Tyrant Sire: Raptors, and Brutes once she reaches stage 3; the Venom Sire: Spitters, and Mist Toads at her stage 3; the Storm Sire, a flyer, from her stage 2: Skywings at stage 3): rooted beside her, each fertilises the eggs of his line in his nest. Rooted creatures are the new Brood's buildings: armour, a footprint on the ground, a rally point, and they do not attack; UPROOT gets one up. GROW her, rooted, for more eggs and faster laying. From her stage 2 a young warrior MATURES into a Challenger, a young Sire (MATURE on its card: a Raptor into a Tyrant Challenger, a Spitter into a Venom Challenger). The fallen (HARVEST) and the creatures offered up (SACRIFICE) go to her as spoils.
+pt A NOVA NINHADA (um experimento: escolha "A Ninhada (nova, experimento)" na preparação da escaramuça) não tem construções, só criaturas. A Mãe da Ninhada é o coração dela: mate-a e aquele lado está fora. Só ela põe ovos, andando ou enraizada. As larvas levam comida para ela dos Bocarraízes, lagartos do pântano que enraízam em chão fresco no seu pântano e o bebem (quanto mais longe dela, mais rende uma viagem). O CONSTRUIR (B) de uma larva a transforma num Bocarraiz, numa Tartaruga-Montículo (suprimento e pântano; enraizada a 15 quadrados ou mais dela, faz ela pôr mais rápido) ou num PAI, cada um o pai de uma linhagem de guerreiros (o Sire Tirano: Raptores, e Brutamontes quando ela chega ao estágio 3; o Sire do Veneno: Cuspidores, e Sapos da Névoa no estágio 3 dela; o Sire da Tempestade, um voador, a partir do estágio 2 dela: Asas-do-Céu no estágio 3): enraizado ao lado dela, cada um fertiliza os ovos da sua linhagem no seu ninho. As criaturas enraizadas são as construções da nova Ninhada: armadura, uma área no chão, um ponto de encontro, e elas não atacam; DESENRAIZAR levanta uma. Faça-a CRESCER, enraizada, para mais ovos e postura mais rápida. A partir do estágio 2 dela, um guerreiro jovem AMADURECE num Desafiante, um Sire jovem (AMADURECER no seu cartão: um Raptor num Desafiante Tirano, um Cuspidor num Desafiante Venenoso). Os caídos (COLHER) e as criaturas oferecidas (SACRIFICAR) vão para ela como espólios.
+es LA NUEVA NIDADA (un experimento: elige "La Nidada (nueva, experimento)" al preparar la escaramuza) no tiene edificios, solo criaturas. La Madre de la Camada es su corazón: mátala y ese bando queda fuera. Solo ella pone huevos, caminando o arraigada. Las larvas le llevan comida de los Bocarraíces, lagartos del pantano que arraigan en suelo fresco de tu pantano y lo beben (cuanto más lejos de ella, más rinde un viaje). El CONSTRUIR (B) de una larva la convierte en un Bocarraíz, una Tortuga Montículo (suministro y pantano; arraigada a 15 casillas o más de ella, la hace poner más rápido) o un PADRE, cada uno el padre de un linaje de guerreros (el Señor Tirano: Raptores, y Brutos cuando ella llega a la etapa 3; el Señor del Veneno: Escupidores, y Sapos de la Niebla en su etapa 3; el Señor de la Tormenta, un volador, desde su etapa 2: Alas del Cielo en la etapa 3): arraigado a su lado, cada uno fecunda los huevos de su linaje en su nido. Las criaturas arraigadas son los edificios de la nueva Nidada: armadura, una planta en el suelo, un punto de reunión, y no atacan; DESARRAIGAR levanta una. Hazla CRECER, arraigada, para más huevos y una puesta más rápida. Desde su etapa 2 un guerrero joven MADURA en un Retador, un Señor joven (MADURAR en su tarjeta: un Raptor en un Retador Tirano, un Escupidor en un Retador Venenoso). Los caídos (RECOGER) y las criaturas ofrecidas (SACRIFICAR) van a ella como botín.
+
+> YELLOW
+pt AMARELO
+es AMARILLO
+
+> HUGE HORNED TANK. CHARGES IN, KNOCKS ENEMIES BACK AND BATTERS DOWN WALLS AND GATES.
+pt ENORME TANQUE COM CHIFRES. AVANÇA, ARREMESSA OS INIMIGOS PARA TRÁS E DERRUBA MURALHAS E PORTÕES.
+es ENORME TANQUE CON CUERNOS. EMBISTE, EMPUJA A LOS ENEMIGOS HACIA ATRÁS Y DERRIBA MUROS Y PUERTAS.
+
+> HUGE HORNED TANK: CHARGES IN, KNOCKS ENEMIES BACK AND BATTERS DOWN WALLS AND GATES.
+pt ENORME TANQUE COM CHIFRES: AVANÇA, ARREMESSA OS INIMIGOS PARA TRÁS E DERRUBA MURALHAS E PORTÕES.
+es ENORME TANQUE CON CUERNOS: EMBISTE, EMPUJA A LOS ENEMIGOS HACIA ATRÁS Y DERRIBA MUROS Y PUERTAS.
+
+> TYRANNOSAUR
+pt TIRANOSSAURO
+es TIRANOSAURIO
+
+> Venom Sire
+pt Sire do Veneno
+es Señor del Veneno
+
+> Storm Sire
+pt Sire da Tempestade
+es Señor de la Tormenta
+
+> Needs the Brood Mother at stage %d.
+pt Precisa da Mãe da Ninhada no estágio %d.
+es Necesita a la Madre de la Camada en la etapa %d.
+
+> Unlocks: %s.
+pt Desbloqueia: %s.
+es Desbloquea: %s.
+
+> (a grub's BUILD)
+pt (o CONSTRUIR de uma larva)
+es (el CONSTRUIR de una larva)
+
+> A FATHER, open from the start: rooted on his nest beside the Brood Mother, he fertilises the eggs of his line (Spitters from the start, Mist Toads from her stage 3). Uprooted he walks and SPITS venom from afar (on flyers too), a strong Spitter of his own. Only one at a time.
+pt Um PAI, aberto desde o início: enraizado no seu ninho ao lado da Mãe da Ninhada, ele fertiliza os ovos da sua linhagem (Cuspidores desde o início, Sapos da Névoa a partir do estágio 3 dela). Desenraizado, ele anda e CUSPE veneno de longe (também em voadores), um Cuspidor forte por si só. Só um por vez.
+es Un PADRE, abierto desde el principio: arraigado en su nido junto a la Madre de la Camada, fecunda los huevos de su linaje (Escupidores desde el principio, Sapos de la Niebla desde su etapa 3). Desarraigado camina y ESCUPE veneno desde lejos (también a los voladores), un Escupidor fuerte por sí mismo. Solo uno a la vez.
+
+> A FLYING FATHER, unlocked when the Brood Mother reaches stage 2. Uprooted he flies and DIVES to bite, on the ground and in the air. ROOT: he lands on a nest beside her and fertilises the eggs of his line (Skywings, from her stage 3); landed he is a ground creature anything can hit. Only one at a time.
+pt Um PAI VOADOR, desbloqueado quando a Mãe da Ninhada chega ao estágio 2. Desenraizado, ele voa e MERGULHA para morder, no chão e no ar. ENRAIZAR: ele pousa num ninho ao lado dela e fertiliza os ovos da sua linhagem (Asas-do-Céu, a partir do estágio 3 dela); pousado, é uma criatura do chão que qualquer um pode atingir. Só um por vez.
+es Un PADRE VOLADOR, desbloqueado cuando la Madre de la Camada llega a la etapa 2. Desarraigado vuela y se LANZA EN PICADO para morder, en tierra y en el aire. ARRAIGAR: se posa en un nido junto a ella y fecunda los huevos de su linaje (Alas del Cielo, desde su etapa 3); posado es una criatura de tierra a la que cualquiera puede golpear. Solo uno a la vez.
+
+> Tyrant Challenger
+pt Desafiante Tirano
+es Retador Tirano
+
+> Venom Challenger
+pt Desafiante Venenoso
+es Retador Venenoso
+
+> MATURE
+pt AMADURECER
+es MADURAR
+
+> Mature
+pt Amadurecer
+es Madurar
+
+> VENOM
+pt VENENO
+es VENENO
+
+> A Raptor grown into a young Tyrant Sire: a medium all-round biter, tougher than a Raptor, lighter and faster than a Brute. Never laid: a Raptor MATURES into it (the Brood Mother at stage 2).
+pt Um Raptor crescido num Sire Tirano jovem: um mordedor médio para tudo, mais resistente que um Raptor, mais leve e rápido que um Brutamontes. Nunca é posto: um Raptor AMADURECE nele (a Mãe da Ninhada no estágio 2).
+es Un Raptor crecido en un Señor Tirano joven: un mordedor mediano para todo, más duro que un Raptor, más ligero y rápido que un Bruto. Nunca se pone: un Raptor MADURA en él (la Madre de la Camada en la etapa 2).
+
+> A Spitter grown into a young Venom Sire: a heavier venom glob than a Spitter's, a little farther, that strips armour and splashes a little round its target; it reaches flyers too. Tougher and slower than a Spitter. Never laid: a Spitter MATURES into it (the Brood Mother at stage 2).
+pt Um Cuspidor crescido num Sire do Veneno jovem: uma bola de veneno mais pesada que a de um Cuspidor, um pouco mais longe, que tira armadura e respinga um pouco em volta do alvo; alcança voadores também. Mais resistente e mais lento que um Cuspidor. Nunca é posto: um Cuspidor AMADURECE nele (a Mãe da Ninhada no estágio 2).
+es Un Escupidor crecido en un Señor del Veneno joven: una bola de veneno más pesada que la de un Escupidor, un poco más lejos, que quita armadura y salpica un poco alrededor del blanco; alcanza también a los voladores. Más duro y más lento que un Escupidor. Nunca se pone: un Escupidor MADURA en él (la Madre de la Camada en la etapa 2).
+
+> A matured Raptor, a young Tyrant Sire: a medium all-round biter between the Raptor and the Brute.
+pt Um Raptor amadurecido, um Sire Tirano jovem: um mordedor médio para tudo, entre o Raptor e o Brutamontes.
+es Un Raptor madurado, un Señor Tirano joven: un mordedor mediano para todo, entre el Raptor y el Bruto.
+
+> A matured Spitter, a young Venom Sire: a heavier glob than a Spitter's, a little farther, with a small splash.
+pt Um Cuspidor amadurecido, um Sire do Veneno jovem: uma bola mais pesada que a de um Cuspidor, um pouco mais longe, com um pequeno respingo.
+es Un Escupidor madurado, un Señor del Veneno joven: una bola más pesada que la de un Escupidor, un poco más lejos, con una pequeña salpicadura.
+
+> Each young unit selected grows into its mature form, one into one, as far as the food allows: it pays the mature form's price less its own share of its egg, moults %d s where it stands (it cannot move or fight), then it is the mature unit, its veterancy and wounds kept. Needs the Brood Mother at the mature form's stage.
+pt Cada unidade jovem selecionada cresce na sua forma madura, uma para uma, até onde a comida der: paga o preço da forma madura menos a sua parte do seu ovo, faz a muda %d s onde está (não pode se mover nem lutar), e então é a unidade madura, com sua veterania e ferimentos mantidos. Precisa da Mãe da Ninhada no estágio da forma madura.
+es Cada unidad joven seleccionada crece en su forma madura, una por una, hasta donde alcance la comida: paga el precio de la forma madura menos su parte de su huevo, muda %d s donde está (no puede moverse ni luchar), y entonces es la unidad madura, con su veteranía y heridas conservadas. Necesita a la Madre de la Camada en la etapa de la forma madura.
+
+> %s into a %s: %s
+pt %s em %s: %s
+es %s en %s: %s
+
+> They are all moulting.
+pt Todos estão em muda.
+es Todos están mudando.
+
+> MOULTING into a %s: %d s left (it cannot move or fight).
+pt EM MUDA para %s: faltam %d s (não pode se mover nem lutar).
+es MUDANDO a %s: faltan %d s (no puede moverse ni luchar).
+
+> Nothing to mature.
+pt Nada para amadurecer.
+es Nada que madurar.
+
+> It has no mature form.
+pt Não tem forma madura.
+es No tiene forma madura.
+
+> It is already moulting.
+pt Já está em muda.
+es Ya está mudando.
+
+> It is held fast.
+pt Está preso.
+es Está atrapado.
+
+> Nothing selected can mature.
+pt Nada do que está selecionado pode amadurecer.
+es Nada de lo seleccionado puede madurar.
+
+> A %s has matured.
+pt Um %s amadureceu.
+es Un %s ha madurado.
+
+> (MATURE a %s)
+pt (AMADURECER um %s)
+es (MADURAR un %s)
+
+> Its venom strips 2 armour for %.1f s; ground units only.
+pt Seu veneno tira 2 de armadura por %.1f s; só unidades de terra.
+es Su veneno quita 2 de armadura durante %.1f s; solo unidades de tierra.
+
+> Its venom strips 2 armour for %.1f s.
+pt Seu veneno tira 2 de armadura por %.1f s.
+es Su veneno quita 2 de armadura durante %.1f s.
+
+> Half the blow splashes on enemies within %.1f tiles of its target.
+pt Metade do golpe respinga nos inimigos a até %.1f quadrados do alvo.
+es La mitad del golpe salpica a los enemigos a %.1f casillas o menos del blanco.
+
+> In the new Brood it grows into a %s (the Brood Mother at stage %d).
+pt Na nova Ninhada cresce num %s (a Mãe da Ninhada no estágio %d).
+es En la nueva Camada crece en un %s (la Madre de la Camada en la etapa %d).
+
+> Storm Challenger
+pt Desafiante da Tempestade
+es Retador de la Tormenta
+

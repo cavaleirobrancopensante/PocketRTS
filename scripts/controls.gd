@@ -143,7 +143,7 @@ func begin_line() -> void:
 	game.notify("LINE: tap the start, then the end of the run.", true)
 
 
-## THE NEW BROOD: ROOT works like BUILD (scripts/brood_root.gd). mode "nb_root": the ghost of `kind`'s rooted footprint
+## THE BROOD: ROOT works like BUILD (scripts/brood_root.gd). mode "nb_root": the ghost of `kind`'s rooted footprint
 ## follows the pointer; PLACE (or a second tap on the same spot) sends a creature there. morph: a grub turns into it
 ## there (the grub card), else a selected creature that is up walks there and roots (its ROOT button).
 var nb_morph := false
@@ -453,7 +453,7 @@ func _left_pc(e: InputEventMouseButton) -> void:
 					line_tool.press(e.position, e.shift_pressed)
 				return
 			"nb_root":
-				# (the new Brood's ROOT ghost: Shift keeps placing, for the next grub or creature)
+				# (the Brood's ROOT ghost: Shift keeps placing, for the next grub or creature)
 				_move_ghost(e.position)
 				if hud:
 					hud.confirm_nb_root(e.shift_pressed)
@@ -568,7 +568,7 @@ func _key(e: InputEventKey) -> void:
 				game.set_selection([])
 		KEY_A:
 			if units.any(func(u: Unit) -> bool: return not BroodRoot.fixed(u)):
-				mode = "attack"      # (a rooted new-Brood creature is a building: no move, attack, stop or hold)
+				mode = "attack"      # (a rooted Brood creature is a building: no move, attack, stop or hold)
 		KEY_M:
 			if units.any(func(u: Unit) -> bool: return not BroodRoot.fixed(u)):
 				mode = "move"
@@ -682,7 +682,7 @@ func _tap(screen: Vector2, is_mouse: bool, shift := false) -> void:
 				hud.confirm_place()
 			return
 		"nb_root":
-			# (the new Brood's ROOT ghost: a click places it; a tap moves it, a second tap on the same spot places it)
+			# (the Brood's ROOT ghost: a click places it; a tap moves it, a second tap on the same spot places it)
 			var before2 := ghost_cell
 			_move_ghost(screen)
 			if (is_mouse and Settings.pc()) or before2 == ghost_cell:

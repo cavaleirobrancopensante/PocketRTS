@@ -384,7 +384,7 @@ static func _grow_cancel(g: Game, q: Unit, up := true) -> void:
 		g.tell(q.team, "The Brood Mother got up: her growing stopped (paid back)." if up else "Growing stopped: paid back.", true)
 
 
-## PROGRESS (the owner, 21:41: her growing showed no bar): what a new-Brood creature is working at, shown as a building's
+## PROGRESS (the owner, 21:41: her growing showed no bar): what a Brood creature is working at, shown as a building's
 ## upgrade or a unit in training is: a bar over it in the world (draw) and on its card (the HUD's queue corner):
 ## {label, f (0..1), left (s), icon, col} or {} for nothing. Her growing, a cocoon morphing, rooting and uprooting, an
 ## egg hatching or waiting for the father, the first egg in the father's nest.
@@ -946,7 +946,7 @@ static func spill(g: Game, u: Unit) -> void:
 	u.nb["food"] = 0.0
 	if f < 1.0:
 		return
-	# onto a pile already lying here, else a new one (nobody's: any new-Brood grub may collect it)
+	# onto a pile already lying here, else a new one (nobody's: any Brood grub may collect it)
 	for o in g.units_near(u.position, 40.0):
 		if o.kind == PILE and not o.dead:
 			o.nb["food"] = float(o.nb.get("food", 0.0)) + f
@@ -960,7 +960,7 @@ static func spill(g: Game, u: Unit) -> void:
 
 # ------------------------------------------------------------------ ticks
 
-## Each tick of a new-Brood creature (from Unit._tick_unit, after its speed is set).
+## Each tick of a Brood creature (from Unit._tick_unit, after its speed is set).
 static func tick(g: Game, u: Unit, delta: float) -> void:
 	if u.nb.has("coc"):
 		BroodRoot.cocoon_tick(g, u, delta)      # (a grub's cocoon: nothing else until it opens)
@@ -1218,7 +1218,7 @@ static func load_value(g: Game, src: Unit, t: int) -> float:
 
 
 ## WORKER COUNT (the owner, 21:28): over each of your rooted Rootmaws (and each food pile, nobody's, while you play the
-## new Brood) "GRUBS 4/6": drawn with the other workers' labels (WorkerLabels, scripts/worker_labels.gd).
+## Brood) "GRUBS 4/6": drawn with the other workers' labels (WorkerLabels, scripts/worker_labels.gd).
 ## "4/6": its grubs at work / the most it takes ("spent" when its ground and body are empty and nobody is on it).
 static func crew_label(g: Game, u: Unit) -> String:
 	var have := crew(g, u)

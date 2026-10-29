@@ -107,8 +107,8 @@ static func play_any(names: Array, pos := Vector2.INF, vol := 0.0) -> void:
 
 ## The shortest gap (ms) before the same sound plays again (default 40).
 const GAP := {"ui/chat": 500, "combat/raptor_attack": 220, "combat/grub_attack": 220, "combat/spitter_attack": 150,
-	"combat/windup_soldier_attack": 180, "combat/brood_death": 120, "combat/grub_death": 250, "combat/spitter_death": 200, "combat/bloater_death": 250,
-	"combat/mist_toad_death": 250, "combat/skywing_death": 200, "combat/brute_death": 300, "combat/spore_mother_death": 400, "combat/raptor_death": 150, "combat/crown_death": 120,
+	"combat/windup_soldier_attack": 180, "combat/brood_death": 120, "combat/grub_death": 250, "combat/spitter_death": 200,
+	"combat/mist_toad_death": 250, "combat/skywing_death": 200, "combat/brute_death": 300, "combat/raptor_death": 150, "combat/crown_death": 120,
 	# recorded gunfire: a volley of ten muskets is a few overlapping shots, not a wall of noise
 	"combat/musketeer_attack": 110, "combat/cannon_attack": 160, "combat/cannon_canister": 160,
 	"combat/mortar_attack": 200, "combat/cuirassier_attack": 120, "combat/cuirassier_move": 1500,

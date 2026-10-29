@@ -197,7 +197,7 @@ func _scan() -> void:
 					X["units_lost"] += 1
 	for ai in g.ais:
 		var X2: Dictionary = S[ai.team]
-		if not X2.has("ai_attack") and (bool(ai._attacking) or String(ai._swarm_phase) != "" or (ai._raiders as Array).size() > 0):
+		if not X2.has("ai_attack") and (bool(ai._attacking) or (ai._raiders as Array).size() > 0):
 			X2["ai_attack"] = snappedf(g.clock, 0.1)     # (the computer's own first wave or raiding party)
 	for b in g.buildings:
 		if not is_instance_valid(b) or b.dead or b.ghost or not b.built or b.team < 0 or b.team > 1:

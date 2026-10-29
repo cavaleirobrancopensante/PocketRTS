@@ -10,7 +10,6 @@ extends SceneTree
 const KINDS := {
 	"crown": ["cottage", "barracks", "horse_breeder", "foundry", "armoury", "church", "cottage", "barracks", "foundry",
 		"cottage", "barracks", "cottage", "foundry", "barracks", "cottage", "barracks", "cottage", "barracks"],
-	"brood": ["clutch_mound", "warren", "gorge_pit", "roost", "clutch_mound", "clutch_mound", "clutch_mound", "clutch_mound"],
 	"clockwork": ["spring_tower", "assembly_works", "engine_hall", "charging_pylon", "capacitor_works", "spring_tower",
 		"assembly_works", "spring_tower", "assembly_works", "spring_tower"],
 }
@@ -29,7 +28,7 @@ func _run(ids: Array) -> void:
 	if ids.is_empty():
 		ids = MapGen.all_ids()
 	for id in ids:
-		for fac in ["crown", "brood", "clockwork"]:
+		for fac in ["crown", "clockwork"]:      # (the Brood has no buildings since 0.18.0)
 			await _one(id, fac)
 	print("TOTAL: %d buildings, %d on another level than their hall, %d of those with plateau room left" % [total_n, total_off, total_bug])
 	print("ALL PASS" if fails == 0 else "%d FAILED" % fails)

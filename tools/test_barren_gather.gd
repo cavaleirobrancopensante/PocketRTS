@@ -1,10 +1,9 @@
 extends SceneTree
 ## Spent land takes no crew (v0.14.15 playtest: grubs sent to a barren Feeding Pit stood idle
 ## under "0/5" and were told "That Feeding Pit is fully crewed."):
-## 1. Brood: every pit's own ground spent (0.14.42: the capital has none), 8 grubs ordered to one of its pits: none stays in its
-##    crew, the notice says the ground is spent (never "fully crewed"), the label reads "spent";
-## 2. Crown: one Town Hall's soil spent, 8 labourers ordered to its Farm: they go to the Farm of
-##    the other (fresh) Town Hall instead.
+## Crown: one Town Hall's soil spent, 8 labourers ordered to its Farm: they go to the Farm of
+## the other (fresh) Town Hall instead. (0.18.0: the old Brood's Feeding Pits are gone; a spent Rootmaw's ground is
+## tools/test_brood_new.gd's.)
 ##   godot --headless --fixed-fps 30 --script res://tools/test_barren_gather.gd
 var fails := 0
 
@@ -41,48 +40,8 @@ func _run() -> void:
 	await process_frame
 	seed(77)
 
-	# ---- 1. Brood: every pit barren, no fresh land anywhere
-	var g: Game = await _start(main, "brood")
-	var cap: Building = g.capital(0)
-	check(cap != null, "the Brood has a capital")
-	var pit: Building = null
-	for b in g.buildings:
-		if b.team == 0 and b.kind == "feeding_pit" and b.built:
-			pit = b
-			break
-	check(pit != null, "the capital has a Feeding Pit")
-	# (0.14.42: every Feeding Pit has its own ground and the capital none: spend every pit's)
-	for b in g.buildings:
-		if b.team == 0 and b.kind == "feeding_pit":
-			b.soil = 0.0
-	check(pit.barren(), "with the ground spent the pit is barren")
-	var grubs: Array = []
-	for i in 8:
-		var u: Unit = g._add_unit("grub", 0, pit.center() + Vector2(-80 + i * 20, 90))
-		grubs.append(u)
-	g._notify_t = -100000
-	g.hud._msg = ""
-	for u in grubs:
-		u.cmd_gather(pit)
-	for i in 30:
-		await physics_frame
-	var held := grubs.filter(func(u: Unit) -> bool: return pit.crew.has(u)).size()
-	check(held == 0, "no grub stays in the barren pit's crew (%d do)" % held)
-	check(not ("fully crewed" in g.hud._msg), "no \"fully crewed\" notice (got: %s)" % g.hud._msg)
-	check("spent" in g.hud._msg, "the notice says the ground is spent (got: %s)" % g.hud._msg)
-	var crews := 0
-	for b in g.buildings:
-		if b.team == 0 and b.kind == "feeding_pit":
-			for u in grubs:
-				if b.crew.has(u):
-					crews += 1
-	check(crews == 0, "no grub was put in any barren pit's crew (%d)" % crews)
-	var started := grubs.all(func(u: Unit) -> bool: return u.order != "gather")
-	check(started, "the grubs are not left on a gather order at the barren pit")
-	await process_frame
-
 	# ---- 2. Crown: one hall spent, a second hall with a fresh Farm
-	g = await _start(main, "crown")
+	var g: Game = await _start(main, "crown")
 	var hall: Building = g.halls_of(0)[0]
 	var farm: Building = null
 	for b in g.buildings:

@@ -17,14 +17,13 @@ extends SceneTree
 ##                     work the way the game assigns them (Game.free_site). Steady-state income
 ##                     per minute after a warm-up, for each N. No AI runs.
 ##                     Options: n=4,8,12,16,20,24 warm=60 measure=240 map=greenhold seed=1
-##   pits              Brood only: one Feeding Pit at each hive distance (tiles, centre to
-##                     centre) with a full crew of 5 grubs; food value, loads and food per minute.
-##                     Options: d=6,9,12,15,18,21,24,27 warm=25 measure=120
+##   (0.18.0: the Brood of buildings is gone, and with it the Brood's benches here (ai, sat, pits): the Brood's
+##   economy is measured by tools/sim_brood_new.gd and tools/play_brood_new.gd.)
 ##   crush             Clockwork only: one Boiler beside the Clocktower and one Ore Crusher at
 ##                     each distance from it, with W Winders; trip time, charge per battery,
 ##                     overloads, ore per minute.
 ##                     Options: d=4,6,8,11,14,18,24 w=7 warm=25 measure=120
-##   all               ai + sat for all three factions, then pits and crush (long: ~30-40 min).
+##   all               ai + sat for the Crown and the Clockwork, then crush.
 ##
 ## Output: CSV files in tools/econ_bench_out/ (<mode>_<faction>.csv), and a summary on stdout.
 ## Uses only debug hooks that are off in real matches (AI.peaceful) and the "res2_in" statistic
@@ -62,6 +61,10 @@ func _run() -> void:
 		mode = pos[0]
 	if pos.size() > 1:
 		fac = pos[1]
+	if fac == "brood" or mode == "pits":
+		print("the Brood has no buildings since 0.18.0: no Brood bench here (tools/sim_brood_new.gd measures it)")
+		quit(1)
+		return
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT_DIR))
 	wall0 = Time.get_ticks_msec()
 	match mode:
@@ -69,16 +72,13 @@ func _run() -> void:
 			await _ai_run(fac)
 		"sat":
 			await _sat_run(fac)
-		"pits":
-			await _pit_sweep()
 		"crush":
 			await _crush_sweep()
 		"all":
-			for f in ["crown", "brood", "clockwork"]:
+			for f in ["crown", "clockwork"]:
 				await _ai_run(f)
-			for f in ["crown", "brood", "clockwork"]:
+			for f in ["crown", "clockwork"]:
 				await _sat_run(f)
-			await _pit_sweep()
 			await _crush_sweep()
 		_:
 			print("unknown mode ", mode)
@@ -220,7 +220,7 @@ class Tracker:
 # ------------------------------------------------------------------ mode: ai
 
 func _ai_run(fac: String) -> void:
-	var opp: String = _opt("opp", "crown" if fac != "crown" else "brood")
+	var opp: String = _opt("opp", "crown" if fac != "crown" else "clockwork")
 	var minutes: int = _opt("minutes", 10)
 	var g := await _start(fac, opp, true)
 	var tr := Tracker.new(g, 0)
@@ -387,7 +387,7 @@ func _sat_run(fac: String) -> void:
 	var rows: Array = [head]
 	print("== sat %s (warm %d s, measure %d s)" % [fac, warm, meas])
 	for n in ns:
-		var g := await _start(fac, "crown" if fac != "crown" else "brood", false)
+		var g := await _start(fac, "crown" if fac != "crown" else "clockwork", false)
 		_clear_workers(g, 0)
 		_build_out(g, 0)
 		if fac == "brood":
@@ -522,58 +522,6 @@ func _spot_at(g: Game, kind: String, from: Building, d: float, avoid: Array = []
 				bs = score
 				best = cell
 	return best
-
-
-func _pit_sweep() -> void:
-	var ds: Array = _opt("d", [6, 9, 12, 15, 18, 21, 24, 27])
-	var warm: float = _opt("warm", 25.0)
-	var meas: float = _opt("measure", 120.0)
-	var g := await _start("brood", "crown", false)
-	_clear_workers(g, 0)
-	for b in g.buildings.duplicate():
-		if b.team == 0 and b.kind == "feeding_pit":
-			b.die()
-	var hive := _hall(g, 0)
-	hive.soil = 1e9                 # (fresh ground throughout)
-	var grubs := _spawn_workers(g, 0, 5, false)
-	var rows: Array = [["dist_tiles", "walk_tiles", "food_value", "swamp_at_midpoint", "loads_per_min", "food_per_min", "per_grub_per_min", "cycle_s", "theory_cycle_offswamp_s"]]
-	print("== pits: 5 grubs on one Feeding Pit at each distance from the Hive")
-	for d in ds:
-		var spot := _spot_at(g, "feeding_pit", hive, float(d))
-		if spot.x < 0:
-			print("  d=%s: no clear spot" % d)
-			continue
-		var pit := g._add_building("feeding_pit", 0, spot, true)
-		g._update_swamp()
-		for u in grubs:
-			u.carrying = 0
-			u.cmd_gather(pit)
-		var tr := Tracker.new(g, 0)
-		var t_end := g.clock + warm
-		while g.clock < t_end:
-			await physics_frame
-			tr.tick(DT)
-		tr.reset()
-		var c0 := g.clock
-		t_end = g.clock + meas
-		while g.clock < t_end:
-			await physics_frame
-			tr.tick(DT)
-		var mins := (g.clock - c0) / 60.0
-		var real_d := hive.center().distance_to(pit.center()) / Game.T
-		var val := snappedf(g.food_value(pit), 0.1)
-		var lpm: float = tr.c["loads"] / mins
-		var fpm: float = tr.c["food"] / mins
-		# walk = centre distance less half of each building, at plain grub speed
-		var walk := (real_d - 2.25 - 1.5) * Game.T
-		var theory := Defs.PIT_TIME + 2.0 * walk / float(Defs.UNITS["grub"]["speed"])
-		var mid := hive.center().lerp(pit.center(), 0.5)
-		rows.append([snappedf(real_d, 0.1), snappedf(_walk_tiles(g, hive, pit), 0.1), val, g.on_swamp(0, mid), snappedf(lpm, 0.1), int(fpm), snappedf(fpm / 5.0, 0.1),
-			snappedf(5.0 * 60.0 / maxf(lpm, 0.01), 0.1), snappedf(theory, 0.1)])
-		print("  d=%.1f walk=%.1f value=%d  loads/min=%.1f food/min=%d per grub=%.1f cycle=%.1f s %s" % [real_d, _walk_tiles(g, hive, pit), val, lpm, fpm, fpm / 5.0, 5.0 * 60.0 / maxf(lpm, 0.01), _speed_note(g)])
-		pit.die()
-		await physics_frame
-	_write_csv("pits_brood.csv", rows)
 
 
 # ------------------------------------------------------------------ mode: crush (Clockwork)

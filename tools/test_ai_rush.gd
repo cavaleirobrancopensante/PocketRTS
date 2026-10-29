@@ -90,9 +90,9 @@ func _watch() -> void:
 	if first_grub_kill < 0.0 and int(g.stats[0]["lost"]) > 0:
 		first_grub_kill = g.clock
 	if first_hive_hit < 0.0:
-		for b in g.buildings:
-			if b.team == 0 and b.kind == "hive" and not b.dead and b.built and b.hp < b.max_hp:
-				first_hive_hit = g.clock
+		var mo := BroodNew.queen(g, 0)          # (0.18.0: the Brood's base is its Mother)
+		if mo != null and mo.hp < mo.max_hp:
+			first_hive_hit = g.clock
 	var cap: int = g.players[ai_team]["cap"]
 	if g.supply_used(ai_team) >= cap and cap < g.max_supply(ai_team) and int(g.players[ai_team]["gold"]) >= 150:
 		blocked_t += 1.0 / 30.0
@@ -197,9 +197,9 @@ func _run() -> void:
 			if int(g.height[g.idx(g.cell_of(b.rect().get_center()))]) != h0:
 				off.append(b.kind)
 	check(hall != null and off.is_empty(), "its buildings stand on its main's ground (off it: %s)" % [off])
-	print("first grub killed at %s, Hive first hit at %s" % [_mmss(first_grub_kill), _mmss(first_hive_hit)])
+	print("first grub killed at %s, Brood Mother first hit at %s" % [_mmss(first_grub_kill), _mmss(first_hive_hit)])
 	check(first_grub_kill >= 0.0, "the rush killed grubs")
-	check(first_hive_hit < 0.0 or (first_grub_kill >= 0.0 and first_grub_kill <= first_hive_hit), "workers before the Hive")
+	check(first_hive_hit < 0.0 or (first_grub_kill >= 0.0 and first_grub_kill <= first_hive_hit), "workers before the Brood Mother")
 	print("ALL PASS" if fails == 0 else "%d FAILED" % fails)
 	quit(0 if fails == 0 else 1)
 

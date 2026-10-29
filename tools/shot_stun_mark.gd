@@ -70,7 +70,6 @@ func _game(facs: Array, nbs: Array = []) -> Vector2:
 		g.queue_free()
 		await process_frame
 	g = Game.new()
-	g.nb_teams = nbs
 	g.map_id = "ashford_crossing"
 	g.demo = true
 	g.factions = facs

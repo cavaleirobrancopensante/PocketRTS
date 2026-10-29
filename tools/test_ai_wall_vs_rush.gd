@@ -81,7 +81,8 @@ func _process(delta: float) -> bool:
 				if crown_strategy != "rush":
 					ai.opening = "mill"      # (the Powder Mill opening: Balanced is that about 7 games in 10)
 			elif brood_strategy == "script":
-				ai.process_mode = Node.PROCESS_MODE_DISABLED
+				ai.strategy = "xrush"         # (the Brood's own computer on its fastest plan; _drive sends the Raptors)
+				ai._attack_at = 6
 		_run()
 	return false
 
@@ -108,39 +109,15 @@ var _drive_t := 0.0
 var _sent := false
 
 
-## A scripted 6-pool-style Brood rush (the Brood computer's own rush plan is too slow to test
-## against): economy by the computer's own routines, a Spawning Den as soon as it can be paid,
-## every egg a Raptors, all of them sent at the Crown's hall once there are 8 (or at 1:50).
+## A scripted Brood rush (0.18.0: the Brood of creatures): its own computer on the Extreme rush plan builds it (the Tyrant
+## Sire early, every egg Raptors) with a human's efficiency on top (about 2 food a second more), and every Raptor is
+## sent at the Crown's hall once there are 8 (or 4 after 1:50), hitting the walls as a human does.
 func _drive() -> void:
-	var bai = null
-	for ai in g.ais:
-		if ai.team == 1:
-			bai = ai
-	if bai == null or g.clock < _drive_t:
+	if g.clock < _drive_t:
 		return
 	_drive_t = g.clock + 0.5
 	g.players[1]["gold"] += 1      # (a human's efficiency: about 2 coins a second more than the computer's grubs)
-	for u in g.workers(1):
-		if u.order == "idle" and u.can_gather():
-			var site = g.free_site(1, u.position)
-			if site:
-				u.cmd_gather(site)
-	var den: bool = not bai._mine("warren").is_empty()
-	if not den:
-		if g.workers(1).size() < 6:
-			for h in bai._halls():
-				if h.built and h.eggs > 0:
-					g.train(h, "grub")
-		elif bai._gold() >= 150 and not bai._busy_building("warren"):
-			bai._construct("warren")
-	else:
-		bai._supply()
-		bai._econ_build()
-	for h in bai._halls():
-		if h.built and den and bai._mine("warren")[0].built:
-			while h.eggs > 0 and g.train(h, "raptor") == "":
-				pass
-	var rs: Array = g.army(1)
+	var rs: Array = g.army(1).filter(func(u: Unit) -> bool: return u.kind in ["raptor", "tyrant_challenger", "spitter", "brute"])
 	if rs.size() >= 8 or (g.clock > 110.0 and rs.size() >= 4):
 		_sent = true
 	if _sent:
@@ -232,10 +209,10 @@ func _watch() -> void:
 	if g.clock >= next_print:
 		next_print += 20.0
 		var sc: AIScout = ai.scout
-		print("%d:%02d  crown gold %d  labs %d  army %d (musk %d)  walled %s (%d open)  scout %s  | brood army %d (warren %d, gold %d, workers %d, eggs %d)  crown labourers lost %d" % [
+		print("%d:%02d  crown gold %d  labs %d  army %d (musk %d)  walled %s (%d open)  scout %s  | brood army %d (Tyrant Sire %d, food %d, grubs %d, eggs %d)  crown labourers lost %d" % [
 			int(g.clock) / 60, int(g.clock) % 60, g.players[0]["gold"], labourers(), g.army(0).size(), g.army(0).filter(func(u) -> bool: return u.kind == "musketeer").size(), wall_done >= 0.0,
 			g.buildings.filter(func(b) -> bool: return b.team == 0 and not b.dead and (b.kind == "wall" or b.kind == "gate") and not b.built).size(),
-			sc.verdict, g.army(1).size(), g.buildings.filter(func(b) -> bool: return b.team == 1 and b.kind == "warren" and not b.dead).size(), g.players[1]["gold"], g.workers(1).size(), g.buildings.filter(func(b) -> bool: return b.team == 1 and b.kind == "hive").map(func(b) -> int: return b.eggs).reduce(func(a, c): return a + c, 0), int(g.stats[0]["lost"])])
+			sc.verdict, g.army(1).size(), BroodNew.count_of(g, 1, BroodNew.FATHER), g.players[1]["gold"], g.workers(1).size(), int(BroodNew.queen(g, 1).nb.get("eggs", 0)) if BroodNew.queen(g, 1) else 0, int(g.stats[0]["lost"])])
 
 
 func _run() -> void:

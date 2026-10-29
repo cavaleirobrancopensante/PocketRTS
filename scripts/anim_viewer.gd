@@ -129,7 +129,7 @@ static func fps_for(a: String, an: String, n: int) -> float:
 			fps = float(n) / (float(Defs.PISTOL["aim"]) + 0.35)
 		"aim", "fire", "aimup", "fireup", "thrust", "attack", "melee":
 			fps = 9.0
-		"burrow", "dig":
+		"dig":
 			fps = 7.0
 		"morph":
 			fps = 3.2

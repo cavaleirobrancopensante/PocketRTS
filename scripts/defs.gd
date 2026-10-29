@@ -1080,13 +1080,13 @@ const UNITS := {
 		"air": true, "anti_air": true, "air_only": true, "faction": "brood",
 		"about": "Flying, it hunts other flyers with volleys of spines (it can't touch the ground). LAND it (1.2 s) to fight on the ground with its bite: then it walks, can't cross cliffs, and anything can hit it. Costs spoils.",
 	},
-	# ---- THE NEW BROOD (experiment, scripts/brood_new.gd, docs/brood_new.md): creatures only, no buildings
+	# ---- THE BROOD (experiment, scripts/brood_new.gd, docs/brood_new.md): creatures only, no buildings
 	"brood_mother": {
 		"tags": ["armored"],
 		"name": "Brood Mother", "hp": 2400, "armor": 1, "speed": 24, "cost": 0, "time": 0.0, "supply": 0,
 		"sight": 10, "range": 50, "damage": 40, "cooldown": 2.4, "aim": 0.5, "radius": 40, "from": "",
 		"building_bonus": 1.2, "faction": "brood", "new_brood": true,
-		"about": "The heart of the new Brood: if she dies, you lose. Only she lays eggs, walking or rooted: every unit hatches from them. Grubs bring her the food. ROOT her for armour and less damage, swamp around her and faster healing; rooted she cannot attack. GROW her (rooted) for more eggs and faster laying; fathers near her and Mound Turtles on new ground make her lay faster too.",
+		"about": "The heart of the Brood: if she dies, you lose. Only she lays eggs, walking or rooted: every unit hatches from them. Grubs bring her the food. ROOT her for armour and less damage, swamp around her and faster healing; rooted she cannot attack. GROW her (rooted) for more eggs and faster laying; Sires near her and Mound Turtles on new ground make her lay faster too.",
 	},
 	"rootmaw": {
 		"tags": ["armored"],

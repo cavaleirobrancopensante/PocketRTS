@@ -177,7 +177,7 @@ static func capture(game: Game, cfg: Dictionary) -> Dictionary:
 		if u.auto_refit:
 			ud["ar"] = true
 		if u._k_nb:
-			ud["nb"] = BroodNew.unit_save(u)         # (the new Brood: eggs, food, an egg's kind and incubation)
+			ud["nb"] = BroodNew.unit_save(u)         # (the Brood: eggs, food, an egg's kind and incubation)
 		if u.owl_t >= 0.0:
 			ud["owl"] = snappedf(u.owl_t, 0.01)      # (a Swift turning into a Ticking Owl, paid)
 		if u.moult_t >= 0.0:

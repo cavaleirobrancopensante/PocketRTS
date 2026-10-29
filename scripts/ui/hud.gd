@@ -866,7 +866,7 @@ func _draw_view(font: Font) -> void:
 var _demolish_ms := 0
 var _alt_for := {}             # card label -> its right-click / long-press action (auto-train)
 var _alt_press := {}           # the card button being held on a phone: {b, t, done}
-var nb_prog := {}              # the new Brood's progress shown on the card now (BroodNew.progress; tests read it)
+var nb_prog := {}              # the Brood's progress shown on the card now (BroodNew.progress; tests read it)
 var _tip_for := {}             # card label -> [title, body] for its tooltip (refits)
 
 
@@ -898,7 +898,7 @@ func _build_card() -> Array:
 		list.append(["cancel", "CANCEL", func() -> void: controls.cancel_mode(), true, "", ""])
 		return list
 	if controls.mode == "nb_root":
-		# THE NEW BROOD: ROOT like BUILD (scripts/brood_root.gd): PLACE sends the grub (it turns into it there) or the
+		# THE BROOD: ROOT like BUILD (scripts/brood_root.gd): PLACE sends the grub (it turns into it there) or the
 		# creature (it walks there and roots)
 		var nk := controls.place_kind
 		var na: Unit = controls.nb_actor()
@@ -1403,7 +1403,7 @@ func _pass_icon_x(r: Rect2, n: int, i: int) -> float:
 
 
 ## Crown abilities for the selected soldiers. Each button switches all of that kind.
-## THE NEW BROOD (scripts/brood_new.gd): the Mother lays an egg for each creature (the warriors need the father near
+## THE BROOD (scripts/brood_new.gd): the Mother lays an egg for each creature (the warriors need the father near
 ## her); she and the Rootmaws ROOT and UPROOT; a Rootmaw HAULs its food.
 func _nb_buttons(list: Array, units: Array) -> void:
 	var q: Unit = null
@@ -1530,7 +1530,7 @@ func _nb_buttons(list: Array, units: Array) -> void:
 			toast("Tap where the hatchlings go."), true, "", ""])
 
 
-## THE NEW BROOD'S GRUB BUILD MENU (B / BUILD; the owner, 19:19 and 21:28): the structure-units a grub turns into (the
+## THE BROOD'S GRUB BUILD MENU (B / BUILD; the owner, 19:19 and 21:28): the structure-units a grub turns into (the
 ## Rootmaw, the Mound Turtle, the fathers: BroodRoot.morph_list), then the ROOT ghost; the grub walks there, pays and
 ## morphs (scripts/brood_root.gd). No old Brood buildings.
 func _nb_build_page(list: Array) -> void:
@@ -1953,7 +1953,7 @@ func _log_refused(k: String, why: String) -> void:
 
 ## queued (Shift on a computer): the site goes in the builders' order queue, after what
 ## they already have to do (several Shift-placed buildings are built one after another).
-## THE NEW BROOD's ROOT ghost placed (scripts/brood_root.gd): a grub goes to turn into the creature there, or the
+## THE BROOD's ROOT ghost placed (scripts/brood_root.gd): a grub goes to turn into the creature there, or the
 ## creature goes to root there. Shift (a computer): after its orders, and the ghost stays for the next one.
 func confirm_nb_root(queued := false) -> void:
 	queued = queued and Settings.pc()
@@ -3229,7 +3229,7 @@ func _draw_panel(font: Font) -> void:
 		if e is Unit and (e as Unit)._k_nb and (e.team == game.human or game.spectating()):
 			nb_prog = BroodNew.progress(game, e as Unit)
 		if not nb_prog.is_empty():
-			# THE NEW BROOD'S PROGRESS (the owner, 21:41): in the card's text line, as a building's work in hand: its label,
+			# THE BROOD'S PROGRESS (the owner, 21:41): in the card's text line, as a building's work in hand: its label,
 			# the time left and a wide bar (the about text is in the tooltip)
 			var plab := "%s · %ds" % [Loc.t(String(nb_prog["label"])), int(ceil(float(nb_prog["left"])))]
 			var pw := UiStyle.bold_font().get_string_size(plab, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
@@ -3449,8 +3449,8 @@ func _unit_icon(e: Entity) -> Texture2D:
 ## gets the button as an order behind his move or attack, and runs it when he gets there
 ## (the button works on the selection, so it runs with just that man selected).
 const SHIFT_QUEUE := ["horse_lead", "horse_release", "horse_mount", "horse_dismount", "horse_unhitch", "horse_harness",
-	"stop", "hold", "hold_fire", "fire_at_will", "ab_hold_gas", "ab_spit", "ab_brace", "ab_land", "ab_canister", "ab_round_shot",
-	"ab_courier", "ab_limber", "ab_root", "ab_deploy", "ab_mortar_deploy", "ab_supply", "ab_sacrifice", "ab_shield"]
+	"stop", "hold", "hold_fire", "fire_at_will", "ab_brace", "ab_land", "ab_canister", "ab_round_shot",
+	"ab_courier", "ab_limber", "ab_deploy", "ab_mortar_deploy", "ab_supply", "ab_sacrifice", "ab_shield"]
 
 
 func _shift_queueable(list: Array) -> void:

@@ -3,9 +3,8 @@ extends SceneTree
 ## godot --headless --fixed-fps 30 --script res://tools/test_brood_voices.gd
 const NEED := {
 	"grub": ["select", "move"], "spitter": ["select", "move", "attack"], "brute": ["select", "move", "attack"],
-	"spore_mother": ["select", "move", "attack"], "bloater": ["select", "move"], "mist_toad": ["select", "move"],
-	"raptor": ["select", "move", "attack"], "skywing": ["select", "move", "attack"]}
-const DEATH := ["grub", "spitter", "bloater", "mist_toad", "skywing", "brute", "spore_mother", "raptor"]
+	"mist_toad": ["select", "move"], "raptor": ["select", "move", "attack"], "skywing": ["select", "move", "attack"]}
+const DEATH := ["grub", "spitter", "mist_toad", "skywing", "brute", "raptor"]
 
 func _init() -> void:
 	var fails := 0
@@ -23,9 +22,11 @@ func _init() -> void:
 			print("FAIL missing ", p); fails += 1
 		elif not SoundMix.GAIN.has(p):
 			print("FAIL no gain entry ", p); fails += 1
-	# every Brood unit def that can be selected has a voice list
+	# every Brood unit def that can be selected has a voice list (the Brood's own creatures since 0.15, the Mother, the
+	# rooters, the Sires, the Challengers, eggs and piles, have none yet: docs/brood_new.md)
 	for k in Defs.UNITS:
-		if String(Defs.UNITS[k].get("faction", "")) == "brood" and not NEED.has(k):
+		var bd: Dictionary = Defs.UNITS[k]
+		if String(bd.get("faction", "")) == "brood" and not NEED.has(k) and not bd.get("new_brood", false) and not bd.get("mature", false):
 			print("FAIL Brood unit without voice check: ", k); fails += 1
 	# every gain-table path for the Brood voices exists
 	for p in SoundMix.GAIN:

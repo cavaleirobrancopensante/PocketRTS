@@ -10,7 +10,6 @@ func _initialize() -> void:
 	_walk("BUILDINGS", Defs.BUILDINGS)
 	_walk("RESEARCH", Defs.RESEARCH)
 	_walk("FACTIONS", Defs.FACTIONS)
-	_walk("HALL_LEVELS", Defs.HALL_LEVELS)
 	_walk("ARMOURED", Defs.ARMOURED)
 	for k in Defs.TIPS:
 		_out("TIPS." + String(k), Defs.TIPS[k])

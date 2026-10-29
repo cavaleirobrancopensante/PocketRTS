@@ -31,8 +31,8 @@ var nb_queen := {}
 var nb_spots := {}
 var nb_spot_next := 0
 var nb_walls: Array = []       # (no longer filled: a rooted creature's footprint on the grid does it, nb_fp; BroodNew.push_out kept for old saves)
-var nb_fp: Array = []          # the new Brood's ROOTED creatures (and cocoons): each takes its footprint on the grid as a building (scripts/brood_root.gd)
-var nb_cells := {}             # cell index -> the team of the rooted new-Brood creature whose footprint holds it (its own side's hatchlings walk through: BroodRoot.pass_move)
+var nb_fp: Array = []          # the Brood's ROOTED creatures (and cocoons): each takes its footprint on the grid as a building (scripts/brood_root.gd)
+var nb_cells := {}             # cell index -> the team of the rooted Brood creature whose footprint holds it (its own side's hatchlings walk through: BroodRoot.pass_move)
 var eliminated: Array = []
 
 
@@ -1943,7 +1943,7 @@ func _paint_ramps(img: Image, area := Rect2i(0, 0, W, H)) -> void:
 func _start_positions() -> void:
 	for t in n_players():
 		if BroodNew.on(self, t):
-			BroodNew.start(self, t, starts[t])       # (the new Brood: the Mother, a Rootmaw, grubs; no buildings)
+			BroodNew.start(self, t, starts[t])       # (the Brood: the Mother, a Rootmaw, grubs; no buildings)
 			continue
 		var f: Dictionary = Defs.FACTIONS[factions[t]]
 		var b := _add_building(f["hall"], t, starts[t], true)
@@ -3610,7 +3610,7 @@ func supply_used(t: int) -> int:
 		if u.team == t and not u.dead:
 			n += int(u.d["supply"])
 			if u._k_still and u.kind == BroodNew.EGG and not u.nb.has("out"):
-				var ek := String(u.nb.get("k", "grub"))      # (a new-Brood egg holds its creature's supply)
+				var ek := String(u.nb.get("k", "grub"))      # (a Brood egg holds its creature's supply)
 				n += int(Defs.UNITS[ek]["supply"]) * int(Defs.UNITS[ek].get("spawn", 1))
 			if u.owl_t >= 0.0:
 				n += int(Defs.UNITS[Defs.OWL]["supply"]) - int(u.d["supply"])     # (a Swift turning into an Owl holds its supply)
@@ -4968,7 +4968,7 @@ func find_repair(u: Unit, r: float) -> Entity:
 func consume_unit(u: Unit) -> void:
 	u._leave_mine()
 	if u._k_nb and BroodRoot.has_fp(u):
-		BroodRoot.footprint_off(self, u)      # (a rooted new-Brood creature taken off the map: its ground is free again)
+		BroodRoot.footprint_off(self, u)      # (a rooted Brood creature taken off the map: its ground is free again)
 	units.erase(u)
 	selection.erase(u)
 	for g in groups:
@@ -5002,7 +5002,7 @@ func sacrifice(u: Unit, pen: Entity) -> void:
 	if u.team == human:
 		float_text(pen.center() + Vector2(0, -34), "+%d spoils" % ess, Color(0.8, 0.5, 1.0))
 	if pen is Unit and (pen as Unit).kind == BroodNew.QUEEN:
-		BroodNew.devour(pen, u)          # (the new Brood: the Mother devours it, a swipe)
+		BroodNew.devour(pen, u)          # (the Brood: the Mother devours it, a swipe)
 	consume_unit(u)
 
 
@@ -5687,7 +5687,7 @@ func separation(u: Unit) -> Vector2:
 				if o.dead or o.off_field or (o._air_k and o.net_t <= 0.0) != air:      # (o.is_air())
 					continue
 				if o._k_still:
-					continue          # (a new-Brood egg or food pile lies on the ground: it shoves nobody)
+					continue          # (a Brood egg or food pile lies on the ground: it shoves nobody)
 				if o._k_shell and o.team == u.team and o.tesla_mode != "packed":
 					continue          # (a rooted Mound Turtle: its own side climbs over the shell, BroodNew.push_out)
 				if o == u.steed or u == o.steed:
@@ -5717,7 +5717,7 @@ func _sep_push(u: Unit, o, p: Vector2, rr: float, air: bool, u_rail: bool, mu: f
 	if o.dead or o.off_field or o.is_air() != air:
 		return push
 	if o._k_still:
-		return push           # (a new-Brood egg or food pile lies on the ground: it shoves nobody)
+		return push           # (a Brood egg or food pile lies on the ground: it shoves nobody)
 	if o._k_shell and o.team == u.team and o.tesla_mode != "packed":
 		return push           # (a rooted Mound Turtle: its own side climbs over the shell, BroodNew.push_out)
 	if o == u.steed or u == o.steed:
@@ -6075,7 +6075,7 @@ func entity_at(p: Vector2, _any := true) -> Entity:
 			best = rider if rider != null else u    # (a horse a man is getting on: the strip there is him)
 	if best:
 		return best
-	# a new-Brood creature that roots (the Mother, a Rootmaw, a turtle, a father), rooted or walking, at every growth stage:
+	# a Brood creature that roots (the Mother, a Rootmaw, a turtle, a father), rooted or walking, at every growth stage:
 	# picked anywhere on its drawn body (the owner, 21:28: "a click anywhere on her sprite"), or on its footprint, as a
 	# building; units standing over it were looked at first (a unit on top wins); of two bodies, the one drawn in front
 	var nbest: Unit = null
@@ -6979,7 +6979,7 @@ func morph_order(list: Array) -> String:
 	return CwAir.morph_order(self, list)
 
 
-## MATURE (the new Brood, scripts/brood_mature.gd): each selected young unit that can starts its moult, paying for
+## MATURE (the Brood, scripts/brood_mature.gd): each selected young unit that can starts its moult, paying for
 ## itself, as far as the food allows. "" or why none did.
 func mature_order(list: Array) -> String:
 	if net_forward(self, "mature_order", [list]): return ""
@@ -8816,7 +8816,7 @@ func _check_end() -> void:
 			alive[b.team] += 1
 	for t in n_players():
 		if BroodNew.on(self, t):
-			alive[t] = 1 if BroodNew.queen(self, t) != null else 0     # (the new Brood: it lives while its Mother does)
+			alive[t] = 1 if BroodNew.queen(self, t) != null else 0     # (the Brood: it lives while its Mother does)
 	for t in n_players():
 		if alive[t] == 0 and not eliminated[t]:
 			eliminated[t] = true
@@ -9140,7 +9140,7 @@ func smart_command(list: Array, p: Vector2, force_move := false, queued := false
 	if net_forward(self, "smart_command", [list, p, force_move, queued]): return
 	# (a horse takes no orders: only a leash or a rider moves it)
 	var us: Array = list.filter(func(e: Entity) -> bool: return e is Unit and not e.dead and e.kind != "horse")
-	# THE NEW BROOD: a rooted creature is a building and an egg stands where it lies: a right-click sets their RALLY POINT
+	# THE BROOD: a rooted creature is a building and an egg stands where it lies: a right-click sets their RALLY POINT
 	# (it never uproots: only the UPROOT button does, the owner 19:19; scripts/brood_root.gd)
 	var fixed: Array = us.filter(func(u: Unit) -> bool: return BroodRoot.fixed(u))
 	if not fixed.is_empty():
@@ -9328,11 +9328,11 @@ func under_attack(e: Entity) -> void:
 		gap = 15.0
 		text = "Your base is under attack!"
 	elif e is Unit and (e as Unit).kind == BroodNew.QUEEN:
-		line = "base_attack"          # (the new Brood: she is its base, and its losing condition)
+		line = "base_attack"          # (the Brood: she is its base, and its losing condition)
 		gap = 15.0
 		text = "Your Brood Mother is under attack!"
 	elif e is Unit and (e as Unit)._k_nb and BroodNew.ROOTERS.has((e as Unit).kind) and (e as Unit).tesla_mode != "packed":
-		line = "base_attack"          # (a rooted creature is the new Brood's building: it says so)
+		line = "base_attack"          # (a rooted creature is the Brood's building: it says so)
 		gap = 15.0
 		text = "Your rooted creatures are under attack!"
 	elif e is Unit and (e as Unit).is_worker():
@@ -9571,7 +9571,7 @@ func workers(t: int) -> Array:
 
 func center_of_team(t: int) -> Vector2:
 	if BroodNew.on(self, t) and BroodNew.queen(self, t) != null:
-		return BroodNew.queen(self, t).position      # (the new Brood: where its Mother is)
+		return BroodNew.queen(self, t).position      # (the Brood: where its Mother is)
 	var c := Vector2.ZERO
 	var n := 0
 	for b in buildings:
@@ -9729,7 +9729,7 @@ func _tex_top(tex: Texture2D) -> float:
 
 ## Over your economy buildings: the workers' job word and count ("HAULERS 2/4", "FARMERS 3/8"; the Town Hall's is
 ## assigned / needed), and the efficiency bar with its % (see Building.efficiency): one compact strip, readable on a
-## phone; the new Brood's Rootmaws and food piles too. Resting the mouse on one (a long press on a phone) explains it:
+## phone; the Brood's Rootmaws and food piles too. Resting the mouse on one (a long press on a phone) explains it:
 ## scripts/worker_labels.gd.
 func _draw_mine_labels() -> void:
 	var font := ThemeDB.fallback_font
@@ -9842,8 +9842,8 @@ func _draw_hover() -> void:
 		col = Color(1.0, 0.3, 0.25) if hostile(human, e.team) else Color(0.4, 1.0, 0.4)
 	var pulse := 0.75 + 0.25 * sin(clock * 8.0)
 	if e is Unit and (e as Unit)._k_nb and (e as Unit).nb.has("fpx") and (e as Unit).get_node_or_null(BroodRoot.SORT + "/" + BroodRoot.FP_NODE) != null:
-		return          # (a rooted new-Brood creature: its building's frame is drawn under its pictures, BroodRoot._draw_frame)
-	if e is Unit and not ((e as Unit)._k_nb and (e as Unit).nb.has("fpx")):      # (a rooted new-Brood creature: a building's frame)
+		return          # (a rooted Brood creature: its building's frame is drawn under its pictures, BroodRoot._draw_frame)
+	if e is Unit and not ((e as Unit)._k_nb and (e as Unit).nb.has("fpx")):      # (a rooted Brood creature: a building's frame)
 		var r: float = (e as Unit).radius
 		overlay.draw_set_transform(e.position, 0.0, Vector2(1.0, 0.45))
 		overlay.draw_circle(Vector2.ZERO, r + 9.0, Color(col, 0.18 * pulse))
@@ -9902,7 +9902,7 @@ func _overlay_moving() -> bool:
 	if not m and controls and (controls.line.size() >= 2 or controls.mode == "place" or controls.mode == "patrol" or (controls.mode == "cast" and controls.cast_spell == "jump")):
 		m = true
 	if not m and factions.has("brood") and BroodRoot.overlay_wanted(self):
-		m = true          # (the new Brood: a ROOT ghost, the father's range)
+		m = true          # (the Brood: a ROOT ghost, the father's range)
 	if not m:
 		for e in selection:
 			if e is Unit and is_instance_valid(e) and (not (e as Unit).queue.is_empty() or not (e as Unit).line_rest.is_empty() or (e as Unit).patrol_a != Vector2.INF):
@@ -9918,7 +9918,7 @@ func _draw_overlay() -> void:
 	var had := not _ghosts.is_empty()
 	_ghosts.clear()
 	if factions.has("brood"):
-		BroodRoot.draw_overlay(self, overlay)       # (the new Brood: the father's range, a ROOT ghost)
+		BroodRoot.draw_overlay(self, overlay)       # (the Brood: the father's range, a ROOT ghost)
 	_draw_overlay_all()
 	if had or not _ghosts.is_empty():
 		ghost_layer.queue_redraw()

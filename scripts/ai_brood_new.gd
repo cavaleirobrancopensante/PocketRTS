@@ -1,6 +1,6 @@
 class_name AIBroodNew
 extends AI
-## The computer's simple plan for THE NEW BROOD (an experiment: scripts/brood_new.gd, docs/brood_new.md). It plays it
+## The computer's simple plan for THE BROOD (an experiment: scripts/brood_new.gd, docs/brood_new.md). It plays it
 ## plainly, so a match against it is possible; it is not clever yet (what it lacks: docs/brood_new.md).
 ##  - the Brood Mother stays rooted at home (she starts rooted); she gets up only to fight off an attack at her nest;
 ##  - the STRUCTURE-UNITS come from grubs (the owner, 19:19; scripts/brood_root.gd): Mound Turtles for supply ahead of
@@ -26,7 +26,7 @@ func _ready() -> void:
 	if strategy == "timing" or _attack_at > 40:
 		_attack_at = 24
 	if game.mlog:
-		game.mlog.add("%s plays the new Brood (experiment): a simple plan" % game.mlog.who(team))
+		game.mlog.add("%s plays the Brood (%s)" % [game.mlog.who(team), STRATEGIES.get(strategy, STRATEGIES["balanced"])["name"]])
 
 
 func _tick_ai(delta: float) -> void:
@@ -534,7 +534,7 @@ func _nb_army(q: Unit) -> void:
 		for u in _wave:
 			u.cmd_move(_wave_target, true)
 		if game.mlog:
-			game.mlog.add("%s's new Brood attacks with %d supply" % [game.mlog.who(team), sup])
+			game.mlog.add("%s's Brood attacks with %d supply" % [game.mlog.who(team), sup])
 	else:
 		# gather by the Mother (south of her nest's ground)
 		var spot := q.position + Vector2(0, q.radius + 110.0)

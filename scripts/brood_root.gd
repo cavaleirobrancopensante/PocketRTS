@@ -1,6 +1,6 @@
 class_name BroodRoot
 extends RefCounted
-## THE NEW BROOD'S ROOTED CREATURES ARE BUILDINGS (the owner's playtest of 0.15.13, 2026-10-28 19:19;
+## THE BROOD'S ROOTED CREATURES ARE BUILDINGS (the owner's playtest of 0.15.13, 2026-10-28 19:19;
 ## docs/idea_brood_mobile_buildings.md, docs/brood_new.md "Rooted = a building"). Rooted, a creature:
 ##  - takes a building's FOOTPRINT on the grid (Defs.NB "fp": paths go round it, nothing walks through it, units
 ##    standing there when it roots are pushed out, as for a new building); uprooted, the cells are free again;
@@ -772,7 +772,7 @@ static func cocoon_look(u: Unit) -> void:
 
 # ------------------------------------------------------------------ the ghost and the father's ring (Game overlay)
 
-## The overlay draws something for the new Brood now (a ROOT ghost, the father's ring).
+## The overlay draws something for the Brood now (a ROOT ghost, the father's ring).
 static func overlay_wanted(g: Game) -> bool:
 	if g.controls and String(g.controls.mode) == "nb_root":
 		return true
