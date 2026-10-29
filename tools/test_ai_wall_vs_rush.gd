@@ -239,7 +239,10 @@ func _run() -> void:
 		check(wall_done >= 0.0 and wall_done < first_arrival, "... before the first Brood fighter arrives (%.0f s)" % first_arrival)
 	var min_n := 2 if crown_strategy == "rush" else MIN_MUSK
 	print("Musketeers at 2:00: %d (army value %.0f); first Musketeers at %s" % [musk_at_120, army_at_120, str(musk_times)])
-	check(musk_times.size() >= min_n and float(musk_times[min_n - 1]) <= MUSK_BY, "at least %d Musketeers (Horsemen on the rush plan) by %d:%02d (%s)" % [min_n, int(MUSK_BY) / 60, int(MUSK_BY) % 60, str(musk_times)])
+	# (0.18.0: the Brood of creatures' fastest rush reaches the farms later than the old Brood's, ~3:10, and the scout
+	# only calls it a rush once it sees it: the Musketeers must be there by 2:40 or before the first fighter, the later)
+	var musk_by := maxf(MUSK_BY, first_arrival if first_arrival > 0.0 else MUSK_BY)
+	check(musk_times.size() >= min_n and float(musk_times[min_n - 1]) <= musk_by, "at least %d Musketeers (Horsemen on the rush plan) by %d:%02d (%s)" % [min_n, int(musk_by) / 60, int(musk_by) % 60, str(musk_times)])
 	check(int(g.stats[0]["lost"]) <= LOST_MAX, "at most %d units lost by %d s (%d)" % [LOST_MAX, int(until), int(g.stats[0]["lost"])])
 	var sc: AIScout = ai.scout
 	var log_text := "\n".join(g.mlog.lines) if g.mlog else ""

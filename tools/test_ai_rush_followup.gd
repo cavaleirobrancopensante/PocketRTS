@@ -59,6 +59,9 @@ func _frames(g: Game, ai: AI, n: int, seen: Array, watch: bool) -> void:
 		await physics_frame
 		g.players[1]["gold"] = 0
 		g.players[0]["gold"] = 0
+		var q := BroodNew.queen(g, 0)
+		if q:
+			q.nb["eggs"] = 0         # (the Brood player breeds no new grubs behind the test's back)
 		for o in seen:
 			if is_instance_valid(o) and not o.dead:
 				ai._known_foes[o.get_instance_id()] = g.clock
@@ -111,10 +114,15 @@ func _foe_grubs(g: Game, keep: int) -> Array:
 	var gr: Array = g.units.filter(func(u) -> bool: return u.team == 0 and not u.dead and u.is_worker())
 	while gr.size() > keep:
 		_kill(gr.pop_back())
-	var hive: Building = g.halls_of(0)[0]
 	while gr.size() < keep:
-		gr.append(_spawn(g, g.workers(0)[0].kind, 0, hive.center() + Vector2(0, 90)))
+		gr.append(_spawn(g, "grub", 0, _home(g) + Vector2(0, 90)))
 	return gr
+
+
+## The Brood player's base (0.18.0: no Burrow, its Brood Mother): a spot just south of her footprint.
+func _home(g: Game) -> Vector2:
+	var q := BroodNew.queen(g, 0)
+	return q.position + Vector2(0, BroodRoot.rect_of(q).size.y * 0.5 + 30.0)
 
 
 ## The raiding party goes out (3 Horsemen at the rally point together).
@@ -141,7 +149,7 @@ func _case_failed() -> void:
 	var grubs := _foe_grubs(g, 9)
 	var raptors: Array = []
 	for i in 8:
-		raptors.append(_spawn(g, "raptor", 0, g.halls_of(0)[0].center() + Vector2(0, 120), true))
+		raptors.append(_spawn(g, "raptor", 0, _home(g) + Vector2(0, 120), true))
 	var seen: Array = grubs + raptors
 	await _frames(g, ai, 60, seen, false)
 	check(ai._rush_state == "ongoing", "no verdict in the first seconds (still ongoing at %.0f s) [failed]" % (g.clock - ai._rush_t0))
@@ -210,7 +218,7 @@ func _case_mop() -> void:
 	var grubs := _foe_grubs(g, 8)
 	var raptors: Array = []
 	for i in 4:
-		raptors.append(_spawn(g, "raptor", 0, g.halls_of(0)[0].center() + Vector2(0, 120), true))
+		raptors.append(_spawn(g, "raptor", 0, _home(g) + Vector2(0, 120), true))
 		raptors[i].order = "hold"
 	g.stats[1]["value_killed"] = int(g.stats[1]["value_killed"]) + 3000
 	var seen: Array = grubs + raptors
@@ -226,6 +234,14 @@ func _case_mop() -> void:
 			out += 1
 	check(out == 0, "the riders pulled back to the rally point (%d still out) [mop]" % out)
 	lone_hits = 0       # (the riders' ride home is over: from here nobody may be out alone)
+	# (one rider of the party is kept: with all three home, two fresh ones make 15 supply, past the 12 wanted; the
+	# old Brood's Raptors used to cut the party down, the Brood of creatures' held Raptors don't reach it)
+	var kept := 0
+	for u in hs:
+		if is_instance_valid(u) and not u.dead:
+			kept += 1
+			if kept > 1:
+				_kill(u)
 	var f1 := _spawn(g, "cuirassier", 1, front)
 	var f2 := _spawn(g, "cuirassier", 1, front)
 	await _frames(g, ai, 450, seen, true)
@@ -262,7 +278,7 @@ func _case_wave() -> void:
 	check(ai._rush_state == "ongoing" and ai._attacking and ai._wave_set.size() == 3, "the Rush plan's first wave of 3 Horsemen goes out as the rush [wave]")
 	var raptors: Array = []
 	for i in 8:
-		raptors.append(_spawn(g, "raptor", 0, g.halls_of(0)[0].center() + Vector2(0, 120), true))
+		raptors.append(_spawn(g, "raptor", 0, _home(g) + Vector2(0, 120), true))
 		raptors[i].order = "hold"
 	seen = raptors
 	_kill(hs[0])

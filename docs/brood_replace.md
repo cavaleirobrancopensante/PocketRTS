@@ -37,7 +37,7 @@ The owner's mock-up: docs/shots/venom_colours/swap_mockup.png. The Spitter, the 
 - The strips are not repainted. tools/import_venom_colours.py writes one mask per strip (assets/units/venom_masks/<unit>/): R marks a scale pixel and G its tone, B marks a spike pixel (1 + its tone). shaders/team.gdshader recolours by the mask when venom_swap is on: scales on a team-colour ramp (dark outlines kept), spikes on an olive ramp. VetLook sets venom_swap and the mask (Defs.VENOM_SWAP, by art key).
 - A veteran's scales mix half of the veterancy skin (amber-ochre at 25 kills, obsidian at 50) into the team colour, so the side still reads.
 - `python3 tools/import_venom_colours.py --contact DIR` writes check sheets (as painted, red, blue).
-- In game: venom_red_blue.png and venom_green_purple.png (a Raptor, then the venom line, then a 25-kill and a 50-kill Spitter; tools/shot_brood_replace.gd).
+- In game: venom_red_blue.png and venom_green_purple.png, each with a _close one (a Raptor, then the Spitter, the Venom Challenger, the Venom Sire, the Mist Toad, a 25-kill and a 50-kill Spitter; tools/shot_brood_replace.gd). The skirmish setup with the Brood and the help's BROOD page: menu_lobby.png, menu_help.png (the same tool with `menu`).
 
 ## Other changes
 
@@ -49,15 +49,55 @@ The owner's mock-up: docs/shots/venom_colours/swap_mockup.png. The Spitter, the 
 
 ## Tests and matches run
 
-RESULTS
+Godot 4.7 headless, on this branch. The "exit 134" Godot prints after quitting is the known one, not a failure.
+
+- Pass:
+  - Brood: test_brood_new, test_sire_reach, test_brood_voices, test_brood_fixes, and test_brood_new_defence with mode:uproot (the computer's way; for rooted, see below).
+  - Data, texts and replays: test_unit_stats, test_i18n (0 untranslated in pt and es), test_files, test_replay (with the three new old-Brood checks), test_save_job.
+  - Map and fog: test_stun_mark, test_expansion_spots, test_start_layout (every map), test_fog_grey.
+  - Combat and units: test_ride_by, test_attack_ground, test_ground_attack, test_aoe_show, test_grub_attack, test_haulers.
+  - Interface and watching: test_worker_labels, test_supply_tip, test_qa_sandbox_lab, test_qa_watch.
+  - Economy: test_barren_gather.
+  - Every test_ai_*: abandoned_site, placement, scout, scout_defence, scout_sentry, scout_threat, wall_vs_rush, rush, rush_followup, air_defence, army_response, crown_bank, cw_horse_raid, gg_rule, r5_hold_spots, round6, round6_stall, worker_safety.
+- test_ai_worker_safety failed once, on "two brutes... 9 -> lowest 4". That is a Crown v Crown case this branch did not touch. It passed on the rerun, so it is a borderline, random case.
+- test_brood_new_defence with mode rooted (the Mother left in her nest, which is not what the computer does): against 5 Musketeers she now dies at 94 s. Before, she had 38 health left at 120 s. None of her numbers changed; the case was already on the edge (docs/brood_new.md says she would fall soon after). With mode:uproot she wins.
+- Tests changed to fit, each keeping its point:
+  - test_start_layout: the Brood has no starting buildings, so for it only the reach to the ground beside its Mother is checked.
+  - test_fog_grey: the enemy base is a Clockwork one, and the swamp checks are dropped.
+  - test_ride_by: it needs 22 x 16 open tiles; Hollowfen has no 30 x 22.
+  - test_ai_scout_defence and test_ai_scout_sentry: the computer is a Clockwork one, because the Brood's computer has no scout.
+  - test_ai_wall_vs_rush: 3 Musketeers by 2:40 or before the first Brood fighter reaches the farms, whichever is later. The Brood's fastest rush now arrives at about 3:10.
+  - test_ai_rush: a Farm of a natural expansion's hall no longer counts as off the main's ground.
+  - test_ai_rush_followup: the Brood's base is its Mother, and the mop-up case keeps one rider of the party.
+  - test_save_job: the Raptors are put down by the Mother.
+
+Full computer matches (tools/sim_brood_new.gd, Hard v Hard, 12 minutes each; no script errors after the fixes below):
+
+- Brood v Crown (Hollowfen, seed 4242):
+  - The Brood grew to 5-7 Rootmaws, 6 Mound Turtles, all three fathers, and 20-27 Raptors from 7:00.
+  - It attacked at 6:53 and kept fighting; its army traded down to 2 Raptors by 12:00.
+  - The Crown's scout called the Raptors a rush at 3:30 and the Crown built up behind its wall.
+  - No winner at 12:00.
+- Brood v Clockwork (Greenhold, seed 77), run twice:
+  - The Clockwork's scout called a rush at 3:26. Its first attack, at 5:36, was beaten back by the Brood ("lost 380 for 75").
+  - The Brood attacked at 7:07 and had 45 Raptors by 10:00 in the second run.
+  - In the first run the Tyrant Sire chased an enemy 62 tiles from the Mother, and 1,600 food piled up while her warrior eggs waited for him. This is fixed (below); the second run spent its food.
+
+Fixed on the way (game code):
+
+- AI._foe_ground read the hall size of every enemy. Against the Brood, which has no hall, it threw an error on every think of the Crown and Clockwork computers. It now uses the Mother's rooted footprint.
+- Spectator (watching computers): following a player read AI._swarm_phase, which went with the old Brood, so the camera stood still. Fixed.
+- AIBroodNew: a father off his nest, uprooted to fight, is called back once he is 14 tiles from the Mother (a leash), so her eggs never wait long for him.
+- tools/econ_bench.gd: its dead old-Brood rows are removed.
 
 ## Open questions for the owner
 
 1. Veteran venom colours: half veterancy skin, half team colour on the scales. Keep, or show veterancy only on the spikes?
 2. The bellies of the venom line stay as painted (pale); the mock-up was not clear about them.
-3. The card portraits and icons of the venom line are still the old colours (they are pictures, not shaded sprites). Redraw them?
-4. The Air rush plan is still offered for the Brood, but the Brood's computer only uses its wave sizes (no flyer opening). Give it a Pterodactyl-first opening, or drop the plan for the Brood?
+3. The card portraits and icons of the venom line are pictures, not shaded sprites: they keep the old colours. Redraw them in the new scheme?
+4. The Air rush plan is still offered for the Brood, but the Brood's computer only uses its wave sizes (no flyer opening). Give it a Storm Sire-first opening, or drop the plan for the Brood?
 5. The sandbox's Brood building tab is empty (the Brood has no buildings). Hide it, or fill it with the rooting creatures?
 6. The old importers for the Brood's creature art (tools/import_brood_new.py) keep the "new" name; renaming files (brood_new.gd, ai_brood_new.gd, BroodNew) was left alone to keep the diff small. Rename later?
 7. The online lobby now offers the Brood of creatures; it has not been played online on two devices yet.
-8. Generic worker-rally code (dual_rally, worker_rally) written for the old Brood's grubs was kept, since the Crown and Clockwork use it too.
+8. The Brood's computer is still the experiment's plain one: it has no scout (the tests of the Crown and Clockwork scouts and sentries now use a Clockwork computer), its waves start small (14-15 supply at about 7:00) and it keeps 25-33 grubs. Worth its own job.
+9. Generic worker-rally code (dual_rally, worker_rally) written for the old Brood's grubs was kept, since the Crown and Clockwork use it too.

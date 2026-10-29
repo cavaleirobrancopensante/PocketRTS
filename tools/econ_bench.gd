@@ -237,8 +237,6 @@ func _ai_run(fac: String) -> void:
 	match fac:
 		"crown":
 			head += ["harvests", "farm_gold_incl_growth", "soil_pct_per_hall", "saltpetre_pct_per_mill"]
-		"brood":
-			head += ["food_loads", "avg_load_value", "pit_dists_tiles", "pit_values", "ground_pct_per_hive", "sacrificed", "essence_from_sacrifice"]
 		"clockwork":
 			head += ["deliveries", "avg_trip_s", "avg_charge", "overloads", "battery_stall_s", "ore_pct_per_crusher"]
 	var rows: Array = [head]
@@ -284,19 +282,6 @@ func _ai_run(fac: String) -> void:
 				for h in g.halls_of(0):
 					soil.append(int(round(h.soil_left() * 100)))
 				row += [tr.c["harvests"], int(tr.c["growth_gold"]), " ".join(soil.map(func(x): return str(x))), _dep_pcts(g, "powder_mill")]
-			"brood":
-				var ds: Array = []
-				var vs: Array = []
-				for p in _built(g, 0, "feeding_pit"):
-					var hv := g.nearest_hall(p.center(), 0)
-					if hv:
-						ds.append(snappedf(hv.center().distance_to(p.center()) / Game.T, 0.1))
-						vs.append(snappedf(g.load_value(p), 0.1))
-				var ground: Array = []
-				for h in g.halls_of(0):
-					ground.append(int(round(h.soil_left() * 100)))
-				row += [tr.c["loads"], snappedf(tr.c["food"] / maxf(1, tr.c["loads"]), 0.1), " ".join(ds.map(func(x): return str(x))), " ".join(vs.map(func(x): return str(x))),
-					" ".join(ground.map(func(x): return str(x))), int(g.stats[0].get("sacrificed", 0)), int(g.stats[0].get("sacrifice_essence", 0))]
 			"clockwork":
 				var n: int = tr.c["deliveries"]
 				row += [n, snappedf(tr.c["carry_t"] / maxf(1, n), 0.01), snappedf(tr.c["delivered"] / maxf(1, n), 0.01), tr.c["blasts"], snappedf(tr.c["stall_s"], 0.1), _dep_pcts(g, "ore_crusher")]
@@ -323,8 +308,6 @@ func _build_out(g: Game, t: int) -> void:
 	match fac:
 		"crown":
 			order = ["farm", "farm", "powder_mill"]
-		"brood":
-			order = ["feeding_pit", "feeding_pit", "feeding_pit", "brood_pen"]
 		"clockwork":
 			order = ["boiler", "ore_crusher", "boiler", "ore_crusher"]
 	for k in order:
@@ -380,8 +363,6 @@ func _sat_run(fac: String) -> void:
 	match fac:
 		"crown":
 			head += ["harvests", "farm_crews", "mill_crew"]
-		"brood":
-			head += ["loads_per_min", "avg_load_value", "pit_dists_tiles", "pit_values", "pit_crews", "ground_drawn_per_min"]
 		"clockwork":
 			head += ["deliveries_per_min", "avg_trip_s", "avg_charge", "overloads", "batteries_filled_per_min", "battery_stall_s", "crews", "crusher_dists"]
 	var rows: Array = [head]
@@ -428,19 +409,6 @@ func _sat_run(fac: String) -> void:
 				var mill: Array = _built(g, 0, "powder_mill")
 				row += [tr.c["harvests"], " ".join(crews.map(func(x): return str(x))), mill[0].working_crew() if not mill.is_empty() else 0]
 				extra = "farm crews %s" % [crews]
-			"brood":
-				var ds: Array = []
-				var vs: Array = []
-				var cs: Array = []
-				for p in _built(g, 0, "feeding_pit"):
-					var hv := g.nearest_hall(p.center(), 0)
-					ds.append(snappedf(hv.center().distance_to(p.center()) / Game.T, 0.1))
-					vs.append(snappedf(g.food_value(p), 0.1))
-					cs.append(p.crew.size())
-				row += [snappedf(tr.c["loads"] / mins, 0.1), snappedf(tr.c["food"] / maxf(1, tr.c["loads"]), 0.1),
-					" ".join(ds.map(func(x): return str(x))), " ".join(vs.map(func(x): return str(x))), " ".join(cs.map(func(x): return str(x))),
-					int((1e9 - _hall(g, 0).soil) / ((g.clock - c0) / 60.0 + warm / 60.0))]
-				extra = "pits at %s tiles worth %s, crews %s" % [ds, vs, cs]
 			"clockwork":
 				var nd: int = tr.c["deliveries"]
 				var cs: Array = []

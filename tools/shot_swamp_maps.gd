@@ -14,8 +14,8 @@ func _run(a: Array) -> void:
 	Engine.time_scale = 8.0
 	await create_timer(60.0 / 8.0, true, false, true).timeout
 	Engine.time_scale = 1.0
-	var hall = g.buildings.filter(func(b): return b.team == g.human and b.kind == g.faction_hall(g.human))[0]
-	g.camera.position = hall.center() + Vector2(120, 60)
+	var q = BroodNew.queen(g, g.human)       # (0.18.0: the swamp round the rooted Brood Mother)
+	g.camera.position = q.position + Vector2(120, 60)
 	g.camera.zoom = Vector2(1.0, 1.0)
 	await create_timer(0.8).timeout
 	root.get_viewport().get_texture().get_image().save_png(a[0])

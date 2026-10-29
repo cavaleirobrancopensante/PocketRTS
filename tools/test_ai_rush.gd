@@ -194,6 +194,13 @@ func _run() -> void:
 				continue
 			if b.center().distance_to(hall.center()) > 20.0 * Defs.TILE:
 				continue
+			# (a Farm of a natural expansion's hall, below the main: that hall's ground, not the main's)
+			var near_hall: Building = hall
+			for h2 in g.buildings:
+				if h2.team == ai_team and h2.kind == "town_hall" and not h2.dead and h2.center().distance_to(b.center()) < near_hall.center().distance_to(b.center()):
+					near_hall = h2
+			if near_hall != hall:
+				continue
 			if int(g.height[g.idx(g.cell_of(b.rect().get_center()))]) != h0:
 				off.append(b.kind)
 	check(hall != null and off.is_empty(), "its buildings stand on its main's ground (off it: %s)" % [off])
