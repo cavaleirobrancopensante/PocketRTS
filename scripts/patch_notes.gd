@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.15.20", "items": [
+		"THE MIST TOAD HOPS: it no longer walks, it hops in every direction (front, back, sides and diagonals), the designer's own drawings: a crouch, the push off, high in the air over its shadow, then it lands with a small splash. One hop for every stretch of ground it covers, so its feet never slide; its spell casting, tongue, idle and death are as before.",
+	]},
 	{"v": "0.15.19", "items": [
 		"WORKER LABELS SAY WHOSE THEY ARE: the count over each economy building has its job word: HAULERS on a Town Hall, FARMERS on a Farm, POWDER MAKERS on a Powder Mill, WINDERS on a Cog Press and a Mainspring, GRUBS on a Feeding Pit, a Rootmaw and a food pile. Rest the mouse on it for half a second (a long press on a phone) and a tooltip says what those workers do, with the real numbers: gold a minute for each farmer, powder a minute for each powder maker, cogs and Tension for each Winder and what the % means (crew x drive x brass), food a trip and a minute for each grub. A click on a label still selects the building.",
 		"HAULERS: the Town Hall's label now reads assigned / needed. The second number is how many haulers the base can use: 1 for each Horse Breeder, and for each Powder Wagon on SUPPLY that is being drawn from, its kegs a second x the walk from the Mill and back (a far wagon under heavy fire needs a long line of haulers), up to 6 a hall. It is worked out every few seconds and does not flicker. White below the need, green at it, orange over it (Labourers who could be farming). Its tooltip says how many are free and what the need is made of. The computer assigns haulers up to the need.",
