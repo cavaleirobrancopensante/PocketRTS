@@ -135,7 +135,7 @@ func rider(p: Vector2, armoured := false, loaded := false) -> Unit:
 
 
 func _run() -> void:
-	origin = _open_area(30, 22)
+	origin = _open_area(22, 16)        # (was 30 x 22: no such flat open ground on hollowfen any more)
 	if origin.x < 0:
 		print("FAIL: no open ground for the test")
 		quit(1)

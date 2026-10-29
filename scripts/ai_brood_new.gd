@@ -288,6 +288,11 @@ func _nb_one_father(q: Unit, f: Unit) -> void:
 		return
 	if threat:
 		return          # (uprooted, he fights with the others: _nb_army; he roots again when it is calm)
+	if f.tesla_mode == "packed" and d > 14.0 * Defs.TILE and f.order != "move" and f.order != "nb_root":
+		# (on a leash: an enemy he chased off from her could lead him across the map, and while he is away her
+		# warrior eggs wait for him; seen in a 0.18.0 match, the Tyrannosaur 62 tiles off with 1,600 food banked)
+		f.cmd_move(q.position)
+		return
 	if f.tesla_mode != "packed" or f.target != null or f.order == "nb_root":
 		return
 	var spot = _nb_father_spot(q, f, f.kind)

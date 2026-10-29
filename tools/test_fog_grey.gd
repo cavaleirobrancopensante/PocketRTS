@@ -245,8 +245,6 @@ func _run() -> void:
 	g.fog_base_dirty = true
 	g._update_vis()
 	check("with everything explored: still only grey and clear", _only_grey(_alphas(g)))
-	var sw3 := _swamp_shown(g, 1)
-	check("and all the enemy swamp is drawn", sw3.y == sw3.x and sw3.x > 0, "%d of %d" % [sw3.y, sw3.x])
 	g.explored = Marshalls.base64_to_raw(b64)
 	g.fog_base_dirty = true
 	g._update_vis()
@@ -266,8 +264,7 @@ func _run() -> void:
 	check("spectator, P1's eyes: its swamp is off the minimap", _swamp_shown(d, 1).y == 0)
 	d.view_team = 1
 	d.refresh_fog()
-	var ds := _swamp_shown(d, 1)
-	check("spectator, P2's eyes: its own hall and swamp show", dhive.visible and ds.y == ds.x and ds.x > 0, "%d of %d" % [ds.y, ds.x])
+	check("spectator, P2's eyes: its own hall shows", dhive.visible)     # (0.18.0: the enemy is the Clockwork, no swamp)
 	d.view_team = -1
 	d.refresh_fog()
 	check("spectator, all vision: no fog drawn", not d.fog_sprite.visible and dhive.visible)
@@ -303,7 +300,7 @@ func _run() -> void:
 	var guest := Game.new()
 	guest.puppet = true
 	guest.map_id = "ashford_crossing"
-	guest.factions = ["crown", "brood"]
+	guest.factions = host.factions.duplicate()
 	guest.sides = [0, 1]
 	guest.human = 1
 	root.add_child(guest)

@@ -2157,7 +2157,10 @@ func _foe_ground(lost := true) -> Array:
 			continue
 		pts.append(Vector2(game.starts[o]) + Vector2(2.5, 2.0))
 		if game.expansions.size() > o and game.expansions[o].x >= 0:
-			pts.append(Vector2(game.expansions[o]) + Vector2(Defs.BUILDINGS[game.faction_hall(o)]["size"]) * 0.5)
+			# (the Brood has no hall: its Brood Mother's rooted footprint, BroodNew.START_SIZE, stands for one)
+			var hk_o: String = game.faction_hall(o)
+			var hs: Vector2i = Defs.BUILDINGS[hk_o]["size"] if Defs.BUILDINGS.has(hk_o) else BroodNew.START_SIZE
+			pts.append(Vector2(game.expansions[o]) + Vector2(hs) * 0.5)
 	for b in game.buildings:
 		if b.dead or b.team < 0 or not game.hostile(team, b.team) or b.kind != game.faction_hall(b.team):
 			continue
