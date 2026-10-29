@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.21.1", "items": [
+		"THE BROOD MOTHER'S STAGES IN EVERY DIRECTION: at stage 2 and stage 3 she now walks and swipes with her own pictures facing south, east, north-east and north too (and the west views, mirrored), no longer her stage-1 frames made bigger. She keeps her size as she turns and grows only by her stage.",
+		"Her swipe from behind (north) no longer shows an odd frame of her tail and a burst of earth: her claw stays raised a moment longer and comes down as the blow lands.",
+	]},
 	{"v": "0.21.0", "items": [
 		"THE STORM LINE: the Storm Sire now fathers HATCHLINGS (the Brood Mother at stage 2), two to an egg (80 food and 10 spoils): cheap, fast little flyers that bite only FLYERS. They can't touch the ground: a flock to keep the enemy's flyers off, fragile against muskets.",
 		"STORM CHALLENGER: at her stage 3 a Hatchling MATURES (110 food and 25 spoils, 9 s moult) into a Storm Challenger, a young Storm Sire that swoops down to bite flyers and ground units alike, over cliffs and water.",

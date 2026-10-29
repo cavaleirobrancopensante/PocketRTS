@@ -1142,7 +1142,7 @@ const BASE_UNITS := {
 		"walk_s": 6,
 		"walk_se": 4,
 	}},
-	"brood_mother_2": {"cell": Vector2i(528, 373), "anchor": Vector2(264, 371), "frames": {
+	"brood_mother_2": {"cell": Vector2i(504, 369), "anchor": Vector2(252, 333), "frames": {
 		"attack_e": 6,
 		"attack_n": 6,
 		"attack_ne": 6,
@@ -1160,13 +1160,13 @@ const BASE_UNITS := {
 		"root_se": 5,
 		"rooted_se": 4,
 		"uproot_se": 5,
-		"walk_e": 4,
+		"walk_e": 6,
 		"walk_n": 6,
-		"walk_ne": 4,
-		"walk_s": 4,
+		"walk_ne": 6,
+		"walk_s": 6,
 		"walk_se": 6,
 	}},
-	"brood_mother_3": {"cell": Vector2i(528, 373), "anchor": Vector2(264, 371), "frames": {
+	"brood_mother_3": {"cell": Vector2i(464, 354), "anchor": Vector2(232, 332), "frames": {
 		"attack_e": 6,
 		"attack_n": 6,
 		"attack_ne": 6,
@@ -1184,10 +1184,10 @@ const BASE_UNITS := {
 		"root_se": 5,
 		"rooted_se": 5,
 		"uproot_se": 5,
-		"walk_e": 4,
+		"walk_e": 6,
 		"walk_n": 6,
-		"walk_ne": 4,
-		"walk_s": 4,
+		"walk_ne": 6,
+		"walk_s": 6,
 		"walk_se": 6,
 	}},
 	"tyrant_challenger": {"cell": Vector2i(88, 64), "anchor": Vector2(44, 60), "frames": {
