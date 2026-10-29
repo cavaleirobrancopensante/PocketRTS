@@ -370,15 +370,27 @@ const BASE_UNITS := {
 		"leap_e": 5,
 		"walk_e": 6,
 	}},
-	"spitter": {"cell": Vector2i(110, 48), "anchor": Vector2(55, 46), "frames": {
-		"attack_e": 4,
-		"death_e": 4,
-		"flare_e": 4,
-		"idle_e": 2,
+	"spitter": {"cell": Vector2i(74, 70), "anchor": Vector2(37, 55), "frames": {
+		"attack_e": 6,
+		"attack_n": 6,
+		"attack_ne": 6,
+		"attack_s": 6,
+		"attack_se": 6,
+		"death_e": 5,
+		"death_n": 5,
+		"death_ne": 5,
+		"death_s": 5,
+		"death_se": 5,
+		"idle_e": 1,
 		"idle_n": 1,
+		"idle_ne": 1,
 		"idle_s": 1,
 		"idle_se": 1,
 		"walk_e": 6,
+		"walk_n": 6,
+		"walk_ne": 6,
+		"walk_s": 6,
+		"walk_se": 6,
 	}},
 	"brute": {"cell": Vector2i(120, 67), "anchor": Vector2(60, 65), "frames": {
 		"attack_e": 5,
@@ -1301,6 +1313,7 @@ const EFFECTS := {
 	"netter_net_open_big": {"frames": 1, "size": Vector2i(74, 60)},
 	# the Spring Ballista's screw bolt in flight, pointing right (tools/import_ballista.py, cut from its concept)
 	"ballista_bolt": {"frames": 1, "size": Vector2i(58, 24)},
+	"spitter_glob": {"frames": 1, "size": Vector2i(16, 8)},
 }
 
 ## Clockwork battery backpacks (tools/make_packs.py - edit there, not here):

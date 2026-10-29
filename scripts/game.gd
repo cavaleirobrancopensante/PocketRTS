@@ -6417,10 +6417,20 @@ func acid_shot(u: Unit, e: Entity, dmg: float) -> void:
 	Sfx.play_any(["combat/spitter_attack", "acid"], mouth)
 	var s := Shot.new()
 	s.arc = 0.18
-	s.scale = Vector2(1.3, 1.3)
+	s.scale = Vector2.ONE * venom_glob_scale(u)
 	s.impact = "acid_splash"
 	s.impact_scale = 0.7
-	s.launch(self, "acid_ball", mouth, e.center(), 330.0)
+	s.launch(self, venom_glob(u), mouth, e.center(), 330.0)
+
+
+## The missile a venom spitter's glob flies as: the Spitter's own glob (the owner's east sheet, turned straight:
+## tools/import_spitter_redo.py), else the small acid ball (the Venom Challenger, the Venom Sire).
+func venom_glob(u: Unit) -> String:
+	return "spitter_glob" if u.kind == "spitter" and ArtData.EFFECTS.has("spitter_glob") else "acid_ball"
+
+
+func venom_glob_scale(u: Unit) -> float:
+	return 1.0 if venom_glob(u) == "spitter_glob" else 1.3
 
 
 func cannon_shot(u: Unit, p: Vector2, dmg: float) -> void:
@@ -6795,10 +6805,10 @@ func ground_shot_fx(u: Unit, to: Vector2) -> void:
 		"spitter", "skywing", BroodNew.DILO:
 			var s := Shot.new()
 			s.arc = 0.18
-			s.scale = Vector2(1.3, 1.3)
+			s.scale = Vector2.ONE * (venom_glob_scale(u) if u.kind != "skywing" else 1.3)
 			s.impact = "acid_splash"
 			s.impact_scale = 0.7
-			s.launch(self, "acid_ball", from, to, 330.0)
+			s.launch(self, venom_glob(u), from, to, 330.0)
 			Sfx.play_any(["combat/%s_attack" % u.kind, "combat/spitter_attack", "acid"], from)
 		"tesla_cart", "stormcaller", "ornithopter", "arc_thrower", "tesla_loco":
 			_zap_visual(u.coil_point() if u.kind == "tesla_cart" else from, to, false, true)
@@ -7305,7 +7315,7 @@ func fog_miss(u: Unit, e: Entity) -> void:
 	var snd: Array = ["combat/musketeer_attack", "musket"]
 	match "spitter" if u.d.get("venom", false) else u.kind:
 		"spitter", BroodNew.DILO:
-			sname = "acid_ball"
+			sname = venom_glob(u)
 			snd = ["combat/spitter_attack", "acid"]
 		"arc_thrower":
 			sname = "arc_ball" if ArtData.EFFECTS.has("arc_ball") else "acid_ball"

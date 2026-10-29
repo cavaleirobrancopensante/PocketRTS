@@ -32,7 +32,7 @@ The owner's call (2026-10-29): the experiment's Brood (the Brood Mother, the fat
 
 ## The venom line's colours
 
-The owner's mock-up: docs/shots/venom_colours/swap_mockup.png. The Spitter, the Venom Challenger, the Venom Sire (art "dilophosaurus") and the Mist Toad wear their scales in the team colour and their spikes and frill in olive. The venom's yellow-green glow (drool, acid, eyes) is kept. Every other Brood creature is unchanged (crests in the team colour).
+The owner's mock-up: docs/shots/venom_colours/swap_mockup.png. The Spitter, the Venom Challenger and the Venom Sire (art "dilophosaurus") wear their scales in the team colour and their spikes and frill in olive. (The Mist Toad did too in 0.18.0; since 0.18.1 it is out of the swap again, the owner's word: its own colours, its details in the team colour; docs/spitter_redo.md.) The venom's yellow-green glow (drool, acid, eyes) is kept. Every other Brood creature is unchanged (crests in the team colour).
 
 - The strips are not repainted. tools/import_venom_colours.py writes one mask per strip (assets/units/venom_masks/<unit>/): R marks a scale pixel and G its tone, B marks a spike pixel (1 + its tone). shaders/team.gdshader recolours by the mask when venom_swap is on: scales on a team-colour ramp (dark outlines kept), spikes on an olive ramp. VetLook sets venom_swap and the mask (Defs.VENOM_SWAP, by art key).
 - A veteran's scales mix half of the veterancy skin (amber-ochre at 25 kills, obsidian at 50) into the team colour, so the side still reads.

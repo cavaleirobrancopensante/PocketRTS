@@ -133,6 +133,8 @@ python3 tools/import_crown_legs.py        # labourer's new walk legs under the A
 python3 tools/anim_audit/fix_crown.py    # Crown animation audit fixes (docs/animation_audit_crown.md): Officers' walk on the ground,
                                          # Messenger walk_e frames 4-5, Mortar idle crew, Horseman idle_se (masks follow; idempotent)
 python3 tools/import_musket_aim_dirs.py  # Musketeer / Guardsman aim, fire, bayonet toward se, ne, s (ChatGPT over tools/musket_guide/aim_dirs.py)
+python3 tools/import_spitter_redo.py     # the Spitter from the owner's ChatGPT sheets (art/redraws/spitter_<d>_chatgpt.png): walk, spit, death in
+                                         # every view and its straight glob missile (replaces import_art's; after fix_brood, before the masks)
 python3 tools/import_vet_trim.py         # veterancy trim masks (hat lace / band, helmet comb and brim)
                                          # for the Crown's soldiers: after every strip they read,
                                          # mount strips included

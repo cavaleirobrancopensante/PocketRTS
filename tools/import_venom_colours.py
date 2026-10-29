@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """THE VENOM LINE COLOUR SWAP (the owner, 2026-10-29 15:17; docs/brood_replace.md, mock-up
 docs/shots/venom_colours/swap_mockup.png): the Spitter, the Venom Challenger, the Venom Sire (art
-"dilophosaurus") and the Mist Toad wear their SCALES in the team colour and their SPIKES and FRILL in
-OLIVE (the other way round from every other Brood creature, whose crests are the team colour). The
-venom's glow (the drool, the acid, the eyes) keeps its yellow-green.
+"dilophosaurus") wear their SCALES in the team colour and their SPIKES and FRILL in OLIVE (the other
+way round from every other Brood creature, whose crests are the team colour). The venom's glow (the
+drool, the acid, the eyes) keeps its yellow-green. The Mist Toad was in the swap in 0.18.0 only: the
+owner (2026-10-29) wants it in its own colours, its details in the team colour, as before.
 
 The strips are not changed: this pass writes, next to them, one mask per strip that
 shaders/team.gdshader reads when the unit's `venom_swap` is on (VetLook.update_mask sets it):
@@ -40,7 +41,7 @@ from import_vet_skin import skin_mask                 # noqa: E402
 
 UNITS_DIR = "assets/units"
 OUT = "assets/units/venom_masks"
-UNITS = ["spitter", "venom_challenger", "dilophosaurus", "mist_toad"]
+UNITS = ["spitter", "venom_challenger", "dilophosaurus"]   # (not the Mist Toad: the owner, 2026-10-29, it keeps its own colours, details in the team colour)
 SCALE_HUE = (0.095, 0.30)
 BODY_L = 0.08
 
