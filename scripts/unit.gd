@@ -1884,13 +1884,13 @@ func switch_time() -> float:
 		"mortar":
 			return Defs.MORTAR_SWITCH
 		BroodNew.QUEEN:
-			return float(Defs.NB["queen_switch"])
+			return float(Defs.NB["queen_switch"]) * BroodResearch.root_mult(self)      # (QUICK ROOTS: half)
 		BroodNew.MAW:
-			return float(Defs.NB["maw_switch"])
+			return float(Defs.NB["maw_switch"]) * BroodResearch.root_mult(self)
 		BroodNew.TURTLE:
-			return float(Defs.NB["turtle_switch"])
+			return float(Defs.NB["turtle_switch"]) * BroodResearch.root_mult(self)
 		BroodNew.FATHER, BroodNew.DILO, BroodNew.PTERO:
-			return float(Defs.NB["father_switch"])
+			return float(Defs.NB["father_switch"]) * BroodResearch.root_mult(self)
 	return Defs.TESLA_SWITCH
 
 
@@ -1922,6 +1922,18 @@ func cmd_lay(k: String) -> String:
 func cmd_grow() -> String:
 	if game.net_forward(self, "cmd_grow", []): return ""
 	return BroodNew.grow(game, self)
+
+
+## THE BROOD'S RESEARCH (scripts/brood_research.gd): a rooted Sire or the Mother starts `key`; "" or why not.
+func cmd_nb_research(key: String) -> String:
+	if game.net_forward(self, "cmd_nb_research", [key]): return ""
+	return BroodResearch.start(game, self, key)
+
+
+## THE BROOD: STOP RESEARCH (paid back).
+func cmd_nb_research_stop() -> void:
+	if game.net_forward(self, "cmd_nb_research_stop", []): return
+	BroodResearch.stop(game, self)
 
 
 ## THE BROOD: STOP GROWING (the Mother's growth, as a hall's STOP UPGRADE: all of it paid back).
@@ -3408,6 +3420,8 @@ func _tick_unit(delta: float) -> void:
 	var want := Vector2.ZERO
 	# Brood on swamp: faster, and wounds close up.
 	speed = float(d["speed"])
+	if _k_fac == "brood":
+		speed += BroodResearch.speed_add(self)      # (PACK HUNT, SLITHER, UPDRAFT: scripts/brood_research.gd)
 	if kind == Defs.BALLISTA_KIND:
 		speed *= Ballista.rate(self)        # (each crewman pushing: +10%)
 	elif kind == Defs.GREAT_WINDER_KIND:
@@ -3431,7 +3445,7 @@ func _tick_unit(delta: float) -> void:
 	if _k_fac == "brood" and game.on_swamp(team, position):
 		speed *= 1.3
 		if hp < max_hp:
-			hp = minf(max_hp, hp + 2.0 * delta)
+			hp = minf(max_hp, hp + (2.0 + BroodResearch.mend(self)) * delta)      # (SWAMP MENDING: more, out of the fight)
 	if _k_nb:
 		BroodNew.tick(game, self, delta)      # (the Brood: eggs, food, fertilising, HAUL's pace)
 	if not game.zones.is_empty() or sight != int(d["sight"]):

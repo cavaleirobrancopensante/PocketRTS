@@ -880,16 +880,16 @@ const UNITS := {
 	},
 	"raptor": {
 		"tags": ["light"],
-		"name": "Raptors", "hp": 36, "armor": 0, "speed": 108, "cost": 75, "time": 11.0, "supply": 1, "spawn": 3,
+		"name": "Raptors", "hp": 36, "armor": 0, "speed": 96, "cost": 50, "time": 11.0, "supply": 1, "spawn": 2,
 		"sight": 7, "range": 22, "damage": 6, "cooldown": 0.9, "aim": 0.1, "radius": 7, "from": "",
-		"faction": "brood", "about": "Fast, flimsy claws. Three hatch from each egg.",
+		"faction": "brood", "about": "Fast, flimsy claws. Two hatch from each egg (three with the Tyrant Sire's BIGGER CLUTCH); PACK HUNT makes them faster.",
 	},
 	"spitter": {
 		"tags": ["light"],
 		"name": "Spitters", "hp": 70, "armor": 0, "speed": 68, "cost": 90, "time": 13.0, "supply": 1, "spawn": 2,
 		"sight": 8, "range": 170, "damage": 8, "cooldown": 2.0, "aim": 0.35, "radius": 12, "from": "",
-		"acid": 3.0, "cost2": 5, "anti_air": true, "faction": "brood",
-		"about": "Spit acid that burns and strips armour. Two hatch from each egg.",
+		"acid": 3.0, "cost2": 5, "faction": "brood",
+		"about": "Spit acid at ground units (never at flyers) that burns and strips armour. Two hatch from each egg (three with the Venom Sire's BIGGER CLUTCH).",
 	},
 	"brute": {
 		"tags": ["armored"],
@@ -1122,7 +1122,7 @@ const UNITS := {
 	# CHALLENGER): the Raptor into the TYRANT CHALLENGER, the Spitter into the VENOM CHALLENGER. Never laid.
 	"tyrant_challenger": {
 		"tags": ["light"],
-		"name": "Tyrant Challenger", "hp": 130, "armor": 1, "speed": 92, "cost": 100, "cost2": 10, "time": 18.0, "supply": 2,
+		"name": "Tyrant Challenger", "hp": 130, "armor": 1, "speed": 84, "cost": 100, "cost2": 10, "time": 18.0, "supply": 2,
 		"sight": 7, "range": 26, "damage": 15, "cooldown": 1.3, "aim": 0.2, "radius": 14, "from": "brood_mother",
 		"building_bonus": 1.3, "faction": "brood", "mature": true, "plain_attack": true,
 		"about": "A Raptor grown into a young Tyrant Sire: a medium all-round biter, tougher than a Raptor, lighter and faster than a Brute. Never laid: a Raptor MATURES into it (the Brood Mother at stage 2).",
@@ -1466,6 +1466,44 @@ const RESEARCH := {
 	"owl_morph": {"name": "Ticking Owl", "label": "TICKING OWL", "at": "cuckoo_house", "faction": "clockwork", "cost": 150, "cost2": 0, "tension": 150,
 		"time": 60.0, "icon": "research_ticking_owl",
 		"about": "The plans of the Ticking Owl: every Swift gets MORPH TO OWL (100 cogs and 50 Tension, 20 s each), rebuilding it into a heavy owl that swoops on units and bombs buildings."},
+	# THE BROOD'S RESEARCH (the owner, 2026-10-29 18:31 and 18:59; scripts/brood_research.gd, docs/brood_research.md). No
+	# buildings: "at" is the CREATURE that researches it, ROOTED: each Sire his own line's upgrades, the Brood Mother the
+	# Brood-wide ones. One at a time each; a Sire researching fathers no eggs of his line (his loop keeps playing), the
+	# Mother keeps laying. "stage": the Mother's growth stage it needs (0 = stage 1). Effects: "young" (BIGGER CLUTCH: that
+	# young kind hatches spawn + 1 to an egg, the egg's price grown so each young costs the same), "speed" (px/s added to
+	# these kinds; "air": only while flying), "range" (px added), "bonus" (the building_bonus these kinds get), "root"
+	# (ROOT and UPROOT time x this), "heal" (SWAMP MENDING: a share of its health a second, between heal_min and
+	# heal_max hp/s, on its side's swamp and not hit for "calm" s, on top of the swamp's own healing).
+	"nb_clutch_raptor": {"name": "Bigger Clutch", "label": "BIGGER CLUTCH", "at": "tyrannosaur", "faction": "brood", "cost": 100, "cost2": 15,
+		"time": 40.0, "stage": 0, "icon": "nbr_clutch_raptor", "young": "raptor",
+		"about": "Raptors hatch three to an egg instead of two. The egg costs more (75 food for three), so each Raptor costs the same: more Raptors from each egg, not cheaper ones."},
+	"nb_pack_hunt": {"name": "Pack Hunt", "label": "PACK HUNT", "at": "tyrannosaur", "faction": "brood", "cost": 75, "cost2": 15,
+		"time": 35.0, "stage": 0, "icon": "nbr_pack_hunt", "speed": {"raptor": 18.0, "tyrant_challenger": 14.0},
+		"about": "Raptors and Tyrant Challengers run faster: a Raptor from 96 to 114, a Tyrant Challenger from 84 to 98."},
+	"nb_battering_horns": {"name": "Battering Horns", "label": "BATTERING HORNS", "at": "tyrannosaur", "faction": "brood", "cost": 125, "cost2": 40,
+		"time": 50.0, "stage": 2, "icon": "nbr_battering_horns", "bonus": {"brute": 3.5},
+		"about": "The Brutes' horns grow into rams: they hit buildings, walls and gates harder (x3.5 instead of x2.5)."},
+	"nb_clutch_spitter": {"name": "Bigger Clutch", "label": "BIGGER CLUTCH", "at": "dilophosaurus", "faction": "brood", "cost": 100, "cost2": 15,
+		"time": 40.0, "stage": 0, "icon": "nbr_clutch_spitter", "young": "spitter",
+		"about": "Spitters hatch three to an egg instead of two. The egg costs more (135 food and 8 spoils for three), so each Spitter costs the same: more Spitters from each egg, not cheaper ones."},
+	"nb_slither": {"name": "Slither", "label": "SLITHER", "at": "dilophosaurus", "faction": "brood", "cost": 75, "cost2": 15,
+		"time": 35.0, "stage": 0, "icon": "nbr_slither", "speed": {"spitter": 10.0, "venom_challenger": 9.0},
+		"about": "Spitters and Venom Challengers move about 15% faster: a Spitter from 68 to 78, a Venom Challenger from 58 to 67."},
+	"nb_long_spit": {"name": "Long Spit", "label": "LONG SPIT", "at": "dilophosaurus", "faction": "brood", "cost": 100, "cost2": 25,
+		"time": 45.0, "stage": 0, "icon": "nbr_long_spit", "range": {"spitter": 35.0, "venom_challenger": 35.0},
+		"about": "Spitters and Venom Challengers spit about 20% farther: a Spitter from 170 to 205, a Venom Challenger from 180 to 215."},
+	"nb_clutch_hatchlings": {"name": "Bigger Clutch", "label": "BIGGER CLUTCH", "at": "pterodactyl", "faction": "brood", "cost": 100, "cost2": 15,
+		"time": 40.0, "stage": 1, "icon": "nbr_clutch_hatchlings", "young": "hatchlings",
+		"about": "Hatchlings hatch three to an egg instead of two, the egg's price grown so each costs the same. (The Hatchlings are not in the game yet.)"},
+	"nb_updraft": {"name": "Updraft", "label": "UPDRAFT", "at": "pterodactyl", "faction": "brood", "cost": 75, "cost2": 15,
+		"time": 35.0, "stage": 1, "icon": "nbr_updraft", "speed": {"skywing": 18.0, "hatchlings": 18.0, "storm_challenger": 16.0}, "air": true,
+		"about": "The Brood's flyers ride the warm air: about 15% faster while flying (a Skywing from 118 to 136)."},
+	"nb_quick_roots": {"name": "Quick Roots", "label": "QUICK ROOTS", "at": "brood_mother", "faction": "brood", "cost": 100, "cost2": 30,
+		"time": 45.0, "stage": 1, "icon": "nbr_quick_roots", "root": 0.5,
+		"about": "Every creature roots and uproots in half the time: the Brood Mother in 2 s instead of 4, the others in 1.25 s instead of 2.5."},
+	"nb_swamp_mending": {"name": "Swamp Mending", "label": "SWAMP MENDING", "at": "brood_mother", "faction": "brood", "cost": 100, "cost2": 30,
+		"time": 45.0, "stage": 1, "icon": "nbr_swamp_mending", "heal": 0.012, "heal_min": 1.0, "heal_max": 6.0, "calm": 4.0,
+		"about": "On your swamp, a creature not hit for 4 s mends faster: 1.2% of its health a second more (at least 1, at most 6), on top of the swamp's own 2."},
 }
 ## The musket locks, in order.
 const LOCKS := ["matchlock", "flintlock", "caplock"]
@@ -1828,7 +1866,9 @@ const NB := {
 	# ([kind, stage (-1: to confirm), young form])
 	# (the Tyrant and Venom Challengers are in since 0.17.0: "unit_stage", "mature"; the owner, 14:40: the Spitter is the
 	# Venom line's young, from stage 1; the Viper and the Hooded Serpent are dropped, their sheets kept in art/redraws)
-	"lines_later": {"pterodactyl": [["hatchlings", 1, ""], ["storm_challenger", 2, "hatchlings"]]},
+	# TARGETS (the owner, 2026-10-29 18:59): the Hatchlings attack AIR ONLY ("air_only", like the Skywing in the air), the
+	# Storm Challenger hits air and ground ("anti_air"); a Hatchling egg holds two (three with the Storm Sire's BIGGER CLUTCH).
+	"lines_later": {"pterodactyl":[["hatchlings", 1, ""], ["storm_challenger", 2, "hatchlings"]]},
 	# THE SIRE LURES (the owner, 2026-10-29 18:03-18:31; scripts/brood_root.gd, docs/sire_lure.md): a grub turning into
 	# a Sire roots and swells into his LURE (a living pheromone gland); ripe, the Sire ARRIVES in its animation, eats it
 	# and nests on its spot. The Sire's own "time" in all: the lure grows, then "lure_arrive" s of his arrival (12
@@ -2022,8 +2062,8 @@ const TIPS := {
 	"missionary": "Bandages the wounded and raises fallen Crown soldiers. Can't be hurt away from enemy buildings. One per Church.",
 	# Brood units
 	"grub": "Carries food from Rootmaws and food piles to the Brood Mother (longer trips pay more). BUILD turns it into a Rootmaw, a Mound Turtle or a Sire.",
-	"raptor": "Fast, flimsy claws. Three hatch from each egg.",
-	"spitter": "Spits acid that burns and strips armour. Two hatch from each egg.",
+	"raptor": "Fast, flimsy claws. Two hatch from each egg (three with BIGGER CLUTCH).",
+	"spitter": "Spits acid at ground units (not flyers) that burns and strips armour. Two hatch from each egg (three with BIGGER CLUTCH).",
 	"brute": "Huge horned tank: charges in, knocks enemies back and batters down walls and gates.",
 	"skywing": "Flying, it hunts flyers with spines. LAND it to bite ground units (then anything can hit it).",
 	"mist_toad": "Swamp caster. FOG makes shots miss half the time; TONGUE drags an enemy to its feet. Weak in a fight.",

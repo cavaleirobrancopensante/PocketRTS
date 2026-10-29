@@ -90,6 +90,13 @@ static func father_of(k: String) -> String:
 	return ""
 
 
+## The young an egg of `k` holds for side t: Defs "spawn" (2 for Raptors and Spitters), 3 with its BIGGER CLUTCH.
+static func young(g: Game, t: int, k: String) -> int:
+	if BroodResearch.clutch_key(k) != "":
+		return BroodResearch.clutch(g, t, k)
+	return int(Defs.UNITS[k].get("spawn", 1))
+
+
 # ------------------------------------------------------------------ lookups
 
 static func queen(g: Game, t: int) -> Unit:
@@ -345,6 +352,8 @@ static func grow_problem(g: Game, q: Unit) -> String:
 		return "She is fully grown."
 	if float(q.nb.get("grow_t", 0.0)) > 0.0:
 		return "She is growing."
+	if BroodResearch.busy(q):
+		return "She is researching."
 	if q.tesla_mode != "deployed":
 		return "She must be rooted to grow."
 	var nx: Dictionary = Defs.NB["stages"][stage(q) + 1]
@@ -409,6 +418,8 @@ static func progress(g: Game, u: Unit) -> Dictionary:
 		var tt := float(Defs.NB["stages"][stage(u) + 1]["time"])
 		var left := float(u.nb["grow_t"])
 		return {"label": "GROWING · STAGE %d" % (stage(u) + 2), "f": clampf(1.0 - left / maxf(tt, 0.1), 0.0, 1.0), "left": left, "icon": "broodmound", "col": BAR_GROW}
+	if BroodResearch.busy(u):
+		return BroodResearch.progress(u)       # (RESEARCHING: on a Sire's card in place of his eggs)
 	if ROOTERS.has(u.kind) and (u.tesla_mode == "deploying" or u.tesla_mode == "packing"):
 		var sw := u.switch_time()
 		return {"label": "ROOTING" if u.tesla_mode == "deploying" else "UPROOTING", "f": clampf(1.0 - u.tesla_t / maxf(sw, 0.01), 0.0, 1.0), "left": maxf(0.0, u.tesla_t),
@@ -457,13 +468,15 @@ static func lay_problem(g: Game, q: Unit, k: String) -> String:
 	var f := father_of(k)
 	if f != "" and not father_near(g, q.team, f):
 		return "Needs the %s rooted beside the Brood Mother." % Defs.UNITS[f]["name"]
+	if f != "" and BroodResearch.line_busy(g, q.team, f):
+		return "The %s is researching: no eggs of his line until he is done." % Defs.UNITS[f]["name"]
 	var price := g.unit_price(q.team, k)
 	var res: Array = Defs.FACTIONS["brood"]["res"]
 	if int(g.players[q.team]["gold"]) < int(price[0]):
 		return "Not enough %s." % String(res[0]).to_lower()
 	if float(g.players[q.team]["res2"]) < float(price[1]):
 		return "Not enough %s." % String(res[1]).to_lower()
-	if g.supply_used(q.team) + int(u["supply"]) * int(u.get("spawn", 1)) > int(g.players[q.team]["cap"]):
+	if g.supply_used(q.team) + int(u["supply"]) * young(g, q.team, k) > int(g.players[q.team]["cap"]):
 		if int(g.players[q.team]["cap"]) >= g.max_supply(q.team):
 			return "Supply is maxed out."
 		return "Need more supply: root more Mound Turtles."
@@ -506,6 +519,9 @@ static func lay(g: Game, q: Unit, k: String) -> String:
 		on_top = bool(es[1])
 	var e := g._add_unit(EGG, q.team, p)
 	e.nb = {"k": k, "t": 0.0, "fert": 1 if father_of(k) != "" else 0, "wait": 0.0, "drop": float(Defs.NB["drop"])}
+	var ny := young(g, q.team, k)
+	if ny != int(Defs.UNITS[k].get("spawn", 1)):
+		e.nb["n"] = ny          # (a BIGGER CLUTCH: its young, fixed when laid and paid)
 	e.z_index = EGG_Z          # (eggs are always seen: drawn over rooted creatures)
 	if on_top:
 		e.nb["top"] = true
@@ -652,7 +668,7 @@ static func _hatch(g: Game, e: Unit) -> void:
 	e.z_index = -1
 	e.selected = false
 	g.selection.erase(e)
-	var n := int(Defs.UNITS[k].get("spawn", 1))
+	var n := int(e.nb.get("n", Defs.UNITS[k].get("spawn", 1)))      # (2 young, 3 if laid with BIGGER CLUTCH)
 	var rp := BroodRoot.hatch_rally(g, e)
 	# hatched inside or among its side's rooted creatures (the father's nest, an egg laid on a creature when she was
 	# boxed in): it walks out through them (BroodRoot.start_pass, the owner, 21:32), then on to its rally
@@ -692,8 +708,9 @@ static func egg_tick(g: Game, e: Unit, delta: float) -> void:
 		# waiting for the father's breath; not fertilised in time: a grub after all (the difference paid back)
 		e.nb["wait"] = float(e.nb.get("wait", 0.0)) + delta
 		if float(e.nb["wait"]) >= float(Defs.NB["fert_wait"]):
-			var was := g.unit_price(e.team, k)
+			var was := BroodResearch.egg_price(k, int(e.nb.get("n", Defs.UNITS[k].get("spawn", 1))))      # (what was paid for it)
 			var now := g.unit_price(e.team, "grub")
+			e.nb.erase("n")
 			g.players[e.team]["gold"] += maxi(0, int(was[0]) - int(now[0]))
 			g.add_res2(e.team, float(maxi(0, int(was[1]) - int(now[1]))))
 			e.nb["k"] = "grub"
@@ -790,6 +807,14 @@ static func father_tick(g: Game, f: Unit, delta: float) -> void:
 					u.nb["redden"] = 0.0       # (broken off: yellow-green again until he is back on his nest)
 					u.nb.erase("fb")
 			f.nb.erase("fe")
+		f.nb["ft"] = 0.0
+		return
+	if BroodResearch.busy(f):
+		# RESEARCHING (the owner, 18:31): he fathers no eggs meanwhile; those in his nest wait for him (their count holds)
+		for u in nest_eggs(g, f):
+			if int(u.nb.get("fert", 0)) == 1:
+				u.nb["wait"] = maxf(0.0, float(u.nb.get("wait", 0.0)) - delta)
+		f.nb.erase("fe")
 		f.nb["ft"] = 0.0
 		return
 	f.nb["scan"] = float(f.nb.get("scan", 0.0)) - delta
@@ -982,6 +1007,8 @@ static func on_root(g: Game, u: Unit) -> String:
 static func uproot(u: Unit, spill: bool) -> void:
 	if u.kind == QUEEN:
 		_grow_cancel(u.game, u)
+	if BroodResearch.busy(u):
+		BroodResearch.stop(u.game, u, "up")     # (got up: its research stops, paid back)
 	if u.kind == MAW:
 		u.nb["spill"] = spill
 	u.cmd_pack()
@@ -1020,6 +1047,8 @@ static func tick(g: Game, u: Unit, delta: float) -> void:
 		set_sky(u)
 	if rooted(u) and u.phase == "" and u.target == null and float(u.nb.get("devour", 0.0)) <= 0.0:
 		u.facing = SE          # (rooted, it settles back facing south-east after a fight)
+	if u.nb.has("rs"):
+		BroodResearch.tick(g, u, delta)        # (its research: scripts/brood_research.gd)
 	match u.kind:
 		QUEEN:
 			if float(u.nb.get("devour", 0.0)) > 0.0:
@@ -1192,6 +1221,8 @@ static func incoming(u: Unit, amount: float) -> float:
 
 
 static func on_death(g: Game, u: Unit) -> void:
+	if u.nb.has("rs"):          # (dead already: busy() says no)
+		BroodResearch.stop(g, u, "dead")     # (killed mid-research: lost, paid back as a building's queue)
 	if u.kind == MAW:
 		u.nb["dfood"] = float(u.nb.get("food", 0.0))      # (its death: swollen or thin)
 		spill(g, u)        # (its food bursts out: hauling or rooted)
@@ -1484,7 +1515,7 @@ static func producing(g: Game, u: Unit) -> bool:
 		FATHER, DILO, PTERO:
 			# (the owner, 21:28: he keeps his fertilising loop while any warrior egg is in his nest or near him waiting for
 			# him, until the last one has hatched; only then still)
-			return fertilising(u) or father_busy(g, u)
+			return fertilising(u) or father_busy(g, u) or BroodResearch.busy(u)      # (researching: his loop keeps playing)
 		MAW:
 			if g.clock - float(u.nb.get("hv", -99.0)) < 1.5:
 				return true
@@ -1643,7 +1674,7 @@ static func draw(u: Unit, top: float) -> void:
 	if mine and ROOTERS.has(u.kind) and not u.nb.has("coc"):
 		# her GROWING (as a hall's upgrade: a violet bar and its label), ROOTING / UPROOTING: a bar over it
 		var pg := progress(g, u)
-		if not pg.is_empty() and (pg["col"] == BAR_GROW or pg["col"] == BAR_ROOT):      # (the father's nest and the eggs have their own)
+		if not pg.is_empty() and (pg["col"] == BAR_GROW or pg["col"] == BAR_ROOT or pg["col"] == BroodResearch.BAR):      # (the father's nest and the eggs have their own)
 			var font3 := ThemeDB.fallback_font
 			var bw3 := maxf(60.0, u.radius * 2.0)
 			var y3 := top - 26.0 if u.kind == QUEEN else top - 10.0
@@ -1661,8 +1692,8 @@ static func draw(u: Unit, top: float) -> void:
 		var cw := cr.size.x * 0.7
 		u.draw_rect(Rect2(-cw * 0.5 + cr.get_center().x - u.position.x, by, cw, 4).grow(0.5), Color(0, 0, 0, 0.6))
 		u.draw_rect(Rect2(-cw * 0.5 + cr.get_center().x - u.position.x, by, cw * cp, 4), Color(0.85, 0.75, 0.35))
-	if is_father(u.kind) and mine and rooted(u):
-		# his nest's queue, as a Barracks': the eggs in it, the first one's breath or incubation
+	if is_father(u.kind) and mine and rooted(u) and not BroodResearch.busy(u):
+		# his nest's queue, as a Barracks': the eggs in it, the first one's breath or incubation (researching: its bar)
 		var eggs := nest_eggs(g, u)
 		var font2 := ThemeDB.fallback_font
 		var near := father_near(g, u.team, u.kind)
@@ -1702,6 +1733,8 @@ static func draw_key(u: Unit) -> int:
 		x += int(u.tesla_t * 8.0) * 4099             # (the rooting bar)
 	if float(u.nb.get("grow_t", 0.0)) > 0.0:
 		x += int(float(u.nb["grow_t"]) * 4.0) * 7919         # (her growing bar)
+	if u.nb.has("rs"):
+		x += int(float(u.nb.get("rs_t", 0.0)) * 4.0) * 6007 + 13         # (its research bar)
 	return x + _draw_key2(u)
 
 

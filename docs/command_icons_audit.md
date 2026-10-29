@@ -353,6 +353,21 @@ The Clockwork's coming roster:
 42. `assets/icons/clockwork/ab_owl_bomb.png` (if the Owl gets a bomb at a spot): the pendulum weight dropping onto a
     brass ring.
 
+THE BROOD'S RESEARCH (0.20.0, docs/brood_research.md): code-made placeholders today (the creature's portrait darkened,
+with a round badge: `tools/make_brood_research_icons.py`). Brood style (bronze frame, dark navy ground, creatures, bone,
+acid green); drop each in under the same name in `assets/icons/brood/` (it wins over the placeholder, no code):
+
+43. `nbr_clutch_raptor.png`: BIGGER CLUTCH (Tyrant Sire), a red-spotted egg cracking with THREE Raptor heads peeking out.
+44. `nbr_pack_hunt.png`: PACK HUNT, three Raptors running in a line, speed streaks behind them.
+45. `nbr_battering_horns.png`: BATTERING HORNS, a Brute's triceratops horns smashing through palisade stakes, splinters.
+46. `nbr_clutch_spitter.png`: BIGGER CLUTCH (Venom Sire), an olive egg cracking with three small frilled Spitter heads.
+47. `nbr_slither.png`: SLITHER, a Spitter slithering low and fast, an S-shaped trail behind it.
+48. `nbr_long_spit.png`: LONG SPIT, a green acid glob flying a long dotted arc from a Spitter's open frill.
+49. `nbr_clutch_hatchlings.png`: BIGGER CLUTCH (Storm Sire), a pale blue egg with three small winged Hatchlings.
+50. `nbr_updraft.png`: UPDRAFT, a Skywing rising on curling warm-air swirls, up arrows.
+51. `nbr_quick_roots.png`: QUICK ROOTS, roots pulling out of swamp mud in a blur, a fast arrow.
+52. `nbr_swamp_mending.png`: SWAMP MENDING, a scaly wound closing over green swamp water, small bubbles.
+
 Code needed when the files come in: only the buttons that borrow another button's name today (MORE, SPIT, TAKE OFF,
 RESTOCK, AUTO REFIT, SMALL GEAR, BIG GEAR) need their new name (`more`, `ab_spit`, `ab_take_off`, `ab_restock`,
 `ab_auto_refit`, `ab_gear_small`, `ab_gear_big`) put in `hud.gd` (`_paged` and the build pages' MORE, `_ability_buttons`,

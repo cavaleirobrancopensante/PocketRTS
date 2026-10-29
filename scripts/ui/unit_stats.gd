@@ -273,7 +273,11 @@ static func build(st: Dictionary) -> Dictionary:
 	elif kind == BroodNew.QUEEN:
 		sup_body = Loc.t("She gives %d supply.") % int(Defs.NB["queen_supply"])
 	if int(d.get("spawn", 1)) > 1:
-		sup_body += (" " if sup_body != "" else "") + Loc.t("%d hatch from one egg: the numbers are for each one.") % int(d["spawn"])
+		var nsp := int(d["spawn"])
+		var su = st.get("unit")
+		if su is Unit and (su as Unit).game != null and BroodNew.on((su as Unit).game, (su as Unit).team):
+			nsp = BroodNew.young((su as Unit).game, (su as Unit).team, kind)      # (3 with BIGGER CLUTCH)
+		sup_body += (" " if sup_body != "" else "") + Loc.t("%d hatch from one egg: the numbers are for each one.") % nsp
 	chips.append({"icon": "supply", "text": "%d" % sup, "title": "Supply", "stats": Loc.t("Takes %d supply") % sup, "body": sup_body, "low": true})
 	specials = _specials(kind, d, st)
 	return {"chips": chips, "specials": specials, "dps": dps, "range": rng, "type": typ, "kind": kind, "cycle": cycle if can_fight else 0.0}

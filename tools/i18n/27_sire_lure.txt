@@ -1,0 +1,37 @@
+# 0.19.0: the Sire lures (docs/sire_lure.md); these entries were first written straight into the generated lang files
+
+> Tyrant Lure
+pt Isca Tirana
+es Cebo Tirano
+
+> Venom Lure
+pt Isca do Veneno
+es Cebo del Veneno
+
+> Storm Lure
+pt Isca da Tempestade
+es Cebo de la Tormenta
+
+> LURE RIPENING
+pt ISCA AMADURECENDO
+es CEBO MADURANDO
+
+> THE SIRE ARRIVES
+pt O SIRE CHEGA
+es LLEGA EL SEÑOR
+
+> LURE %ds
+pt ISCA %ds
+es CEBO %ds
+
+> A grub's lure calls the %s: he comes, eats it and nests there in %d s.
+pt A isca de uma larva chama o %s: ele vem, a come e faz o ninho ali em %d s.
+es El cebo de una larva llama al %s: viene, se lo come y anida allí en %d s.
+
+> Pick where his lure grows: a grub walks there, pays and swells into a lure; ripe, the %s comes, eats it and nests there (%d s in all).
+pt Escolha onde a isca dele cresce: uma larva vai até lá, paga e incha numa isca; madura, o %s vem, a come e faz o ninho ali (%d s ao todo).
+es Elige dónde crece su cebo: una larva va allí, paga y se hincha en un cebo; maduro, el %s viene, se lo come y anida allí (%d s en total).
+
+> The %s came to the lure and ate it: he is yours, on his nest.
+pt O %s veio à isca e a comeu: ele é seu, no ninho.
+es El %s vino al cebo y se lo comió: es tuyo, en su nido.

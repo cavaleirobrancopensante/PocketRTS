@@ -4,6 +4,15 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.20.0", "items": [
+		"THE BROOD'S RESEARCH: with no buildings, its rooted creatures research. Each Sire, rooted on his nest, researches his own line's upgrades on his card; the Brood Mother the ones for every creature. One at a time each, paid up front; getting up stops it (paid back), and a Sire killed while researching loses it (paid back); what is done stays.",
+		"A SIRE RESEARCHING fathers no eggs: the Mother can't lay his line's eggs until he is done, but his fertilising animation keeps playing, so a scout sees him busy. His card shows RESEARCHING and its bar in place of his eggs, and STOP RESEARCH. The Mother keeps laying while she researches (she can't grow meanwhile).",
+		"YOUNG TWO TO AN EGG: Raptors and Spitters hatch two to an egg (a Raptor egg 50 food). BIGGER CLUTCH (each Sire's: 100 food, 15 spoils, 40 s) makes it three, the egg costing more so each young costs the same (75 for three Raptors; 135 food and 8 spoils for three Spitters).",
+		"TYRANT SIRE: PACK HUNT (Raptors and Tyrant Challengers run a little slower than before as standard, 96 and 84, and with it faster than before, 114 and 98) and BATTERING HORNS (the Mother's stage 3: Brutes x3.5 against buildings, walls and gates, was x2.5). VENOM SIRE: SLITHER (Spitters and Venom Challengers about 15% faster) and LONG SPIT (about 20% more range: a Spitter 205, a Venom Challenger 215). STORM SIRE: UPDRAFT (flyers about 15% faster while flying) and BIGGER CLUTCH for the Hatchlings (coming). THE MOTHER (stage 2): QUICK ROOTS (every creature roots and uproots in half the time) and SWAMP MENDING (on your swamp, out of the fight, creatures heal more).",
+		"TARGETS: Spitters no longer shoot flyers (the Venom Challenger, the Venom Sire and the Skywing still do).",
+		"The computer's Brood researches too: BIGGER CLUTCH early, PACK HUNT before an attack, BATTERING HORNS before a siege, QUICK ROOTS mid game, one Sire at a time so its army keeps coming.",
+		"The research buttons have stand-in icons (the creature with a badge) until the designer's drawings come.",
+	]},
 	{"v": "0.19.0", "items": [
 		"THE SIRE LURES: a grub no longer turns into a grown Sire. Picked on a grub's BUILD card, it roots and swells into the Sire's LURE, a living pheromone gland (the Tyrant's red and spiked, the Venom's yellow-green, the Storm's with a crest-fin in a blue haze). When it is ripe the Sire arrives, eats it and nests on its spot. The same cost and time as before, one Sire of each kind (a lure counts as its Sire), and the computer makes its Sires the same way.",
 		"A lure is rooted and can be attacked: killed before the Sire comes, it is lost (no refund) and another can grow at once. Its card reads Tyrant, Venom or Storm Lure and its bar LURE RIPENING, then THE SIRE ARRIVES; his roar is the cue.",

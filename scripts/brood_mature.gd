@@ -38,7 +38,7 @@ static func price(g: Game, t: int, k: String) -> Array:
 		return [0, 0]
 	var mp := g.unit_price(t, m)
 	var yp := g.unit_price(t, k)
-	var n := maxf(1.0, float(Defs.UNITS[k].get("spawn", 1)))
+	var n := maxf(1.0, float(BroodNew.young(g, t, k)))      # (the egg holds 2, or 3 with BIGGER CLUTCH: the same price each)
 	return [maxi(0, int(mp[0]) - int(round(float(yp[0]) / n))), maxi(0, int(mp[1]) - int(round(float(yp[1]) / n)))]
 
 

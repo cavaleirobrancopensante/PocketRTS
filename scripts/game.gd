@@ -3611,7 +3611,7 @@ func supply_used(t: int) -> int:
 			n += int(u.d["supply"])
 			if u._k_still and u.kind == BroodNew.EGG and not u.nb.has("out"):
 				var ek := String(u.nb.get("k", "grub"))      # (a Brood egg holds its creature's supply)
-				n += int(Defs.UNITS[ek]["supply"]) * int(Defs.UNITS[ek].get("spawn", 1))
+				n += int(Defs.UNITS[ek]["supply"]) * int(u.nb.get("n", Defs.UNITS[ek].get("spawn", 1)))      # (its young: 2, 3 with BIGGER CLUTCH)
 			if u.owl_t >= 0.0:
 				n += int(Defs.UNITS[Defs.OWL]["supply"]) - int(u.d["supply"])     # (a Swift turning into an Owl holds its supply)
 			elif u.moult_t >= 0.0:
@@ -3976,6 +3976,9 @@ var _refit_t := 0.0
 ## guns' reload (Prepared Charges) and range (Gunner's Quadrant). (The Cavalry Charge is
 ## checked where the blow lands.) Run on every new unit and when a drill is researched.
 func apply_drills(u: Unit) -> void:
+	if u._k_fac == "brood":
+		BroodResearch.apply(self, u)       # (the Brood's LONG SPIT and BATTERING HORNS, scripts/brood_research.gd)
+		return
 	if not (u.kind in ["cannon", "mortar"]) or u.team < 0 or u.team >= players.size():
 		return
 	var base: Dictionary = Defs.UNITS[u.kind]
@@ -4046,6 +4049,8 @@ func unit_price(t: int, key: String) -> Array:
 	var k := Defs.train_kind(key)
 	var u: Dictionary = Defs.UNITS[k]
 	var p := [int(u["cost"]), int(u.get("cost2", 0))]
+	if t >= 0 and t < players.size() and BroodResearch.clutch_key(k) != "" and BroodNew.on(self, t):
+		return BroodResearch.egg_price(k, BroodResearch.clutch(self, t, k))      # (an egg of 2 young, of 3 with BIGGER CLUTCH)
 	if Defs.tension_cost(u) > 0:
 		p[1] = Defs.tension_cost(u)          # (gear mode's Clockwork: the second price is Tension)
 	if Defs.ARMOURED.has(k) and t >= 0:

@@ -6,7 +6,7 @@ extends SceneTree
 ##  2. the Mother lays an egg while she walks (it drops behind her)
 ##  3. warriors' eggs are fertilised only by the father ROOTED on his nest near the Mother (refused without him, far
 ##     off or standing; rooted he takes less damage; her eggs go into his nest, 2 queued; fertilised by his breath;
-##     they hatch there as 3 Raptors); when he gets up the egg lies on the ground and, never fertilised, hatches as a
+##     they hatch there as 2 Raptors); when he gets up the egg lies on the ground and, never fertilised, hatches as a
 ##     grub (the difference paid back)
 ##  4. one Tyrannosaur at a time (an egg for one counts)
 ##  5. a Rootmaw drinks its ground into its body; rooted circles may not overlap
@@ -42,6 +42,13 @@ extends SceneTree
 ##  20. THE SIRE LURES (the owner, 2026-10-29 18:03-18:31): a grub swells into a Sire's lure, ripens, the Sire arrives
 ##     and nests on its spot, his eggs in front of his footprint, a lure killed early, one Sire at a time counts the
 ##     lure, the computer's Sire through a lure, a match saved mid-lure and continued
+##  21. THE BROOD'S RESEARCH (the owner, 2026-10-29 18:31 and 18:59; scripts/brood_research.gd): young two to an egg (a
+##     Raptor egg 50, a Spitter egg 90 + 5) and three with BIGGER CLUTCH (75; 135 + 8), the research buttons on a rooted
+##     Sire's card and the Mother's, a Sire researching lays no eggs of his line but keeps his loop (RESEARCHING on his card,
+##     STOP RESEARCH), the Mother keeps laying while she researches (and can't grow), each effect (PACK HUNT, BATTERING
+##     HORNS, SLITHER, LONG SPIT, UPDRAFT, QUICK ROOTS, SWAMP MENDING), a Sire killed or uprooted mid-research (paid back,
+##     finished research stays), Spitters can't target flyers (the Venom Challenger can), the computer researches, a match
+##     saved mid-research and continued (resumed at the end of the run)
 ## Prints PASS / FAIL lines and "brood_new: N failures".
 var main: Node
 var t := 0.0
@@ -233,12 +240,12 @@ func _run() -> void:
 				return false
 		return true, float(Defs.NB["fert_time"]) + 0.5)
 	check(others > 0 and busy == others and all2, "   ALL the eggs in his nest fertilised together, not one at a time (the owner, 22:42: %d of %d already under his breath)" % [busy, others])
-	var got3: bool = await wait_for(func() -> bool: return mine("raptor").size() >= r0 + 3, Defs.UNITS["raptor"]["time"] + 3.0)
+	var got3: bool = await wait_for(func() -> bool: return mine("raptor").size() >= r0 + 2, Defs.UNITS["raptor"]["time"] + 3.0)
 	var at_nest := 0
 	for rp in mine("raptor"):
 		if rp.position.distance_to(BroodNew.nest_point(f)) < 60.0:
 			at_nest += 1
-	check(got3 and at_nest >= 3, "   it hatches as 3 Raptors, in the nest (%d, %d by it)" % [mine("raptor").size() - r0, at_nest])
+	check(got3 and at_nest >= 2, "   it hatches as 2 Raptors (two to an egg since 0.20.0), in the nest (%d, %d by it)" % [mine("raptor").size() - r0, at_nest])
 	await wait_for(func() -> bool: return BroodNew.nest_eggs(g, f).is_empty(), Defs.UNITS["raptor"]["time"] + 5.0)
 	# an egg the father never breathes on: he gets up, it lies on the ground, a grub after all, the difference paid back
 	for rp in mine("raptor"):
@@ -528,6 +535,7 @@ func _run() -> void:
 	await _fathers(q, p)
 	await _mature(q, p)
 	await _lures(q, p)
+	await _research(q, p)
 	# 8. killing the Mother loses
 	q.take_damage(999999.0, null)
 	var out: bool = await wait_for(func() -> bool: return bool(g.eliminated[0]), 3.0)
@@ -552,6 +560,7 @@ func _run() -> void:
 		check(rooted2 == maws_rooted and not g.nb_spots.is_empty(), "   its rooted Rootmaws (%d of %d) and their ground" % [rooted2, maws_rooted])
 		check(g.buildings.filter(func(b) -> bool: return b.team == 0).is_empty() and not bool(g.eliminated[0]), "   no buildings, and not out")
 	await _lure_resumed()
+	await _research_resumed()
 	print("brood_new: %d failures" % fails)
 	quit(1 if fails > 0 else 0)
 
@@ -1544,3 +1553,268 @@ func _father_spot(q: Unit, k: String, a: float) -> Vector2:
 			if g.region_of(g.cell_of(p)) == BroodRoot.home_region(g, q.position) and BroodRoot.place_problem(g, 0, k, p, null) == "":
 				return p
 	return q.position
+
+
+## 21. THE BROOD'S RESEARCH (scripts/brood_research.gd, docs/brood_research.md).
+var rs_saved = null
+var rs_t0 := 0.0
+
+
+func _sire(q: Unit, k: String, a: float) -> Unit:
+	var f := BroodRoot.cocoon(g, 0, k, _father_spot(q, k, a))
+	f.nb.erase("coc")
+	f.hp = f.max_hp
+	BroodNew.recount(g, 0)
+	return f
+
+
+func _research(q: Unit, p: Dictionary) -> void:
+	for fk0 in BroodNew.FATHERS:
+		for u in mine(fk0):
+			g.consume_unit(u)
+	for k0 in [BroodNew.EGG, "raptor", "spitter", "brute", "skywing", "tyrant_challenger", "venom_challenger"]:
+		for u in mine(k0):
+			g.consume_unit(u)
+	for k0 in p["tech"].keys():
+		if String(k0).begins_with("nb_"):
+			p["tech"].erase(k0)
+	p["gold"] = 5000
+	p["res2"] = 500.0
+	q.nb["stage"] = 0
+	BroodNew.apply_stage(q)
+	q.nb["grow_t"] = 0.0
+	while int(g.players[0]["cap"]) - g.supply_used(0) < 30:
+		var tt := BroodRoot.cocoon(g, 0, BroodNew.TURTLE, free_spot(BroodNew.TURTLE, q.position, 18.0))
+		tt.nb.erase("coc")
+		BroodNew.recount(g, 0)
+	await wait(0.2)
+	# the young: two to an egg
+	check(int(Defs.UNITS["raptor"]["spawn"]) == 2 and g.unit_price(0, "raptor") == [50, 0] and int(Defs.UNITS["spitter"]["spawn"]) == 2
+		and g.unit_price(0, "spitter") == [90, 5] and BroodNew.young(g, 0, "raptor") == 2,
+		"21. young TWO to an egg: a Raptor egg %s, a Spitter egg %s" % [str(g.unit_price(0, "raptor")), str(g.unit_price(0, "spitter"))])
+	check(not bool(Defs.UNITS["spitter"].get("anti_air", false)) and bool(Defs.UNITS["venom_challenger"].get("anti_air", false))
+		and float(Defs.UNITS["raptor"]["speed"]) == 96.0 and float(Defs.UNITS["tyrant_challenger"]["speed"]) == 84.0,
+		"    Spitters can't shoot flyers, the Venom Challenger can; the standard speeds lowered (Raptor 96, Challenger 84)")
+	var f := _sire(q, BroodNew.FATHER, 0.3)
+	var d := _sire(q, BroodNew.DILO, 2.4)
+	await wait(0.3)
+	check(BroodNew.father_near(g, 0, BroodNew.FATHER) and BroodNew.father_near(g, 0, BroodNew.DILO), "    the Tyrant and Venom Sires rooted beside her")
+	# the Sire's card
+	g.set_selection([f])
+	await wait(0.1)
+	var labs := card_labels()
+	var horns := _item("BATTERING HORNS")
+	check(labs.has("BIGGER CLUTCH") and labs.has("PACK HUNT") and labs.has("BATTERING HORNS") and not horns.is_empty() and not bool(horns[3])
+		and String(horns[4]).contains("stage 3"), "    his card: BIGGER CLUTCH, PACK HUNT, BATTERING HORNS (greyed: %s)" % (str(horns[4]) if not horns.is_empty() else "-"))
+	var tip: Dictionary = g.hud._card_tip(_item("PACK HUNT") + ["", "", ""]) if not _item("PACK HUNT").is_empty() else {}
+	check(String(tip.get("stats", "")).contains("75") and String(tip.get("stats", "")).contains("35 s") and String(tip.get("body", "")).contains("114"),
+		"    its tooltip: name, effect, cost, time (%s | %s)" % [tip.get("title", ""), tip.get("stats", "")])
+	# BIGGER CLUTCH on the Tyrant Sire
+	var gold0 := int(p["gold"])
+	var sp0 := float(p["res2"])
+	var w: String = f.cmd_nb_research("nb_clutch_raptor")
+	await wait(0.1)
+	check(w == "" and BroodResearch.current(f) == "nb_clutch_raptor" and gold0 - int(p["gold"]) == 100 and absf(sp0 - float(p["res2"]) - 15.0) < 0.01,
+		"    BIGGER CLUTCH started: paid 100 food and 15 spoils %s" % w)
+	var pg := BroodNew.progress(g, f)
+	check(String(pg.get("label", "")).begins_with("RESEARCHING") and float(pg.get("left", 0.0)) > 38.0, "    his card shows %s (%.0f s)" % [pg.get("label", ""), float(pg.get("left", 0.0))])
+	q.nb["eggs"] = BroodNew.eggs_max(q)
+	var why := BroodNew.lay_problem(g, q, "raptor")
+	check(why.contains("researching") and BroodNew.lay_problem(g, q, "spitter") == "", "    no Raptor eggs while he researches (%s); the Venom line still lays" % why)
+	labs = card_labels()
+	check(labs.has("STOP RESEARCH") and not labs.has("PACK HUNT"), "    STOP RESEARCH in place of his research buttons")
+	var frames := {}
+	for i in 30:
+		await physics_frame
+		frames[f.sprite.frame] = true
+	check(BroodNew.producing(g, f) and frames.size() >= 2, "    researching he lays no eggs but his fertilising loop plays on (%d frames seen)" % frames.size())
+	# done
+	f.nb["rs_t"] = float(Defs.RESEARCH["nb_clutch_raptor"]["time"]) - 0.1
+	var dn: bool = await wait_for(func() -> bool: return g.has_tech(0, "nb_clutch_raptor"), 1.0)
+	check(dn and not BroodResearch.busy(f) and g.unit_price(0, "raptor") == [75, 0] and BroodNew.lay_problem(g, q, "raptor") == "",
+		"    done: Raptors THREE to an egg for %s (25 each still)" % str(g.unit_price(0, "raptor")))
+	var r0 := mine("raptor").size()
+	var gl := int(p["gold"])
+	q.cmd_lay("raptor")
+	await wait(0.1)
+	var eg: Array = BroodNew.nest_eggs(g, f)
+	check(gl - int(p["gold"]) == 75 and eg.size() == 1 and int(eg[0].nb.get("n", 0)) == 3, "    an egg paid 75, holding 3")
+	var h3: bool = await wait_for(func() -> bool: return mine("raptor").size() >= r0 + 3, float(Defs.UNITS["raptor"]["time"]) + 4.0)
+	check(h3 and mine("raptor").size() == r0 + 3, "    it hatches 3 Raptors (%d)" % (mine("raptor").size() - r0))
+	check(BroodMature.price(g, 0, "raptor") == [75, 10], "    maturing a Raptor still costs %s (its share of the egg the same)" % str(BroodMature.price(g, 0, "raptor")))
+	# the Venom line: Spitters 3 to an egg, 135 + 8
+	g.players[0]["tech"]["nb_clutch_spitter"] = true
+	check(g.unit_price(0, "spitter") == [135, 8] and BroodMature.price(g, 0, "spitter") == [105, 17], "    the Venom Sire's BIGGER CLUTCH: a Spitter egg %s, maturing still %s" % [str(g.unit_price(0, "spitter")), str(BroodMature.price(g, 0, "spitter"))])
+	var hk := "hatchlings"
+	check(BroodResearch.clutch_key(hk) == "nb_clutch_hatchlings" and BroodResearch.base_clutch(hk) == 2 and BroodResearch.problem(g, _sire(q, BroodNew.PTERO, 4.5), "nb_clutch_hatchlings") != "",
+		"    the Storm Sire's BIGGER CLUTCH: data for the Hatchlings (2, 3 with it), refused until they are in the game")
+	g.players[0]["tech"]["nb_clutch_hatchlings"] = true
+	check(BroodResearch.clutch(g, 0, hk) == 3, "    with it the Hatchlings would come 3 to an egg")
+	g.players[0]["tech"].erase("nb_clutch_hatchlings")
+	# PACK HUNT, SLITHER, UPDRAFT: speeds
+	var ra: Unit = mine("raptor")[0]
+	var tc: Unit = g._add_unit("tyrant_challenger", 0, spot_near(q.position, 14.0))
+	var spt: Unit = g._add_unit("spitter", 0, spot_near(q.position, 14.0))
+	var vc: Unit = g._add_unit("venom_challenger", 0, spot_near(q.position, 14.0))
+	var sw: Unit = g._add_unit("skywing", 0, spot_near(q.position, 14.0))
+	var br: Unit = g._add_unit("brute", 0, spot_near(q.position, 14.0))
+	check(BroodResearch.speed_add(ra) == 0.0 and float(br.d["building_bonus"]) == 2.5 and float(spt.d["range"]) == 170.0, "    before: no speed added, a Brute x2.5 on buildings, a Spitter's range 170")
+	for k in ["nb_pack_hunt", "nb_slither", "nb_updraft", "nb_battering_horns", "nb_long_spit", "nb_quick_roots", "nb_swamp_mending"]:
+		BroodResearch.done(g, 0, k)
+	check(is_equal_approx(96.0 + BroodResearch.speed_add(ra), 114.0) and is_equal_approx(84.0 + BroodResearch.speed_add(tc), 98.0),
+		"    PACK HUNT: a Raptor %d, a Tyrant Challenger %d" % [int(96.0 + BroodResearch.speed_add(ra)), int(84.0 + BroodResearch.speed_add(tc))])
+	await wait(0.1)
+	check(ra.speed >= 113.9, "    ...and it runs at it (%.0f px/s now, swamp x1.3 included)" % ra.speed)
+	check(is_equal_approx(68.0 + BroodResearch.speed_add(spt), 78.0) and is_equal_approx(58.0 + BroodResearch.speed_add(vc), 67.0), "    SLITHER: a Spitter 78, a Venom Challenger 67")
+	check(is_equal_approx(BroodResearch.speed_add(sw), 18.0), "    UPDRAFT: a flying Skywing +18 (118 -> 136)")
+	sw.cmd_land()
+	await wait(1.6)
+	check(BroodResearch.speed_add(sw) == 0.0, "    ...landed, nothing (only while flying)")
+	var br2: Unit = g._add_unit("brute", 0, spot_near(q.position, 14.0))
+	check(float(br.d["building_bonus"]) == 3.5 and float(br2.d["building_bonus"]) == 3.5 and float(Defs.UNITS["brute"]["building_bonus"]) == 2.5,
+		"    BATTERING HORNS: the Brutes x3.5 on buildings (a new one too; Defs untouched)")
+	var spt2: Unit = g._add_unit("spitter", 0, spot_near(q.position, 14.0))
+	check(float(spt.d["range"]) == 205.0 and float(spt2.d["range"]) == 205.0 and float(vc.d["range"]) == 215.0 and float(Defs.UNITS["spitter"]["range"]) == 170.0,
+		"    LONG SPIT: a Spitter 205, a Venom Challenger 215")
+	var yt: Unit = g._add_unit("spitter", 0, spot_near(q.position, 14.0))
+	yt.morph("venom_challenger")
+	check(float(yt.d["range"]) == 215.0, "    ...and a Spitter matured into a Venom Challenger keeps it (%d)" % int(yt.d["range"]))
+	var tu: Unit = g._add_unit(BroodNew.TURTLE, 0, spot_near(q.position, 14.0))
+	check(is_equal_approx(tu.switch_time(), 1.25) and is_equal_approx(q.switch_time(), 2.0), "    QUICK ROOTS: a turtle roots in %.2f s, the Mother in %.1f s" % [tu.switch_time(), q.switch_time()])
+	ra.hit_clock = -99.0
+	br.hit_clock = -99.0
+	f.hit_clock = -99.0
+	check(is_equal_approx(BroodResearch.mend(ra), 1.0) and is_equal_approx(BroodResearch.mend(br), 2.88) and is_equal_approx(BroodResearch.mend(f), 6.0),
+		"    SWAMP MENDING: a Raptor +%.1f hp/s, a Brute +%.2f, the Tyrant Sire +%.1f (capped)" % [BroodResearch.mend(ra), BroodResearch.mend(br), BroodResearch.mend(f)])
+	ra.hit_clock = g.clock
+	check(BroodResearch.mend(ra) == 0.0, "    ...not while it was hit in the last 4 s")
+	var ra_hp := ra.max_hp - 10.0
+	ra.hp = ra_hp
+	ra.hit_clock = -99.0
+	if g.on_swamp(0, ra.position):
+		await wait(1.0)
+		check(ra.hp - ra_hp > 2.5, "    a Raptor on the swamp heals %.1f in a second (2 + 1)" % (ra.hp - ra_hp))
+	for u in [tc, spt, vc, sw, br, br2, spt2, yt, tu]:
+		g.consume_unit(u)
+	for k in ["nb_pack_hunt", "nb_slither", "nb_updraft", "nb_battering_horns", "nb_long_spit", "nb_quick_roots", "nb_swamp_mending", "nb_clutch_spitter"]:
+		p["tech"].erase(k)
+	# Spitters don't target flyers; the Venom Challenger does
+	var bal: Unit = g._add_unit("balloon", 1, spot_near(q.position, 15.0))
+	var sp3: Unit = g._add_unit("spitter", 0, bal.position + Vector2(60, 0))
+	var vc3: Unit = g._add_unit("venom_challenger", 0, bal.position + Vector2(-60, 0))
+	check(not sp3.can_hit(bal) and vc3.can_hit(bal), "    a Spitter can't hit a balloon; a Venom Challenger can")
+	await wait(1.5)
+	check(sp3.target != bal, "    the Spitter never takes the balloon for its target")
+	for u in [bal, sp3, vc3]:
+		if is_instance_valid(u) and not u.dead:
+			g.consume_unit(u)
+	# THE MOTHER keeps laying while she researches (and can't grow)
+	q.nb["stage"] = 1
+	BroodNew.apply_stage(q)
+	await wait(0.2)
+	g.set_selection([q])
+	await wait(0.1)
+	labs = card_labels()
+	check(labs.has("QUICK ROOTS") and labs.has("SWAMP MENDING"), "    her card: QUICK ROOTS, SWAMP MENDING")
+	w = q.cmd_nb_research("nb_quick_roots")
+	q.nb["eggs"] = BroodNew.eggs_max(q)
+	var e0 := mine(BroodNew.EGG).size()
+	var wl: String = q.cmd_lay("grub")
+	await wait(0.1)
+	check(w == "" and wl == "" and mine(BroodNew.EGG).size() == e0 + 1 and BroodNew.grow_problem(g, q) == "She is researching.",
+		"    she researches QUICK ROOTS and still lays (%s); GROW waits (%s)" % [wl, BroodNew.grow_problem(g, q)])
+	q.nb["egg_t"] = 0.0
+	q.nb["eggs"] = 0
+	await wait(float(Defs.NB["egg_time"]) / maxf(float(BroodNew.lay_rate(g, q)[0]), 0.1) + 0.5)
+	check(int(q.nb.get("eggs", 0)) >= 1, "    her eggs keep growing while she researches (%d)" % int(q.nb.get("eggs", 0)))
+	var gq := int(p["gold"])
+	q.cmd_nb_research_stop()
+	check(not BroodResearch.busy(q) and int(p["gold"]) - gq == 100, "    STOP RESEARCH: paid back")
+	# a Sire killed mid-research: lost, paid back; finished research stays
+	var wpk: String = f.cmd_nb_research("nb_pack_hunt")
+	if wpk != "":
+		print("    (pack hunt refused: %s, mode %s)" % [wpk, f.tesla_mode])
+	f.nb["rs_t"] = 20.0
+	var gk := int(p["gold"])
+	f.take_damage(999999.0, null)
+	await wait(0.2)
+	check(f.dead and absi(int(p["gold"]) - gk - 75) < 15 and not g.has_tech(0, "nb_pack_hunt") and g.has_tech(0, "nb_clutch_raptor") and not BroodResearch.in_hand(g, 0, "nb_pack_hunt"),
+		"    the Tyrant Sire killed mid-research: PACK HUNT lost (paid back %d), BIGGER CLUTCH stays" % (int(p["gold"]) - gk))
+	# uprooted mid-research: it stops, paid back
+	d.cmd_nb_research("nb_slither")
+	var gu := int(p["gold"])
+	d.cmd_uproot(true)
+	await wait(0.2)
+	check(not BroodResearch.busy(d) and absi(int(p["gold"]) - gu - 75) < 15, "    the Venom Sire got up mid-research: it stopped, paid back")
+	var back: bool = await wait_for(func() -> bool: return d.tesla_mode == "packed", 5.0)
+	d.cmd_deploy()
+	var re2: bool = await wait_for(func() -> bool: return BroodNew.rooted(d), 6.0)
+	check(back and re2 and BroodResearch.problem(g, d, "nb_long_spit") == "", "    rooted again: he can research")
+	# saved mid-research: resumed at the end of the run
+	d.cmd_nb_research("nb_long_spit")
+	d.nb["rs_t"] = 10.0
+	await wait(0.1)
+	rs_t0 = float(d.nb["rs_t"])
+	rs_saved = JSON.parse_string(JSON.stringify(SaveGame.capture(g, main.last_cfg)))
+	# the snapshot (online and replays) carries it
+	var row: Array = NetSnapshot.unit_vals(d)
+	if true:
+		check(str(row).contains("nb_long_spit"), "    the online/replay snapshot carries the research in hand")
+	# THE COMPUTER researches
+	BroodResearch.stop(g, d)
+	p["tech"].erase("nb_clutch_raptor")
+	var f2 := _sire(q, BroodNew.FATHER, 0.3)
+	while mine("raptor").size() < 8:
+		g._add_unit("raptor", 0, spot_near(q.position, 8.0))
+	p["gold"] = 2000
+	p["res2"] = 300.0
+	var ck: float = g.clock
+	if g.clock < 200.0:
+		g.clock = 200.0
+	var ai = AIBroodNew.new()
+	ai.game = g
+	ai.team = 0
+	ai._attack_at = 24
+	ai._nb_research(q)
+	check(BroodResearch.current(f2) == "nb_clutch_raptor", "    the computer researches BIGGER CLUTCH on its Tyrant Sire early (%s)" % BroodResearch.current(f2))
+	ai._nb_research(q)
+	check(BroodResearch.current(d) == "", "    ...one Sire at a time (the Venom Sire waits)")
+	check(ai._nb_warrior(2000) != "raptor", "    ...and lays the other lines meanwhile (%s)" % ai._nb_warrior(2000))
+	ai.free()
+	if g.clock == 200.0 and ck < 200.0:
+		g.clock = ck
+	BroodResearch.stop(g, f2)
+	for fk0 in BroodNew.FATHERS:
+		for u in mine(fk0):
+			g.consume_unit(u)
+	q.nb["stage"] = 0
+	BroodNew.apply_stage(q)
+	g.set_selection([])
+
+
+## The match saved mid-research, resumed: the research still in hand, as far on; it finishes.
+func _research_resumed() -> void:
+	if not (rs_saved is Dictionary) or (rs_saved as Dictionary).is_empty():
+		check(false, "21. the match saved mid-research")
+		return
+	var cfg: Dictionary = (rs_saved["cfg"] as Dictionary).duplicate(true)
+	cfg["resume"] = rs_saved
+	main.start(cfg)
+	await process_frame
+	await process_frame
+	g = main.game
+	for ai in g.ais:
+		ai.process_mode = Node.PROCESS_MODE_DISABLED
+	if g.hud:
+		g.hud.countdown = 0.0
+	await wait(0.5)
+	var l: Array = g.units.filter(func(u) -> bool: return u.team == 0 and not u.dead and u.kind == BroodNew.DILO)
+	var d: Unit = l[0] if not l.is_empty() else null
+	check(d != null and BroodResearch.current(d) == "nb_long_spit" and absf(float(d.nb.get("rs_t", 0.0)) - rs_t0) < 2.0,
+		"21. saved mid-research and continued: the Venom Sire still researching LONG SPIT (%.1f s, was %.1f s)" % [float(d.nb.get("rs_t", -1.0)) if d else -1.0, rs_t0])
+	if d == null:
+		return
+	d.nb["rs_t"] = float(Defs.RESEARCH["nb_long_spit"]["time"]) - 0.2
+	var dn: bool = await wait_for(func() -> bool: return g.has_tech(0, "nb_long_spit"), 2.0)
+	var sp: Unit = g._add_unit("spitter", 0, d.position + Vector2(0, 80))
+	check(dn and float(sp.d["range"]) == 205.0, "    then it finishes: Spitters reach 205")

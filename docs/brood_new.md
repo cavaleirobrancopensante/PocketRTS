@@ -163,9 +163,9 @@ THE PRICE (no bargain, docs/design_principles.md 1): maturing costs the mature f
 | | Tyrant Challenger | Venom Challenger | (for comparison) |
 | --- | --- | --- | --- |
 | Health, armour | 130, 1 | 220, 1 | Raptor 36, 0; Brute 240, 2; Spitter 70, 0; Venom Sire 650, 1 |
-| Speed | 92 | 58 | Raptor 108, Brute 56; Spitter 68 |
+| Speed | 84 (98 with Pack Hunt; 92 before 0.20.0) | 58 (67 with Slither) | Raptor 96 (114 with Pack Hunt; 108 before 0.20.0), Brute 56; Spitter 68 |
 | Attack | bite 15 every 1.3 s (about 8 a second with the strike), reach 26, x1.3 on buildings | venom glob 18 every 2.0 s, range 180, acid 4 s (strips 2 armour), splash 24 px (half the blow on enemies round the target), ground and air | Raptor 6 every 0.9 s; Brute 26 every 1.8 s; Spitter 8 every 2.0 s at 170 |
-| Value (as if laid) | 100 food, 10 spoils | 150 food, 20 spoils | Raptor 25 each (75 an egg of 3); Spitter 45 + 2.5 each |
+| Value (as if laid) | 100 food, 10 spoils | 150 food, 20 spoils | Raptor 25 each (50 an egg of 2, 75 of 3 with Bigger Clutch, 0.20.0); Spitter 45 + 2.5 each |
 | To mature | 75 food, 10 spoils | 105 food, 17 spoils | |
 | Supply | 2 (a Raptor 1) | 2 (a Spitter 1) | Brute 3 |
 | Size | about twice a Raptor (42 px tall south-east) | about twice a Spitter (the owner's concept; for now the Venom Sire's frames at 80%) | |
@@ -203,7 +203,7 @@ TESTS: tools/test_brood_new.gd section 19 (eggs lay only the young; MATURE locke
 - The old buildings' roles (the owner's, 13:20 and 13:25): the Burrow is the Mother, the Feeding Pit the Rootmaw, the Clutch Mound the Mound Turtle, the Spawning Den and Gorge Pit the Tyrannosaur, the Roost the Pterodactyl (0.16.0). The Brood Pen has no creature: SACRIFICE is at the Mother. Burrow upgrades: none; the Mother holds 10 eggs.
 - Swamp (the owner's rules, 13:34 and 13:40): only round the rooted Mother and Mound Turtles. A Rootmaw needs it to root and feed. It still makes the Brood faster and heals it.
 - Not in the new Brood: the Bloater (removed, the owner 21:45; its replacement comes later), the Spore Mother and the Stormcaller (retired, 2026-10-29).
-- Research: none yet. The old Brood's upgrades lived in buildings.
+- Research: since 0.20.0 the rooted Sires and the Mother research (docs/brood_research.md).
 - Unfertilised warriors' eggs: they wait 25 seconds for the father, then hatch as grubs.
 - The Mother can be uprooted and walked. The computer does it only to fight off an attack at her nest.
 
@@ -215,7 +215,7 @@ TESTS: tools/test_brood_new.gd section 19 (eggs lay only the young; MATURE locke
 
 - Online play: the faction is not in the online lobby yet. The game already sends the new state, so it should be a small step.
 - The Bloater's replacement in the Pterodactyl's line (to be designed); the Skywing's redesign as a small olive pterosaur (art).
-- Research and upgrades for the new Brood.
+- Research: done in 0.20.0 (docs/brood_research.md).
 - The computer is simple. It does not move the Mother, does not haul food, does not close its ramp with a turtle, does not make hidden bases, does not use spoils for much, and does not scout. Its economy is slow in the first five minutes.
 - Done in code for now: the egg's red tint once fertilised, the egg's fall; every rooted creature moves (a rooted creature is a building, the owner, 15:45): a still rooted frame (the Rootmaw's full stage 6) breathes (a slow 2% squash and stretch about the feet, 2.6 s), and the glowing parts (the Mother's and the Rootmaw's yellow-green eggs and food, the Tyrannosaur's fire and red eggs) pulse added on (glow_<strip> masks made by the importer; his fire flickers). The Mother's rooted loop is her sheet's breathing row (4 frames); the turtle's its loop row; the Tyrannosaur's and the Rootmaw's are the owner's sheets. Listed in docs/art_style_inconsistency.md. The egg and the food pile are the owner's sheets; the pile shows the frame that matches what is left and what has rotted. (The Mother's rooted-swipe sheet, brood_mother_rooted_attack_se_REJECTED.png, is not used: she cannot attack rooted.)
 - Sounds reuse the old Brood's.

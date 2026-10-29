@@ -1499,6 +1499,7 @@ func _nb_buttons(list: Array, units: Array) -> void:
 					for u in game.selected_units():
 						if u.kind == BroodNew.MAW and u.tesla_mode == "deployed":
 							u.cmd_uproot(false), true, "", ""])
+	_nb_research_buttons(list, units)
 	# MATURE (YOUNG AND MATURE, the owner 2026-10-29 12:40; scripts/brood_mature.gd): each selected young unit that can
 	# moults into its mature form, paying for itself, as far as the food allows
 	var young := units.filter(func(u: Unit) -> bool: return u.team == game.human and BroodMature.mature_of(u.kind) != "" and BroodNew.on(game, u.team))
@@ -1531,6 +1532,39 @@ func _nb_buttons(list: Array, units: Array) -> void:
 		list.append(["rally", "RALLY", func() -> void:
 			controls.mode = "nb_rally"
 			toast("Tap where the hatchlings go."), true, "", ""])
+
+
+## THE BROOD'S RESEARCH (scripts/brood_research.gd): on a ROOTED Sire's card his own line's research, on the Mother's
+## the Brood-wide ones: each one not done yet, with its price, time and effect in the tooltip; while one runs, the bar is
+## in the card's text line (BroodNew.progress: RESEARCHING, in place of his eggs) and STOP RESEARCH pays it back.
+func _nb_research_buttons(list: Array, units: Array) -> void:
+	var by_kind := {}
+	for u in units:
+		if u.team == game.human and not u.dead and BroodNew.rooted(u) and not BroodResearch.keys_at(u.kind).is_empty() and not by_kind.has(u.kind):
+			by_kind[u.kind] = u
+	for kd in by_kind:
+		var ru: Unit = by_kind[kd]
+		if BroodResearch.busy(ru):
+			var cur := BroodResearch.current(ru)
+			_tip_for["STOP RESEARCH"] = ["Stop research", Loc.t("Stop researching %s: all of its price is paid back.") % Loc.t(String(Defs.RESEARCH[cur]["name"]))]
+			list.append(["cancel", "STOP RESEARCH", func() -> void:
+				if is_instance_valid(ru) and not ru.dead:
+					ru.cmd_nb_research_stop(), true, "", ""])
+			continue
+		for key in BroodResearch.keys_at(kd):
+			if game.has_tech(game.human, key):
+				continue          # (done: no button, as a building's research)
+			var kk: String = key
+			var info: Dictionary = Defs.RESEARCH[key]
+			var why := BroodResearch.problem(game, ru, kk)
+			var lab := Defs.research_label(kk)
+			_tip_for[lab] = BroodResearch.tip(kk)
+			list.append([String(info["icon"]), lab, func() -> void:
+				if not is_instance_valid(ru) or ru.dead:
+					return
+				var w: String = ru.cmd_nb_research(kk)
+				if w != "":
+					toast(w), why == "", why, _price_chip([int(info["cost"]), int(info.get("cost2", 0))], false)])
 
 
 ## THE BROOD'S GRUB BUILD MENU (B / BUILD; the owner, 19:19 and 21:28): the structure-units a grub turns into (the
@@ -3819,7 +3853,7 @@ func _card_tip(it: Array) -> Dictionary:
 		var kd := Defs.train_kind(k)
 		var u: Dictionary = Defs.UNITS[kd]
 		var price := game.unit_price(game.human, k)
-		var n := int(u.get("spawn", 1))
+		var n := BroodNew.young(game, game.human, kd) if BroodNew.on(game, game.human) else int(u.get("spawn", 1))      # (a Brood egg: 2 young, 3 with BIGGER CLUTCH)
 		var arm := Defs.train_armoured(k)
 		t["title"] = Defs.train_name(k)
 		t["stats"] = "%s  ·  %d s  ·  %d supply%s" % [_cost_text(price[0], price[1]), int(u["time"]), int(u["supply"]) * n, ("  ·  %d an egg" % n) if n > 1 else ""]

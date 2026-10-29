@@ -48,6 +48,7 @@ func _tick_ai(delta: float) -> void:
 	_nb_lay(q)
 	_nb_essence(q)
 	_nb_mature(q)
+	_nb_research(q)
 	_nb_army(q)
 	if difficulty >= 1:
 		_spells()           # (the Mist Toads' FOG and TONGUE, as the old Brood's computer: AI._toad)
@@ -322,7 +323,7 @@ func _nb_grow(q: Unit) -> void:
 ## coming: _nb_essence).
 func _nb_saving_growth(q: Unit) -> bool:
 	var st := BroodNew.stage(q)
-	if st >= (Defs.NB["stages"] as Array).size() - 1 or float(q.nb.get("grow_t", 0.0)) > 0.0 or _nb_threat(q) != Vector2.INF or q.tesla_mode != "deployed":
+	if st >= (Defs.NB["stages"] as Array).size() - 1 or float(q.nb.get("grow_t", 0.0)) > 0.0 or _nb_threat(q) != Vector2.INF or q.tesla_mode != "deployed" or BroodResearch.busy(q):
 		return false
 	if game.clock < (210.0 if st == 0 else 420.0):
 		return false
@@ -348,6 +349,8 @@ func _nb_essence(q: Unit) -> void:
 			want = maxf(want, float(Defs.UNITS[BroodNew.PTERO].get("cost2", 0)) + 10.0)
 	elif st >= 2:
 		want = 60.0
+	if game.clock >= 150.0 and not game.has_tech(team, "nb_clutch_raptor") and BroodNew.count_of(game, team, BroodNew.FATHER) > 0:
+		want = maxf(want, float(Defs.RESEARCH["nb_clutch_raptor"]["cost2"]) + 5.0)      # (its first research: BroodResearch)
 	var have := float(game.players[team]["res2"])
 	var grubs := _nb_mine("grub")
 	var bodies := game.corpses.filter(func(c) -> bool: return is_instance_valid(c) and c.position.distance_to(q.position) < 22.0 * Defs.TILE)
@@ -366,7 +369,8 @@ func _nb_essence(q: Unit) -> void:
 	if have + 9.0 * harvesting.size() >= want or game.clock < _nb_offer_t or _nb_threat(q) != Vector2.INF:
 		return
 	var raptors := _nb_mine("raptor").filter(func(u: Unit) -> bool: return u.position.distance_to(q.position) < 16.0 * Defs.TILE and u.target == null and u.order != "sacrifice")      # (at home, not fighting)
-	if raptors.size() <= 6:          # (some always kept at home)
+	var early := not game.has_tech(team, "nb_clutch_raptor") and st == 0      # (for its first research a smaller home guard is enough)
+	if raptors.size() <= (3 if early else 6):          # (some always kept at home)
 		return
 	for u in raptors:
 		if u.can_sacrifice():
@@ -411,9 +415,10 @@ func _nb_warrior(gold: int) -> String:
 	var q := BroodNew.queen(game, team)
 	var st := BroodNew.stage(q) if q else 0
 	var essence := float(game.players[team]["res2"])
-	var trex := BroodNew.father_near(game, team, BroodNew.FATHER)
-	var dilo := BroodNew.father_near(game, team, BroodNew.DILO) and st >= BroodNew.unit_stage("spitter")
-	var ptero := BroodNew.father_near(game, team, BroodNew.PTERO) and st >= BroodNew.unit_stage("skywing")
+	# (a Sire researching fathers nothing meanwhile: his line is skipped, the others laid instead)
+	var trex := BroodNew.father_near(game, team, BroodNew.FATHER) and not BroodResearch.line_busy(game, team, BroodNew.FATHER)
+	var dilo := BroodNew.father_near(game, team, BroodNew.DILO) and st >= BroodNew.unit_stage("spitter") and not BroodResearch.line_busy(game, team, BroodNew.DILO)
+	var ptero := BroodNew.father_near(game, team, BroodNew.PTERO) and st >= BroodNew.unit_stage("skywing") and not BroodResearch.line_busy(game, team, BroodNew.PTERO)
 	var toads_ok := dilo and st >= BroodNew.unit_stage("mist_toad")
 	var brutes_ok := trex and st >= BroodNew.unit_stage("brute")
 	var raptors := BroodNew.count_of(game, team, "raptor")
@@ -471,6 +476,69 @@ func _nb_mature(q: Unit) -> void:
 			BroodMature.start(u)
 			n += 1
 			grown += 1
+
+
+# ------------------------------------------------------------------ research
+
+## THE BROOD'S RESEARCH (scripts/brood_research.gd), sensibly and without starving the army (docs/design_principles.md 4:
+## every choice an opportunity cost): never with enemies at her or while saving for her growth; only with the price
+## and a reserve in hand (RES_KEEP food, more on Easy; her stage 3's spoils kept); ONE Sire researching at a time (a
+## Sire researching fathers nothing, so the army keeps coming from the others); the Mother's alongside. In order:
+##  - BIGGER CLUTCH on the main line (Raptors) early, once a small army stands (from about 3:00);
+##  - PACK HUNT when an attack is coming (the army at 60% of the wave size) or under way;
+##  - BATTERING HORNS before a siege: her stage 3 and 2 Brutes;
+##  - the Venom line's BIGGER CLUTCH once Spitters are laid (4), SLITHER and LONG SPIT with 6 of the line and food to spare;
+##  - UPDRAFT with 4 Skywings;
+##  - QUICK ROOTS mid game (her stage 2, from 8:00), SWAMP MENDING later (from 10:00, food to spare).
+const RES_KEEP := 150
+
+
+func _nb_research(q: Unit) -> void:
+	if _nb_threat(q) != Vector2.INF or _nb_saving_growth(q) or peaceful:
+		return
+	var gold := int(game.players[team]["gold"])
+	var spoils := float(game.players[team]["res2"])
+	var keep := RES_KEEP + (150 if difficulty == 0 else 0)
+	var st := BroodNew.stage(q)
+	# (her stage 3 needs spoils: kept once they are near it; a cheap research first while they are far off)
+	var keep2 := float(Defs.NB["stages"][2]["cost2"]) if st == 1 and game.clock >= 360.0 and spoils >= float(Defs.NB["stages"][2]["cost2"]) * 0.6 else 0.0
+	var sup := 0
+	for u in _nb_army_units():
+		sup += int(u.d["supply"])
+	var sire_busy := BroodNew.FATHERS.any(func(f) -> bool: return BroodResearch.busy(BroodNew.father(game, team, f)))
+	var line := func(k: String) -> int: return BroodNew.count_of(game, team, k)
+	var soon: bool = _attacking or sup * 10 >= _attack_at * 6
+	var want: Array = []
+	if not sire_busy:
+		if game.clock >= (150.0 if strategy in ["rush", "xrush"] else 180.0) and sup >= 6:
+			want.append("nb_clutch_raptor")
+		if soon and line.call("raptor") + line.call("tyrant_challenger") >= 8:
+			want.append("nb_pack_hunt")
+		if st >= 2 and line.call("brute") >= 2:
+			want.append("nb_battering_horns")
+		if line.call("spitter") >= 4:
+			want.append("nb_clutch_spitter")
+		if line.call("spitter") + line.call("venom_challenger") >= 6 and gold >= 400:
+			want.append("nb_long_spit")
+			want.append("nb_slither")
+		if line.call("skywing") >= 4:
+			want.append("nb_updraft")
+	if st >= 1 and game.clock >= 480.0:
+		want.append("nb_quick_roots")
+	if st >= 1 and game.clock >= 600.0 and gold >= 400:
+		want.append("nb_swamp_mending")
+	for key in want:
+		if game.has_tech(team, key) or BroodResearch.in_hand(game, team, key):
+			continue
+		var info: Dictionary = Defs.RESEARCH[key]
+		if gold < int(info["cost"]) + keep or spoils < float(info.get("cost2", 0)) + keep2:
+			continue
+		var at: String = info["at"]
+		var who: Unit = q if at == BroodNew.QUEEN else BroodNew.father(game, team, at)
+		if who == null or BroodResearch.busy(who) or BroodResearch.problem(game, who, key) != "":
+			continue
+		BroodResearch.start(game, who, key)
+		return
 
 
 # ------------------------------------------------------------------ the army
