@@ -1037,7 +1037,7 @@ const BASE_UNITS := {
 		"windup_s": 3,
 		"windup_se": 3,
 	}},
-	"mist_toad": {"cell": Vector2i(100, 56), "anchor": Vector2(50, 54), "frames": {
+	"mist_toad": {"cell": Vector2i(100, 82), "anchor": Vector2(50, 79), "frames": {
 		"death_e": 13,
 		"fog_e": 14,
 		"idle_e": 1,
@@ -1045,7 +1045,11 @@ const BASE_UNITS := {
 		"idle_s": 5,
 		"idle_se": 1,
 		"tongue_e": 13,
-		"walk_e": 14,
+		"walk_e": 6,
+		"walk_n": 6,
+		"walk_ne": 6,
+		"walk_s": 6,
+		"walk_se": 6,
 	}},
 	"brood_mother": {"cell": Vector2i(528, 373), "anchor": Vector2(264, 371), "frames": {
 		"attack_e": 6,

@@ -58,6 +58,8 @@ python3 tools/import_windmill.py         # the Farm's windmill (replaces import_
 python3 tools/make_farm_field.py         # the Farm's crop fields round the windmill
 python3 tools/import_mist_toad.py       # Mist Toad (its own pass: black sheet, fog cloud keyed out),
                                          # its portrait and the FOG / TONGUE ability icons
+python3 tools/import_toad_hop.py         # the Mist Toad's hop (art/redraws/mist_toad_hop_*_chatgpt.png): walk_s/se/e/ne/n
+                                         # replace the side-on walk; the cell grows for the hop (after import_mist_toad)
 python3 tools/import_mortar_walk.py      # the Mortar's towed walk (replaces round 10's walk; its side-on
                                          # horse is the Field Cannon's limber horse)
 python3 tools/fix_mortar_crew.py         # the Mortar's crew: two men in every view, and no pennant

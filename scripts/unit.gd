@@ -3786,6 +3786,8 @@ func _tick_unit(delta: float) -> void:
 	if Defs.cw_roster and _k_cw:
 		CwUnits.post_move(self)
 	_animate(delta)
+	if kind == "mist_toad":
+		ToadHop.track(self, delta)       # (its hop: the frame from the ground covered, the sprite held while it is crouched)
 	if kind == "winder" and (crate_site or _crate_spr):
 		_update_crate_spr()
 	# redraw the shadow, ring and bars only when something on them changed (off screen: not
@@ -3802,6 +3804,8 @@ func _tick_unit(delta: float) -> void:
 			extra += passengers.size() * 100000 + (int(haul_t * 30.0) + 1) * 1000
 		if _k_nb:
 			extra += BroodNew.draw_key(self) * 1000
+		if kind == "mist_toad":
+			extra += ToadHop.draw_key(self) * 1000000     # (its shadow goes with the hopping body)
 		var key := Vector4i(int(selected) + (2 if carrying > 0 else 0) + (4 if cross_t > 0.0 else 0) + (8 if work == "feeding" else 0) + (16 if carry_empty else 0) + (32 if cocoon > 0 else 0) + kills * 64,
 			int(hp) + int(gas) * 10000, int(wind * 40.0) + (int(carry_t * 4.0) * 100 if carrying > 0 else 0) if _k_fac == "clockwork" else int(powder * 2.0) + (1000 if supplying else 0),
 			int(max_hp) + extra + (int(reload_frac() * 16.0) + 17 * int(tesla_t * 4.0) + 850 * TESLA_MODES.find(tesla_mode)) * 10000 if has_attack() else int(max_hp) + extra)
@@ -6843,6 +6847,8 @@ func _animate(delta: float) -> void:
 			loop = false
 	if kind == "labourer" and not dead and _drive_labourer(delta, n):
 		pass
+	elif kind == "mist_toad" and anim == "walk" and not dead:
+		frame_i = ToadHop.frame(self, n)        # (one hop per ToadHop.HOP px walked)
 	elif kind == "winder" and beat_of(anim) != "":
 		# the clockwork beat (WINDER_BEAT): held frames that snap on (a step walks it as fast as he goes)
 		var was := frame_i
@@ -6926,6 +6932,8 @@ func _animate(delta: float) -> void:
 		sprite.position = Vector2(0.0, 1.0)      # (a Winder's hammer blow: the body dips a pixel)
 	elif crew_of != null and not dead:
 		sprite.position = Vector2(0.0, Ballista.crew_bob(self))     # (a Ballista's pusher: a step bob, scripts/ballista.gd)
+	elif kind == "mist_toad":
+		sprite.position = _hop_off.round()      # (held on the ground frames, carried in the air: ToadHop.track every tick)
 	elif kind != "cannon":
 		sprite.position = Vector2.ZERO
 	# Grubs at the pit: gnaw in a loop on the last frames of the burrow.
@@ -7061,6 +7069,12 @@ var _lab_dist := 0.0
 var _lab_prev := Vector2.ZERO
 var _lab_moved_t := -10.0
 var _lab_view := -1             # (the view it was last drawn in: _set_anim)
+# the Mist Toad's hop (scripts/toad_hop.gd): px walked, the last spot, hopping now, the way it goes, the sprite's shift
+var _hop_d := 0.0
+var _hop_prev := Vector2.ZERO
+var _hop_on := false
+var _hop_way := Vector2.RIGHT
+var _hop_off := Vector2.ZERO
 
 
 ## Seconds into the swing at which the strike begins (view `dir`).
@@ -7438,6 +7452,8 @@ func _draw_unit() -> void:
 	var shade := 1.0 - clampf(lifted / 160.0, 0.0, 0.3)
 	# (getting on: he is drawn where the horse stands, his ring goes there too)
 	var ring_at := sprite.position if sprite and anim == "mount" and work == "mounting" else Vector2.ZERO
+	if kind == "mist_toad" and sprite:
+		ring_at = sprite.position      # (the hop's shift: the shadow stays under the drawn toad, scripts/toad_hop.gd)
 	if not (_k_nb and nb.has("fpx")):
 		# (a rooted new-Brood creature is drawn in the building layer, under this: no shadow on its body; selected, its
 		# footprint is outlined: BroodNew.draw)
@@ -7453,6 +7469,8 @@ func _draw_unit() -> void:
 		top = -float(Defs.FLYER[kind]["bar"])       # (the Swift and the Owl: just over the drawn bird, not its shadow or cell)
 	if kind == "mortar":
 		top = -50.0
+	elif kind == "mist_toad":
+		top = -ToadHop.BAR_TOP      # (over the crouched toad, not the hop's tall cell)
 	elif kind == "tesla_cart" and tesla_mode != "packed":
 		top = -70.0    # above the raised coil's sparks (the packed body: the anchor height)
 	elif kind == "cannon":
