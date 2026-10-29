@@ -211,9 +211,9 @@ func _react(who: Object, fn: String, args: Array, key: int) -> void:
 				g._ping(g.on_map(at), Color(0.4, 1, 0.4))
 				_face(us, at)
 			g.command_sound(us, "move", "move")
-		"morph_order", "cancel_morph", "mount_order", "lead_order", "harness_order":
+		"morph_order", "cancel_morph", "mount_order", "lead_order", "harness_order", "mature_order":
 			var us := _units_of(who, args)
-			if fn == "morph_order":
+			if fn == "morph_order" or fn == "mature_order":
 				s.lead_stop(us, key)
 			g.command_sound(us, "move", "move")
 

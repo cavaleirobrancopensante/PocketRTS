@@ -246,6 +246,7 @@ var last_tip := Vector2.ZERO    # Springer: where its last screw left from (the 
 var arm := 0                    # Springer: the launcher of the shot under way (0 its right, 1 its left: Springer.ARMS, in turn); Pendulum: the arm of the blow under way (the same)
 var _springer_t := 0.0              # Springer (the computer's): when it next thinks of jumping away
 var owl_t := -1.0               # Swift: seconds into turning into a Ticking Owl (-1: not; scripts/cw_air.gd)
+var moult_t := -1.0             # the new Brood's young unit: seconds into its MATURE moult (-1: not; scripts/brood_mature.gd)
 var bombs := 0                  # Ticking Owl: bombs let go (tests)
 var last_bomb: OwlBomb = null   # Ticking Owl: its last bomb (tests, screenshots)
 var _owl_bomb := false          # Ticking Owl: this attack is a bomb on a building (else the talon swoop)
@@ -1078,8 +1079,8 @@ func can_hit(e: Entity) -> bool:
 		return false            # (the new Brood: no rooted creature attacks, rooted is a building; to fight it uproots)
 	if deflate != "" or (kind == "skywing" and sky != "air" and sky != "ground"):
 		return false            # a deflated Bloater, a Skywing landing or taking off
-	if owl_t >= 0.0:
-		return false            # (a Swift turning into a Ticking Owl)
+	if owl_t >= 0.0 or moult_t >= 0.0:
+		return false            # (a Swift turning into a Ticking Owl; a young Brood unit moulting)
 	if kind == Defs.NETTER and (not (e is Unit) or ((e as Unit).net_t > 0.0 and not (order == "attack" and e == order_target))):
 		return false            # (its net is for units, and one caught already only when it is told to)
 	var ea := e.is_air()        # (asked once: this runs for every target looked at)
@@ -3595,6 +3596,13 @@ func _tick_unit(delta: float) -> void:
 		if visible and game.view_rect.has_point(position):
 			queue_redraw()       # (the clock hand and the bar)
 		return
+	if moult_t >= 0.0:
+		# a young Brood unit MATURING: it moults where it is (scripts/brood_mature.gd); it cannot move or fight meanwhile
+		BroodMature.tick(self, delta)
+		_animate(delta)
+		if visible and game.view_rect.has_point(position):
+			queue_redraw()       # (the shimmer and the bar)
+		return
 	if kind == Defs.SPRINGER and jump_cd <= 0.0:
 		_springer_t -= delta
 		if _springer_t <= 0.0:
@@ -4754,6 +4762,9 @@ func _strike(e: Entity) -> void:
 			return
 	if mode != "bayonet" and _range() >= 100.0:
 		game.note_shot(self, e)
+	if d.get("venom", false):
+		BroodMature.venom_shot(game, self, e, dmg)       # (a Brood spitter by its data: a venom glob, a small splash if it has one)
+		return
 	match kind:
 		"musketeer":
 			game.musket_shot(self, e, dmg)
@@ -6369,6 +6380,9 @@ func die() -> void:
 		if sprite:
 			sprite.position = Vector2.ZERO
 	owl_t = -1.0                   # (a Swift killed while turning into an Owl: the price is lost)
+	moult_t = -1.0                 # (a young unit killed in its moult: the same)
+	if sprite:
+		sprite.self_modulate = Color.WHITE
 	net_t = 0.0                    # (caught in a net: the net goes with it)
 	if _net_spr:
 		_net_spr.queue_free()
@@ -6483,6 +6497,8 @@ func _anim_name() -> String:
 	var moving := velocity.length() > 10.0
 	if _k_nb:
 		return BroodNew.anim(self, moving)
+	if d.get("plain_attack", false):
+		return "attack" if phase != "" else ("walk" if moving else "idle")      # (a unit by its data: walk, attack, idle)
 	if crew_of != null:
 		return Ballista.crew_anim(self)        # (a Spring Ballista's crewman: push, crank, idle)
 	if kind == Defs.BALLISTA_KIND:
@@ -7084,6 +7100,8 @@ func _animate(delta: float) -> void:
 		Ballista.look(self, 0.066)    # (its built-in crewman, drawn by it: scripts/ballista.gd)
 	if _k_nb:
 		BroodNew.animate(self, n)     # (rooting, a Rootmaw's food levels, an egg's fall, a pile's size)
+	if moult_t >= 0.0:
+		BroodMature.look(self)        # (moulting: still, its skin shimmering)
 
 
 ## The cannon sheet has one frame per pose, so the crew's work is faked: the gun rocks and
@@ -7634,6 +7652,8 @@ func _draw_unit() -> void:
 		BroodNew.draw(self, top)
 	if owl_t >= 0.0:
 		CwAir.draw_morph(self, top, bw)
+	if moult_t >= 0.0:
+		BroodMature.draw(self, top, bw)
 	if has_attack():
 		# the reload, only while reloading (or setting up a gun): nothing when ready
 		var rf := reload_frac()

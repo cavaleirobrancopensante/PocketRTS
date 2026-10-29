@@ -623,7 +623,10 @@ static func drop_for(k: String, sc := 1.0) -> float:
 
 ## Where the bottom of a `k`'s rooted picture lies from its feet, as drawn (her stage's scale, the art scale).
 static func nest_y(k: String, sc := 1.0) -> float:
-	return float(Defs.NB["nest_y"].get(k, 0)) * sc * float(Defs.UNITS[k].get("art_scale", 1.0))
+	var ak := k
+	if k == BroodNew.QUEEN:
+		ak = BroodMature.stage_art(BroodMature.stage_of_scale(sc))        # (her own art at each stage)
+	return float(Defs.NB["nest_y"].get(ak, Defs.NB["nest_y"].get(k, 0))) * sc * float(Defs.UNITS[k].get("art_scale", 1.0))
 
 
 ## The selection frame round its footprint (a building's green rectangle) and the hover corners, under its pictures.
@@ -830,7 +833,7 @@ static func draw_ghost(g: Game, ov: Node2D, k: String, c: Vector2i, sc := 1.0) -
 			if o.kind == BroodNew.MAW and not o.dead and o.tesla_mode != "packed" and o.position.distance_to(p) < cr * 3.0:
 				ov.draw_arc(o.position, cr, 0, TAU, 48, Color(0.75, 0.9, 0.3, 0.35), 1.5)
 	# its rooted picture (frame 0 of its rooted loop)
-	var art := k
+	var art := BroodMature.stage_art(BroodMature.stage_of_scale(sc)) if k == BroodNew.QUEEN else k
 	var frames: Dictionary = ArtData.UNITS[art]["frames"]
 	var strip := ""
 	for s in ["rooted_se", "fill1_se", "fill_se", "idle_se"]:

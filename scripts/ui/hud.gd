@@ -1519,6 +1519,32 @@ func _nb_buttons(list: Array, units: Array) -> void:
 					for u in game.selected_units():
 						if u.kind == BroodNew.MAW and u.tesla_mode == "deployed":
 							u.cmd_uproot(false), true, "", ""])
+	# MATURE (YOUNG AND MATURE, the owner 2026-10-29 12:40; scripts/brood_mature.gd): each selected young unit that can
+	# moults into its mature form, paying for itself, as far as the food allows
+	var young := units.filter(func(u: Unit) -> bool: return u.team == game.human and BroodMature.mature_of(u.kind) != "" and BroodNew.on(game, u.team))
+	if not young.is_empty():
+		var idle_y: Array = young.filter(func(u: Unit) -> bool: return u.moult_t < 0.0)
+		var y0: Unit = idle_y[0] if not idle_y.is_empty() else young[0]
+		var mk := BroodMature.mature_of(y0.kind)
+		var ywhy := "They are all moulting." if idle_y.is_empty() else ""
+		for u in idle_y:
+			ywhy = BroodMature.problem(u)
+			if ywhy == "":
+				break
+		var mp := BroodMature.price(game, game.human, y0.kind)
+		var kinds: Array = []
+		for u in young:
+			if not kinds.has(u.kind):
+				kinds.append(u.kind)
+		var pairs: Array = []
+		for k in kinds:
+			var p2 := BroodMature.price(game, game.human, k)
+			pairs.append(Loc.t("%s into a %s: %s") % [Loc.t(Defs.train_name(k)), Loc.t(String(Defs.UNITS[BroodMature.mature_of(k)]["name"])), _cost_text(int(p2[0]), int(p2[1]))])
+		_tip_for["MATURE"] = ["Mature", Loc.t("Each young unit selected grows into its mature form, one into one, as far as the food allows: it pays the mature form's price less its own share of its egg, moults %d s where it stands (it cannot move or fight), then it is the mature unit, its veterancy and wounds kept. Needs the Brood Mother at the mature form's stage.") % int(Defs.NB["moult"]) + " " + "; ".join(pairs) + "."]
+		list.append([mk, "MATURE", func() -> void:
+			var w := game.mature_order(game.selected_units())
+			if w != "":
+				toast(w), ywhy == "", ywhy, _price_chip(mp, int(mp[1]) > 0)])
 	# RALLY (point 7): rooted creatures and eggs; a right-click on the ground does the same (and never uproots)
 	if units.any(func(u: Unit) -> bool: return BroodRoot.fixed(u) and u.team == game.human):
 		_tip_for["RALLY"] = ["Rally point", "Where what comes out goes: the Mother's eggs (and their hatchlings), the warriors hatching in a father's nest, an egg's own hatchling. Right-click the ground does the same; it never uproots."]
@@ -2997,6 +3023,8 @@ func _draw_panel(font: Font) -> void:
 				info = pistol_text(uu) + " · " + info
 			elif uu.kind == "dismounted":
 				info = pistol_text(uu) + " · Sabre up close. MOUNT a horse to ride."
+			elif uu.moult_t >= 0.0:
+				info = Loc.t("MOULTING into a %s: %d s left (it cannot move or fight).") % [Loc.t(String(Defs.UNITS[BroodMature.mature_of(uu.kind)]["name"])), int(ceil(float(Defs.NB["moult"]) - uu.moult_t))]
 			elif uu.kind == Defs.CUCKOO:
 				if uu.owl_t >= 0.0:
 					info = "Turning into a Ticking Owl: %d s left (it cannot move or fight; CANCEL MORPH pays it back)." % int(ceil(float(Defs.OWL_MORPH["time"]) - uu.owl_t))

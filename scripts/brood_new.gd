@@ -71,7 +71,10 @@ static func unlocks_text(st: int) -> String:
 			out.append(Loc.t(String(Defs.UNITS[f]["name"])) + " " + Loc.t("(a grub's BUILD)"))
 	for k in Defs.NB["unit_stage"]:
 		if int(Defs.NB["unit_stage"][k]) == st:
-			out.append(Loc.t(Defs.train_name(k)))
+			if BroodMature.is_mature(k):
+				out.append(Loc.t(Defs.train_name(k)) + " " + Loc.t("(MATURE a %s)") % Loc.t(String(Defs.UNITS[BroodMature.young_of(k)]["name"])))
+			else:
+				out.append(Loc.t(Defs.train_name(k)))
 	return ", ".join(out)
 
 
@@ -422,6 +425,13 @@ static func progress(g: Game, u: Unit) -> Dictionary:
 ## Her size follows her stage: her body (radius), and her sprite (_rooted_look).
 static func apply_stage(q: Unit) -> void:
 	q.radius = float(q.d["radius"]) * float(stage_def(q)["scale"])
+	# her own picture at each stage (the owner's stage-2 and stage-3 sheets, brought to her stage-1 body by
+	# tools/import_brood_mature.py; the stage's scale below still makes her x1.15 and x1.3)
+	var a := BroodMature.stage_art(stage(q))
+	if a != q.art:
+		q.art = a
+		if q.sprite:
+			q._set_anim(q.anim if q.anim != "" else "idle", true)
 
 
 ## Why the Mother can't lay an egg for `k` now ("" = she can).
@@ -502,7 +512,7 @@ static func lay(g: Game, q: Unit, k: String) -> String:
 		var busy := float(q.nb.get("lay_t", 0.0))       # (already laying: this egg comes out at the end of that show)
 		if busy <= 0.0:
 			q.nb["lay_t"] = lay_time(q)
-		var from := q.position + (LAY_EGG_AT if drawn else CLUTCH_AT) * float(stage_def(q)["scale"]) + Vector2(0.0, BroodRoot.drop(q)) - p     # (her rooted art is drawn BroodRoot.drop lower)
+		var from := q.position + (BroodMature.lay_egg_at(q.art) if drawn else CLUTCH_AT) * float(stage_def(q)["scale"]) + Vector2(0.0, BroodRoot.drop(q)) - p     # (her rooted art is drawn BroodRoot.drop lower)
 		e.nb["pop_x"] = from.x
 		e.nb["pop_y"] = from.y
 		e.nb["pop"] = POP_TIME

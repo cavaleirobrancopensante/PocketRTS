@@ -448,6 +448,12 @@ static func _specials(kind: String, d: Dictionary, st: Dictionary) -> Array:
 				+ ("" if st["shield_tech"] else " " + Loc.t("(Needs SHIELD WALL at the Light Works.)")))
 		"great_winder":
 			add.call("WIND / MEND / SWEEP", Loc.t("No weapon: it winds, mends and sweeps wrecks into cogs."))
+	if d.get("venom", false):
+		add.call("VENOM", Loc.t("Its venom strips 2 armour for %.1f s; ground units only.") % float(d.get("acid", 1.5)) \
+			+ ((" " + Loc.t("Half the blow splashes on enemies within %.1f tiles of its target.") % (float(d.get("splash", 0)) / Defs.TILE)) if float(d.get("splash", 0)) > 0.0 else ""))
+	if BroodMature.mature_of(kind) != "":
+		var mk := BroodMature.mature_of(kind)
+		add.call("MATURE", Loc.t("In the new Brood it grows into a %s (the Brood Mother at stage %d).") % [Loc.t(String(Defs.UNITS[mk]["name"])), BroodNew.unit_stage(mk) + 1])
 	if BroodNew.ROOTERS.has(kind):
 		add.call("ROOT", Loc.t("Rooted: +%d armour, it takes %d%% of each hit, and it cannot attack.") % [int(Defs.NB["root_armor"]), int(round(float(Defs.NB["root_taken"]) * 100.0))])
 	if String(d.get("faction", "")) == "clockwork" and not Defs.is_worker(kind) and attack_type(kind, d) != "none":

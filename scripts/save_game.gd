@@ -174,6 +174,8 @@ static func capture(game: Game, cfg: Dictionary) -> Dictionary:
 			ud["nb"] = BroodNew.unit_save(u)         # (the new Brood: eggs, food, an egg's kind and incubation)
 		if u.owl_t >= 0.0:
 			ud["owl"] = snappedf(u.owl_t, 0.01)      # (a Swift turning into a Ticking Owl, paid)
+		if u.moult_t >= 0.0:
+			ud["mlt"] = snappedf(u.moult_t, 0.01)    # (a young Brood unit maturing, paid)
 		if u.net_t > 0.0:
 			ud["net"] = snappedf(u.net_t, 0.01)      # (caught in a Netter's net)
 		if u.stun_left() > 0.0:
@@ -512,6 +514,7 @@ static func restore(game: Game, d: Dictionary) -> void:
 			u.set_kit(ud["kit"] if ud.get("kit") is Dictionary else _old_kit(game, u.team, uk))
 		u.auto_refit = bool(ud.get("ar", false))
 		u.owl_t = float(ud.get("owl", -1.0)) if uk == Defs.CUCKOO else -1.0
+		u.moult_t = float(ud.get("mlt", -1.0)) if BroodMature.mature_of(uk) != "" else -1.0      # (a young Brood unit maturing, paid)
 		u.net_t = float(ud.get("net", 0.0))
 		if ud.get("stun") is Array and (ud["stun"] as Array).size() >= 2:
 			u.stun(float(ud["stun"][0]), true, game.clock + float(ud["stun"][1]))

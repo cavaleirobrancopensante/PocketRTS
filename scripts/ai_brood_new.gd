@@ -47,6 +47,7 @@ func _tick_ai(delta: float) -> void:
 	_nb_morphs(q)
 	_nb_lay(q)
 	_nb_essence(q)
+	_nb_mature(q)
 	_nb_army(q)
 	if difficulty >= 1:
 		_spells()           # (the Mist Toads' FOG and TONGUE, as the old Brood's computer: AI._toad)
@@ -428,11 +429,58 @@ func _nb_warrior(gold: int) -> String:
 	var keep := float(Defs.NB["stages"][2]["cost2"]) if st == 1 and game.clock >= 360.0 else 0.0      # (her stage 3 needs essence: kept for it)
 	if dilo and essence >= 5.0 + keep and gold >= 90 and (not trex or spitters * 3 < raptors + 3):
 		return "spitter"
+	# THE VENOM SIRE'S YOUNG (the line's young unit, whatever the owner settles on: Defs.NB "lines" and "mature"; none
+	# yet): a ranged share behind the Raptors, fewer once Spitters come
+	var vsire := BroodNew.father_near(game, team, BroodNew.DILO)
+	var vy := _young_of_line(BroodNew.DILO, st)
+	var vn := BroodNew.count_of(game, team, vy) if vy != "" else 0
+	if vy != "" and vsire and gold >= int(Defs.UNITS[vy]["cost"]) and (not trex or vn * (3 if dilo else 2) < raptors + 2):
+		return vy
 	if trex:
 		return "brute" if brutes_ok and essence >= 20.0 and gold >= 180 and randi() % 3 == 0 else "raptor"
-	if dilo:
-		return "spitter"
+	if vsire:
+		return "spitter" if dilo and essence >= 5.0 else vy
 	return "skywing" if ptero else ""
+
+
+## A father's line's YOUNG unit open at stage st (one with a mature form; not the Raptor: the base of its own line), or "".
+func _young_of_line(f: String, st: int) -> String:
+	for k in Defs.NB["lines"].get(f, []):
+		if k != "raptor" and BroodMature.mature_of(String(k)) != "" and st >= BroodNew.unit_stage(String(k)):
+			return String(k)
+	return ""
+
+
+## MATURE (YOUNG AND MATURE, scripts/brood_mature.gd): when food piles up (more than MATURE_FOOD unspent, not saving
+## for her growth), young units resting near home (no target, not in a wave) mature, up to MATURE_EACH a think, keeping
+## MATURE_KEEP food back; at most half of each young kind (the young ones' numbers matter too: a good army mixes both).
+const MATURE_FOOD := 350
+const MATURE_KEEP := 200
+const MATURE_EACH := 2
+
+
+func _nb_mature(q: Unit) -> void:
+	if int(game.players[team]["gold"]) < MATURE_FOOD or _nb_saving_growth(q):
+		return
+	var n := 0
+	for yk in Defs.NB["mature"]:
+		var mk := String(Defs.NB["mature"][yk])
+		if BroodNew.stage(q) < BroodNew.unit_stage(mk):
+			continue
+		var young := _nb_mine(String(yk))
+		var grown := _nb_mine(mk).size()
+		for u in young:
+			if n >= MATURE_EACH or grown * 2 >= young.size() + grown:
+				break
+			if u.moult_t >= 0.0 or (u.target != null and is_instance_valid(u.target)) or in_wave(u) \
+					or u.position.distance_to(q.position) > 20.0 * Defs.TILE:
+				continue
+			var p := BroodMature.price(game, team, u.kind)
+			if int(game.players[team]["gold"]) - int(p[0]) < MATURE_KEEP or BroodMature.problem(u) != "":
+				continue
+			BroodMature.start(u)
+			n += 1
+			grown += 1
 
 
 # ------------------------------------------------------------------ the army

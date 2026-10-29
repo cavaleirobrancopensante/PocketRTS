@@ -3925,6 +3925,8 @@ func supply_used(t: int) -> int:
 				n += int(Defs.UNITS[ek]["supply"]) * int(Defs.UNITS[ek].get("spawn", 1))
 			if u.owl_t >= 0.0:
 				n += int(Defs.UNITS[Defs.OWL]["supply"]) - int(u.d["supply"])     # (a Swift turning into an Owl holds its supply)
+			elif u.moult_t >= 0.0:
+				n += BroodMature.more_supply(u.kind)       # (a young Brood unit maturing holds its mature form's)
 	for b in buildings:
 		if b.team == t:
 			for k in b.queue:
@@ -7360,7 +7362,7 @@ func foe_at(u: Unit, p: Vector2) -> Unit:
 ## a zap, a screw, a gust of steam (the units' own art and sounds).
 func ground_shot_fx(u: Unit, to: Vector2) -> void:
 	var from := u.center() + u.facing * 16.0
-	match u.kind:
+	match "spitter" if u.d.get("venom", false) else u.kind:      # (a "venom" unit by its data: a Spitter's glob)
 		"spitter", "skywing", "bloater", BroodNew.DILO:
 			var s := Shot.new()
 			s.arc = 0.18
@@ -7548,6 +7550,13 @@ func torn_at(p: Vector2) -> void:
 func morph_order(list: Array) -> String:
 	if net_forward(self, "morph_order", [list]): return ""
 	return CwAir.morph_order(self, list)
+
+
+## MATURE (the new Brood, scripts/brood_mature.gd): each selected young unit that can starts its moult, paying for
+## itself, as far as the food allows. "" or why none did.
+func mature_order(list: Array) -> String:
+	if net_forward(self, "mature_order", [list]): return ""
+	return BroodMature.order(self, list)
 
 
 ## CANCEL MORPH: the selected Swifts that are turning into Owls stop, paid back.
@@ -7900,7 +7909,7 @@ func fog_miss(u: Unit, e: Entity) -> void:
 	var to := e.center() + Vector2.from_angle(randf() * TAU) * randf_range(30.0, 55.0)
 	var sname := "ball"
 	var snd: Array = ["combat/musketeer_attack", "musket"]
-	match u.kind:
+	match "spitter" if u.d.get("venom", false) else u.kind:
 		"spitter", "bloater", BroodNew.DILO:
 			sname = "acid_ball"
 			snd = ["combat/spitter_attack", "acid"]
