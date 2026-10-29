@@ -114,7 +114,8 @@ func _viewer_checks() -> void:
 		g.exp_spots.refresh()
 		var n: int = g.exp_spots.shown.size()
 		if fac == "brood":
-			_expect(n == 0, "a Brood player sees no spots (%d shown)" % n)
+			# (0.18.0: the Brood of creatures is the only Brood: its own best Mound Turtle spots, ExpansionSpots.nb_pick)
+			_expect(n > 0 and g.exp_spots.shown.all(func(sp) -> bool: return sp.has("tc")), "a Brood player sees its turtle spots (%d shown)" % n)
 		else:
 			_expect(n == g.exp_spots.spots.size() and n > 0, "a %s player sees every spot (%d of %d)" % [fac, n, g.exp_spots.spots.size()])
 		if fac == "crown":

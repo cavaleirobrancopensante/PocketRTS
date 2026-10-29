@@ -10,6 +10,8 @@ extends SceneTree
 ##  - are mirror-fair: every player of one faction has the same distance to his hall (and the
 ##    same edge gap) within a small tolerance,
 ##  - are not farther from the hall than the old "behind the hall" spot by more than a few tiles.
+## The Brood (since 0.18.0 the Brood of creatures) has no buildings: its sides are skipped, except that every other start
+## must still reach the ground round its Brood Mother (her rooted footprint covers its start cell).
 ##   godot --headless --script res://tools/test_start_layout.gd [-- ids...]     (prints the per-map table)
 
 const TOL := 1.0              # tiles: players of one faction on one map differ at most this much
@@ -74,6 +76,18 @@ func _reachable(g: Game, hall: Building, b: Building) -> bool:
 
 func _check(g: Game, bad: Array) -> void:
 	for t in g.n_players():
+		if g.factions[t] == "brood":
+			continue
+		for o in g.starts.size():
+			# (a Brood start: its Mother's footprint covers the cell, so the way goes to a cell beside it)
+			var other: Vector2i = g.starts[o]
+			if g.factions.size() > o and g.factions[o] == "brood":
+				other = _beside(g, other + Vector2i(2, -1)) - Vector2i(2, -1)      # (Game._connected aims at b + (2, -1))
+			if not g._connected(g.starts[t], other):
+				bad.append("start %s can't reach %s" % [g.starts[t], other])
+		for other in g.expansions:
+			if not g._connected(g.starts[t], other):
+				bad.append("start %s can't reach %s" % [g.starts[t], other])
 		var hall: Building = g._own_hall(t)
 		var hr := Rect2i(Vector2i(hall.cell), hall.size)
 		var h0 := int(g.height[g.idx(g.cell_of(hall.rect().get_center()))])
@@ -105,9 +119,17 @@ func _check(g: Game, bad: Array) -> void:
 					bad.append("%s overlaps %s" % [tag, o.kind])
 			if not _reachable(g, hall, b):
 				bad.append("%s can't be walked up to from the hall" % tag)
-		for other in g.starts + g.expansions:
-			if not g._connected(g.starts[t], other):
-				bad.append("start %s can't reach %s" % [g.starts[t], other])
+
+
+## The nearest walkable cell to c (a Brood start under its Mother's footprint).
+func _beside(g: Game, c: Vector2i) -> Vector2i:
+	for r in range(0, 12):
+		for y in range(c.y - r, c.y + r + 1):
+			for x in range(c.x - r, c.x + r + 1):
+				var n := Vector2i(x, y)
+				if g.in_map(n) and g.solid[g.idx(n)] == 0:
+					return n
+	return c
 
 
 func _run(ids: Array) -> void:
@@ -120,7 +142,7 @@ func _run(ids: Array) -> void:
 		if MapGen.max_players(id) > 2:
 			counts.append(MapGen.max_players(id))
 		for n in counts:
-			for fac in ["crown", "brood", "clockwork"]:
+			for fac in ["crown", "clockwork"]:          # (the Brood has no starting buildings: only the mixed games below)
 				var facs: Array = []
 				for i in n:
 					facs.append(fac)

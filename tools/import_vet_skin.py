@@ -42,7 +42,7 @@ from import_vet_trim import hsv, lum, team_red, team_colour
 UNITS_DIR = "assets/units"
 OUT = "assets/units/skin_masks"
 # The Brood's fighting creatures (the Grub is a worker: no veterancy shown, like the Crown's).
-UNITS = ["raptor", "spitter", "brute", "bloater", "skywing", "spore_mother", "mist_toad"]
+UNITS = ["raptor", "spitter", "brute", "skywing", "mist_toad"]      # (0.18.0: the Bloater and the Spore Mother are gone)
 
 
 def cells():

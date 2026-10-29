@@ -50,7 +50,7 @@ func _run(ids: Array) -> void:
 					var hall: Building = g._own_hall(t)
 					if hall == null:
 						continue
-					var size: Vector2i = Defs.BUILDINGS["hive"]["size"]
+					var size: Vector2i = BroodNew.START_SIZE
 					var c: Vector2 = (Vector2(hall.cell) + Vector2(size) * 0.5) * Defs.TILE
 					var h0 := int(g.height[g.idx(g.cell_of(c))])
 					var hr := Rect2i(Vector2i(hall.cell), size)      # (the old hall the test map put there: the Mother stands there instead)

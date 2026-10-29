@@ -27,7 +27,7 @@ func _make(demo: bool) -> Game:
 	var g := Game.new()
 	g.map_id = "ashford_crossing"
 	g.demo = demo
-	g.factions = ["crown", "brood"]
+	g.factions = ["crown", "clockwork"]      # (0.18.0: the Brood has no buildings; the enemy base is a Clockwork one)
 	g.sides = [0, 1]
 	root.add_child(g)
 	return g
@@ -150,8 +150,6 @@ func _run() -> void:
 	check("the enemy hall is hidden before it's seen", not hive.visible and not hive.seen_by_human)
 	var foes: Array = g.units.filter(func(u) -> bool: return u.team == 1)
 	check("the enemy's units are hidden", not foes.is_empty() and foes.all(func(u) -> bool: return not u.visible), "%d units" % foes.size())
-	var sw := _swamp_shown(g, 1)
-	check("the enemy's swamp is off the minimap", sw.x > 0 and sw.y == 0, "%d swamp cells, %d shown" % [sw.x, sw.y])
 	var fx := g.spawn_effect("dust", hive.center())
 	var fx2 := g.spawn_effect("dust", me.center())
 	check("an effect where you have never looked is hidden, one at home shows", not fx.visible and fx2.visible)
@@ -176,8 +174,6 @@ func _run() -> void:
 	g._update_vis()
 	check("a scout at the enemy hall sees it", hive.visible and hive.seen_by_human)
 	check("the looping effect shows once its ground is seen", loop_fx.visible)
-	var sw2 := _swamp_shown(g, 1)
-	check("the enemy swamp it looked at is on the minimap (and only that)", sw2.y > 0 and _swamp_follows_explored(g, 1), "%d of %d" % [sw2.y, sw2.x])
 	check("a seen enemy building blocks the order", g.placement_problem(0, "cottage", hive.cell) == "Blocked.")
 	check("and shows on the build grid", BuildGrid.cell_class(g, hive.cell) == BuildGrid.BUILDING)
 	g.consume_unit(scout)
@@ -185,7 +181,6 @@ func _run() -> void:
 	check("gone again: the hall is remembered under the grey", hive.visible and _alpha_at(g, hc) == Game.FOG_GREY)
 	foes = g.units.filter(func(u) -> bool: return u.team == 1)
 	check("and the enemy's units are hidden again", foes.all(func(u) -> bool: return not u.visible))
-	check("the swamp looked at stays drawn", _swamp_shown(g, 1).y == sw2.y)
 	# ---- flowers under an enemy building you haven't seen stay until you see it
 	var deco_c := Vector2i(-1, -1)
 	for i in g._deco_at:
@@ -195,7 +190,7 @@ func _run() -> void:
 			break
 	if deco_c.x >= 0:
 		var flowers: Array = g._deco_at[g.idx(deco_c)]
-		var hut := g._add_building("brood_pen", 1, deco_c, true)
+		var hut := g._add_building("regulator", 1, deco_c, true)
 		check("an unseen enemy building leaves the flowers under it standing", flowers.all(func(s) -> bool: return s.visible))
 		var eye: Unit = g._add_unit("musketeer", 0, hut.center() + Vector2(0, hut.rect().size.y * 0.5 + 30.0))
 		g._update_vis()
@@ -207,11 +202,10 @@ func _run() -> void:
 	# ---- an enemy building you had never seen fails the site when the worker gets there
 	var pen_at := _far_spot(g, "barracks", [me.cell, hive.cell, deco_c], 14)
 	check("an open spot for an enemy pen on never-seen ground", pen_at.x >= 0, str(pen_at))
-	var pen := g._add_building("brood_pen", 1, pen_at, true)
+	var pen := g._add_building("cog_press", 1, pen_at, true)
 	g._update_swamp()
 	g._update_vis()
-	check("a Brood Pen out there stands unseen", not pen.visible and not pen.seen_by_human)
-	check("its swamp stays off the minimap", _swamp_follows_explored(g, 1))
+	check("a Cog Press out there stands unseen", not pen.visible and not pen.seen_by_human)
 	var site_at := pen_at + Vector2i(1, 1)
 	check("you may order a Cottage over it", g.placement_problem(0, "cottage", site_at) == "", g.placement_problem(0, "cottage", site_at))
 	var foot := Vector2i(-1, -1)            # a free cell at the pen's edge, by the planned site
@@ -251,8 +245,6 @@ func _run() -> void:
 	g.fog_base_dirty = true
 	g._update_vis()
 	check("with everything explored: still only grey and clear", _only_grey(_alphas(g)))
-	var sw3 := _swamp_shown(g, 1)
-	check("and all the enemy swamp is drawn", sw3.y == sw3.x and sw3.x > 0, "%d of %d" % [sw3.y, sw3.x])
 	g.explored = Marshalls.base64_to_raw(b64)
 	g.fog_base_dirty = true
 	g._update_vis()
@@ -272,8 +264,7 @@ func _run() -> void:
 	check("spectator, P1's eyes: its swamp is off the minimap", _swamp_shown(d, 1).y == 0)
 	d.view_team = 1
 	d.refresh_fog()
-	var ds := _swamp_shown(d, 1)
-	check("spectator, P2's eyes: its own hall and swamp show", dhive.visible and ds.y == ds.x and ds.x > 0, "%d of %d" % [ds.y, ds.x])
+	check("spectator, P2's eyes: its own hall shows", dhive.visible)     # (0.18.0: the enemy is the Clockwork, no swamp)
 	d.view_team = -1
 	d.refresh_fog()
 	check("spectator, all vision: no fog drawn", not d.fog_sprite.visible and dhive.visible)
@@ -309,7 +300,7 @@ func _run() -> void:
 	var guest := Game.new()
 	guest.puppet = true
 	guest.map_id = "ashford_crossing"
-	guest.factions = ["crown", "brood"]
+	guest.factions = host.factions.duplicate()
 	guest.sides = [0, 1]
 	guest.human = 1
 	root.add_child(guest)

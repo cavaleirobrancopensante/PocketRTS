@@ -89,7 +89,7 @@ func _run() -> void:
 		for i in 4:
 			g._add_unit(k, 1, at + Vector2(260 + i * 25, ["raptor", "brute", "spitter"].find(k) * 40))
 	g.reveal = true
-	sb.spawn = "roost"
+	sb.spawn = "barracks"
 	sb._build()
 	g.camera.position = at + Vector2(140, 0)
 	await _snap("e4_sandbox")

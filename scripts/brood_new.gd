@@ -1,13 +1,13 @@
 class_name BroodNew
 extends RefCounted
-## THE NEW BROOD (an experiment the player picks in the skirmish setup: "The Brood (new, experiment)", docs/brood_new.md).
+## THE BROOD (docs/brood_new.md; the only Brood since 0.18.0, docs/brood_replace.md: the old Brood of buildings is gone).
 ## The owner's redesign (docs/idea_brood_mobile_buildings.md, 2026-10-28): no buildings, only creatures. Some of them ROOT
 ## into the ground (armour and less damage while rooted; uprooted they walk as units).
 ##  - THE BROOD MOTHER (kind "brood_mother"): the losing condition (kill her and that side is out). She roots and uproots,
 ##    HOARDS the food (grubs bring it to her), and ONLY she lays eggs, rooted or walking (each egg drops behind her).
 ##  - THE ROOTMAW ("rootmaw"): roots on fresh ground (a circle of Defs.PIT_CLAIM tiles holding Defs.PIT_GROUND food; rooted
 ##    circles may not overlap), drinks it into its body (it swells: 6 levels) and grubs carry the food from its flank to
-##    the Mother (the farther, the more a trip pays: Game.food_at, as the old Feeding Pits). UPROOT spills its food as a
+##    the Mother (the farther, the more a trip pays: Game.food_at). UPROOT spills its food as a
 ##    pile on the ground (grubs still collect it, it rots slowly); HAUL uproots it full and it walks at half speed with
 ##    it (killed while hauling, all of it bursts out as a pile; rooted again, it keeps it).
 ##  - THE FATHERS (Defs.NB "lines", the owner 2026-10-29 11:10): the TYRANNOSAUR (Raptors, Brutes; from the start),
@@ -18,8 +18,7 @@ extends RefCounted
 ##    One of each at a time. Unfertilised eggs hatch as grubs; eggs already fertilised still hatch. No father is a
 ##    special case: everything below goes by the lines.
 ##  - EGGS ("brood_egg") and FOOD PILES ("food_pile", nobody's) are units that stand still.
-## The old Brood (buildings) is untouched and stays the default: everything here only runs for a side whose slot picked
-## the experiment (Game.nb_teams[t]).
+## Everything here runs for every Brood side (on(g, t): factions[t] is "brood").
 
 const QUEEN := "brood_mother"
 const MAW := "rootmaw"
@@ -36,7 +35,7 @@ const SE := Vector2(0.7071, 0.7071)
 
 
 static func on(g: Game, t: int) -> bool:
-	return t >= 0 and t < g.nb_teams.size() and bool(g.nb_teams[t])
+	return t >= 0 and t < g.factions.size() and String(g.factions[t]) == "brood"
 
 
 static func is_nb(k: String) -> bool:
@@ -140,11 +139,13 @@ static func count_of(g: Game, t: int, k: String, skip: Unit = null) -> int:
 
 # ------------------------------------------------------------------ the start
 
-## A new-Brood side's start: the Mother where the hall would stand, one Rootmaw on fresh ground behind her, the grubs.
+## A Brood side's start: the Mother where the hall would stand (START_SIZE: a hall's footprint from the start cell), one Rootmaw on fresh ground behind her, the grubs.
 ## Both play the end of their rooting (a cue that they are dug in).
+const START_SIZE := Vector2i(5, 4)
+
+
 static func start(g: Game, t: int, cell: Vector2i) -> void:
-	var size: Vector2i = Defs.BUILDINGS["hive"]["size"]
-	var c := BroodRoot.snap(QUEEN, (Vector2(cell) + Vector2(size) * 0.5) * Defs.TILE)
+	var c := BroodRoot.snap(QUEEN, (Vector2(cell) + Vector2(START_SIZE) * 0.5) * Defs.TILE)
 	var q := g._add_unit(QUEEN, t, c)
 	q.facing = SE
 	q.nb["eggs"] = int(Defs.NB["start_eggs"])
@@ -253,7 +254,7 @@ static func on_swamp(g: Game, t: int, p: Vector2) -> bool:
 	return t >= 0 and t < g.swamp.size() and g.on_swamp(t, p)
 
 
-## Where the new Brood's grubs unload (food and cocoons) and creatures are offered up: the Mother.
+## Where the Brood's grubs unload (food and cocoons) and creatures are offered up: the Mother.
 static func dropoff(g: Game, t: int) -> Unit:
 	return queen(g, t)
 
@@ -383,7 +384,7 @@ static func _grow_cancel(g: Game, q: Unit, up := true) -> void:
 		g.tell(q.team, "The Brood Mother got up: her growing stopped (paid back)." if up else "Growing stopped: paid back.", true)
 
 
-## PROGRESS (the owner, 21:41: her growing showed no bar): what a new-Brood creature is working at, shown as a building's
+## PROGRESS (the owner, 21:41: her growing showed no bar): what a Brood creature is working at, shown as a building's
 ## upgrade or a unit in training is: a bar over it in the world (draw) and on its card (the HUD's queue corner):
 ## {label, f (0..1), left (s), icon, col} or {} for nothing. Her growing, a cocoon morphing, rooting and uprooting, an
 ## egg hatching or waiting for the father, the first egg in the father's nest.
@@ -441,7 +442,7 @@ static func lay_problem(g: Game, q: Unit, k: String) -> String:
 	if not hatch_list().has(k):
 		if BroodRoot.morph_list().has(k):
 			return "A grub turns into it now: pick it on a grub's card."
-		return "Not in the new Brood yet."
+		return "Not in the Brood yet."
 	if float(q.nb.get("grow_t", 0.0)) > 0.0:
 		return "She is growing: no eggs meanwhile."
 	if int(q.nb.get("eggs", 0)) < 1:
@@ -945,7 +946,7 @@ static func spill(g: Game, u: Unit) -> void:
 	u.nb["food"] = 0.0
 	if f < 1.0:
 		return
-	# onto a pile already lying here, else a new one (nobody's: any new-Brood grub may collect it)
+	# onto a pile already lying here, else a new one (nobody's: any Brood grub may collect it)
 	for o in g.units_near(u.position, 40.0):
 		if o.kind == PILE and not o.dead:
 			o.nb["food"] = float(o.nb.get("food", 0.0)) + f
@@ -959,7 +960,7 @@ static func spill(g: Game, u: Unit) -> void:
 
 # ------------------------------------------------------------------ ticks
 
-## Each tick of a new-Brood creature (from Unit._tick_unit, after its speed is set).
+## Each tick of a Brood creature (from Unit._tick_unit, after its speed is set).
 static func tick(g: Game, u: Unit, delta: float) -> void:
 	if u.nb.has("coc"):
 		BroodRoot.cocoon_tick(g, u, delta)      # (a grub's cocoon: nothing else until it opens)
@@ -1025,8 +1026,8 @@ static func tick(g: Game, u: Unit, delta: float) -> void:
 			father_tick(g, u, delta)
 
 
-## A Rootmaw's ground running low or spent: it warns for itself, as the old Feeding Pits did (the owner, 21:28: the new
-## Brood's alerts in its own words), once per level (nb "gw").
+## A Rootmaw's ground running low or spent: it warns for itself (the owner, 21:28: the Brood's alerts in its own
+## words), once per level (nb "gw").
 static func _ground_warn(g: Game, u: Unit, left: float) -> void:
 	var level := 2 if left <= 0.0 else (1 if left < Defs.SOIL_LOW else 0)
 	if level <= int(u.nb.get("gw", 0)):
@@ -1217,7 +1218,7 @@ static func load_value(g: Game, src: Unit, t: int) -> float:
 
 
 ## WORKER COUNT (the owner, 21:28): over each of your rooted Rootmaws (and each food pile, nobody's, while you play the
-## new Brood) "GRUBS 4/6": drawn with the other workers' labels (WorkerLabels, scripts/worker_labels.gd).
+## Brood) "GRUBS 4/6": drawn with the other workers' labels (WorkerLabels, scripts/worker_labels.gd).
 ## "4/6": its grubs at work / the most it takes ("spent" when its ground and body are empty and nobody is on it).
 static func crew_label(g: Game, u: Unit) -> String:
 	var have := crew(g, u)

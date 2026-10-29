@@ -113,7 +113,7 @@ func min_speed() -> float:
 		if is_instance_valid(u):
 			var v := float(u.d["speed"])
 			if u.slow_t > 0.0:
-				v *= float(Defs.BLOAT["slow"])
+				v *= Defs.ACID_SLOW
 			s = minf(s, v)
 	return s if s < INF else 0.0
 

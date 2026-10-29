@@ -14,17 +14,17 @@ extends RefCounted
 ## The values are read and written directly (unit_vals / set_unit_vals ...): by name (`get`/`set`) they were the
 ## host's biggest cost (5 ms a snapshot with 70 units). The lists stay the spec: check_lists() compares the two.
 
-const UNIT_PROPS := ["order", "phase", "work", "carrying", "mode", "tesla_mode", "braced", "sky", "deflate", "keg",
+const UNIT_PROPS := ["order", "phase", "work", "carrying", "mode", "tesla_mode", "braced", "sky", "keg",
 	"cocoon", "coat", "armoured", "kills", "art", "powder", "wind", "max_hp", "off_field", "horse_hp", "harnessed",
 	"topter_bat", "courier", "supplying", "auto_repair", "hold_fire", "pistol", "bayonet", "pouch", "carry_empty",
-	"gas", "spin", "overclock_t", "cranked_t", "self_wind_t", "tongue_stage", "tesla_t", "haul_t", "auto_work",
-	"owl_t", "net_t", "arm", "shield_up", "shield_t", "loaded", "auto_sweep", "ride_n", "nb", "stun_end", "moult_t"]       # (stun_end: the clock a real stun's stars go, scripts/stun_mark.gd; nb: the new Brood's own state, scripts/brood_new.gd; (a Clock Soldier's SHIELD FORWARD and its switch; a Swift's morph under way: its clock and bar; a unit caught in a Netter's net; the
+	"spin", "overclock_t", "cranked_t", "self_wind_t", "tongue_stage", "tesla_t", "haul_t", "auto_work",
+	"owl_t", "net_t", "arm", "shield_up", "shield_t", "loaded", "auto_sweep", "ride_n", "nb", "stun_end", "moult_t"]       # (stun_end: the clock a real stun's stars go, scripts/stun_mark.gd; nb: the Brood's own state, scripts/brood_new.gd; (a Clock Soldier's SHIELD FORWARD and its switch; a Swift's morph under way: its clock and bar; a unit caught in a Netter's net; the
 	# launcher a Springer fires now, so a guest plays that arm's strip; a Spring Ballista's bolt in or not: loaded or fired, its crew
 	# cranking; a Great Winder's SWEEP autocast, for its card; ride_n: a Horseman's blows struck in passing, so a
 	# guest draws the sabre arc: scripts/ride_by.gd)
 const UNIT_REFS := ["target", "home_mine", "leader", "aboard", "order_target", "crew_of"]      # (crew_of: a Ballista's crewman)
-const BLD_PROPS := ["built", "progress", "ghost", "level", "queue", "morph_t", "prod_t", "eggs", "upgrade_t", "growth",
-	"soil", "lode", "swamp_r", "batteries", "auto_train", "auto_refit", "gate_open", "locked", "vertical", "seeded",
+const BLD_PROPS := ["built", "progress", "ghost", "queue", "prod_t", "growth",
+	"soil", "lode", "batteries", "auto_train", "auto_refit", "gate_open", "locked", "vertical", "seeded",
 	"crate", "unfold_t", "max_hp", "rally", "worker_rally", "stock", "gear_big", "gear_swap_t", "gear_swap_to"]
 const BLD_REFS := ["rally_target", "worker_rally_target"]
 const U_FIXED := 6      # id, kind, team, position, hp, facing angle
@@ -48,11 +48,11 @@ static func ref(s: NetSession, r) -> int:
 
 ## The unit's values, in UNIT_PROPS order.
 static func unit_vals(u: Unit) -> Array:
-	return [u.order, u.phase, u.work, u.carrying, u.mode, u.tesla_mode, u.braced, u.sky, u.deflate, u.keg,
+	return [u.order, u.phase, u.work, u.carrying, u.mode, u.tesla_mode, u.braced, u.sky, u.keg,
 		snappedf(u.cocoon, 0.01), u.coat, u.armoured, u.kills, u.art, snappedf(u.powder, 0.01), snappedf(u.wind, 0.01),
 		snappedf(u.max_hp, 0.01), u.off_field, snappedf(u.horse_hp, 0.01), u.harnessed,
 		u.topter_bat, u.courier, u.supplying, u.auto_repair, u.hold_fire, u.pistol, u.bayonet, u.pouch, u.carry_empty,
-		snappedf(u.gas, 0.01), snappedf(u.spin, 0.01), snappedf(u.overclock_t, 0.01), snappedf(u.cranked_t, 0.01),
+		snappedf(u.spin, 0.01), snappedf(u.overclock_t, 0.01), snappedf(u.cranked_t, 0.01),
 		snappedf(u.self_wind_t, 0.01), u.tongue_stage, snappedf(u.tesla_t, 0.01), snappedf(u.haul_t, 0.01), u.auto_work,
 		snappedf(u.owl_t, 0.01), snappedf(u.net_t, 0.01), u.arm, u.shield_up, snappedf(u.shield_t, 0.01), u.loaded, u.auto_sweep, u.ride_n,
 		BroodNew.unit_save(u) if u._k_nb else u.nb, snappedf(u.stun_end, 0.01), snappedf(u.moult_t, 0.01)]
@@ -60,9 +60,8 @@ static func unit_vals(u: Unit) -> Array:
 
 ## The building's values, in BLD_PROPS order.
 static func bld_vals(b: Building) -> Array:
-	return [b.built, snappedf(b.progress, 0.01), b.ghost, b.level, b.queue, b.morph_t, snappedf(b.prod_t, 0.01), b.eggs,
-		snappedf(b.upgrade_t, 0.01), snappedf(b.growth, 0.01), snappedf(b.soil, 0.01), snappedf(b.lode, 0.01),
-		snappedf(b.swamp_r, 0.01), b.batteries, b.auto_train, b.auto_refit, b.gate_open, b.locked, b.vertical, b.seeded,
+	return [b.built, snappedf(b.progress, 0.01), b.ghost, b.queue, snappedf(b.prod_t, 0.01),
+		snappedf(b.growth, 0.01), snappedf(b.soil, 0.01), snappedf(b.lode, 0.01), b.batteries, b.auto_train, b.auto_refit, b.gate_open, b.locked, b.vertical, b.seeded,
 		b.crate, snappedf(b.unfold_t, 0.01), snappedf(b.max_hp, 0.01), b.rally, b.worker_rally, snappedf(b.stock, 0.01),
 		b.gear_big, snappedf(b.gear_swap_t, 0.01), b.gear_swap_to]
 
@@ -204,10 +203,6 @@ static func build(s: NetSession) -> Dictionary:
 	if kfp != s.keg_fp or key or s.snap_n % 20 == 0:
 		s.keg_fp = kfp
 		m["kg"] = krows
-	var pfp := hash(g.pit_spots)
-	if pfp != s.pit_fp or s.snap_n % 20 == 0:
-		s.pit_fp = pfp
-		m["ps"] = g.pit_spots.map(func(sp: Array) -> Array: return [sp[0], snappedf(float(sp[1]), 0.1), int(sp[2])])      # old pit ground (Brood)
 	if Defs.cw_roster and (not g.cw_consists.is_empty() or s.snap_n % 10 == 0):
 		m["cpl"] = CwConsist.net_rows(s, g)     # coupled rail trains (lists of ids; the host moves the cars)
 	if not g.line_net.rails.trains.is_empty() or s.snap_n % 10 == 0:
@@ -387,8 +382,6 @@ static func apply(s: NetSession, m: Dictionary) -> void:
 		g.line_net.load_rows(m["ln"])
 	if m.has("kg"):
 		apply_kegs(g, m["kg"])
-	if m.has("ps"):
-		g.pit_spots = (m["ps"] as Array).map(func(sp: Array) -> Array: return [sp[0] as Vector2, float(sp[1]), int(sp[2])])
 	if m.has("cpl") and Defs.cw_roster:
 		CwConsist.net_apply(s, g, m["cpl"])
 	if m.has("tr"):
@@ -457,9 +450,6 @@ static func _building_row(s: NetSession, row: Array) -> Building:
 	var o := B_FIXED
 	var built: bool = row[o]
 	var ghost: bool = row[o + 2]
-	var lvl := int(row[o + 3])
-	if b.is_leveled() and lvl != b.level:
-		b.set_level(lvl)
 	_set_bld_vals(b, row, o)
 	if was_ghost and not ghost:
 		g._solidify(b)
@@ -475,35 +465,30 @@ static func _building_row(s: NetSession, row: Array) -> Building:
 ## A row's values (BLD_PROPS order, from `o`) onto the guest's building ("built" and "ghost" are the caller's).
 static func _set_bld_vals(b: Building, row: Array, o: int) -> void:
 	b.progress = row[o + 1]
-	b.level = row[o + 3]
-	b.queue = row[o + 4]
+	b.queue = row[o + 3]
 	for i in b.queue.size():
 		if Defs.OLD_UNIT_KINDS.has(b.queue[i]):
 			b.queue[i] = Defs.OLD_UNIT_KINDS[b.queue[i]]      # (an old id, from an older replay)
-	b.morph_t = row[o + 5]
-	b.prod_t = row[o + 6]
-	b.eggs = row[o + 7]
-	b.upgrade_t = row[o + 8]
-	b.growth = row[o + 9]
-	b.soil = row[o + 10]
-	b.lode = row[o + 11]
-	b.swamp_r = row[o + 12]
-	b.batteries = row[o + 13]
-	b.auto_train = Defs.unit_kind(String(row[o + 14]))
-	b.auto_refit = row[o + 15]
-	b.gate_open = row[o + 16]
-	b.locked = row[o + 17]
-	b.vertical = row[o + 18]
-	b.seeded = row[o + 19]
-	b.crate = row[o + 20]
-	b.unfold_t = row[o + 21]
-	b.max_hp = row[o + 22]
-	b.rally = row[o + 23]
-	b.worker_rally = row[o + 24]
-	b.stock = row[o + 25]
-	b.gear_big = row[o + 26]
-	b.gear_swap_t = row[o + 27]
-	b.gear_swap_to = row[o + 28]
+	b.prod_t = row[o + 4]
+	b.growth = row[o + 5]
+	b.soil = row[o + 6]
+	b.lode = row[o + 7]
+	b.batteries = row[o + 8]
+	b.auto_train = Defs.unit_kind(String(row[o + 9]))
+	b.auto_refit = row[o + 10]
+	b.gate_open = row[o + 11]
+	b.locked = row[o + 12]
+	b.vertical = row[o + 13]
+	b.seeded = row[o + 14]
+	b.crate = row[o + 15]
+	b.unfold_t = row[o + 16]
+	b.max_hp = row[o + 17]
+	b.rally = row[o + 18]
+	b.worker_rally = row[o + 19]
+	b.stock = row[o + 20]
+	b.gear_big = row[o + 21]
+	b.gear_swap_t = row[o + 22]
+	b.gear_swap_to = row[o + 23]
 
 
 static func _building_refs(s: NetSession, b: Building, row: Array) -> void:
@@ -566,17 +551,17 @@ static func _unit_row(s: NetSession, row: Array) -> Unit:
 	var coat_was: String = u.coat
 	var art_was: String = u.art
 	_set_unit_vals(u, row, o)
-	if bool(row[o + 12]) and not u.armoured:
+	if bool(row[o + 11]) and not u.armoured:
 		u.put_on_armour()
 		u.hp = float(row[4])            # (putting it on adds health of its own: the row's is the true one)
-	var art_row := Defs.unit_kind(String(row[o + 14]))
+	var art_row := Defs.unit_kind(String(row[o + 13]))
 	if art_row != "" and art_row != u.art and ArtData.UNITS.has(art_row):
 		u.art = art_row
 	if u.coat != coat_was and u.sprite:
 		HorseCoat.apply(u)
 	if u.art != art_was and u.sprite:
 		u._set_anim(u._anim_name(), true)
-	u.max_hp = row[o + 17]
+	u.max_hp = row[o + 16]
 	u.cooldown = 1.0 if bool(row[o + UNIT_PROPS.size()]) else 0.0
 	u.queue_redraw()
 	return u
@@ -593,53 +578,51 @@ static func _set_unit_vals(u: Unit, row: Array, o: int) -> void:
 	u.tesla_mode = row[o + 5]
 	u.braced = row[o + 6]
 	u.sky = row[o + 7]
-	u.deflate = row[o + 8]
-	u.keg = row[o + 9]
-	u.cocoon = row[o + 10]
-	u.coat = row[o + 11]
-	u.kills = row[o + 13]
-	u.powder = row[o + 15]
-	u.wind = row[o + 16]
-	u.off_field = row[o + 18]
-	u.horse_hp = row[o + 19]
-	u.harnessed = row[o + 20]
-	u.topter_bat = row[o + 21]
-	u.courier = row[o + 22]
-	u.supplying = row[o + 23]
-	u.auto_repair = row[o + 24]
-	u.hold_fire = row[o + 25]
-	u.pistol = row[o + 26]
-	u.bayonet = row[o + 27]
-	u.pouch = row[o + 28]
-	u.carry_empty = row[o + 29]
-	u.gas = row[o + 30]
-	u.spin = row[o + 31]
-	u.overclock_t = row[o + 32]
-	u.cranked_t = row[o + 33]
-	u.self_wind_t = row[o + 34]
-	u.tongue_stage = row[o + 35]
-	u.tesla_t = row[o + 36]
-	u.haul_t = row[o + 37]
-	u.auto_work = row[o + 38]
-	u.owl_t = row[o + 39]
-	u.net_t = row[o + 40]
-	u.arm = row[o + 41]
-	u.shield_up = row[o + 42]
-	u.shield_t = row[o + 43]
-	u.loaded = row[o + 44]
-	u.auto_sweep = row[o + 45]
-	u.ride_n = row[o + 46]
-	if row.size() > o + 47 and row[o + 47] is Dictionary:
+	u.keg = row[o + 8]
+	u.cocoon = row[o + 9]
+	u.coat = row[o + 10]
+	u.kills = row[o + 12]
+	u.powder = row[o + 14]
+	u.wind = row[o + 15]
+	u.off_field = row[o + 17]
+	u.horse_hp = row[o + 18]
+	u.harnessed = row[o + 19]
+	u.topter_bat = row[o + 20]
+	u.courier = row[o + 21]
+	u.supplying = row[o + 22]
+	u.auto_repair = row[o + 23]
+	u.hold_fire = row[o + 24]
+	u.pistol = row[o + 25]
+	u.bayonet = row[o + 26]
+	u.pouch = row[o + 27]
+	u.carry_empty = row[o + 28]
+	u.spin = row[o + 29]
+	u.overclock_t = row[o + 30]
+	u.cranked_t = row[o + 31]
+	u.self_wind_t = row[o + 32]
+	u.tongue_stage = row[o + 33]
+	u.tesla_t = row[o + 34]
+	u.haul_t = row[o + 35]
+	u.auto_work = row[o + 36]
+	u.owl_t = row[o + 37]
+	u.net_t = row[o + 38]
+	u.arm = row[o + 39]
+	u.shield_up = row[o + 40]
+	u.shield_t = row[o + 41]
+	u.loaded = row[o + 42]
+	u.auto_sweep = row[o + 43]
+	u.ride_n = row[o + 44]
+	if row.size() > o + 45 and row[o + 45] is Dictionary:
 		var keep_fe = u.nb.get("fe")
-		u.nb = row[o + 47]
+		u.nb = row[o + 45]
 		if keep_fe != null:
 			u.nb["fe"] = keep_fe
-	if row.size() > o + 48:
-		u.stun_end = float(row[o + 48])
+	if row.size() > o + 46:
+		u.stun_end = float(row[o + 46])
 		if u.stun_end > float(u.game.clock):
 			StunMark.add(u.game, u)      # (the host's stars: scripts/stun_mark.gd)
-	if row.size() > o + 49:
-		u.moult_t = float(row[o + 49])        # (a young Brood unit maturing: its shimmer and bar, scripts/brood_mature.gd)
+	if row.size() > o + 47:
+		u.moult_t = float(row[o + 47])        # (a young Brood unit maturing: its shimmer and bar, scripts/brood_mature.gd)
 
 
 static func _unit_refs(s: NetSession, u: Unit, row: Array) -> void:

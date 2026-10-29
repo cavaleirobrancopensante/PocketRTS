@@ -17,6 +17,12 @@ static func clear() -> void:
 		DirAccess.remove_absolute(PATH)
 
 
+## A saved match with the old Brood in it (before 0.18.0): it can't be continued (Defs.old_brood).
+static func old_brood(d: Dictionary) -> bool:
+	var cfg = d.get("cfg", {})
+	return cfg is Dictionary and Defs.old_brood(Array((cfg as Dictionary).get("slots", [])), int(d.get("brood", 1)))
+
+
 static func peek() -> Dictionary:
 	if not exists():
 		return {}
@@ -128,9 +134,9 @@ static func capture(game: Game, cfg: Dictionary) -> Dictionary:
 		"zoom": game.camera.zoom.x, "first_of": game._first_of, "big_farms": true, "armoury": true, "farm_size": _v2(Vector2(Defs.BUILDINGS["farm"]["size"])),
 		"log": Array(game.mlog.lines) if game.mlog else [], "ai": [],
 		"soil_scars": game.soil_scars.map(func(sc: Array) -> Array: return [_v2(sc[0]), sc[1], sc[2], sc[3] if sc.size() > 3 else 0.0]),
-		"pit_spots": game.pit_spots.map(func(sp: Array) -> Array: return [_v2(sp[0]), sp[1], sp[2]]), "buildings": [], "units": []}
-	if game.nb_teams.has(true):
-		d["nb"] = BroodNew.save(game)              # (the new Brood: the Rootmaws' ground)
+		"brood": Defs.BROOD_FORMAT, "buildings": [], "units": []}
+	if game.factions.has("brood"):
+		d["nb"] = BroodNew.save(game)              # (the Brood: the Rootmaws' ground)
 	for ai in game.ais:
 		d["ai"].append({"team": ai.team, "walled": ai._walled, "attack_at": ai._attack_at, "strategy": ai.strategy,
 			"failed": ai._failed, "regroup": ai._regroup_until, "opening": ai.opening})
@@ -138,10 +144,10 @@ static func capture(game: Game, cfg: Dictionary) -> Dictionary:
 		if b.dead:
 			continue
 		d["buildings"].append({"k": b.kind, "t": b.team, "c": [b.cell.x, b.cell.y], "built": b.built,
-			"progress": b.progress, "hp": b.hp, "queue": b.queue, "kits": b.kits.map(func(kt): return _kit_save(kt)), "ar": b.auto_refit, "prod_t": b.prod_t, "eggs": b.eggs,
-			"egg_t": b.egg_t, "morph_t": b.morph_t, "auto": b.auto_train, "bat": b.batteries, "v": b.vertical, "vl": b.dir_locked, "gl": b.locked,
-			"swamp_r": b.swamp_r, "seeded": b.seeded, "ghost": b.ghost, "growth": b.growth, "gold_acc": b.gold_acc,
-			"stock": snappedf(b.stock, 0.1), "gb": b.gear_big, "gs": snappedf(b.gear_swap_t, 0.01), "gst": b.gear_swap_to, "soil": b.soil, "sw": b.soil_warned, "lode": snappedf(b.lode, 0.01), "lw": b.lode_warned, "lv": b.level, "up": b.upgrade_t,
+			"progress": b.progress, "hp": b.hp, "queue": b.queue, "kits": b.kits.map(func(kt): return _kit_save(kt)), "ar": b.auto_refit, "prod_t": b.prod_t,
+			"auto": b.auto_train, "bat": b.batteries, "v": b.vertical, "vl": b.dir_locked, "gl": b.locked,
+			"seeded": b.seeded, "ghost": b.ghost, "growth": b.growth, "gold_acc": b.gold_acc,
+			"stock": snappedf(b.stock, 0.1), "gb": b.gear_big, "gs": snappedf(b.gear_swap_t, 0.01), "gst": b.gear_swap_to, "soil": b.soil, "sw": b.soil_warned, "lode": snappedf(b.lode, 0.01), "lw": b.lode_warned,
 			"crate": "ground" if b.crate == "carried" else b.crate,
 			"rally": _v2(b.rally) if b.rally != Vector2.INF else null,
 			"wrally": _v2(b.worker_rally) if b.worker_rally != Vector2.INF else null})
@@ -158,8 +164,8 @@ static func capture(game: Game, cfg: Dictionary) -> Dictionary:
 		var ud := {"k": u.kind, "t": u.team, "p": _v2(u.position), "hp": u.hp, "wind": u.wind,
 			# (a Mist Toad's TONGUE windup isn't kept: it comes back with that energy unspent)
 			"charge": u.charge + (float(Defs.TONGUE["cost"]) if u.tongue_stage == "windup" else 0.0), "mode": u.mode, "tm": u.tesla_mode, "carry": u.carrying, "lf": u.load_f,
-			"auto": u.auto_work, "cross": u.cross_t, "spell_cd": u.spell_cd, "gas": u.gas, "f": _v2(u.facing),
-			"kills": u.kills, "ff": u.friendly_kills, "defl": u.deflate, "courier": u.courier, "bat": u.topter_bat, "oc": u.overclock_t,
+			"auto": u.auto_work, "cross": u.cross_t, "f": _v2(u.facing),
+			"kills": u.kills, "ff": u.friendly_kills, "courier": u.courier, "bat": u.topter_bat, "oc": u.overclock_t,
 			"sky": u.sky if u.sky != "to_land" else "air",
 			"pw": u.powder, "ab": u._auto_bayonet, "sup": u.supplying, "tw": u.team_want,
 			"spin": u.spin, "brace": u.braced, "shd": u.shield_up, "ovc": u.overcharge_t, "sw": u.self_wind_t, "ct": u.carry_t}
@@ -171,7 +177,7 @@ static func capture(game: Game, cfg: Dictionary) -> Dictionary:
 		if u.auto_refit:
 			ud["ar"] = true
 		if u._k_nb:
-			ud["nb"] = BroodNew.unit_save(u)         # (the new Brood: eggs, food, an egg's kind and incubation)
+			ud["nb"] = BroodNew.unit_save(u)         # (the Brood: eggs, food, an egg's kind and incubation)
 		if u.owl_t >= 0.0:
 			ud["owl"] = snappedf(u.owl_t, 0.01)      # (a Swift turning into a Ticking Owl, paid)
 		if u.moult_t >= 0.0:
@@ -399,8 +405,6 @@ static func restore(game: Game, d: Dictionary) -> void:
 		+ Array(d["buildings"]).filter(func(x) -> bool: return String(x["k"]) == "farm")
 	for bd in blist:
 		var bk := String(bd["k"])
-		if bk == "bone_midden":
-			bk = "brood_pen"        # (older saves: the Bone Midden became the Brood Pen)
 		if not Defs.BUILDINGS.has(bk):
 			continue
 		var at := Vector2i(int(bd["c"][0]), int(bd["c"][1]))
@@ -408,8 +412,6 @@ static func restore(game: Game, d: Dictionary) -> void:
 			at = _fit(game, at, Defs.BUILDINGS[bk]["size"])
 		var b := game._add_building(bk, int(bd["t"]), at, bool(bd["built"]), bool(bd.get("ghost", false)))
 		b.progress = float(bd["progress"])
-		b.set_level(int(bd.get("lv", 1)))      # (a Brood hall's level, before its health; older saves: a Burrow)
-		b.upgrade_t = float(bd.get("up", -1.0))
 		b.hp = float(bd["hp"])
 		# (research is in the queue as "@key")
 		# (and beside it what each queued Musketeer was paid to come out with; older saves: nothing)
@@ -423,9 +425,6 @@ static func restore(game: Game, d: Dictionary) -> void:
 				b.add_entry(x, saved_kits[qi] if qi < saved_kits.size() and saved_kits[qi] is Dictionary else {})
 		b.auto_refit = bool(bd.get("ar", false))
 		b.prod_t = float(bd["prod_t"])
-		b.eggs = int(bd["eggs"])
-		b.egg_t = float(bd["egg_t"])
-		b.morph_t = Array(bd["morph_t"]).map(func(x) -> float: return float(x))
 		# (older saves: research ran beside the queue; it goes to the front now)
 		var old_rs := String(bd.get("research", ""))
 		if Defs.RESEARCH.has(old_rs) and not b.queue.has("@" + old_rs):
@@ -443,17 +442,13 @@ static func restore(game: Game, d: Dictionary) -> void:
 		b.vertical = bool(bd.get("v", false))
 		b.dir_locked = bool(bd.get("vl", false))
 		b.locked = bool(bd.get("gl", false))
-		b.swamp_r = float(bd["swamp_r"])
 		b.seeded = bool(bd["seeded"])
 		b.crate = String(bd.get("crate", ""))        # (older saves: no crates)
 		b.growth = float(bd["growth"])
 		b.gold_acc = float(bd["gold_acc"])
-		if b.kind == "town_hall" or b.kind == "clocktower" or (b.kind == "feeding_pit" and d.has("pit_spots")):
-			b.soil = float(bd.get("soil", b.reserve()))     # (older saves: fresh soil / coal; a pit's own ground from 0.14.37 on)
+		if b.kind == "town_hall" or b.kind == "clocktower":
+			b.soil = float(bd.get("soil", b.reserve()))     # (older saves: fresh soil / coal)
 			b.soil_warned = int(bd.get("sw", 0))
-		elif b.kind == "feeding_pit":
-			b.soil = b.reserve()        # (saves from before the pits had their own ground: fresh ground)
-			b.soil_warned = 0
 		if b.lode_full() > 0.0:
 			if bd.has("lode"):
 				b.lode = float(bd["lode"])
@@ -476,11 +471,8 @@ static func restore(game: Game, d: Dictionary) -> void:
 	for sc in d.get("soil_scars", []):
 		var sk := String(sc[2]) if sc.size() > 2 else "town_hall"
 		game.soil_scars.append([_to_v2(sc[0]), float(sc[1]), sk, float(sc[3]) if sc.size() > 3 else float(Defs.LODE.get(sk, 0.0))])
-	game.pit_spots.clear()
-	for sp in d.get("pit_spots", []):
-		game.pit_spots.append([_to_v2(sp[0]), float(sp[1]), int(sp[2]) if sp.size() > 2 else -1])
 	for b in game.buildings:
-		if b.kind == "farm" or b.kind == "feeding_pit":
+		if b.kind == "farm":
 			b._update_sprite()      # (its tired-soil tint needs the halls back first)
 	game.line_net.clear()
 	if d.has("line"):
@@ -541,8 +533,6 @@ static func restore(game: Game, d: Dictionary) -> void:
 		u.carrying = int(ud["carry"])
 		u.load_f = float(ud.get("lf", 0.0))
 		u.auto_work = bool(ud["auto"])
-		u.spell_cd = float(ud["spell_cd"])
-		u.gas = float(ud.get("gas", 100.0))
 		u.powder = float(ud.get("pw", u.powder))      # (older saves: full)
 		u._auto_bayonet = bool(ud.get("ab", false))
 		u.supplying = bool(ud.get("sup", false))
@@ -573,9 +563,6 @@ static func restore(game: Game, d: Dictionary) -> void:
 			else:
 				game.refund_refit(u.team, fee)
 		u.hp = minf(u.hp, u.max_hp)
-		var defl := String(ud.get("defl", ""))
-		if u.kind == "bloater" and defl != "":
-			u.deflate = "flat" if defl == "deflating" else ("" if defl == "refilling" else defl)
 		var sky := String(ud.get("sky", "air"))
 		if u.kind == "skywing" and sky in ["ground", "landing", "lifting"]:
 			u.sky = "ground"           # (a landing finishes; a take-off starts again from the ground)
@@ -700,8 +687,6 @@ static func restore(game: Game, d: Dictionary) -> void:
 		BroodNew.load(game, d["nb"])
 	for t in game.n_players():
 		game._recount_supply(t)
-	game._capital.clear()          # (the capital is found again from the loaded Burrows)
-	game._capital_had.clear()
 	game.swamp_dirty = true
 	game._update_swamp()
 	game._astar_dirty = true

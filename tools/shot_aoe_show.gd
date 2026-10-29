@@ -1,6 +1,6 @@
 extends SceneTree
 ## Pictures of the AREA MARKS (docs/aoe_show.md) in the CLOCKWORK LAB: the Pendulum's wedge and smear mowing Raptors
-## (and a GIF of a few blows), an enemy Mortar shell's warning and its landing ring, a Spore Mother's spit, and a Cog
+## (and a GIF of a few blows), an enemy Mortar shell's warning and its landing ring, and a Cog
 ## Press's "+N".
 ##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 --fixed-fps 30 --script res://tools/shot_aoe_show.gd -- <outdir>
 ## (<outdir>/gif/ gets the GIF's frames; tools/aoe_gif.py makes the GIF from them)
@@ -184,14 +184,6 @@ func _run() -> void:
 	await create_timer(0.06).timeout
 	await _frozen("mortar_land", _mid(520, 320))
 	await create_timer(0.8).timeout
-	# ---- a Spore Mother's spit: in the air, then where it lands
-	var sp: Unit = _dummy("spore_mother", spot + Vector2(-260, 60))
-	g.blob_shot(sp, spot + Vector2(10, 0), 1.0)
-	await create_timer(0.3).timeout
-	await _frozen("spore_spit_warning", _mid(520, 320))
-	await _wait(func() -> bool: return g.ground_marks.marks.any(func(m: Dictionary) -> bool: return m["s"] == "oval" and not m["warn"]), 3.0)
-	await create_timer(0.08).timeout
-	await _frozen("spore_spit_land", _mid(520, 320))
 	# ---- a Cog Press's "+N"
 	var press: Building = null
 	for b in g.buildings:

@@ -13,7 +13,7 @@ extends RefCounted
 
 const DIR := "user://replays"
 const MAGIC := "HFR1"
-const FORMAT := 1
+const FORMAT := 2               # (2 since 0.18.0: "brood" is the Brood of creatures; 1 with a "brood" slot: the old Brood)
 const T_HEAD := 1
 const T_CHUNK := 2
 const T_EVENTS := 3

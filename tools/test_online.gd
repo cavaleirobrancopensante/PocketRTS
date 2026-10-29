@@ -862,7 +862,7 @@ func _host_extras(s: NetSession) -> void:
 				for b in g.buildings:
 					if b.team == 1 and b.kind == g.faction_hall(1):
 						eh = b
-				var ek: Array = {"brood": ["spore_mother", "mist_toad"], "clockwork": ["tesla_cart"]}.get(g.faction_of(1), [])
+				var ek: Array = {"brood": ["mist_toad"], "clockwork": ["tesla_cart"]}.get(g.faction_of(1), [])
 				for j in ek.size():
 					if eh and Defs.UNITS.has(ek[j]) and ArtData.UNITS.has(ek[j]):
 						var ec := g.nearest_free(g.cell_of(eh.center() + Vector2(-120 + j * 60, 120 if eh.center().y < Game.H * Game.T * 0.5 else -120)), 8)
@@ -1026,7 +1026,7 @@ func _guest_extras(s: NetSession) -> void:
 ## whose queue is watched for flickers; "cost": what it spends (the resources must not come back while it waits).
 func _order_list() -> Array:
 	var out: Array = []
-	var special := ["cannon", "spore_mother", "mist_toad", "tesla_cart"]
+	var special := ["cannon", "mist_toad", "tesla_cart"]
 	var soldiers: Array = _mine().filter(func(u: Unit) -> bool: return not u.is_worker() and not special.has(u.kind) and u.kind != "horse")
 	var workers: Array = _mine().filter(func(u: Unit) -> bool: return u.is_worker())
 	var guns: Array = _mine().filter(func(u: Unit) -> bool: return u.kind == "cannon")
@@ -1074,11 +1074,11 @@ func _order_list() -> Array:
 			"then": func() -> bool: return gun.tesla_mode != "packed"})
 		out.append({"name": "pack", "ready": func() -> bool: return gun.tesla_mode == "deployed", "do": func() -> void: gun.cmd_pack(),
 			"react": func() -> bool: return gun.tesla_mode != "deployed"})
-	# the others that set up (the Spore Mother roots, the Tesla Cart deploys) and a spell (the Mist Toad's FOG): the host
+	# the others that set up (the Tesla Cart deploys) and a spell (the Mist Toad's FOG): the host
 	# puts them by this side's hall when asked (after the entity count check: some of them count apart)
-	var extra: Array = {"brood": ["spore_mother", "mist_toad"], "clockwork": ["tesla_cart"]}.get(g.faction_of(g.human), [])
+	var extra: Array = {"brood": ["mist_toad"], "clockwork": ["tesla_cart"]}.get(g.faction_of(g.human), [])
 	for k in extra:
-		if not ["spore_mother", "tesla_cart"].has(k):
+		if not ["tesla_cart"].has(k):
 			continue
 		out.append({"name": "deploy_" + k, "ready": func() -> bool: return _extra_unit(k) != null, "pre": func() -> void: base["du"] = _extra_unit(k),
 			"do": func() -> void: (base["du"] as Unit).cmd_deploy(), "react": func() -> bool: return (base["du"] as Unit).tesla_mode != "packed",
@@ -1128,13 +1128,6 @@ func _order_list() -> Array:
 				out.append({"name": "research", "do": func() -> void: g.start_research(rb, rk), "qb": rb, "cost": int(Defs.RESEARCH[rk]["cost"]), "react": _queue_grew(rb)})
 				out.append({"name": "cancel_research", "do": func() -> void: g.cancel_train(rb), "qb": rb, "react": _queue_shrank(rb), "refund": true})
 				break
-	if hall:
-		# (refused or not by what this side holds when it is given: the orders before spend)
-		out.append({"name": "hall_upgrade", "pre": func() -> void:
-				var why := g.hall_upgrade_problem(hall)
-				if why != "":
-					_ord["expect"] = why,
-			"do": func() -> void: g.start_hall_upgrade(hall)})
 	if not workers.is_empty():
 		var mine: Entity = null
 		for b in g.buildings:

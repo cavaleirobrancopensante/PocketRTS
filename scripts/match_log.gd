@@ -189,7 +189,7 @@ func snapshot() -> void:
 			game.apm_minutes.append(game.actions_minute)
 			game.actions_minute = 0
 		if BroodNew.on(game, t):
-			# the new Brood has no halls or pits: its Mother, its rooted creatures and their ground
+			# the Brood has no halls: its Mother, its rooted creatures and their ground
 			var nq := BroodNew.queen(game, t)
 			var nm := PackedStringArray()
 			var nt := 0
@@ -199,22 +199,16 @@ func snapshot() -> void:
 						nm.append("%d%%" % int(round(BroodNew.ground_left(game, u) / float(Defs.PIT_GROUND) * 100)))
 					elif u.kind == BroodNew.TURTLE:
 						nt += 1
-			lines[lines.size() - 1] += " | new Brood: Mother stage %d %s, %d eggs | Rootmaws rooted %d (ground %s) | Mound Turtles rooted %d" % [
+			lines[lines.size() - 1] += " | Brood: Mother stage %d %s, %d eggs | Rootmaws rooted %d (ground %s) | Mound Turtles rooted %d" % [
 				BroodNew.stage(nq) + 1 if nq else 0, ("rooted" if BroodNew.rooted(nq) else "walking") if nq else "dead", int(nq.nb.get("eggs", 0)) if nq else 0,
 				nm.size(), " ".join(nm) if not nm.is_empty() else "-", nt]
-		elif game.faction_hall(t) == "town_hall" or game.faction_hall(t) == "hive":
+		elif game.faction_hall(t) == "town_hall":
 			var soil := PackedStringArray()
-			if game.faction_hall(t) == "hive":
-				# (the Brood: each Feeding Pit's own ground)
-				for h in game.buildings:
-					if h.team == t and h.kind == "feeding_pit" and h.built and not h.dead:
-						soil.append("%d%%" % int(round(h.soil_left() * 100)))
-			else:
-				for h in game.halls_of(t):
-					soil.append("%d%%" % int(round(h.soil_left() * 100)))
+			for h in game.halls_of(t):
+				soil.append("%d%%" % int(round(h.soil_left() * 100)))
 			if not soil.is_empty():
-				lines[lines.size() - 1] += (" | soil " if game.faction_hall(t) == "town_hall" else " | pit ground ") + " ".join(soil)
-		if game.faction_hall(t) != "hive":
+				lines[lines.size() - 1] += " | soil " + " ".join(soil)
+		if Defs.LODE_NAME.has(game.faction_hall(t)):
 			# what each hall's lode has left: saltpetre for the Crown, ore for the Clockwork
 			var left := PackedStringArray()
 			for h in game.halls_of(t):

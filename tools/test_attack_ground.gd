@@ -273,13 +273,10 @@ func _run() -> void:
 	check(is_equal_approx(g.corpse_value(brute), 6.0), "a Brute's: 6 (%.2f)" % g.corpse_value(brute))
 	check(is_equal_approx(g.corpse_value(rider), 8.0), "a Horseman with his horse: 8 (%.2f)" % g.corpse_value(rider))
 	check(Game.essence_text(1.25) == "1.25" and Game.essence_text(5.0) == "5" and Game.essence_text(2.5) == "2.5", "essence shown as 1.25, 5, 2.5")
-	# a grub carries one home: +2 essence at the capital
-	var hive: Building = null
-	for b in g.buildings:
-		if b.team == 1 and b.kind == "hive" and not b.dead:
-			hive = b
+	# a grub carries one home: +2 essence at the Brood Mother
+	var hive: Unit = BroodNew.queen(g, 1)
 	if hive:
-		var at: Vector2 = g.cell_center(g.nearest_free(g.cell_of(hive.center() + Vector2(0, 150)), 8))
+		var at: Vector2 = g.cell_center(g.nearest_free(g.cell_of(hive.position + Vector2(0, 200)), 8))
 		var mh: Unit = await _body("musketeer", 0, at)
 		await wait(1.6)
 		var gr: Unit = g._add_unit("grub", 1, at + Vector2(30, 0))

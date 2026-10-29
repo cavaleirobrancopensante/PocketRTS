@@ -306,7 +306,7 @@ func _second(dt: float) -> void:
 		if X["first_blood_t"] < 0.0 and (int(st["killed"]) > 0 or int(g.stats[1 - i]["killed"]) > 0):
 			X["first_blood_t"] = snappedf(g.clock, 0.1)
 		# waves (an attack going out, or a Crown raiding party)
-		var att: bool = bool(ai._attacking) or String(ai._swarm_phase) != ""
+		var att: bool = bool(ai._attacking)
 		var raid: bool = (ai._raiders as Array).size() > 0
 		var active: bool = att or raid
 		if active and (X["wave"] as Dictionary).is_empty():

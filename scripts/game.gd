@@ -25,16 +25,14 @@ var factions: Array = ["crown", "crown"]
 var colours: Array = [0, 1]                 # each player's index into Defs.PALETTE
 var sides: Array = [0, 1]                   # players on the same side are allies
 var income_mult: Array = []                 # the Brutal AI's cheat (1.0 = fair)
-## THE NEW BROOD (experiment, scripts/brood_new.gd): per side, true when its slot picked "brood_new" (it plays as the
-## Brood: factions[t] is "brood"); the Mother of each such side (looked up), the Rootmaws' ground spots (id -> {p, left,
-## maw: the serial of the Rootmaw rooted there or 0}).
-var nb_teams: Array = []
+## THE BROOD (scripts/brood_new.gd; the only Brood since 0.18.0, docs/brood_replace.md): the Mother of each Brood
+## side (looked up), the Rootmaws' ground spots (id -> {p, left, maw: the serial of the Rootmaw rooted there or 0}).
 var nb_queen := {}
 var nb_spots := {}
 var nb_spot_next := 0
 var nb_walls: Array = []       # (no longer filled: a rooted creature's footprint on the grid does it, nb_fp; BroodNew.push_out kept for old saves)
-var nb_fp: Array = []          # the new Brood's ROOTED creatures (and cocoons): each takes its footprint on the grid as a building (scripts/brood_root.gd)
-var nb_cells := {}             # cell index -> the team of the rooted new-Brood creature whose footprint holds it (its own side's hatchlings walk through: BroodRoot.pass_move)
+var nb_fp: Array = []          # the Brood's ROOTED creatures (and cocoons): each takes its footprint on the grid as a building (scripts/brood_root.gd)
+var nb_cells := {}             # cell index -> the team of the rooted Brood creature whose footprint holds it (its own side's hatchlings walk through: BroodRoot.pass_move)
 var eliminated: Array = []
 
 
@@ -165,7 +163,6 @@ var winner := -1
 var clock := 0.0
 var stats: Array = []
 var soil_scars: Array = []               # [centre, soil left, hall kind, lode left] where a Town Hall, Hive or Clocktower fell
-var pit_spots: Array = []                # OLD GROUND: [centre (px), biomass left, team] where a Feeding Pit fell (Defs.PIT_CLAIM circles)
 var _sample_t := 0.0
 var mlog: MatchLog              # the playtest log (copied from the end screen)
 var chat: Chat                  # the in-game chat (YOU and the computers; the log lines go to mlog)
@@ -1946,7 +1943,7 @@ func _paint_ramps(img: Image, area := Rect2i(0, 0, W, H)) -> void:
 func _start_positions() -> void:
 	for t in n_players():
 		if BroodNew.on(self, t):
-			BroodNew.start(self, t, starts[t])       # (the new Brood: the Mother, a Rootmaw, grubs; no buildings)
+			BroodNew.start(self, t, starts[t])       # (the Brood: the Mother, a Rootmaw, grubs; no buildings)
 			continue
 		var f: Dictionary = Defs.FACTIONS[factions[t]]
 		var b := _add_building(f["hall"], t, starts[t], true)
@@ -2078,8 +2075,6 @@ func _find_start_spot(t: int, kind: String, hall: Building, placed: Array) -> Ve
 		return Vector2i(-1, -1)
 	var h0 := int(height[idx(hcell)])
 	var reach := START_REACH
-	if kind == "feeding_pit":
-		reach = minf(reach, float(Defs.BUILDINGS["hive"]["swamp"]) + 2.0)    # (the pit must stand on the Burrow's swamp)
 	# the enemy is the front: the direction the base looks
 	var front := Vector2.ZERO
 	for o in n_players():
@@ -2206,11 +2201,6 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 	var cells: Array[Vector2i] = []
 	var pair := kind == "boiler" or (kind == "ore_crusher" and econ_count(t, "boiler") > 0)
 	var pair_at: Array[Vector2] = []
-	var pit_at: Array[Vector2] = []
-	if kind == "feeding_pit":
-		for b in buildings:
-			if b.team == t and not b.dead and b.kind == "feeding_pit":
-				pit_at.append(b.center())
 	if pair:
 		for b in buildings:
 			if b.team == t and not b.dead and (b.d.has("battery") if kind == "ore_crusher" else b.kind == "ore_crusher"):
@@ -2230,22 +2220,6 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 					continue
 				tight = 1
 			var score := dd + (4.0 if tight == 1 else 0.0)
-			var pit_pen := 0.0
-			if kind == "feeding_pit":
-				# (the ground circles of our own pits: no overlap, checked here first as it rules out most cells)
-				var pm := (Vector2(cell) + Vector2(size) * 0.5) * T
-				var clash := false
-				for pc in pit_at:
-					if pit_circles_overlap(pc, pm):
-						clash = true
-						break
-				if clash:
-					continue
-				# a pit wants fresh ground: never over spent old ground, and tired old ground scores worse
-				var gl := pit_ground_at(pm) / float(Defs.PIT_GROUND)
-				if gl <= 0.1:
-					continue
-				pit_pen = (1.0 - gl) * 30.0
 			if prefer == "far":
 				score = -dd
 			elif prefer == "far_safe":
@@ -2262,7 +2236,6 @@ func find_spot(t: int, kind: String, around: Building, min_d: int, max_d: int, p
 				# tucked behind the hall, away from the middle of the map (like minerals
 				# behind a command centre), and close to it
 				score = dd - (cc.distance_to(mid) - c0.distance_to(mid)) * 1.5
-			score += pit_pen
 			if pair:
 				# Boilers and crushers close together (once there's a Boiler; the starting crusher
 				# goes behind the hall): a battery fades on a long road, and a Boiler's Winders
@@ -2564,7 +2537,7 @@ func best_crusher(p: Vector2, t: int, reach := INF) -> Building:
 # ------------------------------------------------------------------ economy
 
 ## An economy structure with room in its crew for this team's workers, nearest first. A real post (Farm, Mill,
-## Feeding Pit, Cog Press...) always comes first; a Town Hall's hauler slots only when every post is full (a Town
+## Cog Press...) always comes first; a Town Hall's hauler slots only when every post is full (a Town
 ## Hall counts its haulers as its crew, so without this the nearest hall won: every Crown game started with all
 ## its labourers hauling and the starting Farm unworked).
 func free_site(t: int, p: Vector2) -> Building:
@@ -2594,11 +2567,8 @@ func free_site(t: int, p: Vector2) -> Building:
 	return best if best != null else hall
 
 
-## Soil fatigue: the Town Hall whose farmland a Farm draws on (the nearest built one);
-## a Feeding Pit draws on its own ground (Defs.PIT_GROUND), so it is its own "hall".
+## Soil fatigue: the Town Hall whose farmland a Farm draws on (the nearest built one).
 func soil_hall(farm: Building) -> Building:
-	if farm.kind == "feeding_pit":
-		return farm
 	return nearest_hall(farm.center(), farm.team)
 
 
@@ -2631,17 +2601,6 @@ func _soil_check(h: Building) -> void:
 	if level <= h.soil_warned:
 		return
 	h.soil_warned = level
-	var hive := h.kind == "hive"
-	if h.kind == "feeding_pit":
-		# a Feeding Pit's own ground (each pit warns for itself)
-		if mlog:
-			mlog.add("%s: the ground of a Feeding Pit %s" % [mlog.who(h.team), "is spent (barren: it yields nothing)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
-		if h.team == human and not demo and hud:
-			hud.toast("A Feeding Pit's ground is spent: it yields nothing. Grow a new pit on fresh ground, outside the old circles." if level == 2
-				else "A Feeding Pit's ground is running low (%d%% left): plan a new pit on fresh ground." % int(round(left * 100)), false)
-			Sfx.play("done", h.center())
-		h._update_sprite()
-		return
 	if h.kind == "clocktower":
 		# Clockwork coal: the Boilers around this Clocktower
 		if mlog:
@@ -2652,25 +2611,17 @@ func _soil_check(h: Building) -> void:
 			Sfx.play("done", h.center())
 		return
 	if mlog:
-		if hive:
-			mlog.add("%s: the ground around a %s %s" % [mlog.who(h.team), h.d["name"], "is spent (barren: its pits yield nothing)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
-		else:
-			mlog.add("%s: the soil around a Town Hall %s" % [mlog.who(h.team), "is spent (barren: its farms pay nothing)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
+		mlog.add("%s: the soil around a Town Hall %s" % [mlog.who(h.team), "is spent (barren: its farms pay nothing)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
 	if h.team == human and not demo and hud:
-		if hive:
-			hud.toast(("The ground around your %s is spent: barren, its pits yield nothing. Grow a Burrow on fresh ground." % h.d["name"]) if level == 2
-				else "The ground around your %s is running low (%d%% left): grow a Burrow on fresh ground soon." % [h.d["name"], int(round(left * 100))], false)
-		else:
-			hud.toast("The soil around your Town Hall is barren: its farms pay nothing. Expand to fresh land." if level == 2
-				else "The soil around your Town Hall is running low (%d%% left): expand to fresh land soon." % int(round(left * 100)), false)
+		hud.toast("The soil around your Town Hall is barren: its farms pay nothing. Expand to fresh land." if level == 2
+			else "The soil around your Town Hall is running low (%d%% left): expand to fresh land soon." % int(round(left * 100)), false)
 		Sfx.play("done", h.center())
-	var site := "feeding_pit" if hive else "farm"
 	for b in buildings:
-		if b.kind == site and b.team == h.team and not b.dead and b.built:
+		if b.kind == "farm" and b.team == h.team and not b.dead and b.built:
 			b._update_sprite()
 
 
-## A Town Hall raised (a Hive grown) where one fell takes over that tired land.
+## A Town Hall raised where one fell takes over that tired land.
 func _take_scar(h: Building) -> void:
 	for i in soil_scars.size():
 		var sc: Array = soil_scars[i]
@@ -2684,64 +2635,10 @@ func _take_scar(h: Building) -> void:
 			return
 
 
-# ------------------------------------------------------------------ pit ground (Defs.PIT_GROUND, PIT_CLAIM)
-
-## Where a Feeding Pit placed at cell c would have its centre (px).
-func pit_mid(c: Vector2i) -> Vector2:
-	return (Vector2(c) + Vector2(Defs.BUILDINGS["feeding_pit"]["size"]) * 0.5) * T
-
-
-## Two pit circles overlap when their centres are closer than two radii (exactly 2 x PIT_CLAIM apart is fine).
+## Two ground circles (Defs.PIT_CLAIM tiles round each centre) overlap when their centres are closer than two radii
+## (exactly 2 x PIT_CLAIM apart is fine). (The Rootmaws' ground and the Ratchet Turrets' circles.)
 static func pit_circles_overlap(a: Vector2, b: Vector2) -> bool:
 	return a.distance_to(b) < 2.0 * Defs.PIT_CLAIM * Defs.TILE - 0.5
-
-
-## Team t's living Feeding Pits (planned, growing or built) whose circle overlaps a circle at p.
-func pit_overlaps(t: int, p: Vector2, skip: Building = null) -> Array:
-	var out: Array = []
-	for b in buildings:
-		if b.kind == "feeding_pit" and b.team == t and not b.dead and b != skip and pit_circles_overlap(b.center(), p):
-			out.append(b)
-	return out
-
-
-## The old ground spots (pit_spots indexes) a pit circle at p overlaps.
-func pit_spots_at(p: Vector2) -> Array:
-	var out: Array = []
-	for i in pit_spots.size():
-		if pit_circles_overlap(pit_spots[i][0], p):
-			out.append(i)
-	return out
-
-
-## The ground a new pit with its centre at p would have: the SMALLEST amount left among the old
-## spots its circle overlaps (rebuilding by a spent pit can't refresh the ground), else fresh.
-func pit_ground_at(p: Vector2) -> float:
-	var g := float(Defs.PIT_GROUND)
-	for i in pit_spots_at(p):
-		g = minf(g, float(pit_spots[i][1]))
-	return maxf(g, 0.0)
-
-
-## A new Feeding Pit takes its ground (when its site starts: _solidify): the old spots under its
-## circle merge into its claim, and it keeps the smallest amount left among them.
-func claim_pit_ground(b: Building) -> void:
-	if puppet:
-		return          # (an online guest: the host's snapshot brings each pit's ground and the old spots)
-	var p := b.center()
-	b.soil = pit_ground_at(p)
-	var idxs := pit_spots_at(p)
-	idxs.reverse()
-	for i in idxs:
-		pit_spots.remove_at(i)
-	b.soil_warned = 2 if b.soil <= 0.0 else (1 if b.soil / b.reserve() < Defs.SOIL_LOW else 0)
-
-
-## Why a Feeding Pit can't go at cell c for team t because of the circles ("" if it can).
-func pit_claim_problem(t: int, c: Vector2i) -> String:
-	if not pit_overlaps(t, pit_mid(c)).is_empty():
-		return "Too close to another Feeding Pit: their grounds would overlap."
-	return ""
 
 
 func halls_of(t: int, built_only := true) -> Array:
@@ -2752,185 +2649,20 @@ func halls_of(t: int, built_only := true) -> Array:
 	return out
 
 
-const BROOD_PIT_UNCAPPED := 999
-
-
-## The Brood's CAPITAL: its first Burrow, the oldest one standing (the starting hall; when it
-## falls the next oldest takes over). The only hall grubs unload at, and the only one with
-## ground. Null for other factions or with no finished Burrow.
-func capital(t: int) -> Building:
-	if faction_of(t) != "brood":
-		return null
-	var c = _capital.get(t)      # (untyped: a freed Burrow, after a load, can't be held in a typed variable)
-	var had: bool = c != null
-	if had and not is_instance_valid(c):
-		c = null
-		had = _capital_had.has(t)
-	if c != null and not c.dead and c.built:
-		_capital_had[t] = true
-		return c
-	_capital[t] = null
-	for b in buildings:        # (creation order: the oldest first)
-		if b.team == t and b.kind == "hive" and b.built and not b.dead:
-			_capital[t] = b
-			b.queue_redraw()
-			if had and _capital_had.has(t):
-				# (the capital has no ground since the pits own it: nothing passes on)
-				if mlog:
-					mlog.add("%s: the capital fell; the next Burrow is the new capital" % mlog.who(t))
-				tell(t, "Your capital has fallen: the next Burrow is the new capital.")
-			_capital_had[t] = true
-			return b
-	return null
-
-
-var _capital := {}
-var _capital_had := {}          # team -> true once it has had a capital (to tell when one falls)
-
-
-## Where workers unload: the Brood's capital; for the others the nearest hall.
-## Where a worker unloads, any kind: the new Brood's Brood Mother, else dropoff_hall.
+## Where a worker unloads, any kind: the Brood's Brood Mother, else dropoff_hall.
 func dropoff_ent(p: Vector2, t: int) -> Entity:
 	if BroodNew.on(self, t):
 		return BroodNew.dropoff(self, t)
 	return dropoff_hall(p, t)
 
 
-## Where a Brood creature is offered up (SACRIFICE): the nearest Brood Pen, or the new Brood's Mother.
-func offer_place(p: Vector2, t: int) -> Entity:
-	if BroodNew.on(self, t):
-		return BroodNew.dropoff(self, t)
-	return nearest_of(p, t, "brood_pen")
+## Where a Brood creature is offered up (SACRIFICE): its Brood Mother.
+func offer_place(_p: Vector2, t: int) -> Entity:
+	return BroodNew.dropoff(self, t)
 
 
 func dropoff_hall(p: Vector2, t: int) -> Building:
-	if faction_of(t) == "brood":
-		return capital(t)
 	return nearest_hall(p, t)
-
-
-## Tiles from the capital (centre to centre) to a point; 0 when there's none.
-func capital_dist(t: int, p: Vector2) -> float:
-	var c := capital(t)
-	return c.center().distance_to(p) / T if c else 0.0
-
-
-## The Brood's resource reach: swamp joined to the capital's, as far from it as the swamp goes
-## (capped at Defs.BROOD_RESOURCE_MAX_D). Grows with Clutch Mounds and any other swamp.
-var swamp_conn: Array = []        # per team: PackedByteArray, 1 = swamp joined to the capital's
-var swamp_reach: Array = []       # per team: farthest such cell from the capital, in tiles
-var swamp_hall_conn: Array = []   # per team: PackedByteArray, 1 = swamp joined to the swamp of ANY finished Burrow (Clutch Mound rule)
-
-
-func _update_conn() -> void:
-	while swamp_conn.size() < n_players():
-		swamp_conn.append(PackedByteArray())
-		swamp_reach.append(0.0)
-	while swamp_hall_conn.size() < n_players():
-		swamp_hall_conn.append(PackedByteArray())
-	for t in n_players():
-		swamp_hall_conn[t] = _flood_from_halls(t)
-		var conn := PackedByteArray()
-		conn.resize(W * H)
-		swamp_reach[t] = 0.0
-		var cap := capital(t)
-		if cap != null:
-			var c0 := cell_of(cap.center())
-			var g: PackedByteArray = swamp[t]
-			var cc := cap.center() / T
-			var stack: Array[int] = []
-			if in_map(c0) and g[idx(c0)] == 1:
-				stack.append(idx(c0))
-				conn[idx(c0)] = 1
-			var far := 0.0
-			while not stack.is_empty():
-				var i: int = stack.pop_back()
-				var x := i % W
-				var y := i / W
-				far = maxf(far, Vector2(x + 0.5, y + 0.5).distance_to(cc))
-				for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-					var nx: int = x + d.x
-					var ny: int = y + d.y
-					if nx < 0 or ny < 0 or nx >= W or ny >= H:
-						continue
-					var j := ny * W + nx
-					if g[j] == 1 and conn[j] == 0:
-						conn[j] = 1
-						stack.append(j)
-			swamp_reach[t] = minf(far, Defs.BROOD_RESOURCE_MAX_D)
-		swamp_conn[t] = conn
-
-
-## Swamp cells joined (4-connected) to the swamp under any finished Burrow of side t.
-func _flood_from_halls(t: int) -> PackedByteArray:
-	var conn := PackedByteArray()
-	conn.resize(W * H)
-	if faction_of(t) != "brood":
-		return conn
-	var g: PackedByteArray = swamp[t]
-	var stack: Array[int] = []
-	for b in buildings:
-		if b.team != t or b.dead or not b.built or b.kind != faction_hall(t):
-			continue
-		for y in b.size.y:
-			for x in b.size.x:
-				var c: Vector2i = b.cell + Vector2i(x, y)
-				if in_map(c) and g[idx(c)] == 1 and conn[idx(c)] == 0:
-					conn[idx(c)] = 1
-					stack.append(idx(c))
-	while not stack.is_empty():
-		var i: int = stack.pop_back()
-		var x := i % W
-		var y := i / W
-		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-			var nx: int = x + d.x
-			var ny: int = y + d.y
-			if nx < 0 or ny < 0 or nx >= W or ny >= H:
-				continue
-			var j := ny * W + nx
-			if g[j] == 1 and conn[j] == 0:
-				conn[j] = 1
-				stack.append(j)
-	return conn
-
-
-## Why a Clutch Mound can't stand at this spot, or "": it must be planted on swamp joined to a
-## finished Burrow's swamp (no distance cap: the chain of swamp is the limit, and it is breakable).
-func mound_problem(t: int, c: Vector2i) -> String:
-	if faction_of(t) != "brood":
-		return ""
-	var size: Vector2i = Defs.BUILDINGS["clutch_mound"]["size"]
-	if swamp_hall_conn.size() <= t or (swamp_hall_conn[t] as PackedByteArray).size() != W * H:
-		_update_conn()
-	var join: PackedByteArray = swamp_hall_conn[t]
-	for y in size.y:
-		for x in size.x:
-			var cc := c + Vector2i(x, y)
-			if in_map(cc) and join[idx(cc)] == 0:
-				return "Must stand on swamp joined to a Burrow's swamp."
-	return ""
-
-
-## Why a Brood resource building (Feeding Pit, Brood Pen) can't stand at this spot, or "".
-func brood_reach_problem(t: int, k: String, c: Vector2i) -> String:
-	if faction_of(t) != "brood" or not Defs.is_econ(k):
-		return ""
-	var size: Vector2i = Defs.BUILDINGS[k]["size"]
-	var cap := capital(t)
-	if cap == null:
-		return "Needs a finished Burrow (your capital) first."
-	if swamp_conn.size() <= t or (swamp_conn[t] as PackedByteArray).size() != W * H:
-		_update_conn()
-	var mid := (Vector2(c) + Vector2(size) * 0.5)
-	var d := cap.center().distance_to(mid * T) / T
-	if d > Defs.BROOD_RESOURCE_MAX_D or d > float(swamp_reach[t]) + 0.01:
-		return "Too far from your capital (reach %d tiles): spread your swamp (plant a Clutch Mound) to reach farther." % int(swamp_reach[t])
-	for y in size.y:
-		for x in size.x:
-			var cc := c + Vector2i(x, y)
-			if in_map(cc) and (swamp_conn[t] as PackedByteArray)[idx(cc)] == 0:
-				return "Must stand on swamp joined to your capital's."
-	return ""
 
 
 func econ_count(t: int, kind: String) -> int:
@@ -2938,8 +2670,6 @@ func econ_count(t: int, kind: String) -> int:
 
 
 func econ_limit(t: int, kind: String) -> int:
-	if faction_of(t) == "brood" and kind == "feeding_pit":
-		return BROOD_PIT_UNCAPPED       # the Brood's pits are limited by swamp reach, not by halls (placement_problem)
 	return int(Defs.FACTIONS[faction_of(t)]["econ"].get(kind, 0)) * maxi(1, halls_of(t).size())
 
 
@@ -3053,23 +2783,8 @@ func wind_decay_mult(t: int) -> float:
 	return maxf(0.25, 1.0 - wind_e[t] / 10.0)
 
 
-## Value of one load of food hauled from this pit to the nearest Hive, on fresh ground: it
-## pays for the round trip's time at a rate that rises with the pit's distance from the Hive
-## (see Defs.FOOD_RATE).
-func food_value(pit: Building) -> float:
-	var hive := capital(pit.team)
-	if hive == null:
-		return 0.0
-	var a := hive.rect()
-	var b := pit.rect()
-	var gx := maxf(0.0, maxf(a.position.x - b.end.x, b.position.x - a.end.x))
-	var gy := maxf(0.0, maxf(a.position.y - b.end.y, b.position.y - a.end.y))
-	return food_at(hive.center().distance_to(pit.center()) / T, Vector2(gx, gy).length() / T)
-
-
-## The fresh-ground value of a load from a pit `d` tiles (centre to centre) from its Hive,
-## with `gap` tiles of open ground between the two buildings: the rate (biomass per
-## grub-second) times the round trip's estimated seconds.
+## The fresh-ground value of a load from a Rootmaw `d` tiles (centre to centre) from the Brood Mother, with `gap`
+## tiles of open ground between the two: the rate (biomass per grub-second) times the round trip's estimated seconds.
 static func food_at(d: float, gap: float) -> float:
 	d = minf(d, Defs.FOOD_MAX_D)
 	gap = minf(gap, Defs.FOOD_MAX_D)
@@ -3077,27 +2792,6 @@ static func food_at(d: float, gap: float) -> float:
 	if d > Defs.FOOD_PEAK:
 		rate *= 1.0 - Defs.FOOD_FADE * (d - Defs.FOOD_PEAK)
 	return rate * (Defs.PIT_TIME + Defs.FOOD_TRIP * maxf(0.0, gap - Defs.FOOD_REACH))
-
-
-## A grub takes a load at a pit: it draws its value from the Hive's ground; spent ground
-## yields nothing. Returns the load's value.
-func pit_load(pit: Building) -> float:
-	var v := food_value(pit)
-	var h := soil_hall(pit)
-	var fresh := 0.0
-	if h:
-		fresh = minf(h.soil, v)
-		h.soil -= fresh
-		_soil_check(h)
-	return fresh + (v - fresh) * Defs.SOIL_TIRED
-
-
-## What the next load from this pit is worth (no side effects).
-func load_value(pit: Building) -> float:
-	var v := food_value(pit)
-	var h := soil_hall(pit)
-	var fresh := minf(h.soil, v) if h else 0.0
-	return fresh + (v - fresh) * Defs.SOIL_TIRED
 
 
 ## The most wounded soldier nearby that a Missionary may bandage.
@@ -3281,7 +2975,7 @@ func _add_building(k: String, t: int, c: Vector2i, complete: bool, ghost := fals
 		b.vertical = new_gate_facing(t, c, _gate_plan)     # (a saved game sets its own after)
 	world.add_child(b)
 	buildings.append(b)
-	if k == "town_hall" or k == "hive" or k == "clocktower":
+	if k == "town_hall" or k == "clocktower":
 		_take_scar(b)
 	if b.ghost:
 		_reserve_ghost(b, true)
@@ -3308,8 +3002,6 @@ func _solidify(b: Building, keep: Array = []) -> void:
 		b.ghost = false
 		b.block_since = -1.0
 		b.asked.clear()
-	if k == "feeding_pit":
-		claim_pit_ground(b)      # (its own ground, or what old ground under its circle has left)
 	if Defs.BUILDINGS[k].get("gate", false):
 		_mark(c, b.size, 3)
 		gate_team[idx(c)] = b.team
@@ -3722,7 +3414,7 @@ func on_unit_died(u: Unit) -> void:
 	var hitter = u.last_hitter
 	if is_instance_valid(hitter) and hitter is Unit and not hitter.dead and hostile(hitter.team, u.team):
 		(hitter as Unit).kills += 1
-	# (the fallen lie for the Brood's grubs to harvest; a Brood Pen no longer takes bodies by itself)
+	# (the fallen lie for the Brood's grubs to harvest)
 	if brood_in_match() and not u.is_air():
 		corpses.append(u)
 	# a Crown soldier's body: a Missionary may raise him (not one who fell under the cross)
@@ -3875,11 +3567,8 @@ func on_building_died(b: Building) -> void:
 			relink_walls(b.cell)
 		return
 	# the land stays tired (its soil / ground / coal and its saltpetre / ore drawn out) for the next hall here
-	if (b.kind == "town_hall" or b.kind == "hive" or b.kind == "clocktower") and b.built and (b.soil < b.reserve() or (b.lode_full() > 0.0 and b.lode < b.lode_full())):
+	if (b.kind == "town_hall" or b.kind == "clocktower") and b.built and (b.soil < b.reserve() or (b.lode_full() > 0.0 and b.lode < b.lode_full())):
 		soil_scars.append([b.center(), b.soil, b.kind, b.lode])
-	# a Feeding Pit's ground stays on the land as an OLD GROUND spot (its circle, what was left)
-	if b.kind == "feeding_pit" and not puppet and (b.built or b.soil < b.reserve() - 0.5):
-		pit_spots.append([b.center(), maxf(b.soil, 0.0), b.team])
 	_mark(b.cell, b.size, 0)
 	gate_team.erase(idx(b.cell))
 	selection.erase(b)
@@ -3921,7 +3610,7 @@ func supply_used(t: int) -> int:
 		if u.team == t and not u.dead:
 			n += int(u.d["supply"])
 			if u._k_still and u.kind == BroodNew.EGG and not u.nb.has("out"):
-				var ek := String(u.nb.get("k", "grub"))      # (a new-Brood egg holds its creature's supply)
+				var ek := String(u.nb.get("k", "grub"))      # (a Brood egg holds its creature's supply)
 				n += int(Defs.UNITS[ek]["supply"]) * int(Defs.UNITS[ek].get("spawn", 1))
 			if u.owl_t >= 0.0:
 				n += int(Defs.UNITS[Defs.OWL]["supply"]) - int(u.d["supply"])     # (a Swift turning into an Owl holds its supply)
@@ -4120,10 +3809,7 @@ func can_train(b: Building, key: String) -> String:
 		var spp := GearEcon.spend_problem(self, b)      # (THE TENSION RULE: made only where a Mainspring meshes, GearEcon)
 		if spp != "":
 			return spp
-	if b.uses_eggs():
-		if b.eggs < 1:
-			return "No eggs ready."
-	elif b.queue.size() >= 5:
+	if b.queue.size() >= 5:
 		return "Queue is full."
 	var res: Array = Defs.FACTIONS[factions[b.team]]["res"]
 	var price := unit_price(b.team, key)
@@ -4163,15 +3849,6 @@ func can_train(b: Building, key: String) -> String:
 		var sup: String = Defs.supply_kind(factions[b.team])
 		return "Need more supply: build a %s." % Defs.BUILDINGS[sup]["name"]
 	return ""
-
-
-## How fast a Brood player's Hives lay eggs: +10% for every Clutch Mound, up to +30%.
-func egg_rate(t: int) -> float:
-	var n := 0
-	for b in buildings:
-		if b.team == t and b.kind == "clutch_mound" and b.built and not b.dead:
-			n += 1
-	return 1.0 + minf(0.1 * n, 0.3)
 
 
 ## LINE tool for a SIDING (CwRail): toggles a side arm on a straight piece of the team's Line; "" or why not.
@@ -4288,73 +3965,6 @@ func research_done(b: Building, key: String) -> void:
 		tell(b.team, "%s researched: %s" % [info["name"], what2], true)      # (online: the guest who researched it)
 	if mlog:
 		mlog.add("%s researched %s" % [mlog.who(b.team), info["name"]])
-
-
-# ------------------------------------------------------------------ Brood hall levels
-
-## "" if this hall can start growing into its next level (Defs.HALL_LEVELS), else why not.
-func hall_upgrade_problem(b: Building) -> String:
-	if not b.is_leveled() or not b.built or b.dead:
-		return "Can't upgrade that."
-	var nl := b.next_level()
-	if nl.is_empty():
-		return "Already a %s." % b.level_info()["name"]
-	if b.upgrade_t >= 0.0:
-		return "Already upgrading."
-	var needs := String(nl.get("needs", ""))
-	if needs != "" and not _has_built(b.team, needs):
-		return "Needs a %s first." % Defs.BUILDINGS[needs]["name"]
-	var res: Array = Defs.FACTIONS[factions[b.team]]["res"]
-	if players[b.team]["gold"] < int(nl["cost"]):
-		return "Not enough %s." % String(res[0]).to_lower()
-	if float(players[b.team]["res2"]) < float(nl.get("cost2", 0)):
-		return "Not enough %s." % String(res[1]).to_lower()
-	return ""
-
-
-## Start growing the hall into its next level: paid up front; it keeps laying, hatching and
-## taking food meanwhile. "" when started, else why not.
-func start_hall_upgrade(b: Building) -> String:
-	if net_forward(self, "start_hall_upgrade", [b]): return ""
-	var why := hall_upgrade_problem(b)
-	if why != "":
-		return why
-	var nl := b.next_level()
-	players[b.team]["gold"] -= int(nl["cost"])
-	add_res2(b.team, -float(nl.get("cost2", 0)))
-	stats[b.team]["spent"] += int(nl["cost"])
-	b.upgrade_t = 0.0
-	b.queue_redraw()
-	if mlog:
-		mlog.add("%s started upgrading a %s to a %s" % [mlog.who(b.team), b.d["name"], nl["name"]])
-	return ""
-
-
-## Stop the hall's upgrade, paid back (`dying`: it was destroyed, nothing said).
-func cancel_hall_upgrade(b: Building, dying := false) -> void:
-	if b.upgrade_t < 0.0:
-		return
-	b.upgrade_t = -1.0
-	var nl := b.next_level()
-	if nl.is_empty():
-		return
-	players[b.team]["gold"] += int(nl["cost"])
-	add_res2(b.team, float(nl.get("cost2", 0)))
-	stats[b.team]["spent"] -= int(nl["cost"])
-	b.queue_redraw()
-	if mlog and not dying:
-		mlog.add("%s cancelled upgrading a %s to a %s" % [mlog.who(b.team), b.d["name"], nl["name"]])
-
-
-## The hall has grown into its next level.
-func hall_upgraded(b: Building) -> void:
-	var was := String(b.d["name"])
-	b.set_level(b.level + 1)
-	tell(b.team, "Your %s has grown into a %s: up to %d eggs." % [was, b.d["name"], b.eggs_max()], true)
-	if b.team == human:
-		Sfx.announce(faction_of(b.team), "research_done", 3.0)
-	if mlog:
-		mlog.add("%s upgraded a %s to a %s" % [mlog.who(b.team), was, b.d["name"]])
 
 
 # ------------------------------------------------------------------ refits and drills
@@ -4616,9 +4226,6 @@ func train(b: Building, key: String) -> String:
 		kit = kit.duplicate()
 		kit["coat"] = HorseCoat.pick()      # (decided now: the paddock shows it, the horse comes out in it)
 	b.add_entry(k, kit)
-	if b.uses_eggs():
-		b.eggs -= 1
-		b.morph_t.append(0.0)
 	return ""
 
 
@@ -4630,8 +4237,6 @@ func cancel_train(b: Building) -> void:
 	var k: String = b.queue.pop_back()
 	if b.kits.size() > b.queue.size():
 		b.kits.resize(b.queue.size())
-	if b.uses_eggs():
-		b.morph_t.pop_back()        # (the egg is lost: cancelling gives back the cost, not the egg)
 	if b.queue.is_empty():
 		b.prod_t = 0.0
 	refund(b.team, k, kit, b)
@@ -4649,9 +4254,7 @@ func cancel_train_at(b: Building, i: int) -> void:
 		return
 	var k: String = b.queue[i]
 	var kit := b.take_entry(i)
-	if b.uses_eggs():
-		b.morph_t.remove_at(i)      # (the egg is lost)
-	elif i == 0:
+	if i == 0:
 		b.prod_t = 0.0               # the next one starts from scratch
 	refund(b.team, k, kit, b)
 	if Building.is_research(k):
@@ -4679,9 +4282,7 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 		_first_of["%d:%s" % [b.team, k]] = true
 		mlog.add("%s got its first %s" % [mlog.who(b.team), Defs.train_name(Defs.train_key(k, bool(kit.get("armour", false))))])
 	if b.team == human:
-		if b.uses_eggs():
-			Sfx.play("hatch", b.global_position)
-		elif not Sfx.recruit(b.kind, b.d["faction"]):
+		if not Sfx.recruit(b.kind, b.d["faction"]):
 			Sfx.play_f_once("ready", b.d["faction"], 6.0, -3.0)
 		Sfx.voice(k, "select")
 	var rid := int(kit.get("rid", 0))
@@ -4799,7 +4400,7 @@ func sweep_ghosts(quick := false) -> void:
 		var f: String = b.d["faction"]
 		if Defs.cw_roster and f == "clockwork" and CwUnits.car_claims(self, b):
 			continue                                    # (a Work Car has this site: its crew come out to it)
-		if f == "brood" or (f == "clockwork" and b.ghost and (b.crate == "" or b.crate == "tower")) \
+		if (f == "clockwork" and b.ghost and (b.crate == "" or b.crate == "tower")) \
 				or (f == "crown" and b.ghost):
 			sites.append(b)
 			any_crown = any_crown or f == "crown"
@@ -4842,7 +4443,7 @@ func sweep_ghosts(quick := false) -> void:
 			if coming:
 				break
 		if coming == null:
-			if b.ghost or b.d["faction"] == "brood":
+			if b.ghost:
 				site_failed(b, "abandoned")
 			continue
 		if quick:
@@ -4954,8 +4555,6 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 			var gh := side_ghost_at(t, cc)
 			if gh != null and not (gh.team == t and ((k == "gate" and gh.kind == "wall") or (k == "wall" and gh.kind == "gate"))):
 				return "Blocked: a building is planned there."
-			if needs_swamp(k) and swamp[t][idx(cc)] == 0:
-				return "Brood structures must grow on your swamp."
 			# the computer keeps its ramps clear (for its own wall and its army)
 			if ai and not Defs.BUILDINGS[k].get("line", false) and _near_ramp(cc):
 				return "Keep the ramp clear."
@@ -4963,14 +4562,6 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 		var gp := gear_net.placement_problem(t, k, c)      # (the gear ring must touch the connected field: scripts/gear.gd)
 		if gp != "":
 			return gp
-	if k == "clutch_mound":
-		var mp := mound_problem(t, c)
-		if mp != "":
-			return mp
-	if k == "feeding_pit":
-		var pp := pit_claim_problem(t, c)      # (each pit claims a circle of ground: they may not overlap)
-		if pp != "":
-			return pp
 	if k == Defs.CW_TURRET:
 		var tp := GearNet.turret_problem(self, t, c)      # (THE TURRET CIRCLE: each turret claims a circle; no overlap)
 		if tp != "":
@@ -4981,30 +4572,22 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 				return "Kept for a building the computer lays next."
 	if k == faction_hall(t):
 		var mid0 := (Vector2(c) + Vector2(size) * 0.5) * T
-		# (the Brood has no spacing rule: Burrows own no ground and deliveries go to the capital,
-		# so only the usual footprint and margin rules keep two apart)
-		var spacing: int = 0 if faction_of(t) == "brood" else Defs.HALL_SPACING
+		var spacing: int = Defs.HALL_SPACING
 		for h in (_spot_all_halls if limits_checked and _in_spot else halls_of(t, false)):
 			if h.center().distance_to(mid0) < spacing * T:
 				return "Too close to your other %s: it needs its own ground." % Defs.BUILDINGS[k]["name"]
 	if Defs.is_econ(k):
-		var rp := brood_reach_problem(t, k, c)
-		if rp != "":
-			return rp
 		if not limits_checked and econ_count(t, k) >= econ_limit(t, k):
-			if faction_of(t) == "brood":
-				return "Each Burrow allows one Brood Pen: raise another Burrow at home for more."
 			return "Each %s allows %d %s. Expand for more." % [Defs.BUILDINGS[faction_hall(t)]["name"],
 				int(Defs.FACTIONS[faction_of(t)]["econ"][k]), Defs.BUILDINGS[k]["name"] + ("s" if int(Defs.FACTIONS[faction_of(t)]["econ"][k]) > 1 else "")]
-		if faction_of(t) != "brood":
-			var mid := (Vector2(c) + Vector2(size) * 0.5) * T
-			var near := false
-			for h in (_spot_halls if limits_checked else halls_of(t)):
-				if h.center().distance_to(mid) <= Defs.ECON_RANGE * T:
-					near = true
-					break
-			if not near:
-				return "Must be near your %s." % Defs.BUILDINGS[faction_hall(t)]["name"]
+		var mid := (Vector2(c) + Vector2(size) * 0.5) * T
+		var near := false
+		for h in (_spot_halls if limits_checked else halls_of(t)):
+			if h.center().distance_to(mid) <= Defs.ECON_RANGE * T:
+				near = true
+				break
+		if not near:
+			return "Must be near your %s." % Defs.BUILDINGS[faction_hall(t)]["name"]
 	return ""
 
 
@@ -5086,10 +4669,6 @@ func place_building(t: int, k: String, c: Vector2i, builders: Array, queued := f
 		if Defs.cw_roster:
 			builders = CwUnits.assign_builders(self, builders, b)      # a Work Car's crew start it from the car
 		builders = _one_builder(builders, b, queued)   # one winder starts it, then it builds itself
-	if Defs.BUILDINGS[k]["faction"] == "brood":
-		b.seeded = false
-		b._update_sprite()
-		builders = _one_builder(builders, b, queued)   # one grub becomes the building
 	if old_wall:
 		_wall_piece_to_gate(old_wall, b)
 	for u in builders:
@@ -5385,15 +4964,11 @@ func find_repair(u: Unit, r: float) -> Entity:
 	return line_net.damaged_near(u.team, u.position, r)
 
 
-func needs_swamp(k: String) -> bool:
-	return Defs.BUILDINGS[k]["faction"] == "brood" and not Defs.BUILDINGS[k].get("eggs", false)
-
-
 ## A unit that turned into something else: gone, but not a loss.
 func consume_unit(u: Unit) -> void:
 	u._leave_mine()
 	if u._k_nb and BroodRoot.has_fp(u):
-		BroodRoot.footprint_off(self, u)      # (a rooted new-Brood creature taken off the map: its ground is free again)
+		BroodRoot.footprint_off(self, u)      # (a rooted Brood creature taken off the map: its ground is free again)
 	units.erase(u)
 	selection.erase(u)
 	for g in groups:
@@ -5402,7 +4977,7 @@ func consume_unit(u: Unit) -> void:
 	u.queue_free()
 
 
-## Brood Pen SACRIFICE: essence a creature gives when it's offered up (0: it can't be).
+## SACRIFICE: the spoils a Brood creature gives when it's offered up at the Brood Mother (0: it can't be).
 static func sacrifice_value(kind: String) -> int:
 	var d: Dictionary = Defs.UNITS[kind]
 	if d["faction"] != "brood" or d.get("worker", false) or d.get("new_brood", false):
@@ -5410,7 +4985,7 @@ static func sacrifice_value(kind: String) -> int:
 	return maxi(1, int(round(float(d["cost"]) / maxf(1.0, float(d.get("spawn", 1))) * Defs.SACRIFICE)))
 
 
-## A Brood creature that reached a Pen on SACRIFICE: offered up for essence.
+## A Brood creature that reached the Brood Mother on SACRIFICE: offered up for spoils.
 func sacrifice(u: Unit, pen: Entity) -> void:
 	var ess := sacrifice_value(u.kind)
 	if ess <= 0 or u.dead:
@@ -5427,7 +5002,7 @@ func sacrifice(u: Unit, pen: Entity) -> void:
 	if u.team == human:
 		float_text(pen.center() + Vector2(0, -34), "+%d spoils" % ess, Color(0.8, 0.5, 1.0))
 	if pen is Unit and (pen as Unit).kind == BroodNew.QUEEN:
-		BroodNew.devour(pen, u)          # (the new Brood: the Mother devours it, a swipe)
+		BroodNew.devour(pen, u)          # (the Brood: the Mother devours it, a swipe)
 	consume_unit(u)
 
 
@@ -5479,20 +5054,7 @@ func _update_swamp() -> void:
 		var g: PackedByteArray = swamp[t]
 		g.fill(0)
 		if faction_of(t) == "brood":
-			for b in buildings:
-				if b.team != t or b.dead or b.swamp_r <= 0.0:
-					continue
-				var c: Vector2 = b.rect().get_center() / T
-				var r: float = b.swamp_r + maxf(b.size.x, b.size.y) * 0.5
-				for y in range(int(c.y - r) - 1, int(c.y + r) + 2):
-					for x in range(int(c.x - r) - 1, int(c.x + r) + 2):
-						if x < 0 or y < 0 or x >= W or y >= H or water[y * W + x] == 1:
-							continue
-						var dx: float = (x + 0.5 - c.x)
-						var dy: float = (y + 0.5 - c.y) * 1.15
-						if dx * dx + dy * dy <= r * r:
-							g[y * W + x] = 1
-			# the new Brood: the rooted Brood Mother and Rootmaws (scripts/brood_new.gd)
+			# the rooted Brood Mother and Mound Turtles (scripts/brood_new.gd)
 			for src in BroodNew.swamp_sources(self, t):
 				var nc: Vector2 = src[0]
 				var nr: float = src[1]
@@ -5503,20 +5065,6 @@ func _update_swamp() -> void:
 						var ndx: float = (x + 0.5 - nc.x)
 						var ndy: float = (y + 0.5 - nc.y) * 1.15
 						if ndx * ndx + ndy * ndy <= nr * nr:
-							g[y * W + x] = 1
-			# a rooted Spore Mother spreads swamp around her
-			for u in units:
-				if u.team != t or u.dead or u.kind != "spore_mother" or u.tesla_mode != "deployed":
-					continue
-				var uc: Vector2 = u.position / T
-				var ur: float = Defs.ROOT_SWAMP
-				for y in range(int(uc.y - ur) - 1, int(uc.y + ur) + 2):
-					for x in range(int(uc.x - ur) - 1, int(uc.x + ur) + 2):
-						if x < 0 or y < 0 or x >= W or y >= H or water[y * W + x] == 1:
-							continue
-						var ddx: float = (x + 0.5 - uc.x)
-						var ddy: float = (y + 0.5 - uc.y) * 1.15
-						if ddx * ddx + ddy * ddy <= ur * ur:
 							g[y * W + x] = 1
 		# Swamp that lost its building does not vanish at once: it retreats one ring of tiles every swamp
 		# update (every half second), the outermost unsupported tiles first
@@ -5531,7 +5079,6 @@ func _update_swamp() -> void:
 					swamp_dirty = true
 		swamp[t] = g
 	_swamp_any = _all_swamp()
-	_update_conn()
 	swamp_layer.queue_redraw()
 	swamp_layer_b.queue_redraw()
 	_swamp_minimap()
@@ -5565,7 +5112,6 @@ func _swamp_minimap() -> void:
 ## The powered field of Clockwork buildings: the selected one (anyone's), and while you
 ## place a building, the one you're placing plus your existing fields.
 func _draw_fields() -> void:
-	_draw_pit_circles()
 	var ring: Texture2D = tex("res://assets/world/field_ring.png")
 	var draw_ring := func(c: Vector2, r: float, a: float) -> void:
 		var half := Vector2(r, r * FIELD_Y)
@@ -5598,102 +5144,6 @@ func _draw_fields() -> void:
 			var size: Vector2i = Defs.BUILDINGS[k]["size"]
 			var c := Vector2(controls.ghost_cell) * T + Vector2(size) * T * 0.5
 			draw_ring.call(c, float(Defs.BUILDINGS[k]["field"]) * T * field_mult(human), 0.8)
-
-
-## PIT GROUND circles (Defs.PIT_CLAIM), flat on the ground under the buildings: while you place a
-## Feeding Pit, the circle of every pit of yours and of every old ground spot you know of, plus the
-## ghost's own circle (green when it's free, red where it overlaps one of your pits, whose circle turns
-## red too); a selected pit shows its own. Fresh ground is a soft green, tiring toward a grey-brown;
-## old ground is dashed and dimmer. Labels: _draw_pit_labels (on the overlay).
-const PIT_FRESH := Color(0.62, 0.86, 0.42)
-const PIT_SPENT := Color(0.52, 0.44, 0.36)
-
-static func pit_colour(left: float) -> Color:
-	return PIT_SPENT.lerp(PIT_FRESH, clampf(left, 0.0, 1.0))
-
-
-func _pit_placing() -> bool:
-	return controls != null and controls.mode == "place" and controls.place_kind == "feeding_pit" and controls.ghost_cell.x >= 0
-
-
-## The old ground spots this player may be shown: its own, and others' where its side has looked.
-func _known_pit_spots() -> Array:
-	var known := _known_ground()
-	var out: Array = []
-	for sp in pit_spots:
-		var c := cell_of(sp[0])
-		if int(sp[2]) == human or known.size() != W * H or (in_map(c) and known[idx(c)] == 1):
-			out.append(sp)
-	return out
-
-
-func _draw_pit_circles() -> void:
-	var r := Defs.PIT_CLAIM * T
-	var circle := func(c: Vector2, col: Color, fill_a: float, w: float, dashed: bool) -> void:
-		field_layer.draw_circle(c, r, Color(col.r, col.g, col.b, fill_a))
-		if dashed:
-			var n := 28
-			for i in n:
-				var a0 := TAU * i / n
-				field_layer.draw_arc(c, r, a0, a0 + TAU / n * 0.55, 4, Color(col, 0.55), w, true)
-		else:
-			field_layer.draw_arc(c, r, 0.0, TAU, 64, Color(col, 0.8), w, true)
-	if _pit_placing():
-		var gc := pit_mid(controls.ghost_cell)
-		var hits := pit_overlaps(human, gc)
-		for sp in _known_pit_spots():
-			circle.call(sp[0], pit_colour(float(sp[1]) / float(Defs.PIT_GROUND)), 0.05, 1.5, true)
-		for b in buildings:
-			if b.kind == "feeding_pit" and b.team == human and not b.dead:
-				var col := Color(1.0, 0.35, 0.3) if hits.has(b) else pit_colour(b.soil_left() if b.built else 1.0)
-				circle.call(b.center(), col, 0.10 if hits.has(b) else 0.07, 2.0, false)
-		var ok := hits.is_empty()
-		circle.call(gc, Color(0.45, 1.0, 0.45) if ok else Color(1.0, 0.35, 0.3), 0.14, 2.5, false)
-		return
-	for e in selection:
-		if e is Building and is_instance_valid(e) and not e.dead and e.kind == "feeding_pit" and (e.team == human or demo):
-			circle.call(e.center(), pit_colour(e.soil_left() if e.built else 1.0), 0.07, 2.0, false)
-
-
-## The labels of the pit circles (on the overlay, over the buildings): the ground left in each
-## (% of PIT_GROUND), and under the ghost what a pit there would have.
-func _draw_pit_labels() -> void:
-	var font := ThemeDB.fallback_font
-	var r := Defs.PIT_CLAIM * T
-	# (on the circle's top edge, inside it, in the small dark box the economy labels use)
-	var label := func(c: Vector2, txt: String, col: Color, sz: int) -> void:
-		var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
-		var p := c + Vector2(-w * 0.5, -r + sz + 8.0)
-		overlay.draw_rect(Rect2(p + Vector2(-4, -sz), Vector2(w + 8, sz + 5)), Color(0, 0, 0, 0.55))
-		overlay.draw_string(font, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, col)
-	if _pit_placing():
-		for sp in _known_pit_spots():
-			var left := float(sp[1]) / float(Defs.PIT_GROUND)
-			label.call(sp[0], Loc.t("Old ground: %d%%") % int(round(left * 100)) if float(sp[1]) > 0.0 else Loc.t("Old ground: spent"), Color(pit_colour(left), 0.85), 13)
-		for b in buildings:
-			if b.kind == "feeding_pit" and b.team == human and not b.dead and b.built:
-				label.call(b.center(), "%d%%" % int(round(b.soil_left() * 100)), pit_colour(b.soil_left()), 13)
-		var gc := pit_mid(controls.ghost_cell)
-		var txt := ""
-		var col := Color(0.55, 1.0, 0.55)
-		if not pit_overlaps(human, gc).is_empty():
-			txt = Loc.t("Too close: the grounds would overlap")
-			col = Color(1.0, 0.5, 0.45)
-		else:
-			var gv := pit_ground_at(gc)
-			if gv >= float(Defs.PIT_GROUND):
-				txt = Loc.t("Fresh ground: %d biomass") % Defs.PIT_GROUND
-			elif gv <= 0.0:
-				txt = Loc.t("Old ground, spent: this pit would yield nothing")
-				col = Color(0.85, 0.65, 0.45)
-			else:
-				txt = Loc.t("Old ground: %d biomass left") % int(gv)
-				col = pit_colour(gv / float(Defs.PIT_GROUND))
-		label.call(gc, txt, col, 15)
-		return
-	for e in selection:
-		if e is Building and is_instance_valid(e) and not e.dead and e.kind == "feeding_pit" and e.built and (e.team == human or demo):
-			label.call(e.center(), Loc.t("Ground: %d%%") % int(round(e.soil_left() * 100)), pit_colour(e.soil_left()), 14)
 
 
 ## A slow, cheap shimmer on the swamp: big soft waves of brightness and a little teal drift over
@@ -6237,7 +5687,7 @@ func separation(u: Unit) -> Vector2:
 				if o.dead or o.off_field or (o._air_k and o.net_t <= 0.0) != air:      # (o.is_air())
 					continue
 				if o._k_still:
-					continue          # (a new-Brood egg or food pile lies on the ground: it shoves nobody)
+					continue          # (a Brood egg or food pile lies on the ground: it shoves nobody)
 				if o._k_shell and o.team == u.team and o.tesla_mode != "packed":
 					continue          # (a rooted Mound Turtle: its own side climbs over the shell, BroodNew.push_out)
 				if o == u.steed or u == o.steed:
@@ -6267,7 +5717,7 @@ func _sep_push(u: Unit, o, p: Vector2, rr: float, air: bool, u_rail: bool, mu: f
 	if o.dead or o.off_field or o.is_air() != air:
 		return push
 	if o._k_still:
-		return push           # (a new-Brood egg or food pile lies on the ground: it shoves nobody)
+		return push           # (a Brood egg or food pile lies on the ground: it shoves nobody)
 	if o._k_shell and o.team == u.team and o.tesla_mode != "packed":
 		return push           # (a rooted Mound Turtle: its own side climbs over the shell, BroodNew.push_out)
 	if o == u.steed or u == o.steed:
@@ -6625,7 +6075,7 @@ func entity_at(p: Vector2, _any := true) -> Entity:
 			best = rider if rider != null else u    # (a horse a man is getting on: the strip there is him)
 	if best:
 		return best
-	# a new-Brood creature that roots (the Mother, a Rootmaw, a turtle, a father), rooted or walking, at every growth stage:
+	# a Brood creature that roots (the Mother, a Rootmaw, a turtle, a father), rooted or walking, at every growth stage:
 	# picked anywhere on its drawn body (the owner, 21:28: "a click anywhere on her sprite"), or on its footprint, as a
 	# building; units standing over it were looked at first (a unit on top wins); of two bodies, the one drawn in front
 	var nbest: Unit = null
@@ -7055,8 +6505,6 @@ func aoe_worth_it(u: Unit, e: Entity) -> bool:
 		"steam_walker":
 			cone = 0.72
 			reach = float(u.d["range"]) + 24.0
-		"spore_mother":
-			r = float(u.d["splash"]) + 8.0
 		_:
 			return true
 	var centre := from if cone > -2.0 else at
@@ -7084,26 +6532,7 @@ func aoe_worth_it(u: Unit, e: Entity) -> bool:
 	return friends == 0.0 or foes >= friends * 2.0
 
 
-# ------------------------------------------------------------------ new units: blobs and spells
-
-## Spore Mother: a big spit blob lobbed high onto a spot.
-func blob_shot(u: Unit, p: Vector2, dmg: float) -> void:
-	var mouth := u.center() + Vector2(0, -14)
-	var pr := Projectile.new()
-	pr.game = self
-	pr.from = mouth
-	pr.to = p + Vector2(randf_range(-10, 10), randf_range(-8, 8))
-	pr.duration = clampf(mouth.distance_to(p) / 300.0, 0.5, 1.2)
-	pr.damage = dmg
-	pr.splash = float(u.d["splash"])
-	pr.blob = true
-	pr.team = u.team
-	pr.shooter = u
-	pr.aimed = u.order == "bombard"
-	add_child(pr)
-	area_mark("oval", u.team, pr.to, Vector2.ZERO, pr.splash, 0.0, "acid", pr.duration, true)     # (where it will land)
-	Sfx.play_any(["combat/spitter_attack", "acid"], mouth)
-
+# ------------------------------------------------------------------ spells
 
 ## The blob bursts: acid over a whole area (less at the edge), and it keeps burning.
 func blob_land(p: Vector2, dmg: float, splash: float, t: int, shooter: Entity, aimed := false) -> void:
@@ -7363,7 +6792,7 @@ func foe_at(u: Unit, p: Vector2) -> Unit:
 func ground_shot_fx(u: Unit, to: Vector2) -> void:
 	var from := u.center() + u.facing * 16.0
 	match "spitter" if u.d.get("venom", false) else u.kind:      # (a "venom" unit by its data: a Spitter's glob)
-		"spitter", "skywing", "bloater", BroodNew.DILO:
+		"spitter", "skywing", BroodNew.DILO:
 			var s := Shot.new()
 			s.arc = 0.18
 			s.scale = Vector2(1.3, 1.3)
@@ -7393,7 +6822,7 @@ func ground_shot_fx(u: Unit, to: Vector2) -> void:
 			Sfx.play_any(["combat/%s_attack" % u.kind, "combat/musketeer_attack", "musket"], u.global_position)
 
 
-## One shot of a BOMBARD at the spot p: the gun's round shot or canister, the Mortar's shell, the Spore Mother's blob. The
+## One shot of a BOMBARD at the spot p: the gun's round shot or canister, the Mortar's shell, the Ballista's bolt. The
 ## enemies standing where it lands may see who fired (as for a shot at them: note_shot).
 func bombard_shot(u: Unit, p: Vector2, dmg: float) -> void:
 	match u.kind:
@@ -7404,8 +6833,6 @@ func bombard_shot(u: Unit, p: Vector2, dmg: float) -> void:
 				cannon_shot(u, p, dmg)
 		"mortar":
 			mortar_shot(u, p, dmg)
-		"spore_mother":
-			blob_shot(u, p, dmg)
 		"ballista":
 			Ballista.fire_at(u, p, dmg)       # (the bolt through the spot and on: scripts/ballista.gd)
 	var told := {}
@@ -7552,7 +6979,7 @@ func morph_order(list: Array) -> String:
 	return CwAir.morph_order(self, list)
 
 
-## MATURE (the new Brood, scripts/brood_mature.gd): each selected young unit that can starts its moult, paying for
+## MATURE (the Brood, scripts/brood_mature.gd): each selected young unit that can starts its moult, paying for
 ## itself, as far as the food allows. "" or why none did.
 func mature_order(list: Array) -> String:
 	if net_forward(self, "mature_order", [list]): return ""
@@ -7565,38 +6992,16 @@ func cancel_morph(list: Array) -> void:
 	CwAir.cancel_order(list)
 
 
-## Spells on the ground for a while: [{kind, pos, r, t, team, age, fx, healed}]
+## Spells on the ground for a while: [{kind, pos, r, t, team, age, fx}]
 var zones: Array = []
-
-
-## A Bloater bursts: a little damage where it pops, and an acid cloud that lingers.
-func bloat_burst(u: Unit) -> void:
-	var p := u.position
-	# everything scales with the gas left in the sac: a full one is a huge bomb
-	var full := clampf(u.gas / 100.0, 0.15, 1.0)
-	var r := float(Defs.BLOAT["radius"]) * (0.5 + 0.5 * full)
-	var dmg := float(Defs.BLOAT["burst"]) * full
-	area_mark("ring", u.team, p, Vector2.ZERO, r, 0.0, "acid")
-	for o in units_near(p, r):
-		if not o.dead and not o.is_air() and hostile(o.team, u.team):
-			o.take_damage(dmg * (1.0 - 0.4 * clampf(o.position.distance_to(p) / r, 0.0, 1.0)), u)
-	for b in buildings.duplicate():
-		if not b.dead and hostile(b.team, u.team) and b.edge_distance(p) < r * 0.5:
-			b.take_damage(dmg * 2.0, u)
-	var z := {"kind": "bloat", "pos": p, "team": u.team, "age": 0.0, "fx": null, "stage": "", "caster": u, "healed": {},
-		"r": r, "t": float(Defs.BLOAT["time"]) * (0.4 + 0.6 * full)}
-	zones.append(z)
-	_zone_fx(z, "loop")
-	area_mark("oval", u.team, p, Vector2.ZERO, r, 0.0, "acid", float(z["t"]), false, true)     # (the gas cloud's edge)
-	Sfx.play_any(["combat/spitter_hit", "acid"], p)
 
 
 ## A spell's numbers (range, radius, cast time...) and who casts it.
 static func spell_info(spell: String) -> Dictionary:
-	return {"storm": Defs.STORM, "miasma": Defs.MIASMA, "fog": Defs.FOG}.get(spell, Defs.MIASMA)
+	return {"storm": Defs.STORM, "fog": Defs.FOG}.get(spell, Defs.FOG)
 
 
-const CASTERS := {"storm": "stormcaller", "miasma": "spore_mother", "fog": "mist_toad"}
+const CASTERS := {"storm": "stormcaller", "fog": "mist_toad"}
 
 
 ## Why this unit can't cast that spell now ("" = it can).
@@ -7609,11 +7014,8 @@ func spell_problem(u: Unit, spell: String) -> String:
 			return "Not enough charge: the Stormcaller recharges inside a Clockwork field."
 		if energy_stored(u.team) < int(Defs.STORM["cost2"]):
 			return "Not enough energy: a storm burns %d stored batteries." % int(Defs.STORM["cost2"])
-	elif spell == "miasma":
-		if u.spell_cd > 0.0:
-			return "Miasma isn't ready yet (%ds)." % int(ceil(u.spell_cd))
-		if float(players[u.team]["res2"]) < float(Defs.MIASMA["cost2"]):
-			return "Not enough spoils."
+	elif not CASTERS.has(spell):
+		return "Nobody here can cast that."
 	return ""
 
 
@@ -7729,7 +7131,7 @@ func cast_order(list: Array, spell: String, p: Vector2) -> void:
 		if why != "" and not list.is_empty() and list[0] is Unit:
 			tell(list[0].team, why)
 		return
-	var kind: String = CASTERS.get(spell, "spore_mother")
+	var kind: String = CASTERS.get(spell, "")
 	var best: Unit = null
 	var bd := INF
 	var why := "Nobody here can cast that."
@@ -7757,7 +7159,7 @@ func cast_spell(u: Unit, spell: String, p: Vector2) -> void:
 	if w != "":
 		tell(u.team, w)
 		return
-	var z := {"kind": spell, "pos": p, "team": u.team, "age": 0.0, "fx": null, "stage": "", "caster": u, "healed": {}}
+	var z := {"kind": spell, "pos": p, "team": u.team, "age": 0.0, "fx": null, "stage": "", "caster": u}
 	if spell == "fog":
 		u.charge -= float(Defs.FOG["cost"])
 		z["r"] = float(Defs.FOG["radius"])
@@ -7770,29 +7172,21 @@ func cast_spell(u: Unit, spell: String, p: Vector2) -> void:
 		z["r"] = float(Defs.STORM["radius"])
 		z["t"] = float(Defs.STORM["time"])
 		Sfx.play_any(["combat/tesla_attack", "zap"], p)
-	else:
-		players[u.team]["res2"] = float(players[u.team]["res2"]) - float(Defs.MIASMA["cost2"])
-		u.spell_cd = float(Defs.MIASMA["cooldown"])
-		z["r"] = float(Defs.MIASMA["radius"])
-		z["t"] = float(Defs.MIASMA["time"])
-		Sfx.play_any(["combat/spitter_attack", "acid"], p)
 	zones.append(z)
 	_zone_fx(z, "in")
-	area_mark("oval", u.team, p, Vector2.ZERO, float(z["r"]), 0.0, {"storm": "storm", "fog": "fog"}.get(spell, "miasma"), float(z["t"]), false, true)
+	area_mark("oval", u.team, p, Vector2.ZERO, float(z["r"]), 0.0, {"storm": "storm", "fog": "fog"}.get(spell, "fog"), float(z["t"]), false, true)
 	if mlog:
 		var inside := 0
 		for o in units_near(p, float(z["r"])):
 			if not o.dead and hostile(o.team, u.team):
 				inside += 1
-		mlog.add("%s cast %s (%d enemies inside)" % [mlog.who(u.team), {"storm": "a storm", "fog": "a fog bank"}.get(spell, "miasma"), inside])
+		mlog.add("%s cast %s (%d enemies inside)" % [mlog.who(u.team), {"storm": "a storm", "fog": "a fog bank"}.get(spell, spell), inside])
 
 
 ## Show the zone's effect for a stage ("in", "loop", "out"); falls back to sparks when the
 ## effect art isn't there.
 func _zone_fx(z: Dictionary, stage: String) -> void:
-	var name: String = ("storm_" if z["kind"] == "storm" else "miasma_") + stage
-	if z["kind"] == "bloat":
-		name = "bloat_cloud" if stage == "loop" else ""
+	var name: String = "storm_" + stage
 	if z["kind"] == "fog":
 		_fog_fx(z, stage)
 		return
@@ -7910,7 +7304,7 @@ func fog_miss(u: Unit, e: Entity) -> void:
 	var sname := "ball"
 	var snd: Array = ["combat/musketeer_attack", "musket"]
 	match "spitter" if u.d.get("venom", false) else u.kind:
-		"spitter", "bloater", BroodNew.DILO:
+		"spitter", BroodNew.DILO:
 			sname = "acid_ball"
 			snd = ["combat/spitter_attack", "acid"]
 		"arc_thrower":
@@ -8074,7 +7468,6 @@ func _draw_tongue(a: Vector2, b: Vector2) -> void:
 func _tick_zones(delta: float) -> void:
 	if zones.is_empty():
 		return
-	var mended := {}       # clouds don't stack: one cloud heals a unit per tick
 	for z in zones:
 		z["age"] = float(z["age"]) + delta
 		var p: Vector2 = z["pos"]
@@ -8083,23 +7476,6 @@ func _tick_zones(delta: float) -> void:
 			_zone_fx(z, "loop")
 		if z["kind"] == "fog":
 			_drift_fog(z, delta)
-			continue
-		if z["kind"] == "bloat":
-			for u in units_near(p, r + 20.0):
-				if u.dead or u.off_field or u.is_air() or not hostile(u.team, int(z["team"])) or not in_ellipse(p, u.position, r + u.radius):
-					continue
-				u.acid_t = maxf(u.acid_t, 0.4)
-				u.slow_t = maxf(u.slow_t, 0.4)
-				u.take_damage(float(Defs.BLOAT["dps"]) * delta, null)
-			# enemy buildings in the cloud are eaten too, at a share of the rate (BLOAT.buildings)
-			var bdps := float(Defs.BLOAT["dps"]) * float(Defs.BLOAT["buildings"]) * delta
-			for b in buildings.duplicate():
-				if b.dead or b.ghost or not hostile(b.team, int(z["team"])):
-					continue
-				var r2: Rect2 = b.rect()
-				if not in_ellipse(p, p.clamp(r2.position, r2.end), r):
-					continue
-				b.take_damage(bdps, null)
 			continue
 		if z["kind"] == "storm":
 			for u in units_near(p, r + 20.0):
@@ -8122,20 +7498,6 @@ func _tick_zones(delta: float) -> void:
 					fx.offset = Vector2(0, -float(sinfo["size"].y) * 0.45)
 				else:
 					spawn_effect("hit", q, 1.0)
-		else:
-			for u in units_near(p, r + 20.0):
-				if u.dead or not allied(u.team, int(z["team"])) or u.d["faction"] != "brood" or u.hp >= u.max_hp:
-					continue
-				if mended.has(u) or not in_ellipse(p, u.position, r + u.radius):
-					continue
-				var done: float = z["healed"].get(u, 0.0)
-				var cap: float = u.max_hp * float(Defs.MIASMA["cap"])
-				if done >= cap:
-					continue
-				var h := minf(float(Defs.MIASMA["hps"]) * delta, cap - done)
-				u.hp = minf(u.max_hp, u.hp + h)
-				z["healed"][u] = done + h
-				mended[u] = true
 	for z in zones.duplicate():
 		if float(z["age"]) >= float(z["t"]):
 			_zone_fx(z, "out")
@@ -9454,7 +8816,7 @@ func _check_end() -> void:
 			alive[b.team] += 1
 	for t in n_players():
 		if BroodNew.on(self, t):
-			alive[t] = 1 if BroodNew.queen(self, t) != null else 0     # (the new Brood: it lives while its Mother does)
+			alive[t] = 1 if BroodNew.queen(self, t) != null else 0     # (the Brood: it lives while its Mother does)
 	for t in n_players():
 		if alive[t] == 0 and not eliminated[t]:
 			eliminated[t] = true
@@ -9674,7 +9036,7 @@ func train_any(list: Array, k: String) -> String:
 		if w != "":
 			why = w
 			continue
-		if best == null or b.queue.size() < best.queue.size() or (b.uses_eggs() and b.eggs > best.eggs):
+		if best == null or b.queue.size() < best.queue.size():
 			best = b
 	if best == null:
 		return why
@@ -9778,7 +9140,7 @@ func smart_command(list: Array, p: Vector2, force_move := false, queued := false
 	if net_forward(self, "smart_command", [list, p, force_move, queued]): return
 	# (a horse takes no orders: only a leash or a rider moves it)
 	var us: Array = list.filter(func(e: Entity) -> bool: return e is Unit and not e.dead and e.kind != "horse")
-	# THE NEW BROOD: a rooted creature is a building and an egg stands where it lies: a right-click sets their RALLY POINT
+	# THE BROOD: a rooted creature is a building and an egg stands where it lies: a right-click sets their RALLY POINT
 	# (it never uproots: only the UPROOT button does, the owner 19:19; scripts/brood_root.gd)
 	var fixed: Array = us.filter(func(u: Unit) -> bool: return BroodRoot.fixed(u))
 	if not fixed.is_empty():
@@ -9966,11 +9328,11 @@ func under_attack(e: Entity) -> void:
 		gap = 15.0
 		text = "Your base is under attack!"
 	elif e is Unit and (e as Unit).kind == BroodNew.QUEEN:
-		line = "base_attack"          # (the new Brood: she is its base, and its losing condition)
+		line = "base_attack"          # (the Brood: she is its base, and its losing condition)
 		gap = 15.0
 		text = "Your Brood Mother is under attack!"
 	elif e is Unit and (e as Unit)._k_nb and BroodNew.ROOTERS.has((e as Unit).kind) and (e as Unit).tesla_mode != "packed":
-		line = "base_attack"          # (a rooted creature is the new Brood's building: it says so)
+		line = "base_attack"          # (a rooted creature is the Brood's building: it says so)
 		gap = 15.0
 		text = "Your rooted creatures are under attack!"
 	elif e is Unit and (e as Unit).is_worker():
@@ -10209,7 +9571,7 @@ func workers(t: int) -> Array:
 
 func center_of_team(t: int) -> Vector2:
 	if BroodNew.on(self, t) and BroodNew.queen(self, t) != null:
-		return BroodNew.queen(self, t).position      # (the new Brood: where its Mother is)
+		return BroodNew.queen(self, t).position      # (the Brood: where its Mother is)
 	var c := Vector2.ZERO
 	var n := 0
 	for b in buildings:
@@ -10367,7 +9729,7 @@ func _tex_top(tex: Texture2D) -> float:
 
 ## Over your economy buildings: the workers' job word and count ("HAULERS 2/4", "FARMERS 3/8"; the Town Hall's is
 ## assigned / needed), and the efficiency bar with its % (see Building.efficiency): one compact strip, readable on a
-## phone; the new Brood's Rootmaws and food piles too. Resting the mouse on one (a long press on a phone) explains it:
+## phone; the Brood's Rootmaws and food piles too. Resting the mouse on one (a long press on a phone) explains it:
 ## scripts/worker_labels.gd.
 func _draw_mine_labels() -> void:
 	var font := ThemeDB.fallback_font
@@ -10480,8 +9842,8 @@ func _draw_hover() -> void:
 		col = Color(1.0, 0.3, 0.25) if hostile(human, e.team) else Color(0.4, 1.0, 0.4)
 	var pulse := 0.75 + 0.25 * sin(clock * 8.0)
 	if e is Unit and (e as Unit)._k_nb and (e as Unit).nb.has("fpx") and (e as Unit).get_node_or_null(BroodRoot.SORT + "/" + BroodRoot.FP_NODE) != null:
-		return          # (a rooted new-Brood creature: its building's frame is drawn under its pictures, BroodRoot._draw_frame)
-	if e is Unit and not ((e as Unit)._k_nb and (e as Unit).nb.has("fpx")):      # (a rooted new-Brood creature: a building's frame)
+		return          # (a rooted Brood creature: its building's frame is drawn under its pictures, BroodRoot._draw_frame)
+	if e is Unit and not ((e as Unit)._k_nb and (e as Unit).nb.has("fpx")):      # (a rooted Brood creature: a building's frame)
 		var r: float = (e as Unit).radius
 		overlay.draw_set_transform(e.position, 0.0, Vector2(1.0, 0.45))
 		overlay.draw_circle(Vector2.ZERO, r + 9.0, Color(col, 0.18 * pulse))
@@ -10539,8 +9901,8 @@ func _overlay_moving() -> bool:
 	_hover_was = hover_target != null
 	if not m and controls and (controls.line.size() >= 2 or controls.mode == "place" or controls.mode == "patrol" or (controls.mode == "cast" and controls.cast_spell == "jump")):
 		m = true
-	if not m and not nb_teams.is_empty() and BroodRoot.overlay_wanted(self):
-		m = true          # (the new Brood: a ROOT ghost, the father's range)
+	if not m and factions.has("brood") and BroodRoot.overlay_wanted(self):
+		m = true          # (the Brood: a ROOT ghost, the father's range)
 	if not m:
 		for e in selection:
 			if e is Unit and is_instance_valid(e) and (not (e as Unit).queue.is_empty() or not (e as Unit).line_rest.is_empty() or (e as Unit).patrol_a != Vector2.INF):
@@ -10555,8 +9917,8 @@ func _draw_overlay() -> void:
 	var pt := Time.get_ticks_usec()
 	var had := not _ghosts.is_empty()
 	_ghosts.clear()
-	if not nb_teams.is_empty():
-		BroodRoot.draw_overlay(self, overlay)       # (the new Brood: the father's range, a ROOT ghost)
+	if factions.has("brood"):
+		BroodRoot.draw_overlay(self, overlay)       # (the Brood: the father's range, a ROOT ghost)
 	_draw_overlay_all()
 	if had or not _ghosts.is_empty():
 		ghost_layer.queue_redraw()
@@ -10583,7 +9945,6 @@ func _draw_ghosts() -> void:
 
 func _draw_overlay_all() -> void:
 	_draw_mine_labels()
-	_draw_pit_labels()
 	_draw_queues()
 	_draw_hover()
 	if controls and controls.mode == "cast" and controls.cast_spell == "jump":
@@ -10653,7 +10014,7 @@ func _draw_overlay_all() -> void:
 		for y in size.y:
 			for x in size.x:
 				var cc := c + Vector2i(x, y)
-				var free: bool = looks_free(human, cc) and (not needs_swamp(k) or swamp[human][idx(cc)] == 1) if in_map(cc) else false
+				var free: bool = looks_free(human, cc) if in_map(cc) else false
 				overlay.draw_rect(Rect2(Vector2(cc) * T, Vector2(T, T)).grow(-1), Color(0.3, 1, 0.3, 0.3) if free else Color(1, 0.3, 0.3, 0.4))
 		var t: Texture2D = Building.farm_body("built") if k == "farm" else tex("res://assets/buildings/%s_built.png" % k)
 		if Defs.BUILDINGS[k].get("line", false):

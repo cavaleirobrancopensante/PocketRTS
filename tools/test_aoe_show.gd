@@ -1,7 +1,7 @@
 extends SceneTree
 ## AREA MARKS and the Clockwork's "+N" (docs/aoe_show.md):
 ##  - a Pendulum blow lays its wedge on the ground (and the blade's smear over the units), a Mortar shell a warning while
-##    it flies and a ring where it lands, a canister its cone, a Spore Mother's spit a warning and an oval;
+##    it flies and a ring where it lands, a canister its cone;
 ##  - only where the watching side sees the ground (a shell an enemy fires into the fog on its own ground: nothing);
 ##  - the marks fade away; Settings.area_marks off: none;
 ##  - a Cog Press's cogs come up as one "+N" over it every few seconds, for its owner only; a Mainspring's Tension the same.
@@ -92,19 +92,6 @@ func _run() -> void:
 	var cone := _marks(g, "wedge")
 	check("a canister lays its cone", cone.size() == 1 and absf(float(cone[0]["h"]) - acos(float(Defs.CANISTER["cone"]))) < 0.001)
 	g.ground_marks._process(1.0)
-
-	# --- a Spore Mother's spit
-	var sp: Unit = _foe(g, "spore_mother", at + Vector2(-200, 60))
-	g.blob_shot(sp, at, 10.0)
-	check("a Spore Mother's spit: a warning oval while it flies", _marks(g, "oval", true).size() == 1)
-	landed = false
-	for i in 60:
-		_step(g, 1.0 / 30.0)
-		if not _marks(g, "oval", false).is_empty():
-			landed = true
-			break
-	check("  and an oval where it lands", landed)
-	g.ground_marks._process(2.0)
 
 	# --- the setting
 	Settings.area_marks = false

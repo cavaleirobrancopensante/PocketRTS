@@ -33,7 +33,7 @@ const MAX_FLEES := 3            # driven back this often: it goes home
 const DANGER_FOR := 30.0        # a shooter seen this long ago still counts when picking a stand-off spot
 const DEFEND_FOR := 210.0       # how long a defensive game lasts before the verdict is looked at again
 ## Production and tech buildings: seeing them says "this enemy builds an army".
-const MILITARY := ["barracks", "horse_breeder", "foundry", "armoury", "warren", "gorge_pit", "roost",
+const MILITARY := ["barracks", "horse_breeder", "foundry", "armoury",
 	"assembly_works", "engine_hall", "capacitor_works", "movement_works", "escapement", "cuckoo_house"]
 ## What a minute of a rush looks like, per faction: the army value seen before 6:00 that counts as a rush
 ## (the Brood's cheap bodies come early whatever it plays: it takes much more).
@@ -75,8 +75,15 @@ var foe_rush_seen := {}         # fast rush unit kind -> {"count" (most seen at 
 var foe_first_military := -1.0  # when an armed soldier or a military building was first seen
 var foe_rush_logged := false
 var foe_early_prod := {}        # military building kind -> clock it was first seen
-## Production buildings that this early (game seconds) are an opening that goes for units at once.
-const EARLY_PROD := {"warren": 140.0, "assembly_works": 100.0, "movement_works": 100.0}
+## Production buildings that this early (game seconds) are an opening that goes for units at once. (The Brood has no
+## buildings: its Tyrant Sire rooted on his nest is its barracks, BroodNew.is_father; seen this early, it rushes.)
+const EARLY_PROD := {"tyrannosaur": 130.0, "assembly_works": 100.0, "movement_works": 100.0}
+## THE BROOD'S BUILDINGS ARE CREATURES (0.18.0): rooted, the Brood Mother is its hall, a Rootmaw an economy building, a
+## Sire a production building, and a Mound Turtle rooted far from her an expansion (BroodNew.expansion_counts). The
+## scout counts what it saw of them as it counts buildings (_nb_seen); BROOD_ECON_CAP is the Rootmaws of a full early
+## economy (the computer roots 2, then one more every 100 s).
+const BROOD_ECON_CAP := 3
+var _nb_seen := {}              # enemy rooted Brood creature (or its Mother, rooted or not) -> true
 var standoff_log: Array = []    # (the stand-off spots chosen; tests read it)       # (what went to the match log; tests read it)
 
 var _foe := -1
@@ -150,6 +157,7 @@ func tick() -> void:
 	if foe != _foe:
 		_foe = foe
 		_seen_b.clear()
+		_nb_seen.clear()
 		_army_hist.clear()
 		_cells_seen.clear()
 		_plateau = []
@@ -374,6 +382,9 @@ func _observe() -> void:
 	for b in _seen_b.keys():
 		if not is_instance_valid(b) or b.dead:
 			_seen_b.erase(b)
+	for nu in _nb_seen.keys():
+		if not is_instance_valid(nu) or nu.dead or (nu.kind != BroodNew.QUEEN and not BroodNew.rooted(nu)):
+			_nb_seen.erase(nu)
 	var value := 0.0
 	var sup := 0
 	var workers := 0
@@ -387,6 +398,16 @@ func _observe() -> void:
 		if u.is_worker():
 			workers += 1
 			continue
+		if u._k_nb:
+			# (the Brood: its rooted creatures are its buildings, its Mother its hall; eggs and food piles are nothing)
+			if u.kind == BroodNew.QUEEN or BroodNew.rooted(u):
+				_nb_seen[u] = true
+				if u.kind == BroodNew.QUEEN:
+					_hall_seen = true
+				elif EARLY_PROD.has(u.kind) and not foe_early_prod.has(u.kind):
+					foe_early_prod[u.kind] = game.clock
+			if u.kind == BroodNew.QUEEN or u._k_still or BroodNew.rooted(u):
+				continue
 		_learn(u)
 		if _is_rush_unit(u):
 			rush_now[u.kind] = int(rush_now.get(u.kind, 0)) + 1
@@ -481,7 +502,7 @@ func rush_evidence() -> String:
 		if k == "movement_works":
 			continue
 		if float(foe_early_prod[k]) <= float(EARLY_PROD[k]):
-			return "a %s already up at %d:%02d" % [String(Defs.BUILDINGS[k]["name"]), int(foe_early_prod[k]) / 60, int(foe_early_prod[k]) % 60]
+			return "a %s already up at %d:%02d" % [String((Defs.BUILDINGS if Defs.BUILDINGS.has(k) else Defs.UNITS)[k]["name"]), int(foe_early_prod[k]) / 60, int(foe_early_prod[k]) % 60]
 	var n := 0
 	var first := INF
 	for k in foe_rush_seen:
@@ -724,8 +745,20 @@ func _evaluate() -> Dictionary:
 			mil += 1
 		elif b.kind == "wall" or b.kind == "gate":
 			walls += 1
+	var nq := BroodNew.queen(game, _foe) if not _nb_seen.is_empty() else null
+	for nu in _nb_seen.keys():
+		if not is_instance_valid(nu) or nu.dead:
+			continue
+		if nu.kind == BroodNew.QUEEN:
+			halls += 1
+		elif nu.kind == BroodNew.MAW:
+			econ += 1
+		elif BroodNew.is_father(nu.kind):
+			mil += 1
+		elif nu.kind == BroodNew.TURTLE and nq != null and nq.position.distance_to(nu.position) >= float(Defs.NB["expansion_tiles"]) * Defs.TILE:
+			halls += 1          # (a Mound Turtle rooted on new ground: the Brood's expansion)
 	var fac: String = game.faction_of(_foe)
-	var econ_cap := 0
+	var econ_cap := BROOD_ECON_CAP if fac == "brood" else 0
 	for k in Defs.FACTIONS[fac]["econ"]:
 		econ_cap += int(Defs.FACTIONS[fac]["econ"][k])
 	var ra := _recent_army()
@@ -872,8 +905,6 @@ func _defence() -> void:
 	match _faction():
 		"crown":
 			plan = {"barracks": 1 if game.clock < 200.0 else (2 if ai.difficulty < 2 else 3)}
-		"brood":
-			plan = {"warren": 1}
 		"clockwork":
 			plan = {ai._works(): 2}
 	for k in plan:

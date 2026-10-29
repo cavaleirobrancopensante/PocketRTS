@@ -12,8 +12,7 @@ extends Node2D
 ## walks up to it), the walk from its own main, and how much nearer it is to its own main than to the enemy's. The
 ## two best of each side are marked. The map is turned through its middle, so twin spots score the same.
 ##
-## Shown to a Crown or Clockwork player (the old Brood rarely moves its capital: not to an old-Brood player; the NEW
-## Brood sees its best Mound Turtle spots, nb_pick), with a small label (_label), and when watching
+## Shown to every player (a Brood player sees its best Mound Turtle spots, nb_pick), with a small label (_label), and when watching
 ## (spectator, replay). A spot hides once a building the viewer knows of stands on it (his own and his allies', an
 ## enemy's once seen), and when its lode was drawn out by a hall that fell there. Settings.expansion_spots turns them
 ## off. No per-frame drawing: the tiles are drawn once and redrawn only when a spot is taken or freed, or while the
@@ -46,11 +45,10 @@ func active() -> bool:
 		return true
 	if game.human < 0 or game.human >= game.n_players():
 		return false
-	# the old Brood rarely moves its capital: none; the NEW Brood expands with Mound Turtles: its turtle spots (nb_pick)
-	return game.faction_of(game.human) != "brood" or BroodNew.on(game, game.human)
+	return true          # (the Brood expands with Mound Turtles: its turtle spots, nb_pick)
 
 
-## The viewer plays the new Brood: its spots are the best TURTLE spots (nb_pick), not hall spots.
+## The viewer plays the Brood: its spots are the best TURTLE spots (nb_pick), not hall spots.
 func _nb_view() -> bool:
 	return not game.demo and game.replay == null and game.human >= 0 and BroodNew.on(game, game.human)
 
@@ -91,7 +89,7 @@ func _placing_hall() -> bool:
 	if ctl == null or game.demo or game.human < 0:
 		return false
 	if String(ctl.mode) == "nb_root" and String(ctl.place_kind) == BroodNew.TURTLE:
-		return true           # (the new Brood placing a Mound Turtle)
+		return true           # (the Brood placing a Mound Turtle)
 	return String(ctl.mode) == "place" and String(ctl.place_kind) == game.faction_hall(game.human)
 
 
@@ -105,7 +103,7 @@ func _taken(c: Vector2i) -> bool:
 			continue
 		if (b.visible and not b.ghost) if game.demo else game.knows_building(game.human, b):
 			return true
-	# the new Brood's base pieces rooted on the tiles: a Mound Turtle or the Brood Mother (one the viewer sees, or its own)
+	# the Brood's base pieces rooted on the tiles: a Mound Turtle or the Brood Mother (one the viewer sees, or its own)
 	var pr := Rect2(Vector2(r.position) * float(Defs.TILE), Vector2(r.size) * float(Defs.TILE))
 	var mid := pr.get_center()
 	for u in game.units_near(mid, 14.0 * float(Defs.TILE)):
@@ -207,9 +205,9 @@ func draw_on_minimap(ci: CanvasItem, m: Rect2) -> void:
 		ci.draw_rect(Rect2(mid - Vector2(h, h), Vector2(h, h) * 2.0), Color(GOLD, 0.95 if int(s["rank"]) == 1 else 0.7), false, 1.0)
 
 
-# ------------------------------------------------------------------ the new Brood's turtle spots
+# ------------------------------------------------------------------ the Brood's turtle spots
 
-## THE NEW BROOD (the owner, 21:28: "no expansion spots shown for the new Brood"): it expands by rooting a MOUND TURTLE
+## THE BROOD (the owner, 21:28: "no expansion spots shown for the Brood"): it expands by rooting a MOUND TURTLE
 ## on new ground (its swamp lets Rootmaws root there; 15+ tiles from the Mother and from the turtles that already count,
 ## it makes her lay faster: BroodNew.expansions). Its spots are its side's free base sites (rated as the hall spots:
 ## room, ways in, walk, safety: rate_all), each with the turtle's 3x3 footprint placed in it (nb_rate) and scored up for

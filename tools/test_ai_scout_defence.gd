@@ -21,7 +21,7 @@ func _run() -> void:
 	await process_frame
 	main.start({"map": "greenhold", "seed": 5, "slots": [
 		{"who": "human", "faction": "crown", "colour": 0, "side": 0, "strategy": "balanced"},
-		{"who": "hard", "faction": "brood", "colour": 1, "side": 1, "strategy": "balanced"}]})
+		{"who": "hard", "faction": "clockwork", "colour": 1, "side": 1, "strategy": "balanced"}]})      # (0.18.0: was the old Brood; the Brood of creatures has no hall and its own computer)
 	await process_frame
 	await process_frame
 	var g: Game = main.game

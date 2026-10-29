@@ -428,3 +428,31 @@ func _make_variants() -> void:
 		and not MapGen.old_layout("hollowfen", MapGen.RESIZED) and not MapGen.old_layout("custom:x", "0.1.0") and not MapGen.old_layout("hollowfen", "dev"),
 		"a built-in map's replay from before %s is refused" % MapGen.RESIZED)
 	print("VARIANTS crash file cut at %d of %d bytes; old version with '%s' renamed to a kind that is gone" % [cut, bytes.size(), gone_kind])
+	# THE OLD BROOD (0.18.0, docs/brood_replace.md): a replay written before (format 1) with a "brood" slot had the old Brood of
+	# buildings: it is refused with a clear note, no crash; the experiment's "brood_new" slots then are today's Brood: they play
+	var rest := bytes.slice(4 + ReplayFile.REC_HEAD + bytes.decode_u32(5))
+	var found := {}
+	for which in ["brood", "brood_new"]:
+		var ho: Dictionary = (d["header"] as Dictionary).duplicate(true)
+		ho["format"] = 1
+		ho["game_version"] = "0.17.0"
+		for sl in ho["cfg"]["slots"]:
+			if String(sl["faction"]) == "brood":
+				sl["faction"] = which
+		var ob := PackedByteArray(ReplayFile.MAGIC.to_ascii_buffer())
+		ob.append_array(ReplayFile._record(ReplayFile.T_HEAD, 0, 0, var_to_bytes(ho)))
+		ob.append_array(rest)
+		var op := ReplayFile.DIR + "/test_old_%s.hfr" % which
+		var f3 := FileAccess.open(op, FileAccess.WRITE)
+		f3.store_buffer(ob)
+		f3.close()
+		found[which] = String(ReplayPlayer.load_file(op).get("error", ""))
+		DirAccess.remove_absolute(op)
+	check("old_brood_refused", found["brood"] == Defs.OLD_BROOD_NOTE, "a replay with the old Brood: '%s'" % found["brood"])
+	check("old_experiment_plays", found["brood_new"] == "", "a replay with the experiment's new Brood: no error ('%s')" % found["brood_new"])
+	# (and a saved match: SaveGame.old_brood, main.gd says it can't be continued instead of offering CONTINUE)
+	var sl_old := {"cfg": {"slots": [{"faction": "crown"}, {"faction": "brood"}]}, "version": "0.17.0"}
+	var sl_exp := {"cfg": {"slots": [{"faction": "crown"}, {"faction": "brood_new"}]}, "version": "0.17.0"}
+	var sl_now := {"cfg": {"slots": [{"faction": "crown"}, {"faction": "brood"}]}, "brood": Defs.BROOD_FORMAT}
+	check("old_brood_save", SaveGame.old_brood(sl_old) and not SaveGame.old_brood(sl_exp) and not SaveGame.old_brood(sl_now),
+		"old save with the old Brood %s, with the experiment %s, today's %s" % [SaveGame.old_brood(sl_old), SaveGame.old_brood(sl_exp), SaveGame.old_brood(sl_now)])

@@ -12,7 +12,7 @@ const GAME := {
 	"smart_command": {"own": [0]}, "group_move": {"own": [0]}, "command_all": {"own": [0]},
 	"set_rally": {"own": [0]}, "place_building": {"team": 0, "own": [3]}, "place_line": {"team": 0, "own": [4]},
 	"train_any": {"own": [0]}, "cancel_train": {"own": [0]}, "cancel_train_at": {"own": [0]},
-	"start_research": {"own": [0]}, "start_hall_upgrade": {"own": [0]}, "demolish": {"own": [0]}, "swap_gear": {"own": [0]},
+	"start_research": {"own": [0]}, "demolish": {"own": [0]}, "swap_gear": {"own": [0]},
 	"abandon": {"own": [0]}, "set_gate_locked": {"own": [0]}, "refit_order": {"own": [0]},
 	"mount_order": {"own": [0]}, "lead_order": {"own": [0]}, "harness_order": {"own": [0]},
 	"unload_order": {"own": [0]}, "load_order": {"own": [0, 1]}, "overload_order": {"own": [0]},
@@ -26,7 +26,7 @@ const GAME := {
 ## UNIT / BUILDING: methods of an entity the guest owns (the receiver must be theirs).
 const ENTITY := ["cmd_gather", "cmd_harvest", "cmd_sacrifice", "cmd_deploy", "cmd_pack", "cmd_stop",
 	"cmd_land", "cmd_take_off", "cmd_dismount", "cmd_restock", "give", "set_hold_fire", "set_brace", "set_supply", "set_shield",
-	"cmd_lay", "cmd_uproot", "cmd_grow", "cmd_grow_stop"]      # (the new Brood: the Mother lays an egg; UPROOT / HAUL; GROW and STOP GROWING)
+	"cmd_lay", "cmd_uproot", "cmd_grow", "cmd_grow_stop"]      # (the Brood: the Mother lays an egg; UPROOT / HAUL; GROW and STOP GROWING)
 
 ## Settings flipped by the command card (a property of an entity the guest owns).
 const PROPS := ["auto_repair", "auto_train", "auto_refit", "supplying", "courier", "team_want", "auto_sweep"]      # (auto_sweep: a Great Winder's SWEEP)

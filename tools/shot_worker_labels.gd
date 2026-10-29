@@ -175,17 +175,8 @@ func _run() -> void:
 	if press:
 		await _tip(g, press, "clockwork_tip")
 	await _end()
-	# --- the old Brood: Feeding Pit
+	# --- the Brood: Rootmaw
 	g = await _start("brood")
-	await _wait(g, 8.0)
-	var pit := _first(g, "feeding_pit")
-	_look(g, pit.center() if pit else g._own_hall(g.human).center(), z)
-	await _snap("brood")
-	if pit:
-		await _tip(g, pit, "brood_tip")
-	await _end()
-	# --- the new Brood: Rootmaw
-	g = await _start(Defs.BROOD_NEW)
 	await _wait(g, 8.0)
 	var maw: Unit = null
 	for u in g.units:

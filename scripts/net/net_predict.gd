@@ -282,7 +282,7 @@ func _ops(who: Object, fn: String, args: Array) -> Array:
 					continue
 				if _can_train(b, key) != "":
 					continue
-				if best == null or b.queue.size() < best.queue.size() or (b.uses_eggs() and b.eggs > best.eggs):
+				if best == null or b.queue.size() < best.queue.size():
 					best = b
 			if best == null:
 				return []
@@ -306,15 +306,6 @@ func _ops(who: Object, fn: String, args: Array) -> Array:
 			if Defs.tension_cost(info) > 0:
 				ops.append(["res", "tension", -float(Defs.tension_cost(info))])
 			ops.append(["qadd", b, "@" + key])
-		"start_hall_upgrade":
-			var b: Building = args[0]
-			if not _ok(b) or g.hall_upgrade_problem(b) != "":
-				return []
-			var nl := b.next_level()
-			ops.append(["res", "gold", -int(nl["cost"])])
-			if float(nl.get("cost2", 0)) != 0.0:
-				ops.append(["res", "res2", -float(nl.get("cost2", 0))])
-			ops.append(["timer", b, "upgrade_t", 0.0, 1.0])
 		"cancel_train", "cancel_train_at":
 			var b: Building = args[0]
 			if not _ok(b):
@@ -483,13 +474,6 @@ func _apply(e: Dictionary) -> void:
 				if b.queue.is_empty():
 					_patch(e, b, "prod_t")
 					b.prod_t = el
-				if b.uses_eggs():
-					_patch(e, b, "eggs")
-					_patch(e, b, "morph_t")
-					b.eggs = maxi(0, int(b.eggs) - 1)
-					var mt: Array = (b.morph_t as Array).duplicate()
-					mt.append(el)
-					b.morph_t = mt
 				b.queue = q
 				(e["qi"] as Array).append([b, q.size() - 1])
 			"qpop":
@@ -502,12 +486,7 @@ func _apply(e: Dictionary) -> void:
 				_patch(e, b, "queue")
 				var q: Array = (b.queue as Array).duplicate()
 				q.remove_at(i)
-				if b.uses_eggs() and i < b.morph_t.size():
-					_patch(e, b, "morph_t")
-					var mt: Array = (b.morph_t as Array).duplicate()
-					mt.remove_at(i)
-					b.morph_t = mt
-				elif i == 0:
+				if i == 0:
 					_patch(e, b, "prod_t")
 					b.prod_t = 0.0
 				b.queue = q

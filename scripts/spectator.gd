@@ -175,7 +175,7 @@ func _candidate() -> Array:
 		return ["fight", best[0]]
 	var ai := _ai()
 	var army := game.army(team).filter(func(u: Unit) -> bool: return not u.off_field)
-	if ai and (ai._attacking or ai._swarm_phase != "") and army.size() >= 2:
+	if ai and ai._attacking and army.size() >= 2:
 		var mass := _densest(army)
 		var tgt: Vector2 = ai._wave_target
 		if tgt != Vector2.ZERO:

@@ -12,22 +12,20 @@ extends AI
 ## STEPS (strings):
 ##   workers:N           keep the hall(s) training workers until N are alive (in the background; workers come first)
 ##   <building>          place one (cottage, barracks, powder_mill, farm, horse_breeder, foundry, armoury, church,
-##                       town_hall, warren, brood_pen, gorge_pit, roost, clutch_mound, feeding_pit, hive, cog_press,
+##                       town_hall, cog_press,
 ##                       mainspring, movement_works, regulator, ratchet_turret, escapement, cuckoo_house, clocktower)
 ##   <building>@proxy[:F] place it on the way to the enemy, F of the way from home to its hall (default 0.72)
 ##   wall                Crown: the ramp wall (the computer's own: a Cottage in the ramp's mouth and a Gate); the step is
 ##                       done once the Cottage is placed, the Gate follows by itself
 ##   <unit>*N            queue N (train-button keys: musketeer, horseman, dragoon, officer, cannon, mortar, balloon,
-##                       horse, raptor, spitter, brute, skywing, bloater, clock_soldier, springer, cuckoo)
+##                       horse, clock_soldier, springer, cuckoo)
 ##   <unit>*             keep training it from now on (after the current step's cost is covered)
 ##   stop:<unit>         stop a "<unit>*"
 ##   research:<key>      start a research (armour, charge, high_leap, owl_morph ...)
-##   upgrade             Brood: grow the capital a level (Warren, then Broodmound)
 ##   morph:N             Clockwork: N Swifts turn into Ticking Owls
 ##   crew:<kind>:N       send N workers to work that building (e.g. crew:mainspring:3)
 ##   gear:<kind>:big     Clockwork: swap the newest finished building of that kind onto its big gear (or :small);
 ##                       25 cogs, 4 s (the Pendulum is made only at a Movement Works on the big gear)
-##   sacrifice:N         Brood: offer N Raptors at the Brood Pen for essence (3 each)
 ##   supply:auto|off     the computer's own supply buildings (default auto)
 ##   mill:N              Crown: N Labourers on the Powder Mill (else the computer's own rule: 3 while powder is short)
 ##   attack              the army goes now; attack@S: when it has S supply; attack@S|T: or at T seconds at the latest
@@ -35,7 +33,8 @@ extends AI
 ##   drop:hover          Crown: the same, but the Balloon stays up over the enemy's economy and the Musketeers fire
 ##                       from the basket (35% more reach) until their powder runs out or it is badly hurt
 ##   wait:T              wait until T seconds
-##   until:workers:N     wait until N workers are alive (with workers:N before it: a "grubs first" opening)
+##   until:workers:N     wait until N workers are alive
+## (0.18.0: the Brood has no buildings and its own computer, scripts/ai_brood_new.gd: no Brood openings here.)
 ##   end                 the script is over: the ordinary computer plays on
 ## The scripted attack: everything in the army goes (later units follow in pairs or more); Horsemen and Raptors hunt
 ## workers (the computer's own _hunt), the rest attack-move at the enemy's hall; it breaks a wall in its way; it pulls back
@@ -261,10 +260,7 @@ func _train_workers() -> void:
 			return
 		if not h.built:
 			continue
-		if h.uses_eggs():
-			if h.eggs <= 0:
-				continue
-		elif not (h.queue as Array).is_empty():
+		if not (h.queue as Array).is_empty():
 			continue
 		if game.train(h, w) == "":
 			have += 1
@@ -310,12 +306,8 @@ func _do(s: String) -> String:
 		return _do_drop(s)
 	if s.begins_with("research:"):
 		return _do_research(s, s.substr(9))
-	if s == "upgrade":
-		return _do_upgrade(s)
 	if s.begins_with("morph:"):
 		return _do_morph(s, int(s.substr(6)))
-	if s.begins_with("sacrifice:"):
-		return _do_sacrifice(s, int(s.substr(10)))
 	if s.begins_with("crew:"):
 		var p := s.split(":")
 		return _do_crew(s, p[1], int(p[2]))
@@ -378,16 +370,6 @@ func _do_wall(s: String) -> String:
 func _spot_for(kind: String) -> Vector2i:
 	if Defs.is_econ(kind):
 		return _econ_spot(kind)
-	if kind == _sup() and _brood():
-		return _mound_spot()
-	if kind == "hive":
-		var cap := game.capital(team)
-		if cap == null:
-			return Vector2i(-1, -1)
-		var home := game.find_spot(team, "hive", cap, Defs.BROOD_HALL_SPACING, Defs.BROOD_HALL_SPACING + 8, "near", true)
-		if home.x < 0:
-			home = game.find_spot(team, "hive", cap, Defs.BROOD_HALL_SPACING, Defs.BROOD_HALL_SPACING + 12, "near")
-		return home
 	if kind == "town_hall" or kind == "clocktower":
 		if game.expansions.size() > team and game.expansions[team] is Vector2i and game.placement_problem(team, kind, game.expansions[team], true) == "":
 			return game.expansions[team]
@@ -467,8 +449,6 @@ func _proxy_spot(kind: String, frac: float) -> Vector2i:
 
 ## AI._construct, returning the site (the nearest worker that is not building; idle ones first).
 func _place(kind: String, spot: Vector2i) -> Building:
-	if _brood() and game.workers(team).size() <= 2 and kind != _sup():
-		return null
 	var best: Unit = null
 	var bd := INF
 	var target := Vector2(spot) * Defs.TILE
@@ -513,10 +493,7 @@ func _try_train(key: String) -> bool:
 	for b in _mine(from):
 		if not b.built:
 			continue
-		if b.uses_eggs():
-			if b.eggs <= 0:
-				continue
-		elif (b.queue as Array).size() >= 2:
+		if (b.queue as Array).size() >= 2:
 			continue
 		if game.can_train(b, key) == "" and game.train(b, key) == "":
 			return true
@@ -572,28 +549,6 @@ func _do_research(s: String, key: String) -> String:
 	return "wait"
 
 
-func _do_upgrade(s: String) -> String:
-	var main: Building = null
-	for h in _halls():
-		if h.built and not h.dead and (main == null or h.level > main.level):
-			main = h
-	if main == null:
-		return "wait"
-	if main.upgrade_t >= 0.0:
-		return "wait"
-	var why := game.hall_upgrade_problem(main)
-	if why == "":
-		game.start_hall_upgrade(main)
-		_log(s)
-		return "done"
-	if why.begins_with("Already a"):
-		_log(s + " (top level)", game.clock)
-		return "done"
-	var nl: Dictionary = main.next_level()
-	_hold = int(nl.get("cost", 0))
-	return "wait"
-
-
 func _do_morph(s: String, n: int) -> String:
 	var done: int = int(_unit_count.get(si, 0))
 	for u in game.army(team):
@@ -607,25 +562,6 @@ func _do_morph(s: String, n: int) -> String:
 		_log(s)
 		return "done"
 	_hold = int(Defs.OWL_MORPH["cost"])
-	return "wait"
-
-
-## Brood: offer N Raptors at the Brood Pen (3 essence each): the only early essence when nobody is fighting.
-func _do_sacrifice(s: String, n: int) -> String:
-	if game.nearest_of(game.center_of_team(team), team, "brood_pen") == null or _mine("brood_pen").filter(func(b: Building) -> bool: return b.built).is_empty():
-		return "wait"
-	var done: int = int(_unit_count.get(si, 0))
-	for u in game.army(team):
-		if done >= n:
-			break
-		if u.kind == "raptor" and not wave.has(u) and u.order != "sacrifice" and u.target == null and u.can_sacrifice():
-			u.cmd_sacrifice()
-			if u.order == "sacrifice":
-				done += 1
-	_unit_count[si] = done
-	if done >= n:
-		_log(s)
-		return "done"
 	return "wait"
 
 
@@ -701,7 +637,7 @@ func _start_wave(army: Array) -> void:
 	var comp := {}
 	for u in army:
 		comp[u.kind] = int(comp.get(u.kind, 0)) + 1
-	_cur = {"go": snappedf(game.clock, 0.1), "supply": _army_supply(army), "value": _wave_worth(army), "comp": comp,
+	_cur = {"go": snappedf(game.clock, 0.1), "supply": _army_supply(army), "value": _army_worth(army), "comp": comp,
 		"arrive": -1.0, "contact": -1.0, "dmg0": float(game.stats[team]["damage"]), "kv0": int(game.stats[team]["value_killed"]),
 		"lv0": int(game.stats[_foe()]["value_killed"]) if _foe() >= 0 else 0, "wk0": _foe_workers_lost(), "end": -1.0, "why": ""}
 	waves_log.append(_cur)
@@ -709,7 +645,7 @@ func _start_wave(army: Array) -> void:
 		game.mlog.add("%s's scripted attack goes out (%d supply: %s)" % [game.mlog.who(team), _army_supply(army), str(comp)])
 
 
-func _wave_worth(list: Array) -> float:
+func _army_worth(list: Array) -> float:
 	var v := 0.0
 	for u in list:
 		v += float(u.d["cost"]) / maxf(1.0, float(u.d.get("spawn", 1))) + float(u.d.get("cost2", u.d.get("tension", 0))) * 0.5

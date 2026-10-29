@@ -104,13 +104,12 @@ func _scale_origin() -> Vector2i:
 
 ## The scale row (scale.png, scale_mother.png).
 func _scale_row() -> void:
-	# two rows on clear ground: Cottage + Rootmaw, Barracks + Tyrannosaur, Clutch Mound + Mound Turtle on top; the
+	# two rows on clear ground: Cottage + Rootmaw, Barracks + Tyrannosaur, the Mound Turtle on top; the
 	# Clocktower with its gear ring + the Brood Mother below (each pair a few tiles apart, nothing overlapping)
 	var o := _scale_origin()
 	scale_o = o
 	var cot: Building = g._add_building("cottage", 1, o + Vector2i(1, 4), true)
 	var bar: Building = g._add_building("barracks", 1, o + Vector2i(9, 3), true)
-	var mnd: Building = g._add_building("clutch_mound", 1, o + Vector2i(22, 4), true)
 	var tow: Building = g._add_building("clocktower", 1, o + Vector2i(4, 13), true)
 	var mw: Unit = g._add_unit(BroodNew.MAW, 0, Vector2((o.x + 6.0) * Defs.TILE, (o.y + 6.0) * Defs.TILE))
 	var ty: Unit = g._add_unit(BroodNew.FATHER, 0, Vector2((o.x + 17.5) * Defs.TILE, (o.y + 6.0) * Defs.TILE))
@@ -125,7 +124,7 @@ func _scale_row() -> void:
 	var labels := Node2D.new()
 	labels.z_index = 50
 	g.world.add_child(labels)
-	var items := [[cot, "Cottage"], [bar, "Barracks"], [tow, "Clocktower"], [mnd, "Clutch Mound"], [mw, "Rootmaw"], [ty, "Tyrannosaur"],
+	var items := [[cot, "Cottage"], [bar, "Barracks"], [tow, "Clocktower"], [mw, "Rootmaw"], [ty, "Tyrannosaur"],
 		[mo, "Brood Mother"], [tu, "Mound Turtle"]]
 	labels.draw.connect(func() -> void:
 		var font := ThemeDB.fallback_font
@@ -143,8 +142,8 @@ func _scale_row() -> void:
 			labels.draw_string(font, top - Vector2(w * 0.5, 0), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, col))
 	labels.queue_redraw()
 	# the sizes, measured on the pictures in game px (the sprite's drawn width)
-	print("SIZES gear ring %d px across; Clocktower %d; Cottage %d; Barracks %d; Clutch Mound %d" % [int(ring * 2.0),
-		_bw(tow), _bw(cot), _bw(bar), _bw(mnd)])
+	print("SIZES gear ring %d px across; Clocktower %d; Cottage %d; Barracks %d" % [int(ring * 2.0),
+		_bw(tow), _bw(cot), _bw(bar)])
 	await create_timer(0.8).timeout
 	print("SIZES Brood Mother rooted %d (walking %d); Rootmaw %d; Tyrannosaur %d; Mound Turtle rooted %d (walking %d)" % [
 		_strip_w("brood_mother", "rooted_se"), _strip_w("brood_mother", "walk_se"), _strip_w("rootmaw", "walk_se"),
@@ -158,7 +157,7 @@ func _scale_row() -> void:
 	labels.queue_free()
 	for u in [mw, ty, mo, tu]:
 		g.consume_unit(u)
-	for b in [cot, bar, tow, mnd]:
+	for b in [cot, bar, tow]:
 		b.take_damage(9999999.0, null)
 	g.swamp_dirty = true
 

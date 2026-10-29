@@ -88,7 +88,7 @@ static func tick_unit(u: Unit, delta: float) -> void:
 	if not u.visible or not u.game.view_rect.has_point(u.position):
 		u._draw_key = Vector4i(-1, -1, -1, -1)
 	else:
-		var key := Vector4i(int(u.selected) + (2 if u.carrying > 0 else 0) + u.kills * 64, int(u.hp) + int(u.gas) * 10000,
+		var key := Vector4i(int(u.selected) + (2 if u.carrying > 0 else 0) + u.kills * 64, int(u.hp),
 			int(u.wind * 40.0) + int(u.powder * 2.0) + (1000 if u.supplying else 0) + ((int(u.owl_t * 4.0) + 1) * 100000 if u.owl_t >= 0.0 else 0),
 			int(u.max_hp) + int(u.reload_frac() * 16.0) * 10000)      # (a morph under way: its bar and clock hand move)
 		if key != u._draw_key:

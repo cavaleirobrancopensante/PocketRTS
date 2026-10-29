@@ -1,5 +1,6 @@
 extends SceneTree
-## The walled-ramp sentry (AIScout._sentry_tick): a Brood computer against a Crown (its own AI off)
+## The walled-ramp sentry (AIScout._sentry_tick): a Clockwork computer against a Crown (its own AI off)
+## (0.18.0: was the old Brood; the Brood of creatures has its own computer, AIBroodNew, with no scout yet)
 ## that has walled its ramp and keeps three Musketeers behind the wall.
 ##   godot --headless --fixed-fps 30 --script res://tools/test_ai_scout_sentry.gd -- [map:<id>] [plan:balanced|rush] [off:1] [end:<s>]
 ## `off:1` switches the sentry off (the "before" number). Prints "SENTRY ..." with the share of the
@@ -42,7 +43,7 @@ func _run() -> void:
 	await process_frame
 	seed(4242)
 	main.start({"map": map, "seed": 4242, "slots": [
-		{"who": "hard", "faction": "brood", "colour": 0, "side": 0, "strategy": plan},
+		{"who": "hard", "faction": "clockwork", "colour": 0, "side": 0, "strategy": plan},
 		{"who": "hard", "faction": "crown", "colour": 1, "side": 1, "strategy": "balanced"}]})
 	await process_frame
 	await process_frame

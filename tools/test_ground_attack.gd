@@ -219,8 +219,8 @@ func _run() -> void:
 	var can := []
 	var cannot := []
 	for k in ["labourer", "musketeer", "cannon", "mortar", "cuirassier", "dismounted", "grub", "raptor", "spitter", "brute",
-			"spore_mother", "winder", "clock_soldier", "springer", "pendulum", "thresher", "arc_thrower", "missionary", "powder_wagon",
-			"horse", "balloon", "messenger", "dragoon", "netter", "bloater", "cuckoo"]:
+			"winder", "clock_soldier", "springer", "pendulum", "thresher", "arc_thrower", "missionary", "powder_wagon",
+			"horse", "balloon", "messenger", "dragoon", "netter", "cuckoo"]:
 		var u: Unit = g._add_unit(k, 0 if Defs.UNITS[k]["faction"] == "crown" else (1 if Defs.UNITS[k]["faction"] == "brood" else 0), start + Vector2(400, 400))
 		await physics_frame
 		(can if u.can_ground_attack() else cannot).append(k)

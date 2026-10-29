@@ -103,7 +103,7 @@ func _sweep(g: Game, f: String) -> void:
 			await physics_frame
 			g.set_selection([u])
 			_card(g, fac, "unit %s" % k)
-			# other states: set up, canister, hold fire, landed, hold gas, braced, a horse led / ridden
+			# other states: set up, canister, hold fire, landed, braced, a horse led / ridden
 			if u.deploys():
 				u.tesla_mode = "deployed" if u.tesla_mode == "packed" else "packed"
 				_card(g, fac, "unit %s (other mode)" % k)
@@ -116,9 +116,6 @@ func _sweep(g: Game, f: String) -> void:
 			if k == "skywing":
 				u.sky = "ground"
 				_card(g, fac, "unit skywing (landed)")
-			if k == "bloater":
-				u.mode = "hold"
-				_card(g, fac, "unit bloater (holding gas)")
 			if u.can_lead():
 				var h: Unit = g._add_unit("horse", 0, at + Vector2(20, 0))
 				await physics_frame
@@ -150,10 +147,6 @@ func _sweep(g: Game, f: String) -> void:
 			await physics_frame
 			g.set_selection([b])
 			_card(g, fac, "building %s" % k)
-			if b.is_leveled():
-				for lv in [2, 3]:
-					b.set_level(lv)
-					_card(g, fac, "building %s level %d" % [k, lv])
 			if k == "gate":
 				b.locked = true
 				_card(g, fac, "building gate (locked)")

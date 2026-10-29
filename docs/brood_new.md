@@ -1,6 +1,6 @@
-# The new Brood (experiment)
+# The Brood of creatures (was "the new Brood")
 
-The owner's redesign of the Brood, built as an experiment you can pick. The old Brood stays as it is and stays the default.
+The owner's redesign of the Brood, first built as an experiment. Since 0.18.0 it is the only Brood: the old one (buildings, swamp, Spore Mother, Bloater) is removed (docs/brood_replace.md). The history below still says "new" and "old" where it was written that way.
 
 Where the decisions come from: docs/idea_brood_mobile_buildings.md (the owner's lines, in order). Code: scripts/brood_new.gd (the rules), scripts/ai_brood_new.gd (the computer). Art: tools/import_brood_new.py. Test: tools/test_brood_new.gd.
 
@@ -8,9 +8,9 @@ Where the decisions come from: docs/idea_brood_mobile_buildings.md (the owner's 
 
 ## How to play it
 
-- In the skirmish setup, pick "The Brood (new, experiment)" in a slot's faction list. It is the last one.
+- In the skirmish setup (or the online lobby), pick "The Brood" in a slot's faction list (since 0.18.0).
 - It plays as the Brood: same grubs, warriors, spoils, sounds and music.
-- Not in the online lobby yet. Replays and saved games work.
+- Replays and saved games work (saves and replays with the old Brood are refused with a note: docs/brood_replace.md).
 
 ## What works
 

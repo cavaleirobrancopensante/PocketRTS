@@ -15,9 +15,8 @@ func _initialize() -> void:
 	_run.call_deferred()
 
 
-func make(facs: Array, nbs: Array = []) -> Game:
+func make(facs: Array) -> Game:
 	var g := Game.new()
-	g.nb_teams = nbs
 	g.map_id = "ashford_crossing"
 	g.demo = true
 	g.factions = facs
@@ -64,6 +63,10 @@ func open_spot(g: Game, t: int) -> Vector2:
 	for b in g.buildings:
 		if b.team == t and b.kind == g.faction_hall(t):
 			h = b
+	if h == null:
+		# (a Brood side: no hall, its Brood Mother's footprint stands there)
+		var q := BroodNew.queen(g, t)
+		return q.position + Vector2(0, BroodRoot.rect_of(q).size.y * 0.5 + 140.0)
 	return h.center() + Vector2(0, h.rect().size.y * 0.5 + 90.0)
 
 
@@ -162,7 +165,7 @@ func _run() -> void:
 	g.queue_free()
 	await process_frame
 	# ---- the Brood: the Tyrannosaur (a father) and the Brood Mother are only staggered; a flyer is pulled through the air
-	var g2 := make(["brood", "brood"], [false, true])      # (side 1: the new Brood, with its Mother and fathers)
+	var g2 := make(["crown", "brood"])      # (side 1: the Brood, with its Mother and fathers; 0.18.0: no old Brood for side 0)
 	await process_frame
 	await process_frame
 	var at2 := open_spot(g2, 0)

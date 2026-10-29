@@ -31,7 +31,7 @@ func _process(_delta: float) -> bool:
 			{"who": "you", "faction": "crown", "colour": 0, "side": 0},
 			{"who": "easy", "faction": "brood", "colour": 1, "side": 1},
 			{"who": "easy", "faction": "clockwork", "colour": 2, "side": 0},
-			{"who": "easy", "faction": Defs.BROOD_NEW, "colour": 3, "side": 1}]})
+			{"who": "easy", "faction": "crown", "colour": 3, "side": 1}]})
 		return false
 	if main.game == null:
 		return false
@@ -117,10 +117,9 @@ func _run() -> void:
 	Defs.gear_mode = true
 	await wait(1.0)
 	var crown := 0
-	var brood := _team_of("brood")
 	var cw := _team_of("clockwork")
 	var nbt := _nb_team()
-	print("teams: crown %d, brood %d, clockwork %d, new brood %d" % [crown, brood, cw, nbt])
+	print("teams: crown %d, clockwork %d, brood %d" % [crown, cw, nbt])
 
 	# --- 2. the hauler need (the owner's rule, 07:49): +1 a Horse Breeder; a wagon on SUPPLY: kegs a second x round trip
 	var hall: Building = g._own_hall(crown)
@@ -224,11 +223,6 @@ func _run() -> void:
 	if mill == null:
 		mill = _put(crown, "powder_mill")
 	_check_label(mill, "POWDER MAKERS", "Crown Powder Mill")
-	if brood >= 0:
-		var pit := _first(brood, "feeding_pit")
-		check(pit != null, "the old Brood has a Feeding Pit")
-		if pit:
-			_check_label(pit, "GRUBS", "old Brood Feeding Pit")
 	if cw >= 0:
 		var press := _first(cw, Defs.GEAR_PRESS)
 		check(press != null, "the Clockwork has a Cog Press")

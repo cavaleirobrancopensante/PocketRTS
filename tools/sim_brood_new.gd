@@ -1,5 +1,5 @@
 extends SceneTree
-## A computer match with the NEW BROOD (experiment, docs/brood_new.md): how its simple plan does. Every 30 s a line per
+## A computer match with the BROOD (docs/brood_new.md; the only Brood since 0.18.0): how its simple plan does. Every 30 s a line per
 ## side: biomass, supply, what it has; the match log's lines at the end.
 ##   godot --headless --fixed-fps 30 --script res://tools/sim_brood_new.gd [-- secs:<n> map:<id> seed:<n> foe:<faction> who:<level> plan:<strategy>]
 var main: Node
@@ -37,7 +37,7 @@ func _process(delta: float) -> bool:
 	if t > 0.2 and main.game == null:
 		seed(seed_)
 		main.start({"map": map, "seed": seed_, "slots": [
-			{"who": who, "faction": Defs.BROOD_NEW, "colour": 0, "side": 0, "strategy": plan},
+			{"who": who, "faction": "brood", "colour": 0, "side": 0, "strategy": plan},
 			{"who": who, "faction": foe, "colour": 1, "side": 1, "strategy": "balanced"}]})
 		return false
 	if main.game == null:

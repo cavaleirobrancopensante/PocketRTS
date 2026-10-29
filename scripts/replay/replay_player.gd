@@ -62,6 +62,8 @@ static func load_file(path: String) -> Dictionary:
 	for f in cfg.get("slots", []):
 		if not Defs.FACTIONS.has(Defs.base_faction(String(f.get("faction", "")))):
 			d["error"] = "A faction in it is not in this version of the game."
+	if Defs.old_brood(Array(cfg.get("slots", [])), int((d["header"] as Dictionary).get("format", 1))):
+		d["error"] = Defs.OLD_BROOD_NOTE         # (main.gd: "Can't play it: ..."; recorded before 0.18.0 with the old Brood)
 	return d
 
 

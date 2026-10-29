@@ -26,9 +26,9 @@ func _process(delta: float) -> bool:
 	if step == 1 and t > 1.5 and main.game:
 		step = 2
 		var g: Game = main.game
-		var hall: Building = g.halls_of(0, false)[0]
+		var home: Vector2 = BroodNew.queen(g, 0).position       # (0.18.0: the Brood's base is its Brood Mother)
 		for i in 350:
-			g._add_unit("raptor", 0, hall.center() + Vector2(120 + (i % 20) * 16, -150 + (i / 20) * 16))
+			g._add_unit("raptor", 0, home + Vector2(160 + (i % 20) * 16, -150 + (i / 20) * 16))
 	if step >= 2 and step < 40:
 		step += 1                # (a second of play: the units move about)
 		return false

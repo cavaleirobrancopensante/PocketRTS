@@ -91,7 +91,7 @@ static func attack_type(kind: String, d: Dictionary) -> String:
 		return "ranged"           # (he gets off and fires as a Musketeer)
 	if d.get("no_attack", false) or d.get("medic", false) or float(d.get("damage", 0)) <= 0.0:
 		return "none"
-	if kind in ["cannon", "mortar", "spore_mother", "steam_walker", Defs.PENDULUM] or d.has("splash") or d.get("cone", false):
+	if kind in ["cannon", "mortar", "steam_walker", Defs.PENDULUM] or d.has("splash") or d.get("cone", false):
 		return "area"
 	if kind == "dismounted":
 		return "melee"            # (the sabre; the pistol is a special)
@@ -192,8 +192,6 @@ static func build(st: Dictionary) -> Dictionary:
 	var blocked := ""             # it can't attack right now: why
 	if can_fight and rooted:
 		blocked = "Rooted: it cannot attack. UPROOT it to fight."
-	elif can_fight and kind == "spore_mother" and st["deploy"] != "deployed":
-		blocked = "Walking: she cannot attack. ROOT her to lob spit blobs."
 	elif can_fight and kind in ["cannon", "mortar", "tesla_cart"] and st["deploy"] != "deployed":
 		blocked = {"cannon": "Limbered: UNLIMBER to fire.", "mortar": "Packed: DEPLOY to fire.", "tesla_cart": "Packed: DEPLOY to fight."}[kind]
 	elif can_fight and kind == "skywing" and st["sky"] != "air" and st["sky"] != "ground":
@@ -375,8 +373,6 @@ static func _attack_text(kind: String, d: Dictionary) -> String:
 			return Loc.t("Round shot: the ball goes on through the line behind where it lands, with a little splash.")
 		"mortar":
 			return Loc.t("A shell lobbed high over men and walls: it bursts where it lands, friends too.")
-		"spore_mother":
-			return Loc.t("A big spit blob that splashes a whole area.")
 		"steam_walker":
 			return Loc.t("Scalding steam: everything in front of it.")
 		Defs.PENDULUM:
@@ -414,12 +410,6 @@ static func _specials(kind: String, d: Dictionary, st: Dictionary) -> Array:
 			add.call("ACID", Loc.t("Its acid burns and strips 2 armour for %d s.") % int(d.get("acid", 3.0)))
 		"brute":
 			add.call("KNOCKBACK", Loc.t("Every blow throws the enemy back."))
-		"spore_mother":
-			add.call("ROOT", Loc.t("She fires only rooted; walking she cannot attack."))
-			add.call("MIASMA", Loc.t("Spell: a cloud that heals the Brood (%d spoils, every %d s).") % [int(Defs.MIASMA["cost2"]), int(Defs.MIASMA["cooldown"])])
-		"bloater":
-			add.call("GAS", Loc.t("Every spit uses %d gas; out of gas it deflates and cannot attack.") % int(Defs.BLOAT["spit_cost"]))
-			add.call("BURST", Loc.t("It bursts as an acid bomb (up to %d damage and a cloud), and is used up.") % int(Defs.BLOAT["burst"]))
 		"skywing":
 			add.call("SPINES / BITE", Loc.t("Flying it hits only flyers; LANDED it bites ground units (and anything can hit it)."))
 		"mist_toad":
@@ -453,7 +443,7 @@ static func _specials(kind: String, d: Dictionary, st: Dictionary) -> Array:
 			+ ((" " + Loc.t("Half the blow splashes on enemies within %.1f tiles of its target.") % (float(d.get("splash", 0)) / Defs.TILE)) if float(d.get("splash", 0)) > 0.0 else ""))
 	if BroodMature.mature_of(kind) != "":
 		var mk := BroodMature.mature_of(kind)
-		add.call("MATURE", Loc.t("In the new Brood it grows into a %s (the Brood Mother at stage %d).") % [Loc.t(String(Defs.UNITS[mk]["name"])), BroodNew.unit_stage(mk) + 1])
+		add.call("MATURE", Loc.t("It grows into a %s (MATURE: the Brood Mother at stage %d).") % [Loc.t(String(Defs.UNITS[mk]["name"])), BroodNew.unit_stage(mk) + 1])
 	if BroodNew.ROOTERS.has(kind):
 		add.call("ROOT", Loc.t("Rooted: +%d armour, it takes %d%% of each hit, and it cannot attack.") % [int(Defs.NB["root_armor"]), int(round(float(Defs.NB["root_taken"]) * 100.0))])
 	if String(d.get("faction", "")) == "clockwork" and not Defs.is_worker(kind) and attack_type(kind, d) != "none":

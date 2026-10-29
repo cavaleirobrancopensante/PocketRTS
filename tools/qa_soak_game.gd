@@ -139,7 +139,7 @@ func _tick() -> void:
 		X["bld_n"] = nb
 		X["nobuild_max"] = maxf(X["nobuild_max"], c - X["bld_t"])
 		# attacks
-		if ai and X["first_attack"] < 0.0 and (bool(ai._attacking) or String(ai._swarm_phase) != "" or (ai._raiders as Array).size() > 0):
+		if ai and X["first_attack"] < 0.0 and (bool(ai._attacking) or (ai._raiders as Array).size() > 0):
 			X["first_attack"] = snappedf(c, 1.0)
 		# supply block
 		var used: int = g.supply_used(i)

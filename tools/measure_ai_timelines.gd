@@ -88,13 +88,11 @@ var next_dbg := 60.0
 func _step() -> void:
 	if OS.get_cmdline_user_args().has("debug") and g.clock >= next_dbg:
 		next_dbg += 20.0
-		var eggs := 0
 		var kinds := []
 		for b in g.buildings:
 			if b.team == me and not b.dead:
-				eggs += b.eggs
 				kinds.append(b.kind + ("" if b.built else "*"))
-		print("  dbg %d gold %d eggs %d supply %d/%d workers %d behind %s want %d | %s" % [int(g.clock), g.players[me]["gold"], eggs, g.supply_used(me), g.players[me]["cap"], g.workers(me).size(), str(ai_me._army_behind()) if faction == "brood" else "-", int(ai_me._army_want()) if faction == "brood" else 0, " ".join(kinds)])
+		print("  dbg %d gold %d supply %d/%d workers %d | %s" % [int(g.clock), g.players[me]["gold"], g.supply_used(me), g.players[me]["cap"], g.workers(me).size(), " ".join(kinds)])
 	if prod_t < 0.0:
 		for b in g.buildings:
 			if b.team == me and b.built and not b.dead:
@@ -103,18 +101,16 @@ func _step() -> void:
 				for k in tr:
 					if Defs.UNITS.has(k) and not bool(Defs.UNITS[k].get("worker", false)) and k != "horse":
 						mil = true
-				if mil and not b.d.get("eggs", false) and b.d.get("name", "") != "":
+				if mil and b.d.get("name", "") != "":
 					prod_t = g.clock
 					prod_kind = b.kind
 					break
-		if prod_t < 0.0 and faction == "brood":
-			for b in g.buildings:
-				if b.team == me and b.built and b.kind == "warren":
-					prod_t = g.clock
-					prod_kind = "warren"
+		if prod_t < 0.0 and faction == "brood" and BroodNew.father(g, me, BroodNew.FATHER) != null and BroodNew.rooted(BroodNew.father(g, me, BroodNew.FATHER)):
+			prod_t = g.clock          # (the Brood's barracks: its Tyrant Sire rooted on his nest)
+			prod_kind = BroodNew.FATHER
 	if unit_t < 0.0 and army_value(me) > 0.0:
 		unit_t = g.clock
-	if attack_t < 0.0 and (ai_me._attacking or ai_me._swarm_phase != ""):
+	if attack_t < 0.0 and ai_me._attacking:
 		attack_t = g.clock
 
 

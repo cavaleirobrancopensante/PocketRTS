@@ -6,9 +6,17 @@ class_name VetLook
 ## recolours through a mask per sprite strip: assets/units/trim_masks/<art>/ (written by
 ## tools/import_vet_trim.py) and assets/units/skin_masks/<art>/ (tools/import_vet_skin.py).
 ## A strip without a mask (workers, guns, Clockwork) shows nothing.
+## THE VENOM LINE (Defs.VENOM_SWAP: scales in the team colour, spikes and frill olive) has a second mask per strip,
+## assets/units/venom_masks/<art>/ (tools/import_venom_colours.py), set here too.
 
 const STYLES := {"crown": 1, "brood": 2}
-const DIRS := {1: "res://assets/units/trim_masks/", 2: "res://assets/units/skin_masks/"}
+const VENOM := 3          # (the venom line's own masks: not a veterancy style, only a mask folder)
+const DIRS := {1: "res://assets/units/trim_masks/", 2: "res://assets/units/skin_masks/", VENOM: "res://assets/units/venom_masks/"}
+
+
+## Does this unit wear the venom line's colours (its art: a Venom Challenger drawn as the Venom Sire too)?
+static func venom(u: Unit) -> bool:
+	return Defs.VENOM_SWAP.has(u.art) or Defs.VENOM_SWAP.has(u.kind)
 
 static var _masks := {}       # "style:strip path" -> its mask (or null)
 
@@ -36,6 +44,7 @@ static func apply(u: Unit) -> void:
 	var st := style_of(u)
 	m.set_shader_parameter("vet_style", st)
 	m.set_shader_parameter("vet_level", level(u.kills))
+	m.set_shader_parameter("venom_swap", venom(u))
 	if st > 0:
 		update_mask(u)
 
@@ -46,6 +55,8 @@ static func update_mask(u: Unit) -> void:
 	if m == null:
 		return
 	m.set_shader_parameter("vet_mask", mask_for(u.sprite.texture, style_of(u)))
+	if venom(u):
+		m.set_shader_parameter("venom_mask", mask_for(u.sprite.texture, VENOM))
 
 
 static func mask_for(t: Texture2D, st: int) -> Texture2D:

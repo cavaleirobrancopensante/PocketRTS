@@ -22,7 +22,6 @@ const NEEDS_ART := {
 	"windup_soldier": "walk legs are code-built, tiny sprite",
 	"winder": "wind / repair: the crank turning in his hands is code-drawn",
 	"raptor": "front and back stride is small (prompt 18)",
-	"spore_mother": "north-east walk is a copy of east; legs painted into the body",
 	"horse": "riderless horse walk (prompts 20-25)",
 	"horseman": "horse legs painted into the strip",
 	"cuirassier": "horse legs painted into the strip",
@@ -116,14 +115,12 @@ static func fps_for(a: String, an: String, n: int) -> float:
 			fps = 2.0 if an != "gidle" and an != "idle_cocoon" else 3.0
 			if kind == "skywing" and an == "idle":
 				fps = Unit.SKYWING_HOVER_FPS
-		"death", "death_cocoon", "gdeath", "ddeath", "death_keg":
+		"death", "death_cocoon", "gdeath", "death_keg":
 			fps = 7.0
 		"gattack":
 			fps = 9.0
 		"land":
 			fps = float(n) / Defs.SKYWING_SWITCH
-		"deflate", "refill":
-			fps = float(n) / float(Defs.DEFLATE["anim"])
 		"idle_keg":
 			fps = 0.75 * float(n)
 		"wrap":
@@ -131,8 +128,8 @@ static func fps_for(a: String, an: String, n: int) -> float:
 		"pistol":
 			fps = float(n) / (float(Defs.PISTOL["aim"]) + 0.35)
 		"aim", "fire", "aimup", "fireup", "thrust", "attack", "melee":
-			fps = 6.0 if kind == "spore_mother" else 9.0
-		"burrow", "dig":
+			fps = 9.0
+		"dig":
 			fps = 7.0
 		"morph":
 			fps = 3.2
@@ -154,7 +151,7 @@ static func fps_for(a: String, an: String, n: int) -> float:
 		"brace":
 			fps = float(n) / float(Defs.BRACE["switch"])
 		"deployed":
-			fps = 6.0 if kind != "spore_mother" else 3.0
+			fps = 6.0
 		"cast", "fog":
 			fps = 8.0
 		"tongue":

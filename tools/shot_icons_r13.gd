@@ -8,7 +8,7 @@ var fac := "clockwork"
 
 const PICKS := {
 	"clockwork": [["clock_soldier", "springer", "cuckoo"], ["springer"], ["cuckoo"], ["winder"], ["winder", "build"], ["@cog_press"]],
-	"brood": [["skywing"], ["mist_toad"], ["grub"], ["grub", "build"], ["spore_mother"], ["raptor", "spitter"]],
+	"brood": [["skywing"], ["mist_toad"], ["grub"], ["grub", "build"], ["brood_mother"], ["raptor", "spitter"]],
 	"crown": [["cannon"], ["balloon"], ["mortar"], ["powder_wagon"], ["labourer", "build"], ["musketeer", "cannon", "mortar", "balloon", "powder_wagon", "horseman"]],
 }
 
