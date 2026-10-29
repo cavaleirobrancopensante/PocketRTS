@@ -95,13 +95,25 @@ func _placing_hall() -> bool:
 	return String(ctl.mode) == "place" and String(ctl.place_kind) == game.faction_hall(game.human)
 
 
-## A building the viewer knows of stands on the spot's footprint, or a hall fell there and drew its lode out.
+## A building the viewer knows of stands on the spot's tinted tiles (touches the overlay at all), or a rooted Mound Turtle
+## / Brood Mother's footprint touches them (the owner, 2026-10-29: "if it touches the overlay it should vanish; if it's
+## completely off the overlay it should still show"), or a hall fell there and drew its lode out.
 func _taken(c: Vector2i) -> bool:
 	var r := Rect2i(c, MapGen.HALL)
 	for b in game.buildings:
 		if b.dead or not Rect2i(Vector2i(b.cell), b.size).intersects(r):
 			continue
 		if (b.visible and not b.ghost) if game.demo else game.knows_building(game.human, b):
+			return true
+	# the new Brood's base pieces rooted on the tiles: a Mound Turtle or the Brood Mother (one the viewer sees, or its own)
+	var pr := Rect2(Vector2(r.position) * float(Defs.TILE), Vector2(r.size) * float(Defs.TILE))
+	var mid := pr.get_center()
+	for u in game.units_near(mid, 14.0 * float(Defs.TILE)):
+		if u.dead or u.tesla_mode == "packed" or not (u.kind == BroodNew.TURTLE or u.kind == BroodNew.QUEEN):
+			continue
+		if not u.nb.has("fpx") or not BroodRoot.rect_of(u).grow(-1.0).intersects(pr):
+			continue
+		if game.demo or game.allied(u.team, game.human) or game.is_visible_to(game.human, u.position):
 			return true
 	for k in ["town_hall", "clocktower"]:
 		if game.lode_at_spot(c, k) < 0.25:
@@ -138,7 +150,7 @@ func _tile(c: Vector2i, best: bool, size: Vector2i = MapGen.HALL) -> void:
 	draw_rect(r, Color(GOLD, edge), false, 1.75 if best else 1.25)
 
 
-## THE LABEL (the owner, 22:09: the spots must READ as such): "OPTIMAL EXPANSION SPOT" on the best, "EXPANSION SPOT"
+## THE LABEL (the owner, 22:09: the spots must READ as such; 2026-10-29: every one reads "OPTIMAL EXPANSION SPOT"; was "EXPANSION SPOT"
 ## on the next, small, on the tinted ground near its bottom edge. Shown while the camera is zoomed in to a normal view
 ## or nearer (LABEL_ZOOM; zoomed out the gold squares speak for themselves and words would clutter), and always while
 ## placing a hall or a Mound Turtle. Its size follows the zoom so it stays about LABEL_PX on screen.
@@ -172,7 +184,7 @@ func draw_labels(ci: CanvasItem) -> void:
 func _label(ci: CanvasItem, c: Vector2i, size: Vector2i, best: bool, fs: int) -> void:
 	var T := float(Game.T)
 	var font := UiStyle.bold_font()
-	var txt := Loc.t("OPTIMAL EXPANSION SPOT" if best else "EXPANSION SPOT")
+	var txt := Loc.t("OPTIMAL EXPANSION SPOT")      # (every shown spot: the owner, 2026-10-29)
 	var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	var r := Rect2(Vector2(c) * T, Vector2(size) * T)
 	var p := Vector2(r.get_center().x - w * 0.5, r.end.y - float(fs) * 0.45)

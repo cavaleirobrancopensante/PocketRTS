@@ -141,6 +141,24 @@ func _viewer_checks() -> void:
 			g.exp_spots.refresh()
 			cs = g.exp_spots.shown.map(func(s: Dictionary) -> Vector2i: return s["c"])
 			_expect(cs.has(other["c"]), "the spot shows again when the building is gone")
+			# a hall built NEAR a spot, not on it, claims it too (the owner, 2026-10-29)
+			var second: Dictionary = {}
+			for s in g.exp_spots.spots:
+				if int(s["team"]) == 0 and int(s["rank"]) == 2:
+					second = s
+			if not second.is_empty():
+				# (the owner: touching the tinted tiles hides it; completely off them, it still shows)
+				var nb: Building = g._add_building("town_hall", 0, second["c"] + Vector2i(MapGen.HALL.x - 1, 0), true)
+				g.exp_spots.refresh()
+				cs = g.exp_spots.shown.map(func(s: Dictionary) -> Vector2i: return s["c"])
+				_expect(not cs.has(second["c"]), "a hall overlapping the spot by one column hides it")
+				nb.dead = true
+				var fb: Building = g._add_building("town_hall", 0, second["c"] + Vector2i(MapGen.HALL.x + 1, 0), true)
+				g.exp_spots.refresh()
+				cs = g.exp_spots.shown.map(func(s: Dictionary) -> Vector2i: return s["c"])
+				_expect(cs.has(second["c"]), "a hall completely off the spot leaves it shown")
+				fb.dead = true
+				g.exp_spots.refresh()
 			Settings.expansion_spots = false
 			g.exp_spots.refresh()
 			_expect(g.exp_spots.shown.is_empty(), "the setting off hides them all")
