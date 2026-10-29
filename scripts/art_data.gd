@@ -1234,6 +1234,21 @@ const BASE_UNITS := {
 		"walk_s": 6,
 		"walk_se": 6,
 	}},
+	"lure_tyrannosaur": {"cell": Vector2i(162, 221), "anchor": Vector2(81, 172), "frames": {
+		"arrive_se": 12,
+		"grow_se": 4,
+		"ripe_se": 1,
+	}},
+	"lure_dilophosaurus": {"cell": Vector2i(106, 106), "anchor": Vector2(53, 85), "frames": {
+		"arrive_se": 12,
+		"grow_se": 4,
+		"ripe_se": 1,
+	}},
+	"lure_pterodactyl": {"cell": Vector2i(166, 198), "anchor": Vector2(83, 154), "frames": {
+		"arrive_se": 12,
+		"grow_se": 4,
+		"ripe_se": 1,
+	}},
 }
 
 const BUILDING_SIZE := {

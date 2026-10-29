@@ -2995,4 +2995,13 @@ const T := {
 	"YOUR SAVED MATCH CAN'T BE CONTINUED.": "NO SE PUEDE CONTINUAR TU PARTIDA GUARDADA.",
 	"TAP WHERE NEW WORKERS GO TO WORK": "TOCA DONDE IRÁN A TRABAJAR LOS NUEVOS TRABAJADORES",
 	"THEN PICK WHERE NEW WORKERS GO TO WORK.": "LUEGO ELIGE DÓNDE IRÁN A TRABAJAR LOS NUEVOS TRABAJADORES.",
+	"Tyrant Lure": "Cebo Tirano",
+	"Venom Lure": "Cebo del Veneno",
+	"Storm Lure": "Cebo de la Tormenta",
+	"LURE RIPENING": "CEBO MADURANDO",
+	"THE SIRE ARRIVES": "LLEGA EL SEÑOR",
+	"LURE %ds": "CEBO %ds",
+	"A grub's lure calls the %s: he comes, eats it and nests there in %d s.": "El cebo de una larva llama al %s: viene, se lo come y anida allí en %d s.",
+	"Pick where his lure grows: a grub walks there, pays and swells into a lure; ripe, the %s comes, eats it and nests there (%d s in all).": "Elige dónde crece su cebo: una larva va allí, paga y se hincha en un cebo; maduro, el %s viene, se lo come y anida allí (%d s en total).",
+	"The %s came to the lure and ate it: he is yours, on his nest.": "El %s vino al cebo y se lo comió: es tuyo, en su nido.",
 }

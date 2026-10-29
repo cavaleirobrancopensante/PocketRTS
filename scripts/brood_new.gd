@@ -400,6 +400,10 @@ static func progress(g: Game, u: Unit) -> Dictionary:
 		return {}
 	if u.nb.has("coc"):
 		var ct := BroodRoot.cocoon_time(u)
+		if is_father(u.kind):
+			# his lure ripening, then his arrival (BroodRoot.lure_look)
+			return {"label": "THE SIRE ARRIVES" if BroodRoot.sire_come(u) else "LURE RIPENING", "f": clampf(float(u.nb["coc"]) / maxf(ct, 0.1), 0.0, 1.0),
+				"left": maxf(0.0, ct - float(u.nb["coc"])), "icon": u.kind, "col": BAR_MORPH}
 		return {"label": "MORPHING", "f": clampf(float(u.nb["coc"]) / maxf(ct, 0.1), 0.0, 1.0), "left": maxf(0.0, ct - float(u.nb["coc"])), "icon": u.kind, "col": BAR_MORPH}
 	if u.kind == QUEEN and float(u.nb.get("grow_t", 0.0)) > 0.0 and stage(u) < (Defs.NB["stages"] as Array).size() - 1:
 		var tt := float(Defs.NB["stages"][stage(u) + 1]["time"])
@@ -490,8 +494,10 @@ static func lay(g: Game, q: Unit, k: String) -> String:
 	var fk := father_of(k)
 	var fa: Unit = father(g, q.team, fk) if fk != "" else null
 	var on_top := false
+	var in_nest := false
 	if fa != null and father_near(g, q.team, fk):
-		p = nest_point(fa)          # (a warrior's egg goes into the father's nest: fertilised and hatched there)
+		p = nest_spot(g, fa)        # (a warrior's egg goes into the father's nest, in front of him: fertilised and hatched there)
+		in_nest = true
 	else:
 		# EGG PLACEMENT (the owner, 21:32): the nearest EMPTY spot round her (not on a rooted footprint, a cliff, water or
 		# another egg), looked for outward from her rim, her front and sides first; boxed in, ON the structure there
@@ -521,7 +527,7 @@ static func lay(g: Game, q: Unit, k: String) -> String:
 		if drawn:
 			e.nb["hold"] = busy if busy > 0.0 else lay_time(q)
 			e.nb["big"] = float(stage_def(q)["scale"])
-	if fa != null and p == nest_point(fa):
+	if in_nest:
 		e.nb["nest"] = true
 		e.nb["drop"] = 0.0
 	e.facing = Vector2.DOWN
@@ -704,9 +710,15 @@ static func egg_tick(g: Game, e: Unit, delta: float) -> void:
 
 # ------------------------------------------------------------------ fertilising
 
-## Where the eggs in a rooted father's nest lie (in front of his lowered head, on the nest drawn in his rooted frame,
-## a little in front of his feet so a hatching shell is drawn over the nest): Defs.NB "nest_at" per father.
-const NEST_LIFT := 8.0       # (an egg there is drawn this much higher: on the nest, but sorted in front of him)
+## THE SIRE'S EGGS IN FRONT (the owner, 2026-10-29 18:31): the eggs of his line he fertilises lie IN FRONT of his
+## footprint (south of it, on the ground; drawn on the top layer as the Mother's, EGG_Z), not inside his nest picture,
+## while he keeps his production animation. "His nest" in the code is that row of eggs: NEST_ROW eggs a row, NEST_GAP
+## px apart, NEST_FRONT px past the footprint's front edge, further rows further south. (Before 0.19.0 they lay hidden
+## on the nest drawn in his rooted frame, Defs.NB "nest_at", and showed only to hatch.)
+const NEST_FRONT := 22.0     # (the egg drawn whole below the nest picture, which reaches the footprint's edge)
+const NEST_GAP := 14.0
+const NEST_ROW := 5
+const NEST_REACH := 70.0       # (px from the row's middle: his eggs are looked for this far)
 
 
 static func nest_at(k: String) -> Vector2:
@@ -714,15 +726,48 @@ static func nest_at(k: String) -> Vector2:
 	return Vector2(float(a[0]), float(a[1]))
 
 
+## The middle of the first row of his eggs, just in front of his footprint (not rooted: in front of his nest's place).
 static func nest_point(f: Unit) -> Vector2:
-	return f.position + nest_at(f.kind) + Vector2(0.0, BroodRoot.drop(f))        # (his rooted art is drawn that much lower)
+	if BroodRoot.has_fp(f):
+		var r := BroodRoot.rect_of(f)
+		return Vector2(r.get_center().x, r.end.y + NEST_FRONT)
+	return f.position + nest_at(f.kind) + Vector2(0.0, BroodRoot.drop(f) + NEST_FRONT)
 
 
-## The eggs in his nest, first laid first (the queue counted over him).
+## The i-th place in his row of eggs (from the middle out, left and right; then the next row).
+static func nest_slot(f: Unit, i: int) -> Vector2:
+	var row := i / NEST_ROW
+	var k := i % NEST_ROW
+	var side := float((k + 1) / 2) * (1.0 if k % 2 == 1 else -1.0)
+	return nest_point(f) + Vector2(side * NEST_GAP + (NEST_GAP * 0.5 if row % 2 == 1 else 0.0), float(row) * 12.0)
+
+
+## The first free place in his row for a new egg.
+static func nest_spot(g: Game, f: Unit) -> Vector2:
+	# (every egg of his row, the ones laid this very tick too: the unit grid has not seen them yet)
+	var taken: Array = []
+	var np := nest_point(f)
+	for u in g.units:
+		if u.team == f.team and u.kind == EGG and not u.dead and bool(u.nb.get("nest", false)) and not u.nb.has("out") and u.position.distance_to(np) < NEST_REACH:
+			taken.append(u)
+	for i in NEST_ROW * 4:
+		var p := nest_slot(f, i)
+		var free := true
+		for e in taken:
+			if (e as Unit).position.distance_to(p) < NEST_GAP * 0.5:
+				free = false
+				break
+		if free:
+			return p
+	return nest_slot(f, taken.size() % (NEST_ROW * 4))
+
+
+## The eggs in his nest (the row in front of him), first laid first (the queue counted over him).
 static func nest_eggs(g: Game, f: Unit) -> Array:
 	var out: Array = []
-	for u in g.units_near(nest_point(f), 12.0):
-		if u.team == f.team and u.kind == EGG and not u.dead and bool(u.nb.get("nest", false)) and not u.nb.has("out"):
+	for u in g.units_near(nest_point(f), NEST_REACH):
+		if u.team == f.team and u.kind == EGG and not u.dead and bool(u.nb.get("nest", false)) and not u.nb.has("out") \
+				and father_of(String(u.nb.get("k", ""))) == f.kind:
 			out.append(u)
 	out.sort_custom(func(a, b) -> bool: return a.serial < b.serial)
 	return out
@@ -754,9 +799,10 @@ static func father_tick(g: Game, f: Unit, delta: float) -> void:
 		for u in g.units_near(f.position, r):
 			if u.team == f.team and u.kind == EGG and not u.dead and int(u.nb.get("fert", 0)) == 1 and not bool(u.nb.get("nest", false)) \
 					and father_of(String(u.nb.get("k", ""))) == f.kind:       # (only the eggs of his line)
+				u.position = nest_spot(g, f)
 				u.nb["nest"] = true
 				u.nb["drop"] = 0.0
-				u.position = nest_point(f)
+				u.z_index = EGG_Z
 				g.note_move(u)
 	var any = null
 	var roared := false
@@ -1322,6 +1368,8 @@ static func anim(u: Unit, moving: bool) -> String:
 		QUEEN, MAW, TURTLE, FATHER, DILO, PTERO:
 			var fr: Dictionary = ArtData.UNITS[u.art]["frames"]
 			if u.nb.has("coc"):
+				if BroodRoot.lure_phase(u) == "settle" and fr.has("root_se"):
+					return "root"           # (a Sire just come to his lure: he settles on his nest, BroodRoot.lure_look)
 				return "fill1" if fr.has("fill1_se") else "rooted"        # (in its cocoon: BroodRoot.cocoon_look)
 			if u.kind == QUEEN and float(u.nb.get("devour", 0.0)) > 0.0:
 				return "attack"         # (SACRIFICE: she devours the creature offered up)
@@ -1356,12 +1404,19 @@ static func animate(u: Unit, n: int) -> void:
 	if ROOTERS.has(u.kind):
 		BroodRoot.layer(u)        # (rooted: the building layer; up, or dead: a unit again)
 	if u.dead:
+		if is_father(u.kind):
+			BroodRoot.lure_dead(u)       # (a lure killed: it bursts)
 		return
 	match u.anim:
 		"root", "uproot":
-			var sw := u.switch_time()
-			var p := clampf(1.0 - u.tesla_t / maxf(sw, 0.01), 0.0, 1.0)
-			s.frame = clampi(int(p * n), 0, n - 1)
+			if BroodRoot.is_lure(u):
+				# come to his lure, he settles on his nest: his rooting frames from Defs.NB "lure_settle_from"
+				var f0 := int((Defs.NB["lure_settle_from"] as Dictionary).get(u.kind, 0))
+				s.frame = clampi(f0 + int(BroodRoot.settle_f(u) * float(n - f0)), 0, n - 1)
+			else:
+				var sw := u.switch_time()
+				var p := clampf(1.0 - u.tesla_t / maxf(sw, 0.01), 0.0, 1.0)
+				s.frame = clampi(int(p * n), 0, n - 1)
 		"lay":
 			var el := lay_time(u) - float(u.nb.get("lay_t", 0.0))
 			var fi := 0
@@ -1389,12 +1444,10 @@ static func animate(u: Unit, n: int) -> void:
 				p2 = 0.4 * clampf(1.0 - (egg_time(k) - float(u.nb.get("t", 0.0))) / HATCH_IN, 0.0, 1.0)
 			s.frame = clampi(int(p2 * n), 0, n - 1)
 	if u.kind == EGG:
-		# an egg in the father's nest is one of the red eggs drawn there: it shows itself only to hatch
-		s.visible = (not bool(u.nb.get("nest", false)) or u.anim == "hatch") and float(u.nb.get("hold", 0.0)) <= 0.0
+		# (the father's eggs lie in front of him, seen as the Mother's: the owner, 18:31)
+		s.visible = float(u.nb.get("hold", 0.0)) <= 0.0
 		var dr := float(u.nb.get("drop", 0.0))
 		s.position = Vector2(0.0, -46.0 * pow(dr / float(Defs.NB["drop"]), 2.0)) if dr > 0.0 else Vector2.ZERO
-		if bool(u.nb.get("nest", false)):
-			s.position.y -= NEST_LIFT
 		var pp := float(u.nb.get("pop", 0.0))
 		if pp > 0.0:
 			var k2 := pp / POP_TIME          # (1 at her clutch .. 0 on the rim)

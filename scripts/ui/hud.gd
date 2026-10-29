@@ -1473,6 +1473,9 @@ func _nb_buttons(list: Array, units: Array) -> void:
 		var cl := maxf(0.0, BroodRoot.cocoon_time(c0) - float(c0.nb.get("coc", 0.0)))
 		var clab := "MORPHING %ds" % int(ceil(cl))
 		var ctip := "A grub is turning into a %s: it comes out rooted in %d s." % [c0.d["name"], int(ceil(cl))]
+		if BroodNew.is_father(c0.kind):
+			clab = "LURE %ds" % int(ceil(cl))
+			ctip = Loc.t("A grub's lure calls the %s: he comes, eats it and nests there in %d s.") % [Loc.t(String(c0.d["name"])), int(ceil(cl))]
 		list.append([c0.kind, clab, func() -> void: toast(ctip), true, "", ""])
 	var rooters := units.filter(func(u: Unit) -> bool: return BroodNew.ROOTERS.has(u.kind) and u.team == game.human and not BroodRoot.in_cocoon(u))
 	if not rooters.is_empty():
@@ -1538,7 +1541,10 @@ func _nb_build_page(list: Array) -> void:
 		var mk: String = k
 		var mwhy := BroodRoot.morph_problem(game, game.human, mk)
 		var mlab := String(Defs.UNITS[mk]["name"]).to_upper()
-		_tip_for[mlab] = ["Turn a grub into a %s" % Defs.UNITS[mk]["name"], Loc.t(String(Defs.UNITS[mk].get("about", ""))) + " " + Loc.t("Pick where it roots: a grub walks there, pays and morphs in its cocoon (%d s), then it is rooted.") % int(BroodNew.egg_time(mk)),
+		var mhow := Loc.t("Pick where it roots: a grub walks there, pays and morphs in its cocoon (%d s), then it is rooted.") % int(BroodNew.egg_time(mk))
+		if BroodNew.is_father(mk):
+			mhow = Loc.t("Pick where his lure grows: a grub walks there, pays and swells into a lure; ripe, the %s comes, eats it and nests there (%d s in all).") % [Loc.t(String(Defs.UNITS[mk]["name"])), int(BroodNew.egg_time(mk))]
+		_tip_for[mlab] = ["Turn a grub into a %s" % Defs.UNITS[mk]["name"], Loc.t(String(Defs.UNITS[mk].get("about", ""))) + " " + mhow,
 			"%s  ·  %d s" % [_cost_text(int(game.unit_price(game.human, mk)[0]), int(game.unit_price(game.human, mk)[1])), int(BroodNew.egg_time(mk))]]
 		list.append([mk, mlab, func() -> void:
 			page = ""
@@ -2875,6 +2881,8 @@ func _draw_panel(font: Font) -> void:
 		var eff_col := UiStyle.MUTED
 		if e is Unit:
 			name = (e as Unit).d["name"]
+			if BroodRoot.is_lure(e) and not BroodRoot.sire_come(e):
+				name = BroodRoot.lure_name((e as Unit).kind)       # (a Sire's lure: he hasn't come yet)
 			if Game.loose_horse(e):
 				name += " (loose)"
 			var tags: Array = (e as Unit).d.get("tags", [])

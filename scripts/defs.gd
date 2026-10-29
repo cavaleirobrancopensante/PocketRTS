@@ -1829,6 +1829,16 @@ const NB := {
 	# (the Tyrant and Venom Challengers are in since 0.17.0: "unit_stage", "mature"; the owner, 14:40: the Spitter is the
 	# Venom line's young, from stage 1; the Viper and the Hooded Serpent are dropped, their sheets kept in art/redraws)
 	"lines_later": {"pterodactyl": [["hatchlings", 1, ""], ["storm_challenger", 2, "hatchlings"]]},
+	# THE SIRE LURES (the owner, 2026-10-29 18:03-18:31; scripts/brood_root.gd, docs/sire_lure.md): a grub turning into
+	# a Sire roots and swells into his LURE (a living pheromone gland); ripe, the Sire ARRIVES in its animation, eats it
+	# and nests on its spot. The Sire's own "time" in all: the lure grows, then "lure_arrive" s of his arrival (12
+	# frames), then "lure_settle" s of his rooting frames from "lure_settle_from" (the Storm Sire arrives landed: his
+	# landing strip from its first landed frame). "lure_at": where the lure's ground lies from his feet in his arrival
+	# art, and its mud's width (game px, tools/import_sire_lure.py); "lure_col": the lure's haze (the code puffs).
+	"lure_arrive": 2.6, "lure_settle": 1.2,
+	"lure_settle_from": {"tyrannosaur": 0, "dilophosaurus": 0, "pterodactyl": 2},
+	"lure_at": {"tyrannosaur": [11, 42, 85], "dilophosaurus": [2, 16, 48], "pterodactyl": [8, 12, 52]},
+	"lure_col": {"tyrannosaur": [0.85, 0.16, 0.12], "dilophosaurus": [0.75, 0.9, 0.2], "pterodactyl": [0.5, 0.7, 1.0]},
 	# where the eggs in each father's nest lie, from his feet (art px, measured by the importers on his rooted frame)
 	"nest_at": {"tyrannosaur": [26, 2], "dilophosaurus": [23, 3], "pterodactyl": [39, -16]},
 	# ROOTED = A BUILDING (the owner's playtest of 0.15.13, 19:19; scripts/brood_root.gd): the footprint each creature

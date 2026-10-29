@@ -474,6 +474,11 @@ static func cocoon_tick(g: Game, u: Unit, delta: float) -> void:
 	var tt := cocoon_time(u)
 	var was := float(u.nb["coc"])
 	u.nb["coc"] = was + delta
+	if BroodNew.is_father(u.kind):
+		# the lure is ripe: the Sire comes (his roar: the cue, as a building's bell)
+		var tg := float(lure_times(u.kind)[0])
+		if was < tg and float(u.nb["coc"]) >= tg and u.team == g.human:
+			Sfx.play_any(["roar", "combat/brute_attack"], u.position, -6.0)
 	u.hp = minf(u.max_hp, u.hp + u.max_hp * 0.85 * delta / maxf(tt, 0.1))
 	if float(u.nb["coc"]) >= tt:
 		u.nb.erase("coc")
@@ -482,7 +487,10 @@ static func cocoon_tick(g: Game, u: Unit, delta: float) -> void:
 		if u.team == g.human:
 			Sfx.play("hatch", u.position)
 			Sfx.voice(u.kind, "select")
-			g.tell(u.team, "A %s has grown from its cocoon, rooted." % u.d["name"], true)
+			if BroodNew.is_father(u.kind):
+				g.tell(u.team, "The %s came to the lure and ate it: he is yours, on his nest." % u.d["name"], true)
+			else:
+				g.tell(u.team, "A %s has grown from its cocoon, rooted." % u.d["name"], true)
 		if g.mlog and not g._first_of.has("%d:%s" % [u.team, u.kind]):
 			g._first_of["%d:%s" % [u.team, u.kind]] = true
 			g.mlog.add("%s got its first %s" % [g.mlog.who(u.team), u.d["name"]])
@@ -556,7 +564,7 @@ static func layer(u: Unit) -> void:
 			fpn.draw.connect(_draw_frame.bind(u, fpn))
 			srt.add_child(fpn)
 		srt.position = Vector2(0.0, dy)
-		for n in [u.sprite, u.get_node_or_null("Glow"), u.get_node_or_null("Xf"), u.get_node_or_null(COC)]:
+		for n in [u.sprite, u.get_node_or_null("Glow"), u.get_node_or_null("Xf"), u.get_node_or_null(COC), u.get_node_or_null(PUFF)]:
 			if n != null and n.get_parent() != srt:
 				n.reparent(srt, false)
 		u.sprite.position.y -= dy        # (Unit._animate put it at the feet: under the node it is drawn there again)
@@ -716,6 +724,9 @@ static func pic_parent(u: Unit) -> Node:
 ## The cocoon: the grub's morph strip for MORPH_GRUB s, then the old Brood's grub-building mound, growing; the creature
 ## fades in over it at the end (code: docs/art_style_inconsistency.md).
 static func cocoon_look(u: Unit) -> void:
+	if BroodNew.is_father(u.kind):
+		lure_look(u)          # (a Sire: his lure, then his arrival)
+		return
 	var s := u.sprite
 	var cs := u.get_node_or_null(COC) as Sprite2D
 	if cs == null:
@@ -768,6 +779,237 @@ static func cocoon_look(u: Unit) -> void:
 	var out := clampf((p - 0.75) / 0.25, 0.0, 1.0)
 	cs.self_modulate.a = 1.0 - out
 	s.self_modulate.a = out
+
+
+# ------------------------------------------------------------------ the Sire lures
+
+## THE SIRE LURES (the owner, 2026-10-29 18:03-18:31; docs/sire_lure.md): a grub must not turn into a grown Sire. It
+## roots and swells into a LURE, a living pheromone gland (one kind per Sire: the Tyrant's red and spiked, the Venom's
+## yellow-green, the Storm's with a crest-fin and a blue haze). Ripe, the Sire ARRIVES as part of its animation (in the
+## lore from the wild pack; in the game no walk across the map), EATS it and is yours, nesting where it was.
+## The game's side is the cocoon's (the Sire is there from the start, in_cocoon, his footprint taken, his health growing,
+## "coc" counting up to his own time): so the one-of-each limit, the Mother's stage, saves, replays and the online
+## snapshot carry a lure as they carried a cocoon. Only the pictures differ (lure_look), in three phases of his time:
+##   grow    the lure: the concept's 4 steps (from about a grub's size, swelling), then the ripe lure pulsing, its haze
+##           puffing (code) - RIPE_AT of the grow;
+##   arrive  his 12 arrival frames (Defs.NB "lure_arrive" s): he comes in from the top left, eats the lure, stands;
+##   settle  his own rooting frames (Defs.NB "lure_settle" s, from "lure_settle_from"), cross-faded from his last
+##           arrival frame (the Tyrant's arrival ends facing south): then he is rooted on his nest.
+## Killed as a lure: no refund (as a cocoon, or a building shot down while it goes up); the lure bursts (lure_dead).
+const PUFF := "NbPuff"
+const RIPE_AT := 0.72         # share of the grow spent swelling (the 4 steps); the rest ripe, pulsing
+const FADE := 0.3             # share of the settle cross-faded from his last arrival frame
+
+
+static func is_lure(u: Unit) -> bool:
+	return in_cocoon(u) and BroodNew.is_father(u.kind)
+
+
+## [grow, arrive, settle] s of a Sire's lure: together his own time (Defs.UNITS[k] "time", the cocoon's).
+static func lure_times(k: String) -> Array:
+	var tt := BroodNew.egg_time(k)
+	var ar := minf(float(Defs.NB["lure_arrive"]), tt * 0.3)
+	var se := minf(float(Defs.NB["lure_settle"]), tt * 0.15)
+	return [maxf(0.0, tt - ar - se), ar, se]
+
+
+## "grow", "arrive", "settle", or "" (not a lure).
+static func lure_phase(u: Unit) -> String:
+	if not is_lure(u):
+		return ""
+	var lt := lure_times(u.kind)
+	var el := float(u.nb["coc"])
+	if el < float(lt[0]):
+		return "grow"
+	if el < float(lt[0]) + float(lt[1]):
+		return "arrive"
+	return "settle"
+
+
+## Has the Sire come yet (his arrival begun)? Before that it is only the lure.
+static func sire_come(u: Unit) -> bool:
+	var ph := lure_phase(u)
+	return ph == "arrive" or ph == "settle"
+
+
+## 0..1 through the settle (his rooting frames).
+static func settle_f(u: Unit) -> float:
+	var lt := lure_times(u.kind)
+	return clampf((float(u.nb.get("coc", 0.0)) - float(lt[0]) - float(lt[1])) / maxf(float(lt[2]), 0.01), 0.0, 1.0)
+
+
+## The lure's name on the card and in messages ("Tyrant Lure": the Sire's first word).
+static func lure_name(k: String) -> String:
+	return String(Defs.UNITS[k]["name"]).split(" ")[0] + " Lure"
+
+
+static func lure_at(k: String) -> Vector2:
+	var a: Array = (Defs.NB["lure_at"] as Dictionary).get(k, [0, 20, 60])
+	return Vector2(float(a[0]), float(a[1]))
+
+
+static func lure_w(k: String) -> float:
+	return float(((Defs.NB["lure_at"] as Dictionary).get(k, [0, 20, 60]) as Array)[2])
+
+
+static func lure_col(k: String) -> Color:
+	var a: Array = (Defs.NB["lure_col"] as Dictionary).get(k, [0.75, 0.9, 0.2])
+	return Color(float(a[0]), float(a[1]), float(a[2]))
+
+
+static func _pic(u: Unit, nm: String) -> Node:
+	var n := u.get_node_or_null(nm)
+	return n if n != null else u.get_node_or_null(SORT + "/" + nm)
+
+
+## The lure's pictures (and the Sire's arrival), drawn by a sprite beside his own: his own sprite stays hidden until
+## his rooting frames take over.
+static func lure_look(u: Unit) -> void:
+	var s := u.sprite
+	var cs := _pic(u, COC) as Sprite2D
+	var pf := _pic(u, PUFF) as Node2D
+	if not is_lure(u):
+		if cs != null:
+			cs.queue_free()
+			cs.get_parent().remove_child(cs)
+			s.self_modulate.a = 1.0
+		if pf != null:
+			pf.queue_free()
+			pf.get_parent().remove_child(pf)
+		return
+	if cs == null:
+		cs = Sprite2D.new()
+		cs.name = COC
+		cs.centered = false
+		# (its own copy of his team shader: his strip's veterancy and venom-belly masks don't fit the lure's frames)
+		var sm := s.material as ShaderMaterial
+		if sm != null:
+			var lm := sm.duplicate() as ShaderMaterial
+			lm.set_shader_parameter("vet_style", 0)
+			lm.set_shader_parameter("venom_swap", false)
+			lm.set_shader_parameter("vet_mask", null)
+			lm.set_shader_parameter("venom_mask", null)
+			cs.material = lm
+		else:
+			cs.material = s.material
+		pic_parent(u).add_child(cs)
+		pic_parent(u).move_child(cs, s.get_index() + 1)
+	if pf == null:
+		pf = Node2D.new()
+		pf.name = PUFF
+		pf.draw.connect(_draw_puffs.bind(u, pf))
+		pic_parent(u).add_child(pf)
+		pic_parent(u).move_child(pf, cs.get_index() + 1)
+	var art := "lure_" + u.kind
+	var info: Dictionary = ArtData.UNITS[art]
+	var anc: Vector2 = info["anchor"]
+	var lt := lure_times(u.kind)
+	var el := float(u.nb["coc"])
+	var ph := lure_phase(u)
+	var ask := float(u.d.get("art_scale", 1.0))
+	var la := lure_at(u.kind) * ask
+	# THE LURE LIES ON THE FOOTPRINT: its ground in the footprint's middle, just inside its front edge (the picture's
+	# space: his feet as drawn are s.position less his rooted art's drop). His arrival art is shifted with it, and eased
+	# back onto his own feet while he stands up (the second row), so his rooting frames take over where it ends.
+	var at := s.position - Vector2(0.0, art_dy(u))
+	var r := rect_of(u)
+	var ground := Vector2(r.get_center().x, r.end.y - 6.0) - u.position + at
+	var ks := 1.0
+	var g := Vector2.ONE           # (the lure's own scale about its ground: swelling, breathing)
+	var tex := "ripe_se"
+	var fi := 0
+	var bright := 1.0
+	var puff := 0.0
+	match ph:
+		"grow":
+			var gf := el / maxf(float(lt[0]), 0.01)
+			if gf < RIPE_AT:
+				tex = "grow_se"
+				var sf := gf / RIPE_AT
+				fi = clampi(int(sf * 4.0), 0, 3)
+				g = Vector2.ONE * lerpf(0.45, 1.0, clampf(sf * 1.25, 0.0, 1.0))      # (from about a grub's size)
+				puff = clampf((sf - 0.5) * 2.0, 0.0, 1.0) * 0.6
+			else:
+				var ck := el - float(lt[0]) * RIPE_AT
+				var b := sin(ck * TAU / 1.6)
+				g = Vector2(1.0 - 0.015 * b, 1.0 + 0.035 * b)        # (ripe: it breathes)
+				bright = 1.0 + 0.14 * maxf(0.0, b)
+				puff = 1.0
+		"arrive":
+			tex = "arrive_se"
+			fi = clampi(int((el - float(lt[0])) / maxf(float(lt[1]), 0.01) * 12.0), 0, 11)
+			if fi >= 6:
+				ks = 1.0 - float(fi - 5) / 6.0
+			puff = clampf(1.0 - float(fi) / 3.0, 0.0, 1.0)
+		"settle":
+			tex = "arrive_se"
+			fi = 11
+			ks = 0.0
+	var tx := Game.tex("res://assets/units/%s/%s.png" % [art, tex])
+	if cs.texture != tx:
+		cs.texture = tx
+		cs.hframes = int(info["frames"][tex])
+	cs.frame = clampi(fi, 0, cs.hframes - 1)
+	cs.offset = -anc - Vector2(0.0, tx.get_height() - (info["cell"] as Vector2i).y)
+	cs.scale = g * ask
+	cs.position = s.position.lerp(ground - la * g, ks)
+	cs.self_modulate = Color(bright, bright, bright, 1.0)
+	cs.set_meta("dy", sort_dy(u))
+	var sa := 0.0
+	if ph == "settle":
+		sa = clampf(settle_f(u) / FADE, 0.0, 1.0)
+		cs.self_modulate.a = 1.0 - sa
+	s.self_modulate.a = sa
+	pf.visible = puff > 0.01
+	if pf.visible:
+		pf.set_meta("g", ground)
+		pf.set_meta("p", puff)
+		pf.queue_redraw()
+
+
+## The lure's haze in code (as well as the sheet's): soft puffs in its colour rising from its top and fading.
+static func _draw_puffs(u: Unit, n: Node2D) -> void:
+	if not is_instance_valid(u) or u.dead or not is_lure(u):
+		return
+	var gp: Vector2 = n.get_meta("g", Vector2.ZERO)
+	var st := float(n.get_meta("p", 0.0))
+	var w := lure_w(u.kind) * float(u.d.get("art_scale", 1.0))
+	var col := lure_col(u.kind)
+	var clk: float = u._bob_t + float(u.serial % 13) * 0.41
+	for i in 6:
+		var ph := fmod(clk * 0.32 + float(i) / 6.0, 1.0)
+		var p := gp + Vector2(sin(float(i) * 2.3 + ph * 3.0) * w * 0.22, -w * 0.45 - ph * w * 1.2)
+		var rad := w * (0.09 + 0.17 * ph)
+		var a := 0.32 * sin(PI * ph) * st
+		n.draw_circle(p, rad, Color(col, a * 0.6))
+		n.draw_circle(p, rad * 0.6, Color(col.lightened(0.25), a))
+
+
+## A lure killed (before or as the Sire came): it bursts and shrinks into the ground over LURE_BURST s (his own death
+## frames stay hidden: no Sire was there yet).
+const LURE_BURST := 0.9
+
+
+static func lure_dead(u: Unit) -> void:
+	var cs := _pic(u, COC) as Sprite2D
+	var pf := _pic(u, PUFF) as Node2D
+	if pf != null:
+		pf.visible = false
+	if cs == null:
+		return
+	if lure_phase(u) == "grow":
+		u.sprite.visible = false          # (no Sire had come: none to die)
+	if not cs.has_meta("d0"):
+		cs.set_meta("d0", Time.get_ticks_msec())
+		if cs.get_parent() == u:
+			cs.position.y += float(cs.get_meta("dy", 0.0))       # (out of the building layer's node: drawn where it was)
+		cs.set_meta("s0", cs.scale)
+	var f := clampf(float(Time.get_ticks_msec() - int(cs.get_meta("d0"))) / 1000.0 / LURE_BURST, 0.0, 1.0)
+	var s0: Vector2 = cs.get_meta("s0")
+	cs.scale = Vector2(s0.x * (1.0 + 0.25 * f), s0.y * (1.0 - 0.75 * f))
+	cs.self_modulate = Color(1.0 + 0.5 * (1.0 - f), 1.0, 1.0, 1.0 - f)
+	if f >= 1.0:
+		cs.visible = false
 
 
 # ------------------------------------------------------------------ the ghost and the father's ring (Game overlay)
@@ -840,6 +1082,16 @@ static func draw_ghost(g: Game, ov: Node2D, k: String, c: Vector2i, sc := 1.0) -
 		if frames.has(s):
 			strip = s
 			break
+	if BroodNew.is_father(k) and (mover == null or mover.kind == "grub") and ArtData.UNITS.has("lure_" + k):
+		# a grub's BUILD: his ripe LURE on the footprint (lure_look's place), not the Sire himself
+		var li: Dictionary = ArtData.UNITS["lure_" + k]
+		var ltx := Game.tex("res://assets/units/lure_%s/ripe_se.png" % k)
+		var lsk := float(Defs.UNITS[k].get("art_scale", 1.0))
+		var lg := Vector2(r.get_center().x, r.end.y - 6.0) - lure_at(k) * lsk
+		var lcell: Vector2i = li["cell"]
+		ov.draw_texture_rect(ltx, Rect2(lg - Vector2(li["anchor"]) * lsk - Vector2(0, ltx.get_height() - lcell.y) * lsk, Vector2(ltx.get_size()) * lsk),
+			false, Color(1, 1, 1, 0.6) if ok else Color(1, 0.5, 0.5, 0.5))
+		strip = ""
 	if strip != "":
 		var tx := Game.tex("res://assets/units/%s/%s.png" % [art, strip])
 		var n := int(frames[strip])

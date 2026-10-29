@@ -39,6 +39,9 @@ extends SceneTree
 ##     its price, the moult (can't move or fight, supply held), then the Challenger with its kills and health share; a
 ##     group as far as the food allows; both Challengers fight (the Venom one splashes); the MATURE button; the Mother's
 ##     own art at each stage; the computer matures
+##  20. THE SIRE LURES (the owner, 2026-10-29 18:03-18:31): a grub swells into a Sire's lure, ripens, the Sire arrives
+##     and nests on its spot, his eggs in front of his footprint, a lure killed early, one Sire at a time counts the
+##     lure, the computer's Sire through a lure, a match saved mid-lure and continued
 ## Prints PASS / FAIL lines and "brood_new: N failures".
 var main: Node
 var t := 0.0
@@ -209,7 +212,8 @@ func _run() -> void:
 	q.cmd_lay("raptor")
 	await wait(0.1)
 	var re: Unit = mine(BroodNew.EGG).back()
-	check(re != null and int(re.nb["fert"]) == 1 and bool(re.nb.get("nest", false)) and re.position.distance_to(BroodNew.nest_point(f)) < 2.0, "   the Raptor egg goes into his nest")
+	check(re != null and int(re.nb["fert"]) == 1 and bool(re.nb.get("nest", false)) and re.position.distance_to(BroodNew.nest_point(f)) < 2.0 \
+			and re.position.y > BroodRoot.rect_of(f).end.y and re.z_index == BroodNew.EGG_Z and re.sprite.visible, "   the Raptor egg goes into his nest: IN FRONT of his footprint, seen, on the top layer")
 	q.cmd_lay("raptor")
 	await wait(0.1)
 	check(BroodNew.nest_eggs(g, f).size() == 2, "   a second one: 2 eggs in the nest (%d)" % BroodNew.nest_eggs(g, f).size())
@@ -523,6 +527,7 @@ func _run() -> void:
 	await _rooted_art(q)
 	await _fathers(q, p)
 	await _mature(q, p)
+	await _lures(q, p)
 	# 8. killing the Mother loses
 	q.take_damage(999999.0, null)
 	var out: bool = await wait_for(func() -> bool: return bool(g.eliminated[0]), 3.0)
@@ -546,6 +551,7 @@ func _run() -> void:
 			"   continued: the side is still the new Brood, its Mother rooted with her eggs (%s)" % (str(q2.nb.get("eggs")) if q2 else "none"))
 		check(rooted2 == maws_rooted and not g.nb_spots.is_empty(), "   its rooted Rootmaws (%d of %d) and their ground" % [rooted2, maws_rooted])
 		check(g.buildings.filter(func(b) -> bool: return b.team == 0).is_empty() and not bool(g.eliminated[0]), "   no buildings, and not out")
+	await _lure_resumed()
 	print("brood_new: %d failures" % fails)
 	quit(1 if fails > 0 else 0)
 
@@ -1083,7 +1089,9 @@ func _rooted_art(q: Unit) -> void:
 		check(fr != null and u.sprite.get_parent() == srt and fr.get_index() < u.sprite.get_index(), "    its selection frame is drawn under its pictures")
 	check(absf(BroodRoot.drop_for(BroodNew.TURTLE) - BroodRoot.drop(tu)) < 0.5 and absf(BroodRoot.drop_for(BroodNew.FATHER) - BroodRoot.drop(f)) < 0.5,
 		"    the ROOT ghost draws the rooted picture as low (%.0f, %.0f px)" % [BroodRoot.drop_for(BroodNew.TURTLE), BroodRoot.drop_for(BroodNew.FATHER)])
-	check(BroodNew.nest_point(f).distance_to(f.position + BroodNew.nest_at(f.kind) + Vector2(0, BroodRoot.drop(f))) < 0.5, "    his nest point moved with his nest's picture")
+	var fr2 := BroodRoot.rect_of(f)
+	check(absf(BroodNew.nest_point(f).y - fr2.end.y - BroodNew.NEST_FRONT) < 0.5 and absf(BroodNew.nest_point(f).x - fr2.get_center().x) < 0.5,
+		"    his eggs' row lies just in front of his footprint (the owner, 18:31)")
 	# the Mother at stage 3: her bigger footprint, her art on its bottom edge
 	var st0 := BroodNew.stage(q)
 	for u in made:
@@ -1225,7 +1233,7 @@ func _fathers(q: Unit, p: Dictionary) -> void:
 	for e in new_eggs:
 		var fk2 := BroodNew.father_of(String(e.nb["k"]))
 		var f2: Unit = made[fk2]
-		if bool(e.nb.get("nest", false)) and e.position.distance_to(BroodNew.nest_point(f2)) < 3.0:
+		if bool(e.nb.get("nest", false)) and e.position.distance_to(BroodNew.nest_point(f2)) < BroodNew.NEST_GAP * 3.0 and e.position.y > BroodRoot.rect_of(f2).end.y:
 			right += 1
 	check(why == "" and new_eggs.size() == 5 and right == 5, "    5 eggs (2 Spitters, a Toad, a Skywing, Raptors): each in its own father's nest (%d of %d) %s" % [right, new_eggs.size(), why])
 	check(BroodNew.nest_eggs(g, di).size() == 3 and BroodNew.nest_eggs(g, pt).size() == 1 and BroodNew.nest_eggs(g, tr).size() == 1,
@@ -1377,6 +1385,155 @@ func _mature(q: Unit, p: Dictionary) -> void:
 	ai.free()
 	q.nb["stage"] = st0
 	BroodNew.apply_stage(q)
+
+
+## 20. THE SIRE LURES (the owner, 2026-10-29 18:03-18:31; docs/sire_lure.md): a grub turns into a Sire's LURE, not into
+## the grown Sire: rooted, its footprint, not working, the lure's pictures, his card name; one Sire at a time counts
+## the lure; the same total time (grow, ~2.6 s arrival, settle); ripe, it pulses; the Sire arrives in its animation and
+## nests on its spot; his eggs lie in front of his footprint; a lure killed early (no refund, its ground free, another
+## may grow); the computer makes a Sire through a lure; a match saved mid-lure (resumed at the end of the run).
+var lure_saved = null
+var lure_spot := Vector2.ZERO
+var lure_coc := 0.0
+
+
+func _lures(q: Unit, p: Dictionary) -> void:
+	var T := Defs.TILE
+	for fk0 in BroodNew.FATHERS:
+		for u in mine(fk0):
+			g.consume_unit(u)
+	for u in mine(BroodNew.EGG):
+		g.consume_unit(u)
+	p["gold"] = 5000
+	p["res2"] = 500.0
+	var tsup := BroodRoot.cocoon(g, 0, BroodNew.TURTLE, free_spot(BroodNew.TURTLE, q.position, 16.0))
+	tsup.nb.erase("coc")               # (a rooted turtle: supply)
+	BroodNew.recount(g, 0)
+	while mine("grub").size() < 12:
+		g._add_unit("grub", 0, spot_near(q.position, 6.0))
+	await wait(0.2)
+	var fk := BroodNew.DILO
+	var spot := _father_spot(q, fk, 0.9)
+	var gold0 := int(g.stats[0]["spent"])
+	var gr: Unit = mine("grub").filter(func(u) -> bool: return u.order != "nb_morph")[0]
+	gr.give({"o": "nb_morph", "k": fk, "p": spot})
+	var grown: bool = await wait_for(func() -> bool: return mine(fk).size() == 1, 25.0)
+	var lu: Unit = mine(fk)[0] if grown else null
+	check(grown and BroodRoot.is_lure(lu) and BroodRoot.lure_phase(lu) == "grow" and lu.position.distance_to(BroodRoot.snap(fk, spot)) < 1.0
+		and BroodRoot.has_fp(lu) and not BroodNew.rooted(lu) and int(g.stats[0]["spent"]) - gold0 == int(g.unit_price(0, fk)[0]),
+		"20. a grub walks to the spot, pays %d and swells into the Venom Sire's LURE there: rooted (its footprint), not working" % (int(g.stats[0]["spent"]) - gold0))
+	if not grown:
+		return
+	await wait(0.2)
+	var cs := BroodRoot._pic(lu, BroodRoot.COC) as Sprite2D
+	check(cs != null and cs.texture != null and cs.texture.resource_path.ends_with("lure_dilophosaurus/grow_se.png") and lu.sprite.self_modulate.a < 0.01
+		and String(BroodNew.progress(g, lu).get("label", "")) == "LURE RIPENING" and BroodRoot.lure_name(fk) == "Venom Lure",
+		"    the lure's growing pictures, the Sire not seen yet; LURE RIPENING; named %s" % BroodRoot.lure_name(fk))
+	check(BroodRoot.morph_problem(g, 0, fk).begins_with("Only one") and BroodNew.lay_problem(g, q, "spitter").contains("rooted"),
+		"    one Sire at a time: his lure counts (%s); it fathers nothing yet" % BroodRoot.morph_problem(g, 0, fk))
+	var lt := BroodRoot.lure_times(fk)
+	check(absf(float(lt[0]) + float(lt[1]) + float(lt[2]) - BroodNew.egg_time(fk)) < 0.01 and float(lt[1]) >= 2.0 and float(lt[1]) <= 3.0,
+		"    the old morph's time in all (%d s): the lure %.1f s, his arrival %.1f s, settling %.1f s" % [int(BroodNew.egg_time(fk)), float(lt[0]), float(lt[1]), float(lt[2])])
+	lu.nb["coc"] = float(lt[0]) * 0.9
+	await wait(0.15)
+	cs = BroodRoot._pic(lu, BroodRoot.COC) as Sprite2D
+	var s1 := cs.scale if cs else Vector2.ZERO
+	await wait(0.4)
+	check(cs != null and cs.texture.resource_path.ends_with("ripe_se.png") and cs.scale != s1, "    ripe: the ripe lure, breathing (%s -> %s)" % [str(s1), str(cs.scale if cs else Vector2.ZERO)])
+	# a match saved now (mid-lure): resumed at the end of the run
+	lure_spot = lu.position
+	lure_coc = float(lu.nb["coc"])
+	lure_saved = JSON.parse_string(JSON.stringify(SaveGame.capture(g, main.last_cfg)))
+	# the arrival
+	lu.nb["coc"] = float(lt[0]) - 0.05
+	await wait(0.4)
+	cs = BroodRoot._pic(lu, BroodRoot.COC) as Sprite2D
+	check(BroodRoot.lure_phase(lu) == "arrive" and String(BroodNew.progress(g, lu).get("label", "")) == "THE SIRE ARRIVES" and cs != null
+		and cs.texture.resource_path.ends_with("arrive_se.png") and cs.hframes == 12 and lu.sprite.self_modulate.a < 0.01,
+		"    ripe: the Sire ARRIVES in the lure's animation (12 frames; frame %d)" % (cs.frame if cs else -1))
+	var opened: bool = await wait_for(func() -> bool: return not BroodRoot.in_cocoon(lu), float(lt[1]) + float(lt[2]) + 2.0)
+	await wait(0.1)
+	check(opened and BroodNew.rooted(lu) and lu.position.distance_to(BroodRoot.snap(fk, spot)) < 1.0 and BroodNew.father_near(g, 0, fk)
+		and lu.sprite.self_modulate.a > 0.99 and BroodRoot._pic(lu, BroodRoot.COC) == null and BroodRoot._pic(lu, BroodRoot.PUFF) == null,
+		"    he ate the lure and nests on its spot: rooted beside her, seen, the lure's pictures gone")
+	# his eggs in front of his footprint
+	q.nb["eggs"] = BroodNew.eggs_max(q)
+	var w1: String = q.cmd_lay("spitter")
+	var w2: String = q.cmd_lay("spitter")
+	await wait(0.1)
+	var ne: Array = BroodNew.nest_eggs(g, lu)
+	var fr := BroodRoot.rect_of(lu)
+	var front := ne.filter(func(e) -> bool: return e.position.y > fr.end.y and e.position.y < fr.end.y + 2.0 * T and absf(e.position.x - fr.get_center().x) < fr.size.x * 0.5 and e.sprite.visible and e.z_index == BroodNew.EGG_Z)
+	check(w1 == "" and w2 == "" and ne.size() == 2 and front.size() == 2 and ne[0].position.distance_to(ne[1].position) >= BroodNew.NEST_GAP - 0.5,
+		"    his eggs lie IN FRONT of his footprint, side by side, seen on the top layer (%d of %d) %s %s" % [front.size(), ne.size(), w1, w2])
+	var fert: bool = await wait_for(func() -> bool: return ne.all(func(e) -> bool: return e.dead or int(e.nb.get("fert", 0)) == 2), float(Defs.NB["fert_time"]) + 1.0)
+	check(fert and BroodNew.producing(g, lu), "    he fertilises them there, in his production loop")
+	for e in mine(BroodNew.EGG):
+		g.consume_unit(e)
+	# a lure killed early: no refund, its ground free, another may grow
+	var gr2: Unit = mine("grub").filter(func(u) -> bool: return u.order != "nb_morph")[0]
+	var spot2 := _father_spot(q, BroodNew.FATHER, 3.6)
+	gr2.give({"o": "nb_morph", "k": BroodNew.FATHER, "p": spot2})
+	var g2: bool = await wait_for(func() -> bool: return mine(BroodNew.FATHER).size() == 1, 25.0)
+	if g2:
+		var l2: Unit = mine(BroodNew.FATHER)[0]
+		var mid := BroodRoot.rect_of(l2).get_center()
+		var gold1 := int(p["gold"])
+		check(BroodRoot.is_lure(l2) and l2.hp < l2.max_hp * 0.5 and BroodNew.progress(g, l2).get("label") == "LURE RIPENING", "    a Tyrant Lure grows (health %d of %d: it grows with it)" % [int(l2.hp), int(l2.max_hp)])
+		l2.take_damage(99999.0, null)
+		await wait(0.3)
+		check(l2.dead and BroodNew.count_of(g, 0, BroodNew.FATHER) == 0 and BroodRoot.morph_problem(g, 0, BroodNew.FATHER) == "" and int(p["gold"]) - gold1 < 40
+			and g.solid[g.idx(g.cell_of(mid))] == 0,
+			"    killed before he came: the lure is lost (no refund, as a cocoon: food %+d), its ground free, another may grow (%s)" % [int(p["gold"]) - gold1, BroodRoot.morph_problem(g, 0, BroodNew.FATHER)])
+		var lc := BroodRoot._pic(l2, BroodRoot.COC) as Sprite2D if is_instance_valid(l2) else null
+		check(lc == null or lc.has_meta("d0"), "    the dead lure bursts (its picture shrinks away)")
+	else:
+		check(false, "    the grub never grew the Tyrant Lure")
+	# the computer makes a Sire through a lure
+	while BroodNew.count_of(g, 0, BroodNew.MAW) < 2:
+		var mm := BroodRoot.cocoon(g, 0, BroodNew.MAW, free_spot(BroodNew.MAW, q.position, 12.0, null, false))
+		mm.nb.erase("coc")
+	while mine("grub").size() < 12:
+		g._add_unit("grub", 0, spot_near(q.position, 6.0))
+	var ai = AIBroodNew.new()
+	ai.game = g
+	ai.team = 0
+	ai._nb_morphs(q)
+	var ag: bool = await wait_for(func() -> bool: return mine(BroodNew.FATHER).filter(func(u) -> bool: return not u.dead).size() == 1, 25.0)
+	var al: Array = mine(BroodNew.FATHER).filter(func(u) -> bool: return not u.dead)
+	check(ag and BroodRoot.is_lure(al[0]), "    the computer makes its Tyrant Sire through a lure too")
+	ai.free()
+	for fk0 in BroodNew.FATHERS:
+		for u in mine(fk0):
+			g.consume_unit(u)
+
+
+## The match saved mid-lure, resumed: the lure is still there, as far on, its ground taken; it ripens and he comes.
+func _lure_resumed() -> void:
+	if not (lure_saved is Dictionary) or (lure_saved as Dictionary).is_empty():
+		check(false, "20. the match saved mid-lure")
+		return
+	var cfg: Dictionary = (lure_saved["cfg"] as Dictionary).duplicate(true)
+	cfg["resume"] = lure_saved
+	main.start(cfg)
+	await process_frame
+	await process_frame
+	g = main.game
+	for ai in g.ais:
+		ai.process_mode = Node.PROCESS_MODE_DISABLED
+	if g.hud:
+		g.hud.countdown = 0.0
+	await wait(0.5)
+	var l: Array = g.units.filter(func(u) -> bool: return u.team == 0 and not u.dead and u.kind == BroodNew.DILO)
+	var lu: Unit = l[0] if not l.is_empty() else null
+	check(lu != null and BroodRoot.is_lure(lu) and lu.position.distance_to(lure_spot) < 1.0 and BroodRoot.has_fp(lu)
+		and absf(float(lu.nb["coc"]) - lure_coc) < 2.0 and g.solid[g.idx(g.cell_of(BroodRoot.rect_of(lu).get_center()))] != 0,
+		"20. saved mid-lure and continued: the Venom Lure there, as ripe (%.1f s, was %.1f s), its ground taken" % [float(lu.nb.get("coc", -1.0)) if lu else -1.0, lure_coc])
+	if lu == null:
+		return
+	lu.nb["coc"] = BroodRoot.cocoon_time(lu) - 0.5
+	var opened: bool = await wait_for(func() -> bool: return not BroodRoot.in_cocoon(lu), 3.0)
+	check(opened and BroodNew.rooted(lu), "    then he comes and nests there")
 
 
 func _father_spot(q: Unit, k: String, a: float) -> Vector2:

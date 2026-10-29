@@ -4,6 +4,12 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.19.0", "items": [
+		"THE SIRE LURES: a grub no longer turns into a grown Sire. Picked on a grub's BUILD card, it roots and swells into the Sire's LURE, a living pheromone gland (the Tyrant's red and spiked, the Venom's yellow-green, the Storm's with a crest-fin in a blue haze). When it is ripe the Sire arrives, eats it and nests on its spot. The same cost and time as before, one Sire of each kind (a lure counts as its Sire), and the computer makes its Sires the same way.",
+		"A lure is rooted and can be attacked: killed before the Sire comes, it is lost (no refund) and another can grow at once. Its card reads Tyrant, Venom or Storm Lure and its bar LURE RIPENING, then THE SIRE ARRIVES; his roar is the cue.",
+		"THE SIRES' EGGS IN FRONT: the eggs a Sire fertilises now lie in a row just in front of his nest, seen at once and drawn on top (as the Brood Mother's), reddening under his breath and hatching there, while he keeps his fertilising animation.",
+		"ART: the designer's lure and arrival sheets for the three Sires: the grub swelling into the lure, the ripe lure pulsing in its haze, and each Sire's 12-frame arrival.",
+	]},
 	{"v": "0.18.2", "items": [
 		"THE VENOM LINE'S NEW COLOURS: the Spitter, the Venom Challenger and the Venom Sire keep their olive scales and wear the team colour on their spikes and frill (as the rest of the Brood), on their belly (throat, chest, belly and the underside of the tail) and on a stripe of scales along the middle of each flank. The whole body in the team colour was too much.",
 	]},

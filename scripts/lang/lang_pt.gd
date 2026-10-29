@@ -2995,4 +2995,13 @@ const T := {
 	"YOUR SAVED MATCH CAN'T BE CONTINUED.": "NÃO DÁ PARA CONTINUAR A SUA PARTIDA SALVA.",
 	"TAP WHERE NEW WORKERS GO TO WORK": "TOQUE ONDE OS NOVOS TRABALHADORES VÃO TRABALHAR",
 	"THEN PICK WHERE NEW WORKERS GO TO WORK.": "DEPOIS ESCOLHA ONDE OS NOVOS TRABALHADORES VÃO TRABALHAR.",
+	"Tyrant Lure": "Isca Tirana",
+	"Venom Lure": "Isca do Veneno",
+	"Storm Lure": "Isca da Tempestade",
+	"LURE RIPENING": "ISCA AMADURECENDO",
+	"THE SIRE ARRIVES": "O SIRE CHEGA",
+	"LURE %ds": "ISCA %ds",
+	"A grub's lure calls the %s: he comes, eats it and nests there in %d s.": "A isca de uma larva chama o %s: ele vem, a come e faz o ninho ali em %d s.",
+	"Pick where his lure grows: a grub walks there, pays and swells into a lure; ripe, the %s comes, eats it and nests there (%d s in all).": "Escolha onde a isca dele cresce: uma larva vai até lá, paga e incha numa isca; madura, o %s vem, a come e faz o ninho ali (%d s ao todo).",
+	"The %s came to the lure and ate it: he is yours, on his nest.": "O %s veio à isca e a comeu: ele é seu, no ninho.",
 }
