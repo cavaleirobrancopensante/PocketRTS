@@ -38,9 +38,9 @@ const WORDS := {
 ##   The kegs a second come from its recent powder use (Unit.powder_out: the shots it handed out over the last
 ##   USE_WINDOW s, read as a rate over at least USE_MIN s, at Defs.WAGON "keg" shots a keg); the round trip is the walk
 ##   from the nearest Powder Mill to the wagon and back at the Labourer's speed (straight line x PATH for the way round
-##   things) plus Defs.WAGON "keg_load". At least 1 for a wagon that is being drawn from; at most the kegs its store
-##   holds (Defs.WAGON store / keg: 4). THE SAME NEED SENDS THE KEGS: Game.keg_requests puts that many on the way
-##   (the owner, 08:00: no limit of kegs in flight but the wagon's room).
+##   things) plus Defs.WAGON "keg_load". At least 1 for a wagon that is being drawn from. THE SAME NEED SENDS THE KEGS:
+##   Game.keg_requests puts that many on the way (the owner, 08:00 and 08:05: no limit of kegs in flight, not even the
+##   wagon's room: a hauler who finds it full waits by it, keg in hand, Unit._haul_keg "wait_room").
 ## Each counts for its nearest Town Hall. The sum is rounded up (a little slack: ROUND_SLACK) and capped at the hall's
 ## "haulers" (6). It is worked out every UPDATE s and smoothed: it rises at once, and falls only after it has stayed lower
 ## for DROP_AFTER updates in a row, so the label does not flicker.
@@ -111,11 +111,6 @@ static func use_rate(g: Game, w: Unit) -> float:
 	return out / maxf(USE_MIN, g.clock - float(first[0]))
 
 
-## The kegs a Powder Wagon's store holds (the most that can be on the way to it at once).
-static func store_kegs() -> float:
-	return floorf(float(Defs.WAGON["store"]) / float(Defs.WAGON["keg"]))
-
-
 ## A wagon's need in haulers (fractional) and what it rests on: {need, rate (kegs/s), dist (tiles), trip (s)}.
 static func wagon_need(g: Game, w: Unit) -> Dictionary:
 	var r := {"need": 0.0, "want": 0.0, "rate": 0.0, "dist": 0.0, "trip": 0.0}
@@ -137,7 +132,7 @@ static func wagon_need(g: Game, w: Unit) -> Dictionary:
 	r["trip"] = 2.0 * bd * PATH / float(Defs.UNITS["labourer"]["speed"]) + float(Defs.WAGON["keg_load"])
 	if shots > 0.0:
 		r["want"] = float(r["rate"]) * float(r["trip"])        # (what it would take without the kegs-in-flight limit)
-		r["need"] = clampf(float(r["want"]), 1.0, store_kegs())
+		r["need"] = maxf(float(r["want"]), 1.0)
 	return r
 
 
@@ -430,7 +425,7 @@ static func _tip_haulers(g: Game, b: Building) -> Dictionary:
 	if hs.size() > need:
 		hint += " " + Loc.t("More haulers than needed: the spare Labourers could be farming.")
 	return {"title": Loc.t("Haulers: %d assigned, %d needed") % [hs.size(), need], "stats": st,
-		"body": Loc.t("Haulers are Labourers you right-click onto the Town Hall. They lead new horses from the Horse Breeder to the Barracks or Foundry, bring spare horses to guns and wagons short of a team, and carry powder kegs from a Powder Mill to Powder Wagons on SUPPLY. The base can use 1 for each Horse Breeder, and for each wagon on SUPPLY that is being drawn from as many as keep its kegs coming: the kegs it uses a second x the walk from the Mill and back (at least 1, at most %d: the kegs its store holds). Up to %d in all.") % [int(store_kegs()), b.haul_cap()],
+		"body": Loc.t("Haulers are Labourers you right-click onto the Town Hall. They lead new horses from the Horse Breeder to the Barracks or Foundry, bring spare horses to guns and wagons short of a team, and carry powder kegs from a Powder Mill to Powder Wagons on SUPPLY. The base can use 1 for each Horse Breeder, and for each wagon on SUPPLY that is being drawn from as many as keep its kegs coming: the kegs it uses a second x the walk from the Mill and back (at least 1). A hauler who finds the wagon full waits by it, following it with his keg, and hands it over when there is room. Up to %d in all.") % b.haul_cap(),
 		"hint": hint}
 
 

@@ -481,6 +481,10 @@ func _clear_world() -> void:
 	g.units.clear()
 	g.buildings.clear()
 	g.crates.clear()
+	for k in g.kegs:
+		if is_instance_valid(k):
+			k.queue_free()
+	g.kegs.clear()
 	g.selection.clear()
 	g.bodies.clear()
 	for grp in g.groups:

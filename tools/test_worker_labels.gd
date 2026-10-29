@@ -7,7 +7,7 @@ extends SceneTree
 ##  2. HAULERS reads assigned / needed (the owner's rule): 0 with nothing to haul; a near wagon at low use 1; a far wagon
 ##     at heavy use several (2: the kegs-in-flight limit); a Horse Breeder +1; smoothed; capped at the hall's 6; the
 ##     colours (grey 0/0, white under, green at, orange over);
-##  2b. the game rule: a far wagon under heavy use gets more than 2 kegs on the way at once, never more than its room;
+##  2b. the game rule: a far wagon under heavy use gets more than 2 kegs on the way at once; a full idle wagon none;
 ##  3. resting the mouse on a label gives the label's tooltip (HUD._hover_at -> _tip_of) and a click there still
 ##     picks the building (Game.entity_at).
 ## Prints PASS / FAIL lines and "worker_labels: N failures".
@@ -142,29 +142,30 @@ func _run() -> void:
 	near.supplying = false
 	WorkerLabels.update(g, true)
 	check(WorkerLabels.hauler_need(g, hall) == 0, "  off SUPPLY it counts nothing (%d)" % WorkerLabels.hauler_need(g, hall))
-	# a far wagon (28 tiles) under heavy use: 300 shots in 25 s (a line of Musketeers refilling)
+	# a far wagon (28 tiles) under heavy use: 120 shots in 25 s (a line of Musketeers refilling)
 	var far: Unit = g._add_unit("powder_wagon", crown, mill0.center() + toward * 28.0 * Game.T)
 	far.supplying = true
 	WorkerLabels._st(g)["use"][far.get_instance_id()] = [[g.clock - 25.0, 0.0]]
-	far.powder_out = 300.0
+	far.powder_out = 120.0
 	WorkerLabels.update(g, true)
 	var wf: Dictionary = WorkerLabels.wagon_need(g, far)
-	check(WorkerLabels.hauler_need(g, hall) == int(WorkerLabels.store_kegs()) and float(wf["want"]) > 3.0,
-		"a far wagon at heavy use: %d (it would take %.1f, capped at the %d kegs its store holds; %.1f tiles, trip %.1f s, a keg every %.1f s)" % [
-			WorkerLabels.hauler_need(g, hall), wf["want"], int(WorkerLabels.store_kegs()), wf["dist"], wf["trip"], 1.0 / float(wf["rate"])])
+	var kf := ceili(float(wf["want"]) - WorkerLabels.ROUND_SLACK)
+	check(WorkerLabels.hauler_need(g, hall) == kf and kf >= 3 and kf <= 5,
+		"a far wagon at heavy use: %d (%.1f tiles, trip %.1f s, a keg every %.1f s: %.1f haulers)" % [
+			WorkerLabels.hauler_need(g, hall), wf["dist"], wf["trip"], 1.0 / float(wf["rate"]), wf["want"]])
 	var br := _put(crown, "horse_breeder")
 	WorkerLabels.update(g, true)
-	check(br != null and WorkerLabels.hauler_need(g, hall) == int(WorkerLabels.store_kegs()) + 1, "  and a Horse Breeder: +1 (%d)" % WorkerLabels.hauler_need(g, hall))
+	check(br != null and WorkerLabels.hauler_need(g, hall) == kf + 1, "  and a Horse Breeder: +1 (%d)" % WorkerLabels.hauler_need(g, hall))
 	Loc.set_lang("en")
 	var hint := String(WorkerLabels.tip(g, hall).get("hint", ""))
-	check(hint.begins_with("Needed %d: 1 for the Horse Breeder(s); %d for powder: 1 wagon(s) about" % [int(WorkerLabels.store_kegs()) + 1, int(WorkerLabels.store_kegs())]), "  the tooltip explains the parts: %s" % hint)
+	check(hint.begins_with("Needed %d: 1 for the Horse Breeder(s); %d for powder: 1 wagon(s) about" % [kf + 1, kf]), "  the tooltip explains the parts: %s" % hint)
 	# smoothing: the far wagon goes quiet; the number holds for a few updates, then falls
 	WorkerLabels._st(g)["use"][far.get_instance_id()] = [[g.clock - 25.0, far.powder_out]]
 	var seen: Array = []
 	for i in WorkerLabels.DROP_AFTER + 1:
 		WorkerLabels.update(g)
 		seen.append(WorkerLabels.hauler_need(g, hall))
-	check(seen[0] == int(WorkerLabels.store_kegs()) + 1 and seen.back() == 1, "  smoothed: a quiet wagon's haulers stay counted for %d updates (%s), then drop" % [WorkerLabels.DROP_AFTER, seen])
+	check(seen[0] == kf + 1 and seen.back() == 1, "  smoothed: a quiet wagon's haulers stay counted for %d updates (%s), then drop" % [WorkerLabels.DROP_AFTER, seen])
 	for i in 6:
 		_put(crown, "horse_breeder")
 	WorkerLabels.update(g, true)
@@ -182,36 +183,36 @@ func _run() -> void:
 	check(String(hl["count"]) == "%d/6" % hall.haulers().size() and hall.haulers().size() == 2, "two haulers assigned: HAULERS %s" % hl["count"])
 	check(String(WorkerLabels.tip(g, hall)["stats"]).contains("of 2 free"), "  the tooltip says how many are free (%s)" % WorkerLabels.tip(g, hall)["stats"])
 
-	# --- 2b. THE GAME RULE (the owner, 08:00): no limit of kegs in flight but the wagon's room. Six haulers; the far
-	# wagon, empty and under heavy use, gets more than 2 kegs on the way at once; a nearly full one never more than its room.
+	# --- 2b. THE GAME RULE (the owner, 08:00 / 08:05): kegs go by the powder need, no limit of kegs in flight, not even
+	# the wagon's room. Six haulers; the far wagon under heavy use gets more than 2 kegs on the way at once (more than its
+	# room once it fills: they wait by it); a full wagon nobody draws from pulls none.
 	for i in 4:
 		var lb: Unit = g._add_unit("labourer", crown, hall.center() + Vector2(-40 + 20 * i, 90))
 		lb.cmd_gather(hall)
-	var full: Unit = g._add_unit("powder_wagon", crown, far.position + Vector2(0, 90))
-	full.supplying = true
-	full.powder = float(Defs.WAGON["store"]) - float(Defs.WAGON["keg"]) - 5.0      # (room for one keg)
+	var idle: Unit = g._add_unit("powder_wagon", crown, far.position + Vector2(0, 90))
+	idle.supplying = true
+	idle.powder = float(Defs.WAGON["store"])          # (full, and nobody draws from it)
 	far.powder = 0.0
 	g.players[crown]["res2"] = 2000.0
 	var most_far := 0
-	var over := false
+	var idle_most := 0
 	for k in 8:
-		for wg in [far, full]:
-			WorkerLabels._st(g)["use"][wg.get_instance_id()] = [[g.clock - 25.0, wg.powder_out - 300.0]]   # (heavy use, kept up)
+		WorkerLabels._st(g)["use"][far.get_instance_id()] = [[g.clock - 25.0, far.powder_out - 300.0]]   # (heavy use, kept up)
 		await wait(0.5)
-		for wg in [far, full]:
+		for wg in [far, idle]:
 			var fl: int = g.haulers_of(crown).filter(func(u: Unit) -> bool: return String(u.haul_job.get("k", "")) == "keg" and u.haul_job.get("wagon") == wg).size()
 			if wg == far:
 				most_far = maxi(most_far, fl)
-			if wg.powder + fl * float(Defs.WAGON["keg"]) > float(Defs.WAGON["store"]) + 0.01:
-				over = true
-	print("  haulers %d; kegs on the way to the far wagon at most %d" % [g.haulers_of(crown).size(), most_far])
-	check(most_far > 2 and most_far <= int(WorkerLabels.store_kegs()), "a far wagon under heavy use gets more than 2 kegs on the way at once (%d)" % most_far)
-	check(not over, "  and no wagon ever has more on the way than it has room for")
-	for wg in [far, full, near]:
+			else:
+				idle_most = maxi(idle_most, fl)
+	print("  haulers %d; kegs on the way to the far wagon at most %d (need %.1f)" % [g.haulers_of(crown).size(), most_far, float(WorkerLabels.wagon_need(g, far)["want"])])
+	check(most_far > 2, "a far wagon under heavy use gets more than 2 kegs on the way at once (%d)" % most_far)
+	check(idle_most == 0, "  a full wagon nobody draws from pulls no kegs (%d)" % idle_most)
+	for wg in [far, idle, near]:
 		wg.supplying = false
 	for u in g.haulers_of(crown):
-		u.haul_job = {}
 		u.keg = false
+		u.haul_job = {}
 
 	# --- 1. every crewed kind of every faction
 	_check_label(hall, "HAULERS", "Crown Town Hall")

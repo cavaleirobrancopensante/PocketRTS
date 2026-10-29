@@ -121,7 +121,8 @@ const HAUL := {"horses": 4, "scan": 0.5, "batch": 8.0, "reach": 30.0}
 const BALLOON := {"store": 40, "keg": 10, "haul": 3.0, "reach": 2.0}
 ## A labourer killed with a keg on his back: a small blast (friends included).
 ## (Step 3, keg mines, will reuse the keg carry and Game.powder_blast.)
-const KEG := {"blast": 40.0, "radius": 48.0}
+## A dropped keg on the ground (PowderKeg): `hp` health; it blows up with the same blast, scaled by the powder left.
+const KEG := {"blast": 40.0, "radius": 48.0, "hp": 30.0}
 # Brood: grubs haul food from Feeding Pits to a Hive; the longer the haul, the richer it is.
 ## A load pays for the time its round trip takes, at a rate that rises with the pit's
 ## distance from its Hive (centre to centre, in tiles): FOOD_RATE biomass per grub-second

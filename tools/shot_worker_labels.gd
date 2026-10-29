@@ -4,7 +4,7 @@ extends SceneTree
 ##   (phone: --resolution 915x412 ... -- out:/abs/dir phone:1)
 ## crown.png (Town Hall HAULERS, Farm FARMERS, Powder Mill POWDER MAKERS), crown_tip.png (the mouse resting on HAULERS),
 ## clockwork.png (Cog Press and Mainspring WINDERS with the %), clockwork_tip.png, brood.png (old Feeding Pit GRUBS),
-## brood_new.png (Rootmaw GRUBS), brood_new_tip.png; phone:1 writes phone_crown.png and phone_crown_tip.png (long press).
+## brood_new.png (Rootmaw GRUBS), brood_new_tip.png; dropped_keg.png (a powder keg on the ground, a Musketeer refilling); phone:1 writes phone_crown.png and phone_crown_tip.png (long press).
 var main: Node
 var out := ""
 var phone := false
@@ -152,6 +152,15 @@ func _run() -> void:
 	if farm:
 		_look(g, farm.center(), z)
 		await _tip(g, farm, "crown_farm_tip")
+	# a powder keg dropped on the ground (PowderKeg), a Musketeer refilling beside it
+	var kp: Vector2 = hall.center() + Vector2(-150, 150)
+	var kg: PowderKeg = g.drop_keg(g.human, kp, 22.0)
+	kg.hp = 20.0
+	var mus: Unit = g._add_unit("musketeer", g.human, kp + Vector2(26, 6))
+	mus.powder = 0.0
+	await _wait(g, 1.0)
+	_look(g, kp, 2.0)
+	await _snap("dropped_keg")
 	await _end()
 	# --- the Clockwork: Cog Press and Mainspring
 	g = await _start("clockwork")

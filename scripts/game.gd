@@ -118,6 +118,7 @@ var astar_siege := AStarGrid2D.new()     # walls and gates counted as open: the 
 var units: Array = []
 var buildings: Array = []
 var crates: Array = []                   # Clockwork crates dropped on the way to their sites (Crate)
+var kegs: Array = []                     # powder kegs dropped by haulers who could not deliver them (PowderKeg)
 var ghost_cells := {}                    # map index -> the ghost sites (Building.ghost) over that cell
 var base_sites: Array = []               # hall cells of every base site (all mains and expansions)
 var players: Array = []
@@ -5254,6 +5255,40 @@ func free_crate(t: int, p: Vector2, r: float) -> Crate:
 	return best
 
 
+## A hauler could not deliver his keg: it lies at `p` with `shots` in it (PowderKeg; kegs never go back into the stores).
+func drop_keg(t: int, p: Vector2, shots: float, hp := -1.0) -> PowderKeg:
+	var k := PowderKeg.new()
+	k.setup(self, t, resolve_terrain(p, p, 8.0), shots)
+	if hp > 0.0:
+		k.hp = minf(hp, k.max_hp)
+	world.add_child(k)
+	kegs.append(k)
+	if not sees_all() and not allied(t, fog_team()):
+		k.visible = false
+	return k
+
+
+## The nearest keg of side t on the ground (unclaimed, with powder) within r of p.
+func free_keg(t: int, p: Vector2, r: float) -> PowderKeg:
+	var best: PowderKeg = null
+	var bd := r
+	for k in kegs:
+		if k.team == t and not k.dead and k.claimed == null and k.powder >= 1.0:
+			var dd: float = k.position.distance_to(p)
+			if dd < bd:
+				bd = dd
+				best = k
+	return best
+
+
+## The keg on the ground under a tap.
+func keg_at(p: Vector2) -> PowderKeg:
+	for k in kegs:
+		if not k.dead and k.visible and k.rect().grow(6).has_point(p):
+			return k
+	return null
+
+
 ## The crate on the ground under a tap.
 func crate_at(p: Vector2) -> Crate:
 	for c in crates:
@@ -6325,6 +6360,14 @@ func find_target(u: Unit, r: float) -> Entity:
 			if dc <= r and dc + 60.0 < bd and side_sees(u.team, c.position):
 				bd = dc + 60.0
 				best = c
+		# an enemy powder keg on the ground: a bomb in their midst, shot when nothing that fights back is nearer
+		for k in kegs:
+			if k.dead or not hostile(k.team, u.team) or not u.can_hit(k):
+				continue
+			var dk: float = k.position.distance_to(u.position)
+			if dk <= r and dk + 90.0 < bd and side_sees(u.team, k.position):
+				bd = dk + 90.0
+				best = k
 	if careful and not picks.is_empty():
 		picks.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
 		for i in mini(picks.size(), 6):
@@ -8303,7 +8346,7 @@ func team_requests(t: int) -> Array:
 
 
 ## Powder Wagons on SUPPLY (out of reach of a filling building) whose powder use calls for more kegs than are already
-## on the way (WorkerLabels.wagon_need; the owner, 2026-10-29: no limit of kegs in flight but the wagon's room), and dry Field Cannons / Mortars that cannot limber (on HOLD, or no
+## on the way (WorkerLabels.wagon_need; the owner, 2026-10-29: no limit of kegs in flight, not even the wagon's room), and dry Field Cannons / Mortars that cannot limber (on HOLD, or no
 ## horse) and so cannot drive to a refill; the powder bank must have a keg's worth.
 func keg_requests(t: int) -> Array:
 	var out: Array = []
@@ -8321,11 +8364,16 @@ func keg_requests(t: int) -> Array:
 		if w.kind == "powder_wagon":
 			if not w.supplying or w._powder_building() != null:
 				continue
-			# as many kegs on the way as its powder use calls for (WorkerLabels.wagon_need: kegs a second x the round trip,
-			# at least 1), never more than it has room for (its store less what is in it and on the way)
-			var room := int((w.max_powder() - w.powder) / shots) - flying
-			var want := maxi(1, ceili(float(WorkerLabels.wagon_need(self, w)["want"]) - 0.05))
-			var n := mini(room, want - flying)
+			# as many kegs on the way as its powder use calls for (WorkerLabels.wagon_need: kegs a second x the round trip),
+			# whatever its room: the haulers wait by a full wagon, keg in hand (the owner, 08:05). With no recent use, one
+			# keg while it has room for one (filling up), none when it is full: an idle full wagon pulls nothing.
+			var wn := WorkerLabels.wagon_need(self, w)
+			var want := 0
+			if float(wn["rate"]) > 0.0:
+				want = maxi(1, ceili(float(wn["want"]) - 0.05))
+			elif w.max_powder() - w.powder >= shots:
+				want = 1
+			var n := want - flying
 			if n > 0:
 				out.append({"key": "k%d" % w.get_instance_id(), "k": "keg", "wagon": w, "n": n})
 		elif w.needs_keg() and flying == 0:
@@ -8407,7 +8455,13 @@ func haul_dispatch(delta: float) -> void:
 							break
 						var u3 := _nearest_free_hauler(free, (r["wagon"] as Unit).position)
 						free.erase(u3)
-						u3.begin_haul({"k": "keg", "ph": "to_mill", "wagon": r["wagon"]})
+						# a keg dropped on the ground is carried on first (PowderKeg), before a new one from the Mill
+						var pk := free_keg(t, u3.position, 60.0 * T)
+						if pk:
+							pk.claimed = u3
+							u3.begin_haul({"k": "keg", "ph": "to_pick", "pk": pk, "wagon": r["wagon"]})
+						else:
+							u3.begin_haul({"k": "keg", "ph": "to_mill", "wagon": r["wagon"]})
 	for k in _haul_seen.keys():
 		if not live.has(k):
 			_haul_seen.erase(k)
@@ -8842,6 +8896,8 @@ func _update_vis() -> void:
 			b.visible = true
 		for c in crates:
 			c.visible = true
+		for k in kegs:
+			k.visible = true
 		if line_net and line_net.rails:
 			for tr in line_net.rails.trains:
 				if is_instance_valid(tr):
@@ -8885,6 +8941,11 @@ func _update_vis() -> void:
 			c.visible = hv[idx(cell_of(c.position))] == 1
 		elif demo:
 			c.visible = true
+	for k in kegs:
+		if not allied(k.team, ft):
+			k.visible = hv[idx(cell_of(k.position))] == 1
+		elif demo:
+			k.visible = true
 	if line_net and line_net.rails:
 		for tr in line_net.rails.trains:
 			if is_instance_valid(tr):
@@ -9734,6 +9795,10 @@ func smart_command(list: Array, p: Vector2, force_move := false, queued := false
 		return
 	if cr and hostile(cr.team, us[0].team):
 		e = cr
+	if not force_move and not (e is Unit):
+		var kg := keg_at(p)
+		if kg and hostile(kg.team, us[0].team):
+			e = kg             # (an enemy powder keg on the ground: attack it, it blows up)
 	# a right click on a Farm's fields (Pit, Boiler...) usually lands on one of the men
 	# working it: workers sent there go to work the farm, not to that man
 	if e is Unit and e.team == us[0].team and us.any(func(u: Unit) -> bool: return u.can_gather()) \
@@ -9815,6 +9880,10 @@ func _smart_choice(us: Array, p: Vector2, force_move: bool) -> Array:
 		return [yellow, "other"]
 	if cr and hostile(cr.team, us[0].team):
 		e = cr
+	if not force_move and not (e is Unit):
+		var kg := keg_at(p)
+		if kg and hostile(kg.team, us[0].team):
+			e = kg             # (an enemy powder keg on the ground: attack it, it blows up)
 	if e is Unit and e.team == us[0].team and us.any(func(u: Unit) -> bool: return u.can_gather()) \
 			and not (e.hp < e.max_hp and us.any(func(u: Unit) -> bool: return u.can_repair(e))):
 		var site := crew_site_at(p, us[0].team)

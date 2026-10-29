@@ -369,7 +369,7 @@ func _kegs() -> void:
 		if wagon.powder >= 60.0:
 			break
 	check(wagon.powder >= 30.0, "kegs reached the wagon (%d shots)" % int(wagon.powder))
-	check(picked.size() == 2, "two haulers each carried a keg (never more than the room: %d carriers)" % picked.size())
+	check(picked.size() >= 1, "haulers carried kegs to it (%d carriers; nobody draws from it, so one keg on the way at a time: the need follows its use, WorkerLabels.wagon_need)" % picked.size())
 	check(farm_ok, "farm and mill workers stayed at their posts, none carried a keg")
 	check(farm.crew.size() == 3 and mill.crew.size() == 3, "crews unchanged (farm %d, mill %d)" % [farm.crew.size(), mill.crew.size()])
 	check(float(g.players[0]["res2"]) < bank0, "kegs are paid from the powder bank (%.0f -> %.0f)" % [bank0, float(g.players[0]["res2"])])
@@ -377,7 +377,7 @@ func _kegs() -> void:
 	check(wagon.powder <= wagon.max_powder() + 0.1, "never over the store (%d/%d)" % [int(wagon.powder), int(wagon.max_powder())])
 	await wait_for(func() -> bool: return haulers().all(func(u: Unit) -> bool: return u.haul_job.is_empty() and not u.keg), 60.0)
 	check(haulers().all(func(u: Unit) -> bool: return u.haul_job.is_empty() and not u.keg), "haulers are home with empty hands")
-	# a hauler pulled off mid-run puts the keg back
+	# a hauler pulled off mid-run drops the keg where he stands (PowderKeg; the owner, 2026-10-29)
 	wagon.powder = 0.0
 	await wait_for(func() -> bool: return haulers().any(func(u: Unit) -> bool: return u.keg), 40.0)
 	var carrier: Unit = null
@@ -388,7 +388,8 @@ func _kegs() -> void:
 	if carrier:
 		carrier.cmd_move(at(700, 100))
 		await physics_frame
-		check(not carrier.keg and float(g.players[0]["res2"]) > bank1, "ordered away with a keg: it goes back into the stores")
+		var dropped: Array = g.kegs.filter(func(k: PowderKeg) -> bool: return not k.dead and k.position.distance_to(carrier.position) < 40.0)
+		check(not carrier.keg and dropped.size() == 1 and float(g.players[0]["res2"]) < bank1 + 5.0, "ordered away with a keg: he drops it where he stands (never back into the stores: %d on the ground)" % dropped.size())
 		assign([carrier])
 	# the wagon stops needing: SUPPLY off, no more runs
 	wagon.set_supply(false)
