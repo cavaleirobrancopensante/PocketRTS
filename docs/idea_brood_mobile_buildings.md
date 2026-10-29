@@ -151,3 +151,4 @@ Still to settle with him (see the chat, 2026-10-28): which units root and what e
 - (2026-10-29 12:45) DECIDED (owner): Venom Sire: VIPER -> a great HOODED SERPENT (its mature form); the SPITTER stays a separate unit. Lines now: Tyrant Sire: Raptor (st.1) -> young Tyrannosaur (mature, st.2); Brute (st.3). Venom Sire: Viper (st.1) -> Hooded Serpent (mature; Claude suggests st.2 or 3, to confirm); Spitter (st.2); Mist Toad (st.3). Storm Sire: Hatchlings (st.2) -> Pterodactyl (mature, st.3).
 - (Claude, 0.16.0) BUILT: the three fathers with their lines, stages, nests and art (docs/brood_new.md "The three fathers").
 - (2026-10-29 13:58) DECIDED (owner): the Brood's second resource is renamed SPOILS (was "essence"): it comes from any body or wreck, flesh or metal, and from SACRIFICE. pt "Espólios", es "Botín".
+- (2026-10-29) the Brood's second resource is now called SPOILS (was essence); earlier entries here keep the old word.

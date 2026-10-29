@@ -60,7 +60,7 @@ LINES = {
     "Our men are out of powder.": _("Nossos homens estão sem pólvora.", "A nuestros hombres se les acabó la pólvora."),
     "A horse has been stolen!": _("Roubaram um cavalo!", "¡Han robado un caballo!"),
     "Game paused.": _("Jogo pausado.", "Juego en pausa."), "Game resumed.": _("Jogo retomado.", "Juego reanudado."),
-    "Not enough food.": _("Comida insuficiente.", "No hay suficiente comida."), "Not enough essence.": _("Essência insuficiente.", "No hay suficiente esencia."),
+    "Not enough food.": _("Comida insuficiente.", "No hay suficiente comida."), "Not enough spoils.": _("Espólios insuficientes.", "No hay suficiente botín."),
     "More clutches needed.": _("Precisamos de mais ninhadas.", "Se necesitan más nidadas."),
     "The ground rejects us.": _("O chão nos rejeita.", "El suelo nos rechaza."),
     "The growth is torn.": _("O crescimento foi rasgado.", "El crecimiento se desgarra."),

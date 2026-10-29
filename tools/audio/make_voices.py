@@ -338,7 +338,7 @@ ANN = {
                   workers_attack="Our labourers are under attack!", ally_attack="Our allies are under attack!",
                   depleted="The soil is spent.", no_powder="Our men are out of powder.",
                   horse_stolen="A horse has been stolen!", paused="Game paused.", resumed="Game resumed."),
-    "brood": dict(ANN_BASE, no_gold="Not enough food.", no_res2="Not enough essence.",
+    "brood": dict(ANN_BASE, no_gold="Not enough food.", no_res2="Not enough spoils.",
                   no_supply="More clutches needed.",
                   bad_place="The ground rejects us.", site_lost="The growth is torn.",
                   workers_attack="Our grubs are attacked.", ally_attack="Our kin are attacked.",

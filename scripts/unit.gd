@@ -5609,7 +5609,7 @@ func _harvest(delta: float) -> Vector2:
 		if hive.edge_distance(position) < radius + 17.0:
 			game.add_res2(team, cocoon)
 			if team == game.human:
-				game.float_text(position + Vector2(0, -26), "+%s essence" % Game.essence_text(cocoon), Color(0.8, 0.5, 1.0))
+				game.float_text(position + Vector2(0, -26), "+%s spoils" % Game.essence_text(cocoon), Color(0.8, 0.5, 1.0))
 			cocoon = 0.0
 			path = PackedVector2Array()
 			_request_path(harvest_home)

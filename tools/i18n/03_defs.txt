@@ -210,9 +210,9 @@ es Un Misionero a caballo: tan rápido como un Mensajero, desarmado. Se apea par
 pt Asa-do-Céu
 es Ala del Cielo
 
-> Flying, it hunts other flyers with volleys of spines (it can't touch the ground). LAND it (1.2 s) to fight on the ground with its bite: then it walks, can't cross cliffs, and anything can hit it. Costs essence.
-pt Voando, caça outros voadores com salvas de espinhos (não alcança o chão). POUSE-o (1,2 s) para lutar no chão com a mordida: aí ele anda, não cruza penhascos, e qualquer coisa pode atingi-lo. Custa essência.
-es Volando, caza a otros voladores con salvas de púas (no alcanza el suelo). ATERRÍZALO (1,2 s) para luchar en tierra con su mordisco: entonces camina, no cruza acantilados y cualquier cosa puede golpearlo. Cuesta esencia.
+> Flying, it hunts other flyers with volleys of spines (it can't touch the ground). LAND it (1.2 s) to fight on the ground with its bite: then it walks, can't cross cliffs, and anything can hit it. Costs spoils.
+pt Voando, caça outros voadores com salvas de espinhos (não alcança o chão). POUSE-o (1,2 s) para lutar no chão com a mordida: aí ele anda, não cruza penhascos, e qualquer coisa pode atingi-lo. Custa espólios.
+es Volando, caza a otros voladores con salvas de púas (no alcanza el suelo). ATERRÍZALO (1,2 s) para luchar en tierra con su mordisco: entonces camina, no cruza acantilados y cualquier cosa puede golpearlo. Cuesta botín.
 
 > Mist Toad
 pt Sapo da Névoa
@@ -402,9 +402,9 @@ es Las larvas llevan comida de aquí a la capital (6, y una más por cada 4 casi
 pt Cercado da Ninhada
 es Corral de la Nidada
 
-> SACRIFICE: Brood creatures brought here are offered up for essence (35% of their biomass cost: 9 a Raptor). The fallen give essence too: grubs wrap the bodies on the field and carry them home.
-pt SACRIFICAR: criaturas da Ninhada trazidas aqui são oferecidas por essência (35% do custo em biomassa: 9 por Raptor). Os caídos também dão essência: as larvas embrulham os corpos no campo e os levam para casa.
-es SACRIFICAR: las criaturas de la Nidada traídas aquí se ofrecen a cambio de esencia (35% de su coste en biomasa: 9 por Raptor). Los caídos también dan esencia: las larvas envuelven los cuerpos en el campo y los llevan a casa.
+> SACRIFICE: Brood creatures brought here are offered up for spoils (35% of their biomass cost: 9 a Raptor). The fallen give spoils too: grubs wrap the bodies on the field and carry them home.
+pt SACRIFICAR: criaturas da Ninhada trazidas aqui são oferecidas por espólios (35% do custo em biomassa: 9 por Raptor). Os caídos também dão espólios: as larvas embrulham os corpos no campo e os levam para casa.
+es SACRIFICAR: las criaturas de la Nidada traídas aquí se ofrecen a cambio de botín (35% de su coste en biomasa: 9 por Raptor). Los caídos también dan botín: las larvas envuelven los cuerpos en el campo y los llevan a casa.
 
 > Roost
 pt Poleiro
@@ -550,9 +550,9 @@ es Mosqueteros, cañones y morteros, y caballos para ellos. Las Granjas maduran 
 pt A Ninhada
 es La Nidada
 
-> A swarm of cheap lizards. Grubs haul food from pits to the Burrow: the longer the haul, the richer the food, and each Burrow's ground runs out in time. Upgrade it to a Warren, then a Broodmound, for more eggs. Essence comes from the fallen and from offerings at the Brood Pen. Supply cap 200.
-pt Um enxame de lagartos baratos. Larvas levam comida dos poços à Toca: quanto mais longa a viagem, mais rica a comida, e o chão de cada Toca acaba com o tempo. Melhore-a para Galeria, depois Montículo da Ninhada, para ter mais ovos. A essência vem dos caídos e de oferendas no Cercado da Ninhada. Limite de suprimento 200.
-es Un enjambre de lagartos baratos. Las larvas llevan comida de los fosos a la Madriguera: cuanto más largo el viaje, más rica la comida, y el suelo de cada Madriguera se agota con el tiempo. Mejórala a Conejera y luego a Montículo de la Nidada para tener más huevos. La esencia viene de los caídos y de ofrendas en el Corral de la Nidada. Límite de suministro 200.
+> A swarm of cheap lizards. Grubs haul food from pits to the Burrow: the longer the haul, the richer the food, and each Burrow's ground runs out in time. Upgrade it to a Warren, then a Broodmound, for more eggs. Spoils come from the fallen and from offerings at the Brood Pen. Supply cap 200.
+pt Um enxame de lagartos baratos. Larvas levam comida dos poços à Toca: quanto mais longa a viagem, mais rica a comida, e o chão de cada Toca acaba com o tempo. Melhore-a para Galeria, depois Montículo da Ninhada, para ter mais ovos. Os espólios vêm dos caídos e de oferendas no Cercado da Ninhada. Limite de suprimento 200.
+es Un enjambre de lagartos baratos. Las larvas llevan comida de los fosos a la Madriguera: cuanto más largo el viaje, más rica la comida, y el suelo de cada Madriguera se agota con el tiempo. Mejórala a Conejera y luego a Montículo de la Nidada para tener más huevos. El botín viene de los caídos y de ofrendas en el Corral de la Nidada. Límite de suministro 200.
 
 > The Clockwork
 pt O Mecanismo
@@ -794,9 +794,9 @@ es Permite que tus Madrigueras incuben Brutos, Madres de Esporas y Sapos de la N
 pt Até 6 larvas levam comida daqui à Toca. Quanto mais longe da Toca, mais paga (melhor entre 18 e 22 casas). O seu próprio chão (3.000 de biomassa) fica num círculo de 5 casas em volta dele; os círculos dos seus poços não podem se sobrepor.
 es Hasta 6 larvas llevan comida de aquí a la Madriguera. Cuanto más lejos de la Madriguera, más paga (lo mejor, de 18 a 22 casillas). Su propio suelo (3.000 de biomasa) está en un círculo de 5 casillas a su alrededor; los círculos de tus fosos no pueden solaparse.
 
-> SACRIFICE Brood creatures here for essence (35% of their biomass cost).
-pt SACRIFICAR criaturas da Ninhada aqui por essência (35% do custo em biomassa).
-es SACRIFICA aquí criaturas de la Nidada a cambio de esencia (35% de su coste en biomasa).
+> SACRIFICE Brood creatures here for spoils (35% of their biomass cost).
+pt SACRIFICAR criaturas da Ninhada aqui por espólios (35% do custo em biomassa).
+es SACRIFICA aquí criaturas de la Nidada a cambio de botín (35% de su coste en biomasa).
 
 > Lets your Burrows hatch Skywings and Bloaters.
 pt Permite que suas Tocas chocem Asas-do-Céu e Inchadores.

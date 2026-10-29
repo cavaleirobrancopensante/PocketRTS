@@ -812,9 +812,9 @@ const FACTIONS := {
 		"name": "The Brood", "hall": "hive", "worker": "grub", "supply": "clutch_mound",
 		"build": ["hive", "clutch_mound", "feeding_pit", "brood_pen", "warren", "gorge_pit", "roost"],
 		"start_workers": 5, "ready": true, "max_supply": 200,
-		"res": ["Biomass", "Essence"], "econ": {"feeding_pit": 3, "brood_pen": 1},
+		"res": ["Biomass", "Spoils"], "econ": {"feeding_pit": 3, "brood_pen": 1},
 		"start": ["feeding_pit"],
-		"about": "A swarm of cheap lizards. Grubs haul food from pits to the Burrow: the longer the haul, the richer the food, and each Burrow's ground runs out in time. Upgrade it to a Warren, then a Broodmound, for more eggs. Essence comes from the fallen and from offerings at the Brood Pen. Supply cap 200.",
+		"about": "A swarm of cheap lizards. Grubs haul food from pits to the Burrow: the longer the haul, the richer the food, and each Burrow's ground runs out in time. Upgrade it to a Warren, then a Broodmound, for more eggs. Spoils come from the fallen and from offerings at the Brood Pen. Supply cap 200.",
 	},
 	"clockwork": {
 		"name": "The Clockwork", "hall": "clocktower", "worker": "winder", "supply": "spring_tower",
@@ -1131,7 +1131,7 @@ const UNITS := {
 		"name": "Skywing", "hp": 75, "armor": 0, "speed": 118, "cost": 100, "cost2": 40, "time": 16.0, "supply": 2,
 		"sight": 9, "range": 130, "damage": 11, "cooldown": 1.1, "aim": 0.15, "radius": 13, "from": "hive",
 		"air": true, "anti_air": true, "air_only": true, "requires": "roost", "faction": "brood",
-		"about": "Flying, it hunts other flyers with volleys of spines (it can't touch the ground). LAND it (1.2 s) to fight on the ground with its bite: then it walks, can't cross cliffs, and anything can hit it. Costs essence.",
+		"about": "Flying, it hunts other flyers with volleys of spines (it can't touch the ground). LAND it (1.2 s) to fight on the ground with its bite: then it walks, can't cross cliffs, and anything can hit it. Costs spoils.",
 	},
 	# ---- THE NEW BROOD (experiment, scripts/brood_new.gd, docs/brood_new.md): creatures only, no buildings
 	"brood_mother": {
@@ -1422,7 +1422,7 @@ const BUILDINGS := {
 	"brood_pen": {
 		"name": "Brood Pen", "hp": 600, "armor": 0, "cost": 100, "time": 22.0, "size": Vector2i(4, 3),
 		"supply": 0, "sight": 6, "trains": [], "swamp": 4, "faction": "brood",
-		"about": "SACRIFICE: Brood creatures brought here are offered up for essence (35% of their biomass cost: 9 a Raptor). The fallen give essence too: grubs wrap the bodies on the field and carry them home.",
+		"about": "SACRIFICE: Brood creatures brought here are offered up for spoils (35% of their biomass cost: 9 a Raptor). The fallen give spoils too: grubs wrap the bodies on the field and carry them home.",
 	},
 	"roost": {
 		"name": "Roost", "hp": 700, "armor": 1, "cost": 175, "time": 35.0, "size": Vector2i(3, 3),
@@ -1909,7 +1909,7 @@ const NB := {
 ## "from Feeding Pits to a Burrow"; the new Brood has no buildings). A unit of a new-Brood side takes NB_ABOUT as its
 ## card text (Unit.setup), and its tooltips NB_TIPS (tip(kind, true)); the old Brood keeps its own.
 const NB_ABOUT := {
-	"grub": "Carries food from Rootmaws (and food piles) to the Brood Mother: the farther the trip, the more it pays. BUILD (B): it turns into a Rootmaw, a Mound Turtle or a father where you pick (the grub is used up). HARVEST: it wraps bodies and carries them to her as essence.",
+	"grub": "Carries food from Rootmaws (and food piles) to the Brood Mother: the farther the trip, the more it pays. BUILD (B): it turns into a Rootmaw, a Mound Turtle or a father where you pick (the grub is used up). HARVEST: it wraps bodies and carries them to her as spoils.",
 }
 const NB_TIPS := {
 	"grub": "Carries food from Rootmaws and food piles to the Brood Mother (longer trips pay more). BUILD turns it into a Rootmaw, a Mound Turtle or a father.",
@@ -2090,7 +2090,7 @@ const TIPS := {
 	"warren": "Lets your Burrows hatch Raptors and Spitters.",
 	"gorge_pit": "Lets your Burrows hatch Brutes, Spore Mothers and Mist Toads; a Warren can grow into a Broodmound.",
 	"feeding_pit": "Up to 6 grubs haul food from here to the Burrow. Farther from the Burrow pays more (best 18 to 22 tiles). Its own ground (3,000 biomass) lies in a 5-tile circle round it; your pits' circles may not overlap.",
-	"brood_pen": "SACRIFICE Brood creatures here for essence (35% of their biomass cost).",
+	"brood_pen": "SACRIFICE Brood creatures here for spoils (35% of their biomass cost).",
 	"roost": "Lets your Burrows hatch Skywings and Bloaters.",
 	# Crown research
 	"armour": "Unlocks the ARMOUR refit (Guardsman: +1 armour, +20 health; Cuirassier: +1 armour, +30 health) and the armoured recruits.",

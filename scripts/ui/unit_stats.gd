@@ -416,7 +416,7 @@ static func _specials(kind: String, d: Dictionary, st: Dictionary) -> Array:
 			add.call("KNOCKBACK", Loc.t("Every blow throws the enemy back."))
 		"spore_mother":
 			add.call("ROOT", Loc.t("She fires only rooted; walking she cannot attack."))
-			add.call("MIASMA", Loc.t("Spell: a cloud that heals the Brood (%d essence, every %d s).") % [int(Defs.MIASMA["cost2"]), int(Defs.MIASMA["cooldown"])])
+			add.call("MIASMA", Loc.t("Spell: a cloud that heals the Brood (%d spoils, every %d s).") % [int(Defs.MIASMA["cost2"]), int(Defs.MIASMA["cooldown"])])
 		"bloater":
 			add.call("GAS", Loc.t("Every spit uses %d gas; out of gas it deflates and cannot attack.") % int(Defs.BLOAT["spit_cost"]))
 			add.call("BURST", Loc.t("It bursts as an acid bomb (up to %d damage and a cloud), and is used up.") % int(Defs.BLOAT["burst"]))

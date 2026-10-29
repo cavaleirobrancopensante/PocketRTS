@@ -231,7 +231,7 @@ func snapshot() -> void:
 		if not effs.is_empty():
 			lines[lines.size() - 1] += " | efficiency %d%%" % int(round(effs.reduce(func(x: float, y: float) -> float: return x + y, 0.0) / effs.size() * 100))
 		if int(st.get("sacrificed", 0)) > 0:
-			lines[lines.size() - 1] += " | sacrificed %d (+%d essence)" % [int(st["sacrificed"]), int(st["sacrifice_essence"])]
+			lines[lines.size() - 1] += " | sacrificed %d (+%d spoils)" % [int(st["sacrificed"]), int(st["sacrifice_essence"])]
 		_last[t] = {"killed": st["killed"], "lost": st["lost"]}
 
 
