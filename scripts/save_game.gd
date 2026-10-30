@@ -192,6 +192,8 @@ static func capture(game: Game, cfg: Dictionary) -> Dictionary:
 			ud["rl"] = snappedf(u.cooldown, 0.01)    # (a Spring Ballista's spring still being wound)
 		if u.crew_of != null and ids.has(u.crew_of):
 			ud["crew"] = ids[u.crew_of]              # (a Winder crewing a Spring Ballista: scripts/ballista.gd)
+		if u.kind == MarchingBand.KIND and not u.band.is_empty():
+			ud["band"] = MarchingBand.save(u)        # (the Marching Band: musicians, solo, cooldowns: scripts/marching_band.gd)
 		if u.kind == Defs.GREAT_WINDER_KIND:
 			ud["gw"] = [0, u.auto_repair, u.auto_sweep]     # (a Great Winder: MEND and SWEEP, scripts/great_winder.gd; the first
 			# slot held its PARTS until 0.14.102, when the sweep began to pay cogs at once: kept as 0 so the layout stays)
@@ -533,6 +535,8 @@ static func restore(game: Game, d: Dictionary) -> void:
 		u.clutch_n = int(ud.get("yo", 0))
 		if ud.get("nb") is Dictionary:
 			BroodNew.unit_load(u, ud["nb"])
+		if ud.get("band") is Dictionary and u.kind == MarchingBand.KIND:
+			MarchingBand.load_state(u, ud["band"])
 		u.carrying = int(ud["carry"])
 		u.load_f = float(ud.get("lf", 0.0))
 		u.auto_work = bool(ud["auto"])

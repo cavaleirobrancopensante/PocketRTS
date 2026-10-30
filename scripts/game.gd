@@ -3781,7 +3781,7 @@ func can_train(b: Building, key: String) -> String:
 		return "Can't train that here."
 	if Defs.train_armoured(key) and not has_tech(b.team, "armour"):
 		return "Research Armour at the Armoury first."
-	if not ArtData.UNITS.has(k) or Defs.PENDING.has(k):
+	if not (ArtData.UNITS.has(k) or ArtData.UNITS.has(Defs.art_for(k, false))) or Defs.PENDING.has(k):      # (a stand-in wears another's sprites: Defs.TEMP_ART)
 		return "Coming soon."      # its sprites aren't in (or tested) yet
 	if Defs.energy_only(k):
 		return "No power on the gear field."      # (gear mode: Defs.ENERGY_KINDS)
@@ -3838,6 +3838,10 @@ func can_train(b: Building, key: String) -> String:
 		var allowed := buildings.filter(func(x: Building) -> bool: return x.team == b.team and x.kind == u["per"] and x.built and not x.dead).size()
 		if have >= allowed:
 			return "Only one %s per %s." % [u["name"], Defs.BUILDINGS[u["per"]]["name"]]
+	if k == MarchingBand.KIND:
+		var mbp := MarchingBand.limit_problem(self, b.team)      # (one Marching Band per player; only with the experiment on)
+		if mbp != "":
+			return mbp
 	if Defs.cw_roster and Defs.CW_KINDS.has(k):
 		var cwp := CwUnits.limit_problem(self, b.team, k, b.queue.count(k))
 		if cwp != "":
@@ -9258,6 +9262,13 @@ func smart_command(list: Array, p: Vector2, force_move := false, queued := false
 			else:
 				u.give({"o": "move", "p": p}, queued)
 		_ping(p, Color(1, 0.85, 0.3))
+		return
+	# the Marching Band sent to one of ours: it follows him (an escort: scripts/marching_band.gd)
+	if e is Unit and e.team == us[0].team and us.all(func(u: Unit) -> bool: return u.kind == MarchingBand.KIND):
+		for u in us:
+			if u != e:
+				u.give({"o": "follow", "e": e}, queued)
+		_ping(p, Color(0.4, 1, 0.4))
 		return
 	if e and prey(us[0].team, e):        # (an enemy; for the Brood a loose horse too)
 		for u in us:

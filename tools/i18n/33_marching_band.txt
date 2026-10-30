@@ -1,0 +1,181 @@
+# THE MARCHING BAND (experiment; scripts/marching_band.gd, docs/marching_band.md)
+
+> MARCHING BAND (experiment)
+pt BANDA MARCIAL (experimento)
+es BANDA MILITAR (experimento)
+
+> Marching Band
+pt Banda Marcial
+es Banda Militar
+
+> The bandmaster, unarmed, and the musicians you add to him (a drummer, a piper, a fifer). Every instrument plays a small buff to your soldiers within 5 tiles; its SOLO gives the full buff for a few seconds. One band per player. Fragile: kill it and the music stops.
+pt O mestre da banda, desarmado, e os músicos que você junta a ele (um tambor, um gaiteiro, um pífaro). Cada instrumento toca um pequeno bônus para os seus soldados a até 5 casas; o SOLO dele dá o bônus inteiro por alguns segundos. Uma banda por jogador. Frágil: mate-a e a música para.
+es El maestro de banda, desarmado, y los músicos que le añades (un tambor, un gaitero, un pífano). Cada instrumento toca una pequeña mejora para tus soldados a 5 casillas; su SOLO da la mejora completa unos segundos. Una banda por jugador. Frágil: mátala y la música se acaba.
+
+> Marching Band (experiment): drums (speed), pipes (melee damage) and fife (reload). Each instrument plays a small buff within 5 tiles; its SOLO a big one for 8 s. One per player; unarmed and fragile.
+pt Banda Marcial (experimento): tambores (velocidade), gaita de foles (dano corpo a corpo) e pífaro (recarga). Cada instrumento toca um pequeno bônus a até 5 casas; o SOLO dele, um grande por 8 s. Uma por jogador; desarmada e frágil.
+es Banda Militar (experimento): tambores (velocidad), gaita (daño cuerpo a cuerpo) y pífano (recarga). Cada instrumento toca una pequeña mejora a 5 casillas; su SOLO, una grande durante 8 s. Una por jugador; desarmada y frágil.
+
+> Drummer
+pt Tambor
+es Tambor
+
+> Piper
+pt Gaiteiro
+es Gaitero
+
+> Fifer
+pt Pifeiro
+es Pifanero
+
+> drummer
+pt tambor
+es tambor
+
+> piper
+pt gaiteiro
+es gaitero
+
+> fifer
+pt pifeiro
+es pifanero
+
+> Drums
+pt Tambores
+es Tambores
+
+> Pipes
+pt Gaita
+es Gaita
+
+> Fife
+pt Pífaro
+es Pífano
+
+> drums
+pt tambores
+es tambores
+
+> pipes
+pt gaita de foles
+es gaita
+
+> fife
+pt pífaro
+es pífano
+
+> movement speed
+pt velocidade de movimento
+es velocidad de movimiento
+
+> melee damage
+pt dano corpo a corpo
+es daño cuerpo a cuerpo
+
+> reload speed
+pt velocidade de recarga
+es velocidad de recarga
+
+> Add a drummer
+pt Juntar um tambor
+es Añadir un tambor
+
+> Add a piper
+pt Juntar um gaiteiro
+es Añadir un gaitero
+
+> Add a fifer
+pt Juntar um pifeiro
+es Añadir un pifanero
+
+> Drum solo
+pt Solo de tambor
+es Solo de tambor
+
+> Pipe solo
+pt Solo de gaita
+es Solo de gaita
+
+> Fife solo
+pt Solo de pífaro
+es Solo de pífano
+
+> ADD DRUMMER
+pt + TAMBOR
+es + TAMBOR
+
+> ADD PIPER
+pt + GAITEIRO
+es + GAITERO
+
+> ADD FIFER
+pt + PIFEIRO
+es + PIFANERO
+
+> DRUMS SOLO
+pt SOLO DE TAMBOR
+es SOLO DE TAMBOR
+
+> PIPES SOLO
+pt SOLO DE GAITA
+es SOLO DE GAITA
+
+> FIFE SOLO
+pt SOLO DE PÍFARO
+es SOLO DE PÍFANO
+
+> + %s
+pt + %s
+es + %s
+
+> The band already has a %s.
+pt A banda já tem um %s.
+es La banda ya tiene un %s.
+
+> The band is taking on a musician already.
+pt A banda já está recebendo um músico.
+es La banda ya está incorporando a un músico.
+
+> No %s in the band yet.
+pt Ainda não há %s na banda.
+es Aún no hay %s en la banda.
+
+> The band is already playing a solo.
+pt A banda já está tocando um solo.
+es La banda ya está tocando un solo.
+
+> The %s can solo again in %d s.
+pt O %s pode solar de novo em %d s.
+es El %s puede volver a hacer un solo en %d s.
+
+> The marching band is an experiment: switch it on in Settings.
+pt A banda marcial é um experimento: ative-a nas Configurações.
+es La banda militar es un experimento: actívala en Ajustes.
+
+> Only one Marching Band per player.
+pt Só uma Banda Marcial por jogador.
+es Solo una Banda Militar por jugador.
+
+> The bandmaster alone: ADD a drummer, a piper or a fifer.
+pt O mestre da banda sozinho: JUNTE um tambor, um gaiteiro ou um pifeiro.
+es El maestro de banda solo: AÑADE un tambor, un gaitero o un pifanero.
+
+> Plays: %s · %d tiles
+pt Toca: %s · %d casas
+es Toca: %s · %d casillas
+
+> %s SOLO: %d s
+pt SOLO de %s: %d s
+es SOLO de %s: %d s
+
+> a %s joins in %d s
+pt um %s entra em %d s
+es un %s se une en %d s
+
+> Takes on a %s (%d s): the band plays the %s from then on. As a secondary it gives %s +%d%% to your soldiers within %d tiles of the band; its SOLO gives +%d%% for %d s (then %d s before the next). The band gets %d more health.
+pt Recebe um %s (%d s): a banda toca %s dali em diante. Como secundário, dá %s +%d%% aos seus soldados a até %d casas da banda; o SOLO dele dá +%d%% por %d s (depois %d s até o próximo). A banda ganha %d de vida.
+es Incorpora a un %s (%d s): la banda toca %s desde entonces. Como secundario da %s +%d%% a tus soldados a %d casillas de la banda; su SOLO da +%d%% durante %d s (luego %d s hasta el siguiente). La banda gana %d de vida.
+
+> The %s leads for %d s: %s +%d%% to your soldiers within %d tiles of the band (the other instruments keep playing as secondaries). Then %d s before it can solo again; one solo at a time.
+pt O %s lidera por %d s: %s +%d%% aos seus soldados a até %d casas da banda (os outros instrumentos continuam como secundários). Depois %d s até poder solar de novo; um solo de cada vez.
+es El %s lleva la voz cantante %d s: %s +%d%% a tus soldados a %d casillas de la banda (los demás instrumentos siguen como secundarios). Luego %d s hasta que pueda volver a hacer un solo; un solo cada vez.

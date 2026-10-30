@@ -84,6 +84,8 @@ static func tick_unit(u: Unit, delta: float) -> void:
 		for p in u.passengers:
 			if is_instance_valid(p):
 				p.position = u.position
+	if u.kind == MarchingBand.KIND:
+		MarchingBand.look_tick(u, delta)      # (the Marching Band's music and ring, shown from its state)
 	u._animate(delta)
 	if not u.visible or not u.game.view_rect.has_point(u.position):
 		u._draw_key = Vector4i(-1, -1, -1, -1)
