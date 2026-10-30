@@ -4,6 +4,13 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.22.4", "items": [
+		"GRUBS CAN BE SACRIFICED: SACRIFICE (C) is on the grub's card now. A grub offered up at the Brood Mother gives 10 spoils and a whole egg back (it hatches alone, like a Brute). A grub at work can be sent: it hands over the food or the body it carries when it gets to her. A grub on its way to turn into a Rootmaw, a Mound Turtle or a Sire can't be.",
+		"SACRIFICE PAYS MORE FOR RAPTORS: a Raptor offered up gives 15 spoils (was 9): 30 for the two of one egg, 45 for the three of a Bigger Clutch egg. The other creatures are unchanged (a Spitter 16, Hatchlings 14, a Tyrant Challenger or a Mist Toad 35, a Brute or a Venom or Storm Challenger 53).",
+		"The VENOM SIRE now costs 25 spoils on top of his 200 food (offer up three grubs, two Raptors, or harvest a few bodies). The Tyrant Sire still costs no spoils.",
+		"HARVESTED BODIES GIVE TWICE THE SPOILS: a body a grub wraps and carries to the Brood Mother gives 4 spoils for each point of its supply (was 2) plus 2 for each kill it made (was 1), the kills part up to 100 (was 50): a Musketeer 4, a Brute 12, a Horseman with his horse 16.",
+		"THE BROOD MOTHER'S VETERANCY: every harvest a grub delivers to her gives her 1 veterancy, and each makes her lay 1% faster, up to +50% (50 harvests). It adds to her other levers (her stage, the Sires near her, turtles on new ground). Her card shows it (VETERANCY 23 · EGGS +23%) once she has some.",
+	]},
 	{"v": "0.22.3", "items": [
 		"FIX: THE BROOD MOTHER CAN HIT A GATE ON A RAMP. Sent to ATTACK a gate (or anything out of her reach), the uprooted Mother stood still: she never chased what she was told to attack (a rule meant for the computer's Mother, kept on a leash at home). Now she goes for what you send her at, on ATTACK and ATTACK-MOVE; on her own (idle, HOLD) she still stands her ground, and the computer's Mother keeps her leash.",
 		"FIX: big Brood creatures got stuck at the top or foot of a ramp. The Mother's body was too wide to stand on a ramp's side lane where the path ran, and she stood pressing at the ramp's edge (the Tyrant Sire nearly so). The Mother, the Sires and the Mound Turtle now walk the ground with a narrower body: every ramp, 2 or 3 tiles wide, at every stage of the Mother.",

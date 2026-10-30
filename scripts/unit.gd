@@ -5523,9 +5523,10 @@ func _haul_battery(src: Building, delta: float) -> Vector2:
 
 
 ## Brood creature on SACRIFICE: walk (fly) to the Brood Mother and be offered up there for spoils (Game.sacrifice).
-## Grubs can't be: they're the workforce.
+## A grub can be (10 spoils, Defs.NB "sac"), from its work too (what it carries is handed over at her), but not
+## one on its way to turn into a Rootmaw, a Mound Turtle or a Sire (order "nb_morph").
 func can_sacrifice() -> bool:
-	return Game.sacrifice_value(kind) > 0 and aboard == null and not off_field
+	return Game.sacrifice_value(kind) > 0 and aboard == null and not off_field and order != "nb_morph"
 
 
 func cmd_sacrifice() -> void:
@@ -5588,6 +5589,8 @@ func _harvest(delta: float) -> Vector2:
 			return Vector2.ZERO
 		if mother.edge_distance(position) < radius + 17.0:
 			game.add_res2(team, cocoon)
+			if mother is Unit and (mother as Unit).kind == BroodNew.QUEEN:
+				BroodNew.add_hvet(mother)          # (a harvest delivered: the Mother's veterancy, faster laying)
 			if team == game.human:
 				game.float_text(position + Vector2(0, -26), "+%s spoils" % Game.essence_text(cocoon), Color(0.8, 0.5, 1.0))
 			cocoon = 0.0

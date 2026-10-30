@@ -322,7 +322,20 @@ static func lay_rate(g: Game, q: Unit) -> Array:
 	var sx := float(stage_def(q)["rate"])
 	var nf := fathers_near(g, q)
 	var ne := expansions(g, q).size()
-	return [sx * (1.0 + float(Defs.NB["father_rate"]) * nf + float(Defs.NB["expansion_rate"]) * ne), sx, nf, ne]
+	var hv := hvet(q)
+	return [sx * (1.0 + float(Defs.NB["father_rate"]) * nf + float(Defs.NB["expansion_rate"]) * ne + float(Defs.NB["hvet_rate"]) * hv), sx, nf, ne, hv]
+
+
+## HER VETERANCY FROM HARVEST (the owner, 2026-10-30 08:39): 1 for each harvest a grub delivers to her, up to
+## Defs.NB "hvet_max"; each is +1% laying (lay_rate). Kept on her (nb "hvet": saved, sent online).
+static func hvet(q: Unit) -> int:
+	return int(q.nb.get("hvet", 0)) if q else 0
+
+
+static func add_hvet(q: Unit) -> void:
+	if q == null or q.dead or q.kind != QUEEN:
+		return
+	q.nb["hvet"] = mini(hvet(q) + 1, int(Defs.NB["hvet_max"]))
 
 
 static func egg_rate(g: Game, t: int) -> float:
@@ -340,6 +353,8 @@ static func levers_text(g: Game, q: Unit) -> String:
 		parts.append(Loc.t("%s near") % (Loc.t(String(fathers_near_list(g, q)[0].d["name"])) if int(lr[2]) == 1 else Loc.t("%d fathers") % int(lr[2])))
 	if int(lr[3]) > 0:
 		parts.append(Loc.t("1 expansion") if int(lr[3]) == 1 else Loc.t("%d expansions") % int(lr[3]))
+	if int(lr[4]) > 0:
+		parts.append(Loc.t("veterancy %d") % int(lr[4]))
 	var pct := int(round((float(lr[0]) - 1.0) * 100.0))
 	return Loc.t("Laying +%d%%: %s") % [pct, ", ".join(parts)] if not parts.is_empty() else Loc.t("Laying: no lever yet")
 
@@ -1862,7 +1877,7 @@ static func unit_save(u: Unit) -> Dictionary:
 
 static func unit_load(u: Unit, d: Dictionary) -> void:
 	u.nb = d.duplicate()
-	for k in ["spot", "fert", "eggs", "laid", "eggp"]:
+	for k in ["spot", "fert", "eggs", "laid", "eggp", "hvet"]:
 		if u.nb.has(k):
 			u.nb[k] = int(u.nb[k])
 	u.nb["m"] = u.tesla_mode

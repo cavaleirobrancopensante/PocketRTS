@@ -939,7 +939,7 @@ func _sacrifice(q: Unit) -> void:
 			gr.cmd_sacrifice()
 			going += 1
 	if late:
-		# grubs can't be offered (Unit.can_sacrifice: the workforce): late, Raptors idle at home beyond 12 are recycled
+		# (spare grubs are offered above, since 0.22.4); late, Raptors idle at home beyond 12 are recycled
 		# into eggs and essence (Brutes need 20)
 		var home: Array = army().filter(func(r) -> bool: return r.kind == "raptor" and not _wave.has(r) and r.order != "sacrifice")
 		var offer := home.size() - (6 if q3 else 12)
