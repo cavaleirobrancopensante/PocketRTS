@@ -7939,7 +7939,7 @@ var _income_log := {}                    # team -> [[clock, gold earned, res2 ea
 ## A side's income, gold and second resource a second, over about the last minute.
 func income_rates(t: int) -> Vector2:
 	var log: Array = _income_log.get(t, [])
-	var now := [clock, float(stats[t]["gold"]), float(stats[t]["res2_in"])]
+	var now := [clock, float(stats[t]["gold"]), float(stats[t]["res2_in"]), float(stats[t].get("tension_in", 0.0))]
 	if log.is_empty() or clock - float(log.back()[0]) >= 5.0:
 		log.append(now)
 		while log.size() > 13:
@@ -7948,6 +7948,16 @@ func income_rates(t: int) -> Vector2:
 	var first: Array = log[0]
 	var dt: float = maxf(clock - float(first[0]), 1.0)
 	return Vector2((float(now[1]) - float(first[1])) / dt, (float(now[2]) - float(first[2])) / dt)
+
+
+## A Clockwork side's Tension wound a second, over about the last minute (the top bar's tooltip).
+func tension_rate(t: int) -> float:
+	income_rates(t)
+	var log: Array = _income_log.get(t, [])
+	if log.is_empty() or (log[0] as Array).size() < 4:
+		return 0.0
+	var dt: float = maxf(clock - float(log[0][0]), 1.0)
+	return (float(stats[t].get("tension_in", 0.0)) - float(log[0][3])) / dt
 
 
 func spawn_effect(name: String, p: Vector2, speed := 1.0, looping := false) -> Effect:

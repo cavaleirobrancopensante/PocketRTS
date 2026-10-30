@@ -2188,6 +2188,7 @@ func start(cfg: Dictionary = {}) -> void:
 		game.mlog.queue_free()     # (a replay keeps no match log of its own)
 		game.mlog = null
 	sfx.camera = game.camera
+	sfx.game = game
 	for t in slots.size():
 		if t == human or game.puppet or slots[t]["who"] == "remote":
 			continue         # (a friend online plays that side; a guest's game runs no computers)

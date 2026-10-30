@@ -710,3 +710,6 @@ static func restore(game: Game, d: Dictionary) -> void:
 	if game.mlog:
 		game.mlog.lines = PackedStringArray(d.get("log", []))
 		game.mlog.add("(match continued after it was closed)")
+	# the fog put back NOW, before the first picture: the match is held paused through the 3-2-1 countdown (no tick,
+	# no _update_vis), and every restored unit and building stood drawn on the open map until GO (owner, 2026-10-30)
+	game.refresh_fog()

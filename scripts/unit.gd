@@ -4498,6 +4498,8 @@ func _pick_target(r: float) -> Entity:
 	if kind == Defs.BALLISTA_KIND:
 		return Ballista.pick(self, r)    # (armour, buildings, and a line behind the target: scripts/ballista.gd)
 	var e := game.find_target(self, r)
+	if e != null and has_meta("ai_scout") and order == "amove" and not Game.fights_back(e):
+		return null                  # (a computer's scout on attack-move: only what fights back, not every hall on its loop)
 	if e == null or is_air() or float(d["range"]) > 40.0 or not e.is_unit():
 		return e
 	if e == _no_reach and game.clock < _no_reach_t:

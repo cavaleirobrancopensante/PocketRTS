@@ -1,0 +1,69 @@
+# 0.24.1: the top bar's resource tooltips, refits and MORPH TO OWL one at a time (branch fog-sound-amove)
+
+> The Clockwork's money: everything is bought with cogs. Winders winding a Cog Press press them out of its Clocktower's brass; the Clocktower takes them in at once. A Clocktower's brass runs out, and spent brass pays nothing: build a new Clocktower by fresh brass.
+pt O dinheiro do Mecanismo: tudo é comprado com engrenagens. Enroladores enrolando uma Prensa de Engrenagens as prensam do latão da sua Torre do Relógio; a Torre do Relógio as recebe na hora. O latão de uma Torre do Relógio acaba, e latão esgotado não paga nada: construa uma nova Torre do Relógio junto a latão novo.
+es El dinero del Mecanismo: todo se compra con engranajes. Los Dadores de cuerda que dan cuerda a una Prensa de Engranajes los prensan del latón de su Torre del Reloj; la Torre del Reloj los recibe al instante. El latón de una Torre del Reloj se agota, y el latón agotado no paga nada: construye una nueva Torre del Reloj junto a latón nuevo.
+
+> Each Clocktower's SPRING LIFE runs down as its Mainspring winds: it winds less and less, and only %d%% once spent (the Mainspring is FATIGUED). A new Clocktower brings full strength back.
+pt A VIDA DA MOLA de cada Torre do Relógio se gasta enquanto a sua Mola Real enrola: ela enrola cada vez menos, e só %d%% quando se esgota (a Mola Real fica FADIGADA). Uma nova Torre do Relógio traz a força total de volta.
+es La VIDA DEL MUELLE de cada Torre del Reloj se gasta mientras su Muelle Real da cuerda: da cada vez menos, y solo un %d%% una vez agotada (el Muelle Real queda FATIGADO). Una nueva Torre del Reloj devuelve toda la fuerza.
+
+> Gold pays for everything. Labourers on Farms bring in the harvests from their Town Hall's soil. The soil runs out, and spent soil pays nothing: expand to a fresh Town Hall.
+pt O ouro paga tudo. Operários nas Fazendas trazem as colheitas do solo da sua Prefeitura. O solo acaba, e solo esgotado não paga nada: expanda para uma Prefeitura nova.
+es El oro lo paga todo. Los Peones de las Granjas traen las cosechas del suelo de su Ayuntamiento. El suelo se agota, y el suelo agotado no paga nada: expándete a un Ayuntamiento nuevo.
+
+> Black powder: Musketeers, Field Cannons and Mortars cost it, and soldiers refill their shots from it. Labourers grind it at a Powder Mill from its Town Hall's saltpetre: the Mill grinds less as the saltpetre runs down, and only %d%% once it is spent (and only while worked). A new Town Hall brings full strength back.
+pt Pólvora negra: Mosqueteiros, Canhões de Campanha e Morteiros custam pólvora, e os soldados recarregam os tiros com ela. Operários a moem num Moinho de Pólvora a partir do salitre da sua Prefeitura: o Moinho mói menos à medida que o salitre acaba, e só %d%% quando se esgota (e só enquanto trabalhado). Uma nova Prefeitura traz a força total de volta.
+es Pólvora negra: los Mosqueteros, Cañones de Campaña y Morteros la cuestan, y los soldados recargan sus disparos con ella. Los Peones la muelen en un Molino de pólvora a partir del salitre de su Ayuntamiento: el Molino muele menos a medida que se agota el salitre, y solo un %d%% una vez agotado (y solo mientras se trabaja). Un nuevo Ayuntamiento devuelve toda la fuerza.
+
+> Food pays for everything. Grubs carry it from the Rootmaws (and food piles) to the Brood Mother: longer trips pay more. A Rootmaw's ground runs out, and spent ground pays nothing: root Rootmaws on fresh ground.
+pt A comida paga tudo. Larvas a carregam dos Bocarraizes (e das pilhas de comida) até a Mãe da Ninhada: viagens mais longas pagam mais. O chão de um Bocarraiz acaba, e chão esgotado não paga nada: enraíze Bocarraizes em chão novo.
+es La comida lo paga todo. Las larvas la llevan de los Bocarraíces (y de los montones de comida) a la Madre de la Camada: los viajes más largos pagan más. El suelo de un Bocarraíz se agota, y el suelo agotado no paga nada: enraíza Bocarraíces en suelo nuevo.
+
+> Spoils pay for the big creatures, the fathers and the Mother's growing. Grubs on HARVEST carry bodies (friend or foe) to the Brood Mother, and she devours the creatures offered up (SACRIFICE). Bodies never run out, but they rot after 2 minutes.
+pt Os espólios pagam as criaturas grandes, os pais e o crescimento da Mãe. Larvas em COLHER levam corpos (amigos ou inimigos) até a Mãe da Ninhada, e ela devora as criaturas oferecidas (SACRIFICAR). Corpos nunca acabam, mas apodrecem depois de 2 minutos.
+es El botín paga las criaturas grandes, los padres y el crecimiento de la Madre. Las larvas en RECOGER llevan cuerpos (amigos o enemigos) a la Madre de la Camada, y ella devora a las criaturas ofrecidas (SACRIFICAR). Los cuerpos nunca se agotan, pero se pudren a los 2 minutos.
+
+> Income: about %d a minute (over the last minute).
+pt Renda: cerca de %d por minuto (no último minuto).
+es Ingresos: unos %d por minuto (en el último minuto).
+
+> %d of them lack it: one click sends ONE of them (Ctrl+click: all): he pays, walks to the nearest Barracks, Armoury or Powder Wagon and gets %s there (%d s). Another order calls it off, paid back.
+pt %d deles não a têm: um clique manda UM deles (Ctrl+clique: todos): ele paga, anda até o Quartel, Arsenal ou Carroça de Pólvora mais próximo e recebe %s lá (%d s). Outra ordem cancela, reembolsado.
+es A %d de ellos les falta: un clic envía a UNO de ellos (Ctrl+clic: a todos): paga, camina hasta el Cuartel, Armería o Carro de pólvora más cercano y recibe %s allí (%d s). Otra orden lo cancela, reembolsado.
+
+> One Swift of the selection (Ctrl+click: each one) is rebuilt into a Ticking Owl: a heavy, slow flyer that swoops on units with its talons and bombs buildings (it cannot hit flyers). It hovers in place and cannot fight while it morphs; CANCEL MORPH pays it back.
+pt Um Cuco da seleção (Ctrl+clique: cada um) é reconstruído numa Coruja Tique-Taque: um voador pesado e lento que mergulha sobre as unidades com as garras e bombardeia as construções (não acerta voadores). Fica pairando parado e não pode lutar enquanto muda; CANCELAR MUDANÇA devolve o pago.
+es Un Cuco de la selección (Ctrl+clic: cada uno) se reconstruye en un Búho Tictac: un volador pesado y lento que se lanza en picado sobre las unidades con las garras y bombardea los edificios (no alcanza a los voladores). Se queda suspendido en el sitio y no puede luchar mientras cambia; CANCELAR CAMBIO devuelve lo pagado.
+
+> One Swift of the selection (Ctrl+click: each one) is rebuilt into a Ticking Owl: a heavy, slow flyer that swoops on units with its talons and bombs buildings (it cannot hit flyers). It hovers in place and cannot fight while it morphs. Needs TICKING OWL, researched at a Clock Aviary.
+pt Um Cuco da seleção (Ctrl+clique: cada um) é reconstruído numa Coruja Tique-Taque: um voador pesado e lento que mergulha sobre as unidades com as garras e bombardeia as construções (não acerta voadores). Fica pairando parado e não pode lutar enquanto muda. Precisa de CORUJA TIQUE-TAQUE, pesquisada numa Casa do Cuco.
+es Un Cuco de la selección (Ctrl+clic: cada uno) se reconstruye en un Búho Tictac: un volador pesado y lento que se lanza en picado sobre las unidades con las garras y bombardea los edificios (no alcanza a los voladores). Se queda suspendido en el sitio y no puede luchar mientras cambia. Necesita BÚHO TICTAC, investigado en una Casa del Cuco.
+
+> Workers: %d / %d on %d %s
+pt Trabalhadores: %d / %d em %d %s
+es Trabajadores: %d / %d en %d %s
+
+> Grubs: %d / %d on %d Rootmaws and food piles
+pt Larvas: %d / %d em %d Bocarraizes e pilhas de comida
+es Larvas: %d / %d en %d Bocarraíces y montones de comida
+
+> Grubs harvesting: %d
+pt Larvas colhendo: %d
+es Larvas recogiendo: %d
+
+> Farms
+pt Fazendas
+es Granjas
+
+> Powder Mills
+pt Moinhos de Pólvora
+es Molinos de pólvora
+
+> Cog Presses
+pt Prensas de Engrenagens
+es Prensas de Engranajes
+
+> Mainsprings
+pt Molas Reais
+es Muelles Reales

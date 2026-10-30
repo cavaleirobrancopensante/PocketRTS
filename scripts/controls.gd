@@ -544,6 +544,8 @@ func _key(e: InputEventKey) -> void:
 		return
 	if Settings.pc() and hud and not e.ctrl_pressed and hud.hotkey(e.keycode):
 		return
+	if Settings.pc() and hud and (e.ctrl_pressed or e.meta_pressed) and not e.shift_pressed and e.keycode != KEY_A and hud.ctrl_hotkey(e.keycode):
+		return          # (Ctrl+a refit's or MORPH TO OWL's key: all that can, not one)
 	if Settings.pc():
 		match e.keycode:
 			KEY_SPACE:

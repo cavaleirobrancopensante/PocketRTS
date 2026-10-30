@@ -2701,6 +2701,14 @@ func _prey_spot(from: Vector2) -> Vector2:
 ## ridden down; a fight with soldiers goes on; a building it set about on the way (a Hive,
 ## a Town Hall) is left for the prey still farther on: it rides there (not an attack-move,
 ## which would stop at every building) and only attack-moves once it's there.
+## An enemy that fights back, seen, within the unit's reach and a little more.
+func _fighter_near(u: Unit) -> bool:
+	for o in game.units_near(u.position, float(u.d["range"]) + u.radius + 3.0 * Defs.TILE):
+		if Game.fights_back(o) and not o.off_field and game.hostile(o.team, team) and u.can_hit(o) and game.is_visible_to(team, o.position):
+			return true
+	return false
+
+
 func _hunt(u: Unit, prey: Vector2) -> void:
 	if u.dead or u.off_field or u.order == "mount" or u.order == "dismount" or _on_errand(u):
 		return
@@ -2725,7 +2733,9 @@ func _hunt(u: Unit, prey: Vector2) -> void:
 		return                           # (soldiers: the fight goes on; a worker: run him down)
 	var far := u.position.distance_to(prey) > 5.0 * T
 	if far and (tgt is Building or u.order == "idle" or u.order_point.distance_to(prey) > 160.0 or u.order == "attack"):
-		u.cmd_move(prey + Vector2(randf_range(-30, 30), randf_range(-30, 30)))
+		# (a plain ride past the buildings on the way, but never with its back to a soldier: with one
+		# in reach it goes on attack-move and fights him; the computer (almost) never uses plain MOVE)
+		u.cmd_move(prey + Vector2(randf_range(-30, 30), randf_range(-30, 30)), _fighter_near(u))
 	elif not far and (u.order == "idle" or u.order == "move"):
 		u.cmd_move(prey + Vector2(randf_range(-30, 30), randf_range(-30, 30)), true)
 

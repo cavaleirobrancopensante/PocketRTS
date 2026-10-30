@@ -1282,16 +1282,20 @@ func _refit_buttons(list: Array, units: Array) -> void:
 		elif ww == "pouch":
 			what = "the shot pouch (%d shots instead of %d; he fills it at any powder source)" % [int(Defs.POWDER["pouch"]), int(Defs.POWDER["musketeer"])]
 		_tip_for[lab] = ["Refit: %s   (%s a man)" % [info["name"], price],
-			"%d of them lack it: each pays, walks to the nearest Barracks, Armoury or Powder Wagon and gets %s there (%d s). Another order calls it off, paid back." % [need.size(), what, int(Defs.REFIT["time"])]]
+			"%d of them lack it: one click sends ONE of them (Ctrl+click: all): he pays, walks to the nearest Barracks, Armoury or Powder Wagon and gets %s there (%d s). Another order calls it off, paid back." % [need.size(), what, int(Defs.REFIT["time"])]]
+		_ctrl_all[lab] = true
 		list.append([_research_icon(ww), lab, func() -> void:
+			# ONE AT A TIME (owner, 2026-10-30): a click (or the key) refits ONE man of the selection, Ctrl+click
+			# (Ctrl+key) all that can
+			var who: Array = game.selected_units() if all_mod() else _refit_one(ww)
 			if Settings.pc() and Input.is_key_pressed(KEY_SHIFT):
 				# Shift: each man goes for it after the orders he has now (the fee is paid then)
-				for m in game.selected_units():
+				for m in who:
 					if Defs.ARMOURED.has(m.kind):
 						m.give({"o": "act", "fn": func(u: Unit) -> void: game.refit_order([u], ww, true)}, true)
 				toast("Queued: they get refitted after their current orders (%s)." % info["name"])
 				return
-			var r := game.refit_order(game.selected_units(), ww)
+			var r := game.refit_order(who, ww)
 			if int(r[0]) > 0:
 				toast("%d soldier%s off to be refitted: %s." % [r[0], "" if r[0] == 1 else "s", info["name"]] + ("  " + String(r[1]) if r[1] != "" else ""))
 			elif r[1] != "":
@@ -1299,6 +1303,48 @@ func _refit_buttons(list: Array, units: Array) -> void:
 	var wagons := units.filter(func(u: Unit) -> bool: return u.kind == "powder_wagon")
 	if not wagons.is_empty() and not whats.is_empty():
 		_auto_refit_button(list, wagons)     # (once there's something to refit with)
+
+
+## Card commands that act on ONE unit of the selection, ALL with Ctrl held (labels; Ctrl+their key reaches them too).
+var _ctrl_all := {}
+
+
+## Ctrl (Cmd) held: a "one at a time" command acts on every selected unit that can.
+static func all_mod() -> bool:
+	return Settings.pc() and (Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_META))
+
+
+## The one selected soldier a plain REFIT click sends: one that lacks it, the nearest to a place to refit at.
+func _refit_one(what: String) -> Array:
+	var best: Unit = null
+	var bd := INF
+	for u in game.selected_units():
+		if not Defs.ARMOURED.has(u.kind) or u.aboard != null or u.off_field or not game.refit_options(u).has(what):
+			continue
+		var place = game.refit_place(u.team, u.position)
+		var d: float = u.position.distance_to(place.position) if place != null else 1e9
+		if best == null or d < bd:
+			best = u
+			bd = d
+	return [best] if best != null else []
+
+
+## Ctrl+a card key: the commands in _ctrl_all, for all that can (the others keep Ctrl for themselves).
+func ctrl_hotkey(code: int) -> bool:
+	if paused or menu_open or game.over:
+		return false
+	var letter := OS.get_keycode_string(code)
+	if letter.length() != 1:
+		return false
+	for it in _card_items:
+		var lab := String(it[1]).trim_prefix("> ").trim_prefix("~ ")
+		if it.size() > 6 and it[6] == letter and _ctrl_all.has(lab):
+			flash_card(lab)
+			if it[3]:
+				it[2].call()
+				Sfx.play_any(["ui/click", "click"])
+			return true
+	return false
 
 
 ## AUTO REFIT on Barracks, Armouries or Powder Wagons (glowing = on): idle soldiers within a
@@ -1650,11 +1696,18 @@ func _ability_buttons(list: Array, units: Array) -> void:
 				if mwhy == "":
 					break
 			var m: Dictionary = Defs.OWL_MORPH
-			_tip_for["MORPH TO OWL"] = ["Morph to Owl", "Each Swift selected is rebuilt into a Ticking Owl: a heavy, slow flyer that swoops on units with its talons and bombs buildings (it cannot hit flyers). It hovers in place and cannot fight while it morphs; CANCEL MORPH pays it back." if game.has_tech(game.human, "owl_morph")
-				else "Each Swift selected is rebuilt into a Ticking Owl: a heavy, slow flyer that swoops on units with its talons and bombs buildings (it cannot hit flyers). It hovers in place and cannot fight while it morphs. Needs TICKING OWL, researched at a Clock Aviary.",
+			_tip_for["MORPH TO OWL"] = ["Morph to Owl", "One Swift of the selection (Ctrl+click: each one) is rebuilt into a Ticking Owl: a heavy, slow flyer that swoops on units with its talons and bombs buildings (it cannot hit flyers). It hovers in place and cannot fight while it morphs; CANCEL MORPH pays it back." if game.has_tech(game.human, "owl_morph")
+				else "One Swift of the selection (Ctrl+click: each one) is rebuilt into a Ticking Owl: a heavy, slow flyer that swoops on units with its talons and bombs buildings (it cannot hit flyers). It hovers in place and cannot fight while it morphs. Needs TICKING OWL, researched at a Clock Aviary.",
 				"%d cogs + %d tension  ·  %d s  ·  +%d supply" % [int(m["cost"]), int(m["tension"]), int(m["time"]), int(Defs.UNITS[Defs.OWL]["supply"]) - int(Defs.UNITS[Defs.CUCKOO]["supply"])]]
+			_ctrl_all["MORPH TO OWL"] = true
 			list.append(["ab_morph_owl", "MORPH TO OWL", func() -> void:
-				var w := game.morph_order(game.selected_units())
+				# ONE AT A TIME (owner, 2026-10-30): a click morphs ONE Swift, Ctrl+click all that can
+				var one: Array = []
+				for u in game.selected_units():
+					if u.kind == Defs.CUCKOO and u.owl_t < 0.0 and CwAir.morph_problem(u) == "":
+						one = [u]
+						break
+				var w := game.morph_order(game.selected_units() if all_mod() or one.is_empty() else one)
 				if w != "":
 					toast(w), mwhy == "", mwhy, "%d+%d" % [int(m["cost"]), int(m["tension"])]])
 		if swifts.any(func(u: Unit) -> bool: return u.owl_t >= 0.0):
@@ -1785,7 +1838,7 @@ const UNIT_KEYS := {"labourer": "S", "grub": "S", "winder": "S", "musketeer": "A
 	"tin_militia": "A", "scrapper": "D", "rail_rifleman": "F", "work_car": "S", "plate_wagon": "A", "heavy_loco": "D", "carrier_car": "F", "tesla_loco": "G", "storm_engine": "B"}
 const MUST_KEYS := ["ATTACK", "STOP", "HOLD", "BUILD", "REPAIR", "CANCEL", "BACK", "ABANDON"]
 ## Commands on a Ctrl key (computer): the hint shows it, and they take no letter (A stays ATTACK).
-const CTRL_KEYS := {"ATTACK GROUND": "^A"}
+const CTRL_KEYS := {"ATTACK GROUND": "Ctrl+A"}      # (shown as "Ctrl+A", the owner's word: "^A" read as nothing)
 
 
 ## The id a card item is known by for hotkeys: a command name or a unit/building kind.
@@ -3727,7 +3780,7 @@ func _draw_card(font: Font) -> void:
 		if Settings.pc() and it.size() > 6 and it[6] != "":
 			var kr := Rect2(br.position + Vector2(2, 2), Vector2(16, 16))
 			if String(it[6]).length() > 1:
-				kr.size.x = UiStyle.bold_font().get_string_size(it[6], HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 6.0     # (^A)
+				kr.size.x = UiStyle.bold_font().get_string_size(it[6], HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 6.0     # (Ctrl+A)
 			_ci.draw_rect(kr, Color(0.1, 0.08, 0.05, 0.85))
 			_ci.draw_rect(kr, UiStyle.TRIM_DIM, false, 1.0)
 			_text(UiStyle.bold_font(), kr.position + Vector2(kr.size.x * 0.5, 13), it[6], 12, Color(1, 0.92, 0.6), 1)
@@ -3970,11 +4023,12 @@ func _res_tip(i: int) -> Dictionary:
 	var fac := game.faction_of(game.human)
 	var pl: Dictionary = game.players[game.human]
 	var r := _res()
+	var rates: Vector2 = game.income_rates(game.human) if i < 2 else Vector2.ZERO
 	if fac == "clockwork":
 		if Defs.gear_mode and i == 0:
-			return {"title": "Cogs: %d" % int(pl["gold"]), "body": "The Clockwork's money. Winders winding a Cog Press press them out of the Clocktower's brass; the Clocktower takes them in at once. Everything is bought with cogs."}
+			return {"title": "Cogs: %d" % int(pl["gold"]), "body": Loc.t("The Clockwork's money: everything is bought with cogs. Winders winding a Cog Press press them out of its Clocktower's brass; the Clocktower takes them in at once. A Clocktower's brass runs out, and spent brass pays nothing: build a new Clocktower by fresh brass.") + "\n" + _crew_line(Defs.GEAR_PRESS) + "\n" + _income_line(rates.x)}
 		if Defs.gear_mode and i == 1:
-			return {"title": Loc.t("Tension: %d of %d") % [int(float(pl.get("tension", 0.0))), int(GearEcon.tension_cap(game, game.human))], "body": "The Clockwork's second resource, wound by Winders cranking a Mainspring. Each Mainspring stores 200 Tension (big gear: 400): winding stops when you hold what your Mainsprings store. It pays for the strong things: the Springer, the Swift, the Netter, the Pendulum, the Spring Ballista, the Clock Aviary and the research. Anything that costs Tension is made only at a building whose gear ring meshes with a Mainspring's: the Escapement, the Clock Aviary, the Heavy Works, and a Light Works for its Springers and Netters."}
+			return {"title": Loc.t("Tension: %d of %d") % [int(float(pl.get("tension", 0.0))), int(GearEcon.tension_cap(game, game.human))], "body": Loc.t("The Clockwork's second resource, wound by Winders cranking a Mainspring. Each Mainspring stores 200 Tension (big gear: 400): winding stops when you hold what your Mainsprings store. It pays for the strong things: the Springer, the Swift, the Netter, the Pendulum, the Spring Ballista, the Clock Aviary and the research. Anything that costs Tension is made only at a building whose gear ring meshes with a Mainspring's: the Escapement, the Clock Aviary, the Heavy Works, and a Light Works for its Springers and Netters.") + "\n" + Loc.t("Each Clocktower's SPRING LIFE runs down as its Mainspring winds: it winds less and less, and only %d%% once spent (the Mainspring is FATIGUED). A new Clocktower brings full strength back.") % int(round(Defs.TENSION_FLOOR * 100.0)) + "\n" + _crew_line("mainspring") + "\n" + _income_line(game.tension_rate(game.human))}
 		if i != 2:
 			return {}
 	if i == 3:
@@ -3990,12 +4044,63 @@ func _res_tip(i: int) -> Dictionary:
 		var sup: String = Defs.BUILDINGS[Defs.supply_kind(fac)]["name"]
 		return {"title": "Supply: %d of %d used" % [game.supply_used(game.human), int(pl["cap"])],
 			"body": "Workers %d · Army %d · In production %d.\nEvery unit takes supply. Each %s and %s raises the cap, up to %d." % [sp["workers"], sp["army"], sp["queued"], sup, Defs.BUILDINGS[game.faction_hall(game.human)]["name"], game.max_supply(game.human)]}
-	var body: String = {
-		"crown": ["Pays for everything. Labourers on Farms bring in the harvests; a Town Hall's soil runs out in time.",
-			"Black powder for muskets, cannons and mortars, and for refilling soldiers. Labourers grind it at the Powder Mill."],
-		"brood": ["Pays for everything. Grubs carry food from the Rootmaws (and food piles) to the Brood Mother: longer trips pay more.",
-			"Grubs on HARVEST carry bodies to the Brood Mother, and she devours the creatures offered up (SACRIFICE). Pays for the big creatures and her growing."]}[fac][i]
-	return {"title": "%s: %d" % [r[i], int(pl["gold"]) if i == 0 else int(pl["res2"])], "body": body}
+	if not RES_TIPS.has(fac):
+		return {}
+	var body: String = Loc.t(RES_TIPS[fac][i])
+	if fac == "crown" and i == 1:
+		body = body % int(round(Defs.POWDER_FLOOR * 100.0))
+	var crew: String = {"crown": ["farm", "powder_mill"], "brood": ["food", "spoils"]}[fac][i]
+	return {"title": "%s: %d" % [r[i], int(pl["gold"]) if i == 0 else int(pl["res2"])], "body": body + "\n" + _crew_line(crew) + "\n" + _income_line(rates.x if i == 0 else rates.y)}
+
+
+## The top bar's resource tooltips (owner, 2026-10-30): what it is, how it is earned, what it pays for, and how it
+## runs out (0.24.0, docs/exhaust_economy.md); the income line comes after.
+const RES_TIPS := {
+	"crown": ["Gold pays for everything. Labourers on Farms bring in the harvests from their Town Hall's soil. The soil runs out, and spent soil pays nothing: expand to a fresh Town Hall.",
+		"Black powder: Musketeers, Field Cannons and Mortars cost it, and soldiers refill their shots from it. Labourers grind it at a Powder Mill from its Town Hall's saltpetre: the Mill grinds less as the saltpetre runs down, and only %d%% once it is spent (and only while worked). A new Town Hall brings full strength back."],
+	"brood": ["Food pays for everything. Grubs carry it from the Rootmaws (and food piles) to the Brood Mother: longer trips pay more. A Rootmaw's ground runs out, and spent ground pays nothing: root Rootmaws on fresh ground.",
+		"Spoils pay for the big creatures, the fathers and the Mother's growing. Grubs on HARVEST carry bodies (friend or foe) to the Brood Mother, and she devours the creatures offered up (SACRIFICE). Bodies never run out, but they rot after 2 minutes."]}
+
+
+## The workers on a resource, summed over its buildings as their labels count them (WorkerLabels.layout: the crew, or a
+## hall's haulers; spent land takes none): "Workers: 40 / 50 on 5 Farms". The Brood: grubs on its Rootmaws and food
+## piles; its spoils: the grubs out harvesting.
+func _crew_line(what: String) -> String:
+	var t: int = game.human
+	if what == "spoils":
+		var n := 0
+		for u in game.units:
+			if u.team == t and not u.dead and u.kind == "grub" and u.order == "harvest":
+				n += 1
+		return Loc.t("Grubs harvesting: %d") % n
+	var have := 0
+	var most := 0
+	var count := 0
+	if what == "food":
+		for u in game.units:
+			if u.team == t and not u.dead and BroodNew.is_source(u) and (u.kind == BroodNew.PILE or BroodNew.rooted(u)):
+				count += 1
+				have += BroodNew.crew(game, u)
+				most += BroodNew.crew_max(game, u)
+		return Loc.t("Grubs: %d / %d on %d Rootmaws and food piles") % [have, most, count]
+	for b in game.buildings:
+		if b.team != t or b.dead or b.ghost or not b.built or b.kind != what:
+			continue
+		count += 1
+		if b.haul_cap() > 0:
+			have += b.haulers().size()
+			most += WorkerLabels.hauler_need(game, b)
+		else:
+			var spent: bool = b.crew.is_empty() and b.barren()
+			have += b.crew.size()
+			most += 0 if spent else b.crew_max()
+	var bname: String = Loc.t(String({"farm": "Farms", "powder_mill": "Powder Mills", Defs.GEAR_PRESS: "Cog Presses", "mainspring": "Mainsprings"}.get(what, what)))
+	return Loc.t("Workers: %d / %d on %d %s") % [have, most, count, bname]
+
+
+## "Income: about 420 a minute (over the last minute)."
+func _income_line(per_s: float) -> String:
+	return Loc.t("Income: about %d a minute (over the last minute).") % int(round(per_s * 60.0))
 
 
 ## What sits at p (HUD coordinates): a candidate {id, delay, item / res / grp / e}, or {}.
@@ -4143,7 +4248,7 @@ func _draw_tip() -> void:
 	for f in [["stats", bold, 14, UiStyle.TEXT], ["need", bold, 14, UiStyle.BAD], ["body", body_f, 14, Color(0.95, 0.91, 0.82)], ["hint", body_f, 13, UiStyle.MUTED]]:
 		if String(_tip.get(f[0], "")) != "":
 			rows.append([Loc.t(String(_tip[f[0]])), f[1], f[2], f[3]])
-	var key_bw := maxf(17.0, bold.get_string_size(key, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 6.0) if key.length() > 1 else 17.0     # (^A)
+	var key_bw := maxf(17.0, bold.get_string_size(key, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 6.0) if key.length() > 1 else 17.0     # (Ctrl+A)
 	var key_w := key_bw + 5.0 if key != "" else 0.0
 	var w := bold.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + key_w
 	for r in rows:

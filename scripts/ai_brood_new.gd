@@ -366,7 +366,7 @@ func _nb_scout(q: Unit) -> void:
 		_scout = pick
 		_scout_trips += 1
 		_scout_t0 = game.clock
-		pick.cmd_move(_scout_pts[0])
+		_scout_go(pick, _scout_pts[0])
 		say("sends a %s to scout" % Defs.UNITS[pick.kind]["name"])
 		return
 	# on the road: next point; home after the loop, after 100 s, or when hurt by soldiers
@@ -376,13 +376,25 @@ func _nb_scout(q: Unit) -> void:
 			if _scout.order != "move" or _scout.path_goal.distance_to(q.position) > 200.0:
 				_scout.cmd_move(q.position)
 			return
+		_scout.remove_meta("ai_scout")
 		_scout.cmd_stop()        # (home: back to work; WORK finds a grub a Rootmaw)
 		_scout = null
 		return
 	if _scout.position.distance_to(_scout_pts[_scout_i]) < 3.0 * Defs.TILE or _scout.order == "idle":
 		_scout_i += 1
 		if _scout_i < _scout_pts.size():
-			_scout.cmd_move(_scout_pts[_scout_i])
+			_scout_go(_scout, _scout_pts[_scout_i])
+
+
+## THE COMPUTER (ALMOST) NEVER USES PLAIN MOVE (owner, 2026-10-30): a Raptor scout goes on attack-move, marked
+## "ai_scout" (it bites only what fights back, Unit._pick_target: not every building on its loop); a grub (a worker)
+## walks. Going home hurt stays a plain walk (a retreat).
+func _scout_go(u: Unit, p: Vector2) -> void:
+	if u.is_worker():
+		u.cmd_move(p)
+		return
+	u.set_meta("ai_scout", true)
+	u.cmd_move(p, true)
 
 
 ## THE WATCHING GRUB (the owner's build, 2026-10-30 07:15: scouting for a safe economy): from about 1:10 a grub stays
@@ -1545,7 +1557,7 @@ func _nb_army(q: Unit) -> void:
 	# Hatchlings guard the Mother's sky; everyone else gathers at the staging point
 	for u in army:
 		if u.order == "idle" and u.target == null and u.position.distance_to(home) > 200.0:
-			u.cmd_move(home)
+			u.cmd_move(home, true)          # (gathering at the staging point: on attack-move)
 	if peaceful or game.clock < _retreat_until or game.clock < float(plan["wave_t"]) or _rush_on() or _alarm_on():
 		return
 	if sup < _attack_at:
@@ -1657,7 +1669,7 @@ func _nb_wave_tick(q: Unit, army: Array) -> void:
 			u.cmd_move(_wave_target, true)
 	for u in army:
 		if not _wave.has(u) and u.order == "idle" and u.target == null and u.position.distance_to(home) > 200.0:
-			u.cmd_move(home)
+			u.cmd_move(home, true)          # (gathering at the staging point: on attack-move)
 
 
 ## The wave is over (pulled back or called home): back to the staging point; a lost wave makes the next bigger and
