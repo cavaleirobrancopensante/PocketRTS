@@ -92,3 +92,7 @@ freesound_community-small-dino-raspy-calls-39345.mp3 (1.8 s): "small dino raspy 
   freesound_community-egg-crack5-104555.mp3
   A_Trumpet_fanfare.mp3
   tyrant_sire.mp3
+2026-10-30, three more (his notes in the names: grunt-1 'maybe not enough resources' = the Brood's no-food/no-spoils alert, animalistic-grunt 'interesting monster sound'):
+  daviddumaisaudio-monster-05-grunt-and-growl-195715.mp3
+  freesound_community-grunt-1-84550_maybe_not_enough_resources.mp3
+  dragon-studio-animalistic-grunt-463204_interesting_monster_sound.mp3
