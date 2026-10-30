@@ -3,7 +3,7 @@ extends SceneTree
 ## fade and are removed, the cap holds, nothing shows on ground out of sight, the setting OFF
 ## makes none, the game's random numbers are untouched, and a whole computer match plays out
 ## the same (the same state hash every 10 s) with the smoke OFF and FULL:
-##   godot --headless --fixed-fps 30 --script res://tools/test_powder_smoke.gd [-- secs:<n>]
+##   godot --headless --fixed-fps 30 --script res://tools/test_powder_smoke.gd [-- secs:<n>] [-- quick]
 ## (it runs the two matches itself, as child processes: "-- hash smoke:<0|2> secs:<n>").
 var main: Node
 var t := 0.0
@@ -138,14 +138,23 @@ func _run() -> void:
 	await wait(float(PowderSmoke.KINDS["cannon"][3]) + 1.5)
 	check(ps.alive == 0, "every puff faded and was removed after its life (alive %d of %d)" % [ps.alive, after_shots])
 	check(g.powder_smoke._mm.visible_instance_count == 0, "nothing left to draw")
-	# the cap: a hundred Powder Wagons going up at once
+	# a hundred Powder Wagons going up at one spot: they merge into one cloud, not 1,600 puffs
 	for i in 100:
 		ps.puff("wagon", me.position + Vector2(i % 10, i / 10) * 8.0)
-	check(ps.alive <= ps.cap, "the cap holds (%d alive, cap %d)" % [ps.alive, ps.cap])
-	var full := ps.alive
-	await wait(2.5)
-	check(ps.alive < full, "past %d%% of the cap the oldest fade early (%d -> %d)" % [int(PowderSmoke.SOFT * 100), full, ps.alive])
+	check(ps.alive < 100 * int(PowderSmoke.KINDS["wagon"][0]) / 2 and ps.merged > ps.alive, "a hundred Powder Wagons at one spot merge into one cloud (%d alive, %d merged)" % [ps.alive, ps.merged])
 	ps.clear()
+	# the cap: puffs all over the field (everything seen), never a live puff overwritten, the oldest age faster
+	g.reveal = true
+	var mg := ps.merged
+	for i in ps.cap + 300:
+		ps.puff("musket", Vector2(200 + (i % 28) * 110, 200 + ((i / 28) % 20) * 110), Vector2.RIGHT)
+	check(ps.alive == ps.cap and ps.merged > mg, "the cap holds (%d alive, cap %d) and the newest wait instead of overwriting the oldest (%d not made)" % [ps.alive, ps.cap, ps.merged - mg])
+	var full := ps.alive
+	await wait(5.0)
+	check(ps.alive < full, "past %d%% of the cap the oldest fade early (%d -> %d)" % [int(PowderSmoke.SOFT * 100), full, ps.alive])
+	g.reveal = false
+	ps.clear()
+	_volley()
 	check(ps.alive == 0, "clear() empties it")
 	# out of sight: none made; drifting out of sight: it fades out
 	var far := Vector2(g.W, g.H) * Defs.TILE - home
@@ -201,6 +210,9 @@ func _run() -> void:
 	g.powder_fx("powder:mortar", me.position, 9.0)
 	check(ps.made - m0 == int(PowderSmoke.KINDS["mortar"][0]), "a guest's 'powder:mortar' effect makes the mortar's puffs")
 	print("RESULT: %s (%d failed)" % ["PASS" if fails == 0 else "FAIL", fails])
+	if "quick" in OS.get_cmdline_user_args():          # (-- quick: without the three 7-minute matches)
+		quit(1 if fails > 0 else 0)
+		return
 	# the simulation with the smoke OFF and FULL: two child matches, the same hashes
 	var hs := []
 	for lv in [0, 2, 3]:
@@ -304,3 +316,83 @@ func _thick(me: Unit) -> void:
 	Settings._loaded = false
 	Settings.load_all()
 	Settings.powder_smoke = keep
+
+
+## THE 30-MUSKETEER VOLLEY (0.24.2: "clippy and blinky, takes too long to dissipate"), on THICK (the default), ticked
+## by hand at 20 Hz: 30 Musketeers and 4 Field Cannons fire six volleys 2.5 s apart. No puff's alpha may jump by more
+## than STEP between two ticks (a puff fading in, thinning in the cloud or fading out; none vanishes while still seen),
+## the cloud must be bounded while they fire, still there 5 s after the last volley (it lingers), under a summed alpha of
+## 1 in any 64 px square within THIN_BY s and gone within GONE_BY s.
+const STEP := 0.10                    # (at 20 Hz: a puff takes at least half a second to go from nothing to solid)
+const THIN_BY := 16.0
+const GONE_BY := 30.0
+
+
+func _cloud(ps: PowderSmoke) -> float:
+	var cells := {}
+	var top := 0.0
+	for j in ps.cap:
+		if ps._life[j] > 0.0:
+			var k := Vector2i(int(floor(ps._pos[j].x / 64.0)), int(floor(ps._pos[j].y / 64.0)))
+			var s: float = cells.get(k, 0.0) + ps._al[j]
+			cells[k] = s
+			top = maxf(top, s)
+	return top
+
+
+func _volley() -> void:
+	var ps := PowderSmoke.new()          # (not in the tree: no _process, only the ticks below)
+	ps.setup(g, PowderSmoke.THICK)
+	g.reveal = true
+	var at: Vector2 = Vector2(g.starts[0]) * Defs.TILE + Vector2(160, 0)
+	var dt := 0.05
+	var prev := PackedFloat32Array()
+	prev.resize(ps.cap)
+	prev.fill(0.0)
+	var jump := 0.0
+	var vanish := 0.0
+	var peak_fire := 0.0
+	var t := 0.0
+	var thin_at := -1.0
+	var gone_at := -1.0
+	var at5 := 0.0
+	var last := 5 * 2.5
+	while t < last + GONE_BY + 5.0:
+		var v := int(round(t / 2.5))
+		if v <= 5 and absf(t - v * 2.5) < dt * 0.5:
+			for i in 30:
+				ps.puff("musket", at + Vector2(-(i / 15) * 26, -210 + (i % 15) * 30), Vector2.RIGHT)
+			for i in 4:
+				ps.puff("cannon", at + Vector2(-100, -150 + i * 100), Vector2.RIGHT)
+		var life0 := ps._life.duplicate()
+		ps.tick(dt)
+		t += dt
+		for j in ps.cap:
+			if ps._life[j] > 0.0:
+				if life0[j] > 0.0:
+					jump = maxf(jump, absf(ps._al[j] - prev[j]))
+				else:
+					jump = maxf(jump, ps._al[j])          # (born this tick: from nothing)
+			elif life0[j] > 0.0:
+				vanish = maxf(vanish, prev[j])            # (removed: what it still showed)
+			prev[j] = ps._al[j]
+		var c := _cloud(ps)
+		if t <= last + 0.01:
+			peak_fire = maxf(peak_fire, c)
+		elif absf(t - last - 5.0) < dt * 0.5:
+			at5 = c
+		if t > last + 0.01:
+			if thin_at < 0.0 and c < 1.0:
+				thin_at = t - last
+			if gone_at < 0.0 and ps.alive == 0:
+				gone_at = t - last
+	print("VOLLEY made %d, merged %d, peak while firing %.2f, 5 s after %.2f, under 1 after %.1f s, gone after %.1f s, biggest alpha step %.3f, biggest vanish %.3f" % [
+		ps.made, ps.merged, peak_fire, at5, thin_at, gone_at, jump, vanish])
+	check(jump <= STEP, "the volley: no puff's alpha jumps more than %.2f a tick (biggest %.3f)" % [STEP, jump])
+	check(vanish <= 0.01, "the volley: no puff vanishes while it still shows (biggest %.3f)" % vanish)
+	check(peak_fire < 8.0, "the volley: the cloud is bounded while they fire (most in one 64 px square: %.2f summed alpha)" % peak_fire)
+	check(at5 > 0.3, "the volley: it still lingers 5 s after the last volley (%.2f)" % at5)
+	check(thin_at >= 0.0 and thin_at <= THIN_BY, "the volley: thinned under a summed alpha of 1 within %.0f s (%.1f s)" % [THIN_BY, thin_at])
+	check(gone_at >= 0.0 and gone_at <= GONE_BY, "the volley: gone within %.0f s of the last volley (%.1f s)" % [GONE_BY, gone_at])
+	g.reveal = false
+	ps.free()
