@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.22.10", "items": [
+		"No change to play: a study of the Clockwork's and the Crown's economies (docs/cw_economy_study.md) and the tool that measures them, with a switch only the study uses to try limits such as one Mainspring per Clocktower.",
+	]},
 	{"v": "0.22.9", "items": [
 		"THE BROOD COMPUTER PLAYS A REAL ECONOMY (the designer's build): its first Mound Turtle goes on the NATURAL expansion in the first minute, its third Rootmaw at the natural's far edge (farther loads pay more), grubs come nonstop, and a second turtle takes the third expansion with Rootmaws round it. The Mother grows once her eggs, not her food, hold the Brood back. Against the Crown it now earns about as much as the Crown for the first ten minutes (it earned three quarters before).",
 		"A Brood grub now keeps WATCH all game: against the Crown it walks to and fro at the foot of the enemy's ramp, against the Clockwork it walks round the enemy's main. When an enemy army leaves its main the computer raises the ALARM: warriors before grubs, the army waits at the natural, grubs run from Rootmaws the enemy comes near, and a Mound Turtle roots in front of the natural. It never lets its army fall far behind the enemy army it has seen.",
