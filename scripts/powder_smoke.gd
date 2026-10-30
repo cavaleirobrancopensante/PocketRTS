@@ -6,8 +6,8 @@ extends Node2D
 ##
 ## Looks only. It never touches the simulation: its own random numbers (rng), nothing it does
 ## is read by the game, and it runs (or not, Settings.powder_smoke) the same on the host, the
-## online guest and in replays. Puffs live in packed arrays (a ring: the newest overwrite the
-## oldest) and are drawn in one MultiMesh, the haze under the units (z -15), and one puff in
+## online guest and in replays. Puffs live in packed arrays (a ring, oldest first; a live puff is
+## never overwritten: a new one waits) and are drawn in one MultiMesh, the haze under the units (z -15), and one puff in
 ## three again, half as solid, in a second one: a thin veil over them (z 1), under the effects,
 ## the overlay with the orders, the fog and the UI. A puff shows only where the watching side sees now: it is
 ## not made on ground out of sight, and one that drifts out of sight fades out.
@@ -42,7 +42,21 @@ const KINDS := {
 const CAP := {3: 960, 2: 720, 1: 260}          # puffs alive at most (thick, full, light)
 const LIFE_K := {3: 1.25, 2: 1.0, 1: 0.65}     # light: shorter lives; thick: longer
 const HZ := {3: 20.0, 2: 20.0, 1: 12.0}         # how often the puffs move and the MultiMesh is refilled (they move a few px a second)
-const SOFT := 0.8                      # past this share of the cap the oldest puffs age 12x faster (gone in a second or two)
+const SOFT := 0.8                      # past this share of the cap the oldest puffs age OVER_RATE x faster (they thin, never vanish at once)
+const OVER_RATE := 3.0
+## A dense cloud (0.24.2, "clippy, blinky, too long"): the field is cut into DCELL px squares and the puffs in each are
+## counted every tick. Past DENSE puffs in a square each puff there is drawn thinner (DENSE / count, smoothed, never
+## under THIN_MIN), so overlapping volleys don't stack into a white wall, and ages faster (up to RATE_MAX x), so a heavy
+## cloud thins steadily instead of hanging for its whole life and then going all at once. Past MERGE puffs in a square a
+## new shot's puffs merge into the cloud (only MERGE / count of them are made): it is fed, but not piled higher.
+const DCELL := 96.0
+const DENSE := 8.0
+const MERGE := 22.0
+const THIN_MIN := 0.3
+const THIN_RATE := 0.7                 # how fast a puff's thinning follows its square's (per second)
+const AGE_K := 0.3                    # extra ageing per DENSE puffs past DENSE in its square
+const RATE_MAX := 2.2
+const FADE_IN := 0.6                   # seconds a new puff takes to fade in (smoothstep)
 
 static var force := -1                 # tests and tools: this level in every new match (-1: the setting)
 
@@ -52,6 +66,7 @@ var rng := RandomNumberGenerator.new()  # (its own: the game's random numbers ar
 var cap := 720
 var made := 0                          # puffs made so far (tests)
 var refused := 0                       # puffs not made: ground the watching side does not see (tests)
+var merged := 0                        # puffs not made: merged into a dense cloud, or the ring full at the oldest slot (tests)
 
 # the ring of puffs (struct of arrays, sized once)
 var _pos := PackedVector2Array()
@@ -67,6 +82,12 @@ var _frame := PackedFloat32Array()
 var _grey := PackedFloat32Array()
 var _seen := PackedFloat32Array()      # 0..1: fades out where the watching side stops seeing
 var _seen_to := PackedByteArray()
+var _th := PackedFloat32Array()        # 0..1: drawn thinner in a dense cloud (smoothed)
+var _al := PackedFloat32Array()        # the alpha drawn at the last tick (tests: no jumps)
+var _grid := PackedInt32Array()        # puffs per DCELL square, counted at the last tick (+ the ones made since)
+var _gnext := PackedInt32Array()
+var _gw := 1
+var _gh := 1
 var _w := 0                            # where the next puff goes (the oldest slot)
 var alive := 0
 
@@ -108,6 +129,15 @@ func setup(g: Game, lv: int) -> void:
 	_seen.resize(cap)
 	_life.fill(0.0)
 	_seen_to.resize(cap)
+	_th.resize(cap)
+	_al.resize(cap)
+	_al.fill(0.0)
+	_gw = int(ceil(float(Game.W * Game.T) / DCELL)) + 1
+	_gh = int(ceil(float(Game.H * Game.T) / DCELL)) + 1
+	_grid.resize(_gw * _gh)
+	_grid.fill(0)
+	_gnext.resize(_gw * _gh)
+	_gnext.fill(0)
 	_buf.resize(cap * 16)
 	_buf.fill(0.0)
 	_capv = cap / VEIL_EVERY + 1
@@ -169,11 +199,19 @@ func puff(kind: String, p: Vector2, dir := Vector2.ZERO) -> void:
 	var ak := THICK_A if level == THICK else 1.0
 	var lk := float(LIFE_K[level])
 	var d := dir.normalized() if dir != Vector2.ZERO else Vector2.ZERO
+	var gc := _cell(p)
 	for i in n:
+		# (a dense cloud takes only some of a new shot's puffs; a live puff is never overwritten: no sudden vanish)
+		var cnt := float(_grid[gc])
+		if (cnt >= MERGE and rng.randf() * cnt >= MERGE) or _life[_w] > 0.0:
+			merged += 1
+			continue
 		var j := _w
 		_w = (_w + 1) % cap
-		if _life[j] <= 0.0:
-			alive += 1
+		alive += 1
+		_grid[gc] += 1
+		_th[j] = clampf(DENSE / maxf(cnt + 1.0, 1.0), THIN_MIN, 1.0)
+		_al[j] = 0.0
 		var f := float(i) / maxf(float(n - 1), 1.0)
 		var off := Vector2(rng.randf_range(-1, 1), rng.randf_range(-1, 1)) * float(k[7])
 		_pos[j] = p + off + d * float(k[7]) * 1.5 * f          # (a gun's puffs roll out along the shot)
@@ -215,9 +253,16 @@ func sees(p: Vector2) -> bool:
 	return (sv as PackedByteArray)[c.y * game.W + c.x] == 1
 
 
+## The DCELL square at p (clamped to the field).
+func _cell(p: Vector2) -> int:
+	return clampi(int(p.y / DCELL), 0, _gh - 1) * _gw + clampi(int(p.x / DCELL), 0, _gw - 1)
+
+
 ## Every puff gone (a replay's jump, tests).
 func clear() -> void:
 	_life.fill(0.0)
+	_al.fill(0.0)
+	_grid.fill(0)
 	alive = 0
 	if _mm:
 		_mm.visible_instance_count = 0
@@ -256,8 +301,12 @@ func tick(dt: float) -> void:
 	if check:
 		_vis_t = 0.25
 	var over := alive - int(float(cap) * SOFT)      # (near the cap: the oldest fade early)
-	var vr: Rect2 = game.view_rect
+	var vr: Rect2 = game.view_rect.grow(110.0)       # (a grown puff's edge reaches ~100 px past its centre: no popping at the screen's edge)
 	var all_view := vr.size == Vector2.ZERO
+	var ik := 1.0 / DCELL
+	var gw := _gw
+	var gw1 := _gw - 1
+	var gh1 := _gh - 1
 	var damp := pow(0.35, dt)                        # (the shot's push dies away in about a second)
 	var n := 0
 	var nv := 0
@@ -265,18 +314,28 @@ func tick(dt: float) -> void:
 	for _i in cap:
 		var life := _life[j]
 		if life > 0.0:
-			var age := _age[j] + dt * (12.0 if over > 0 else 1.0)
+			var p0 := _pos[j]
+			var cnt := float(_grid[clampi(int(p0.y * ik), 0, gh1) * gw + clampi(int(p0.x * ik), 0, gw1)])
+			var rate := minf(1.0 + AGE_K * maxf(cnt / DENSE - 1.0, 0.0), RATE_MAX)
 			if over > 0:
 				over -= 1
+				rate = maxf(rate, OVER_RATE)
+			var age := _age[j] + dt * rate
 			if age >= life:
 				_life[j] = 0.0
+				_al[j] = 0.0
 				alive -= 1
 			else:
 				_age[j] = age
+				var th := _th[j]
+				var tt := clampf(DENSE / maxf(cnt, 1.0), THIN_MIN, 1.0)
+				th = minf(th + THIN_RATE * dt, tt) if tt > th else maxf(th - THIN_RATE * dt, tt)
+				_th[j] = th
 				var v := _vel[j] * damp
 				_vel[j] = v
-				var p := _pos[j] + (v + wind) * dt
+				var p := p0 + (v + wind) * dt
 				_pos[j] = p
+				_gnext[clampi(int(p.y * ik), 0, gh1) * gw + clampi(int(p.x * ik), 0, gw1)] += 1
 				_rot[j] += _spin[j] * dt
 				if check:
 					_seen_to[j] = 1 if sees(p) else 0
@@ -286,11 +345,13 @@ func tick(dt: float) -> void:
 				else:
 					sn = maxf(sn - dt * 1.5, 0.0)
 				_seen[j] = sn
+				var x := age / life
+				var fi := minf(age / FADE_IN, 1.0)
+				var al := _a[j] * fi * fi * (3.0 - 2.0 * fi) * (1.0 - pow(x, 1.6)) * sn * th     # (thick for a while, then vanishing slowly)
+				_al[j] = al
 				if sn > 0.0 and (all_view or vr.has_point(p)):
-					var x := age / life
 					var g := 1.0 - (1.0 - x) * (1.0 - x)
 					var s := (_s0[j] + (_s1[j] - _s0[j]) * g) * 27.0
-					var al := _a[j] * minf(age * 6.0, 1.0) * (1.0 - pow(x, 1.6)) * sn      # (thick for a while, then vanishing slowly)
 					var c := cos(_rot[j]) * s
 					var si := sin(_rot[j]) * s
 					var o := n * 16
@@ -319,6 +380,10 @@ func tick(dt: float) -> void:
 		j += 1
 		if j >= cap:
 			j = 0
+	var gt := _grid
+	_grid = _gnext
+	_gnext = gt
+	_gnext.fill(0)
 	if _mm == null:
 		return
 	# (per instance: transform 8 floats, colour 4, custom 4: the frame, then three unused)
@@ -384,11 +449,15 @@ void vertex() {
 	tint = COLOR;
 }
 void fragment() {
-	vec4 t = texture(TEXTURE, vec2((UV.x + frame) / %d.0, UV.y));
+	// (the painted frames touch their edges: kept inside the frame, so no line from the next one, and faded to
+	// nothing in a soft circle, so a puff grown 4 to 5 times never shows the frame's straight edges)
+	vec2 uv = clamp(UV, vec2(0.02), vec2(0.98));
+	vec4 t = texture(TEXTURE, vec2((uv.x + frame) / %d.0, uv.y));
+	float edge = 1.0 - smoothstep(0.28, 0.5, length(UV - vec2(0.5)));
 	// (the art's own shading kept a little, pulled toward a soft light grey so the haze reads as
 	// one; its darkest edge pixels thinner, so the grown puffs have soft edges)
 	float l = dot(t.rgb, vec3(0.3, 0.59, 0.11));
-	COLOR = vec4(vec3(mix(l, 0.93, 0.6)) * tint.rgb, t.a * tint.a * smoothstep(0.15, 0.6, l));
+	COLOR = vec4(vec3(mix(l, 0.93, 0.6)) * tint.rgb, t.a * tint.a * smoothstep(0.15, 0.6, l) * edge);
 }
 """ % FRAMES
 	return _shader_res

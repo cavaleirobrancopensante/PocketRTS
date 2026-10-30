@@ -66,9 +66,10 @@ Watching the computers, it follows whoever's eyes you watch through.
 - How solid: at most about half see-through where one puff lies. It stays thick for a while, then fades slowly.
 - The wind: about 4 to 8 pixels a second, one wind for the whole field. It turns slowly over the match, about half a turn in several minutes.
 - A shot's puffs are first pushed forward along the shot, then hang and drift.
-- The cap: 720 puffs alive on FULL, 260 on LIGHT.
-  Past 80 percent of the cap, the oldest puffs age twelve times faster, so they fade out in a second or two instead of vanishing at once.
-  If the cap is still hit, the newest puff takes the oldest one's place.
+- The cap: 720 puffs alive on FULL, 260 on LIGHT, 960 on THICK.
+  Past 80 percent of the cap, the oldest puffs age three times faster (twelve before 0.24.2).
+  If the cap is still hit, a new puff is not made: a live puff is never overwritten (before 0.24.2 the oldest vanished).
+- Dense clouds (0.24.2): see "Clippy, blinky and too long" at the end.
 - The puffs move and are redrawn 20 times a second on FULL, 12 on LIGHT. They move only a few pixels a second, so this is smooth.
 
 ## The setting
@@ -173,3 +174,73 @@ What THICK costs, with tools/bench_powder_smoke.gd (32 Musketeers and 3 Field Ca
 - With drawing, on this machine's slow software renderer: 81 milliseconds a frame on THICK, 82 on FULL, 60 with no smoke.
   THICK draws about as much as FULL: it has more puffs, but one layer instead of the haze and the veil.
 - On a phone this is more than LIGHT was. If a phone playtest shows it slow, THICK's cap (960) can go lower, or the default can go back to LIGHT on phones.
+
+## Clippy, blinky and too long (0.24.2, branch powder-smoke)
+
+The owner played 0.24.1 (Crown against Clockwork, THICK) and said:
+"currently the gunpowder fog is too buggy, its clippy and blinky, and it takes too long to dissipate maybe its because a lot was fired at once with multiple volleys, and yes, it should linger longer, but something is off with that animation".
+His match log had up to 326 puffs at once, with 30+ Musketeers and 4 Field Cannons firing volleys.
+
+### What was wrong
+
+1. Clippy: square edges. The puffs are the painted muzzle smoke frames (27 by 25 pixels), grown four to five times.
+   The painted smoke touches the edges of its frames (frame 1 on three sides).
+   So a grown puff showed straight, cut-off edges, and the next frame of the atlas could bleed in as a thin line.
+2. Clippy: popping at the screen's edge. A puff was drawn only while its centre was inside the view (plus 120 px).
+   A THICK puff grows to about 140 px wide, so at the edges it could still pop in and out while scrolling. The margin is now bigger.
+3. Blinky: sudden vanishing. Past 80 percent of the cap the oldest puffs aged twelve times faster, gone in about a second,
+   and the set of "oldest" changed tick to tick, so the old haze collapsed in jerks. At the cap a new puff simply overwrote the oldest one: it vanished in one frame.
+4. Blinky: new puffs popping in. A puff faded in over a sixth of a second. A volley of 120 puffs landing on a cloud flashed in.
+5. Too long, and a wall: every puff kept its full strength however many others lay on it.
+   Volley after volley stacked into a solid white wall (up to 15 puffs' worth of alpha on one 64 px square).
+   All puffs of a volley also age together, so the wall stayed solid for most of its life, then thinned all at once.
+
+### What changed
+
+- The shader fades each puff to nothing in a soft circle (from 28 to 50 percent of its width) and keeps its texture lookups inside the frame. No square edges, no lines.
+- Puffs are culled with a 230 px margin (the view's 120 plus 110), more than a grown puff's reach.
+- A puff fades in over 0.6 s (smoothstep).
+- No puff ever vanishes while it shows: near the cap the oldest age 3 times faster (still smooth), and when the ring's oldest slot is still alive, a new puff is not made.
+- Dense clouds merge. The field is cut into 96 px squares and the puffs in each are counted every tick.
+  - Past 8 puffs in a square, each puff there is drawn thinner: 8 / count, never under 30 percent, smoothed at 0.7 a second so it never jumps.
+  - Past 8 puffs it also ages faster: 30 percent faster per 8 puffs more, at most 2.2 times. A heavy cloud thins steadily, and the last thin wisps linger at the normal pace.
+  - Past 22 puffs in a square, a new shot's puffs merge into the cloud: only 22 / count of them are made. The cloud is fed while the line fires, but not piled higher.
+- The cost is the same or a little lower: fewer puffs, a little more work each.
+
+### The numbers
+
+The 30-Musketeer volley: tools/shot_powder_volley.gd, 30 Musketeers and 4 Field Cannons fire at a line of dummies for 12 s, then stop (THICK, the default).
+"Peak" is the most smoke over one 64 px square, as the drawn puffs' alpha summed. About 1 reads as a light haze, 3 to 5 as thick smoke, 15 as a solid wall.
+
+| | before (0.24.1) | after (0.24.2) |
+|---|---|---|
+| puffs made | 595 | 496 |
+| most alive | 566 | 338 |
+| peak while firing | 15.6 | 4.8 |
+| peak at 17 s (they have just stopped) | 12.1 | 4.5 |
+| peak at 25 s | 6.1 | 3.1 |
+| peak under 1 | at 38 s | at 35 s |
+| puffs left at 42 s | 9 | 2 |
+
+(The men fire on until about 17 s: their last shots were already loaded.)
+So the smoke still lingers about as long (he wants it to linger), but as a haze you can see the men through, thinning steadily, not a white wall.
+
+Pictures: docs/shots/powder_smoke/volley_before/ and volley_after/: v1 to v4 are 0.5 s apart from the first volley, v5 and v6 at 6 and 12 s of fire, v7 to v11 at 5, 10, 15, 20 and 30 s after.
+volley_before_after.jpg puts them side by side: before on the left, after on the right.
+
+The test (tools/test_powder_smoke.gd, its "volley" part, ticked by hand at 20 Hz on THICK): six volleys of 30 muskets and 4 cannons, 2.5 s apart.
+- No puff's alpha changes by more than 0.10 between two ticks (measured 0.092: a puff fading in).
+- No puff is removed while it still shows more than 0.01 (measured 0.002).
+- The most smoke on one 64 px square while firing stays under 8 (measured 5.7).
+- 5 s after the last volley it still lingers (2.6).
+- It is under 1 within 16 s of the last volley (12.2 s) and gone within 30 s (22.7 s).
+- A hundred Powder Wagons at one spot make 501 puffs, not 1,600; the cap holds without overwriting; the match still plays out the same with the smoke off, FULL and THICK.
+- `-- quick` skips the three seven-minute matches.
+
+What it costs (tools/bench_powder_smoke.gd, THICK, headless, on a busy cloud machine): the smoke's own work 0.84 ms a frame after, 0.87 before;
+peak 660 puffs alive after, 932 before. (The machine was shared, so the totals per frame are noisy; the smoke's share is what to compare.)
+
+### Still open
+
+- Only THICK was filmed; FULL and LIGHT use the same rules (LIGHT rarely gets dense).
+- The puffs are still the painted muzzle smoke, softened; a painted soft puff would be better (docs/art_style_inconsistency.md).
