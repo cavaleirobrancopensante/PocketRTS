@@ -1751,6 +1751,23 @@ static func next_egg_in(q: Unit) -> float:
 	return maxf(0.0, (float(Defs.NB["egg_time"]) - float(q.nb.get("egg_t", 0.0))) / rate)
 
 
+## Seconds until her clutch is full at her laying rate now (-1: none coming: full, or growing).
+static func full_in(q: Unit) -> float:
+	var nl := next_egg_in(q)
+	if nl < 0.0:
+		return -1.0
+	var left := eggs_max(q) - int(q.nb.get("eggs", 0)) - 1          # (eggs after the next one)
+	return nl + float(left) * float(Defs.NB["egg_time"]) / maxf(float(q.nb.get("rate", 1.0)), 0.01)
+
+
+## mm:ss, or (short = true, under 10 s) tenths of a second: "3.5s".
+static func clock_text(t: float, short: bool) -> String:
+	if short and t < 10.0:
+		return "%.1fs" % maxf(t, 0.0)
+	var sec := int(ceil(t))
+	return "%02d:%02d" % [sec / 60, sec % 60]
+
+
 ## Over the creature (Unit._draw_unit, its own space): the Mother's eggs, a Rootmaw's food and ground, an egg's
 ## incubation, the father's reach when picked.
 static func draw(u: Unit, top: float) -> void:
@@ -1760,10 +1777,11 @@ static func draw(u: Unit, top: float) -> void:
 		var font := ThemeDB.fallback_font
 		var txt := "%d/%d" % [int(u.nb.get("eggs", 0)), eggs_max(u)]
 		# and the countdown to her next egg (the owner, 2026-10-30): none when her clutch is full or she is growing
+		# (the owner, 09:27: always the time to her FULL clutch too, at any rate; her next egg in tenths of a second
+		# once it comes within 10 s: "4/10  3.5s · 00:36")
 		var nl := next_egg_in(u)
 		if nl >= 0.0:
-			var sec := int(ceil(nl))
-			txt += "  %02d:%02d" % [sec / 60, sec % 60]
+			txt += "  " + clock_text(nl, true) + " · " + clock_text(full_in(u), false)
 		u.draw_string_outline(font, Vector2(-14, top - 6), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, 4, Color(0, 0, 0, 0.8))
 		u.draw_string(font, Vector2(-14, top - 6), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.85, 1.0, 0.55) if int(u.nb.get("eggs", 0)) > 0 else Color(1.0, 0.55, 0.45))
 	if u.kind == MAW and mine:

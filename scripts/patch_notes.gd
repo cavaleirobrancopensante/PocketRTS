@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.22.6", "items": [
+		"The Brood Mother's egg line shows her next egg in tenths of a second once it is under 10 s, and always the time until her clutch is full: \"4/10  4.8s · 00:35\". At her fastest (stage 3, three Sires, three far turtles, full harvest veterancy) she lays about one egg every 1.4 s.",
+	]},
 	{"v": "0.22.5", "items": [
 		"Over the Brood Mother, beside her eggs (4/10), a countdown to her next egg (00:05), at her laying rate now. None when her clutch is full or while she grows.",
 	]},

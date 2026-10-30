@@ -2,7 +2,7 @@
 
 *(a working title: the game was called Holdfast until October 2026, but that name belongs to another game; the web address, the app file and the repository keep the old name for now so links and installs keep working)*
 
-**Play in your browser (version 0.22.5): https://holdfastrts.github.io/Holdfast/**
+**Play in your browser (version 0.22.6): https://holdfastrts.github.io/Holdfast/**
 
 **Android app: https://holdfastrts.github.io/Holdfast/Holdfast.apk** (rebuilt on every push; allow installs from your browser, then install over the old one to update)
 

@@ -32,6 +32,9 @@ func _run() -> void:
 	q.nb["egg_t"] = full_t * 0.5
 	q.nb["rate"] = 2.0
 	check("half way at twice the rate: a quarter of the time", absf(BroodNew.next_egg_in(q) - full_t * 0.25) < 0.01, "%.2f s" % BroodNew.next_egg_in(q))
+	q.nb["eggs"] = BroodNew.eggs_max(q) - 2          # (two to go, half way to the next at twice the rate)
+	check("the time to a full clutch: the next egg and one more", absf(BroodNew.full_in(q) - full_t * 0.75) < 0.01, "%.2f s" % BroodNew.full_in(q))
+	check("tenths under 10 s, minutes and seconds above", BroodNew.clock_text(3.46, true) == "3.5s" and BroodNew.clock_text(36.2, false) == "00:37" and BroodNew.clock_text(12.0, true) == "00:12", "%s %s %s" % [BroodNew.clock_text(3.46, true), BroodNew.clock_text(36.2, false), BroodNew.clock_text(12.0, true)])
 	q.nb["eggs"] = BroodNew.eggs_max(q)
 	check("a full clutch shows no countdown", BroodNew.next_egg_in(q) < 0.0)
 	q.nb["eggs"] = 0
