@@ -762,11 +762,11 @@ func farm_speed() -> float:
 	return Defs.FARM_BASE + (1.0 - Defs.FARM_BASE) * mini(working_crew(), int(d["crew"])) / float(d["crew"])
 
 
-## Cog Press: cogs a second right now. A trickle by itself (`base` of the full rate, like a farm with nobody on it),
-## every Winder winding it adds an equal share up to its crew cap, times its DRIVE (GearEcon: 100% meshing with a Clocktower
-## or Mainspring, less farther out); 0 while it is unlinked, unfinished or swapping gears.
+## Cog Press: cogs a second right now. Nothing by itself (`base` 0 since 0.24.0: no trickle), every Winder winding it adds
+## an equal share up to its crew cap, times its DRIVE (GearEcon: 100% meshing with a Clocktower or Mainspring, less farther
+## out); 0 while it is unlinked, unfinished or swapping gears, and once its Clocktower's brass is spent (barren).
 func press_rate() -> float:
-	if kind != Defs.GEAR_PRESS or not built or dead:
+	if kind != Defs.GEAR_PRESS or not built or dead or barren():
 		return 0.0
 	var drive := game.gear_net.speed_mult(self)
 	if drive <= 0.0:
@@ -778,9 +778,10 @@ func press_rate() -> float:
 	return float(info["full"]) * (base + (1.0 - base) * float(mini(working_crew(), cap)) / float(cap)) * drive
 
 
-## Mainspring: Tension a second right now (Defs.GEAR "mainspring", by its gear): a trickle by itself, every Winder on it
-## adds an equal share up to its crew, times its DRIVE (GearEcon); 0 while it is unlinked or unfinished, and while its
-## side's pool holds all its Mainsprings store (it stands still, wound tight).
+## Mainspring: Tension a second right now (Defs.GEAR "mainspring", by its gear): nothing by itself (0.24.0), every Winder
+## on it adds an equal share up to its crew, times its DRIVE (GearEcon), times its Clocktower's SPRING LIFE share
+## (Defs.second_share: 100% fresh down to Defs.TENSION_FLOOR once spent, FATIGUED); 0 while it is unlinked or unfinished, and
+## while its side's pool holds all its Mainsprings store (it stands still, wound tight).
 func spring_rate() -> float:
 	if kind != "mainspring" or not built or dead:
 		return 0.0
@@ -790,7 +791,7 @@ func spring_rate() -> float:
 	var info := GearEcon.spring_info(gear_big)
 	var cap := int(info["crew"])
 	var base := float(Defs.GEAR["mainspring"]["base"])
-	return float(info["full"]) * (base + (1.0 - base) * float(mini(working_crew(), cap)) / float(cap)) * drive
+	return float(info["full"]) * (base + (1.0 - base) * float(mini(working_crew(), cap)) / float(cap)) * drive * Defs.second_share(soil_left(), Defs.TENSION_FLOOR)
 
 
 ## Cog Press / Mainspring / Light Works (movement_works) / Heavy Works / Regulator / Escapement / Clock Aviary: the painted working loop
@@ -844,17 +845,18 @@ func _press_stamp(i: int) -> void:
 	Sfx.play("work/cog_press_stamp", center(), -9.0)
 
 
-## Town Hall / Clocktower: the full reserve of its land (Crown soil, Clockwork coal for its Boilers).
+## Town Hall / Clocktower: the full reserve of its land (Crown soil; a Clocktower's SPRING LIFE for its Mainspring,
+## Defs.TENSION_RESERVE, since 0.24.0: the field held the retired coal before, and still does with the gear mode off).
 func reserve() -> float:
 	if kind == "clocktower":
-		return float(Defs.COAL_RESERVE)
+		return Defs.TENSION_RESERVE if Defs.gear_mode else float(Defs.COAL_RESERVE)
 	return float(Defs.SOIL_RESERVE)
 
 
-## Farm / Boiler: share of its hall's soil (coal) left (0..1); 0 with no hall.
-## Town Hall / Clocktower: its own.
+## Farm / Boiler / Mainspring: share of its hall's soil (coal; a Mainspring: its Clocktower's spring life) left (0..1); 0
+## with no hall. Town Hall / Clocktower: its own.
 func soil_left() -> float:
-	var h: Building = game.soil_hall(self) if kind == "farm" or kind == "boiler" else self
+	var h: Building = game.soil_hall(self) if kind == "farm" or kind == "boiler" or kind == "mainspring" else self
 	return clampf(h.soil / h.reserve(), 0.0, 1.0) if h and h.reserve() > 0.0 else 0.0
 
 
@@ -870,16 +872,23 @@ func lode_left() -> float:
 	return clampf(h.lode / h.lode_full(), 0.0, 1.0) if h else 0.0
 
 
-## TOTAL EXHAUSTION (design_principles 2: economy forces expansion and is depletable): a Farm,
-## Powder Mill, Ore Crusher or Boiler whose land is fully spent yields nothing and
-## its crew is let go (Unit._gather) to find fresh land. The Clocktower itself is never barren.
+## TOTAL EXHAUSTION (design_principles 2: economy forces expansion and is depletable; EXHAUSTED MEANS EXHAUSTED, the
+## owner 2026-10-30): a Farm, Cog Press, Ore Crusher or Boiler whose land is fully spent yields nothing and its crew is let
+## go (Unit._gather) to find fresh land. The halls are never barren, nor are the SECONDARY resources' buildings (the owner,
+## 14:44): a Powder Mill on spent saltpetre and a FATIGUED Mainspring still work, at Defs.POWDER_FLOOR and Defs.TENSION_FLOOR.
 func barren() -> bool:
 	match kind:
 		"farm", "boiler":
 			return soil_left() <= 0.0
-		"powder_mill", "ore_crusher", "ore_drill":
+		"ore_crusher", "ore_drill", "cog_press":
 			return lode_left() <= 0.0
-	return false      # (a Cog Press is never barren: spent brass pays it a quarter, Defs.GEAR.spent)
+	return false
+
+
+## Mainspring (gear mode): its Clocktower's SPRING LIFE is spent (or it has no Clocktower): the spring has TAKEN A SET and
+## winds at Defs.TENSION_FLOOR from now on (it still drives its rings and stores Tension).
+func fatigued() -> bool:
+	return kind == "mainspring" and Defs.gear_mode and game != null and soil_left() <= 0.0
 
 
 ## Economy buildings (and the Clocktower): production efficiency right now, as
@@ -930,7 +939,7 @@ func efficiency() -> Array:
 		_:
 			left = lode_left()
 			res = "saltpetre" if kind == "powder_mill" else ("brass" if kind == "cog_press" else "ore")
-			trickle = float(Defs.GEAR["spent"]) if kind == "cog_press" else Defs.LODE_SPENT
+			trickle = Defs.POWDER_FLOOR if kind == "powder_mill" else Defs.LODE_SPENT      # (powder: a floor, the owner 14:44)
 	var staff := clampf(float(have) / float(want), 0.0, 1.0) if want > 0 else 0.0
 	return [staff * (trickle + (1.0 - trickle) * left), have, want, left, res]
 
@@ -980,7 +989,7 @@ func _econ(delta: float) -> void:
 		"ore_drill":
 			OreDrill.tick(self, delta)
 		"cog_press":
-			# presses cogs from its Clocktower's brass at press_rate() a second (a quarter once the brass is spent)
+			# presses cogs from its Clocktower's brass at press_rate() a second (nothing once the brass is spent)
 			while crew.size() > crew_max():
 				var extra: Unit = crew.pop_back()
 				if is_instance_valid(extra) and not extra.dead:
@@ -1000,7 +1009,7 @@ func _econ(delta: float) -> void:
 					extra2.cmd_stop()          # (a swap to the small gear lets the extra Winders go)
 			var sr := spring_rate()
 			if sr > 0.0:
-				pop_income(GearEcon.wind(game, team, sr * delta), delta)
+				pop_income(GearEcon.wind_spring(self, sr * delta), delta)      # (drawn from its Clocktower's spring life)
 			_gear_anim(working_crew() > 0 and sr > 0.0)
 		"movement_works":
 			# the hanging line runs while it assembles a Clock Soldier and is linked
@@ -1020,7 +1029,7 @@ func _econ(delta: float) -> void:
 			# a Swift (or researches) and is linked; doors shut when idle
 			_gear_anim(not queue.is_empty() and game.gear_net.speed_mult(self) > 0.0, float(Defs.GEAR["aviary_dt"]), 4)
 		"powder_mill":
-			# grinds its Town Hall's saltpetre; once that's spent, nothing
+			# grinds its Town Hall's saltpetre: less as it runs down, Defs.POWDER_FLOOR once it is spent (Game.draw_lode)
 			var n := working_crew()
 			if n > 0:
 				game.add_res2(team, game.draw_lode(self, Defs.MILL_RATE * n * delta))

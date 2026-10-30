@@ -432,16 +432,16 @@ static func _tip_farm(g: Game, b: Building) -> Dictionary:
 	var each := full_per_s * (1.0 - Defs.FARM_BASE) / float(crew) * 60.0
 	var st := Loc.t("%d of %d at work") % [b.working_crew(), crew] + "  ·  " + Loc.t("soil left %d%%") % int(round(b.soil_left() * 100.0))
 	return {"title": Loc.t("Farmers"), "stats": st,
-		"body": Loc.t("Labourers working the Farm. With all %d it ripens a %d-gold harvest every %d s; with nobody it grows at %d%% of that speed, and each farmer adds the same share: about %d gold a minute each. Harvests draw on the Town Hall's soil: once it is spent the Farm pays nothing.") % [
-			crew, Defs.FARM_YIELD, int(Defs.FARM_GROW), int(round(Defs.FARM_BASE * 100.0)), int(round(each))]}
+		"body": Loc.t("Labourers working the Farm. With all %d it ripens a %d-gold harvest every %d s; with nobody it grows nothing, and each farmer adds the same share: about %d gold a minute each. Harvests draw on the Town Hall's soil: once it is spent the Farm pays nothing.") % [
+			crew, Defs.FARM_YIELD, int(Defs.FARM_GROW), int(round(each))]}
 
 
 static func _tip_mill(g: Game, b: Building) -> Dictionary:
 	var crew := int(b.d["crew"])
 	var st := Loc.t("%d of %d at work") % [b.working_crew(), crew] + "  ·  " + Loc.t("saltpetre left %d%%") % int(round(b.lode_left() * 100.0))
 	return {"title": Loc.t("Powder makers"), "stats": st,
-		"body": Loc.t("Labourers grinding the Town Hall's saltpetre into black powder, about %d powder a minute each (%d with all %d). Powder buys Musketeers and Powder Wagons and refills your soldiers' shots. Once the saltpetre is spent the Mill grinds nothing.") % [
-			int(round(Defs.MILL_RATE * 60.0)), int(round(Defs.MILL_RATE * 60.0 * crew)), crew]}
+		"body": Loc.t("Labourers grinding the Town Hall's saltpetre into black powder, about %d powder a minute each (%d with all %d). Powder buys Musketeers and Powder Wagons and refills your soldiers' shots. It grinds less as the saltpetre runs down, and %d%% of that once it is spent.") % [
+			int(round(Defs.MILL_RATE * 60.0)), int(round(Defs.MILL_RATE * 60.0 * crew)), crew, int(round(Defs.POWDER_FLOOR * 100.0))]}
 
 
 ## Food a minute for one grub: a load pays for the time its round trip takes (Game.food_at: a rate a grub-second that
@@ -484,12 +484,12 @@ static func _tip_gear_crew(g: Game, b: Building) -> Dictionary:
 		var base := float(Defs.GEAR["press"]["base"])
 		var each := float(info["full"]) * (1.0 - base) / float(info["crew"])
 		return {"title": Loc.t("Winders"), "stats": st,
-			"body": Loc.t("Winders winding the Cog Press: it presses cogs from the Clocktower's brass, %.1f a second with all %d; alone it makes %d%% of that and each Winder adds the same share, about %.2f a second.") % [float(info["full"]), int(info["crew"]), int(round(base * 100.0)), each] + " " + why + " " + Loc.t("x the brass (a quarter once it is spent).")}
+			"body": Loc.t("Winders winding the Cog Press: it presses cogs from the Clocktower's brass, %.1f a second with all %d; with nobody on it, nothing, and each Winder adds the same share, about %.2f a second.") % [float(info["full"]), int(info["crew"]), each] + " " + why + " " + Loc.t("x the brass (nothing once it is spent).")}
 	var si := GearEcon.spring_info(b.gear_big)
 	var base2 := float(Defs.GEAR["mainspring"]["base"])
 	var each2 := float(si["full"]) * (1.0 - base2) / float(si["crew"])
 	return {"title": Loc.t("Winders"), "stats": st,
-		"body": Loc.t("Winders cranking the Mainspring: it winds Tension, %.1f a second with all %d; alone it makes %d%% of that and each Winder adds the same share, about %.2f a second. Winding stops when you hold what your Mainsprings store.") % [float(si["full"]), int(si["crew"]), int(round(base2 * 100.0)), each2] + " " + why + "."}
+		"body": Loc.t("Winders cranking the Mainspring: it winds Tension from its Clocktower's spring life, %.1f a second with all %d; with nobody on it, nothing, and each Winder adds the same share, about %.2f a second. Winding stops when you hold what your Mainsprings store. It winds less as the spring life runs down; once it is spent the spring is FATIGUED (it has taken a set) and winds at %d%%.") % [float(si["full"]), int(si["crew"]), each2, int(round(Defs.TENSION_FLOOR * 100.0))] + " " + why + "."}
 
 
 static func _tip_eff(g: Game, b: Building) -> Dictionary:

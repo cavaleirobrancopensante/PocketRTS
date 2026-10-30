@@ -137,6 +137,22 @@ static func wind(game: Game, t: int, v: float) -> float:
 	return v
 
 
+## A Mainspring's crank: wind `v` Tension drawn from its Clocktower's SPRING LIFE (Defs.TENSION_RESERVE, kept in the
+## Clocktower's `soil`; 0.24.0, the owner: MAINSPRINGS EXHAUST): only what went into the pool is drawn (a pool that is full
+## draws nothing), down to 0; spent, it still winds (spring_rate: at Defs.TENSION_FLOOR, FATIGUED) and draws nothing more.
+## Returns what went in (wind).
+static func wind_spring(b: Building, v: float) -> float:
+	if v <= 0.0:
+		return 0.0
+	var got := wind(b.game, b.team, v)
+	var h: Building = b.game.soil_hall(b)
+	if h != null and h.kind == "clocktower" and h.soil > 0.0:
+		var mult: float = float(b.game.income_mult[b.team]) if b.team < b.game.income_mult.size() else 1.0
+		h.soil = maxf(0.0, h.soil - (got / mult if mult > 0.0 else got))
+		b.game.spring_check(h)
+	return got
+
+
 ## Player t's pool is full: its Mainsprings stand still.
 static func tension_full(game: Game, t: int) -> bool:
 	var cap := tension_cap(game, t)
@@ -172,9 +188,9 @@ static func spend_problem(game: Game, b: Building) -> String:
 
 ## Building.efficiency for a gear-mode Clockwork building: [efficiency 0..1, crew at work, full crew, reserve left 0..1 (-1:
 ## none), reserve name]; [] for one that shows none (the Clocktower, Regulators, the Ratchet Turret). Efficiency = what it
-## does now against what it does at its best: crew share (a Cog Press and a Mainspring: the trickle plus each Winder's
-## share) x drive x brass (a Cog Press on spent brass: a quarter). 0 while it stands idle (unlinked, swapping, needing a
-## Mainspring).
+## does now against what it does at its best: crew share (a Cog Press and a Mainspring: each Winder's share; nothing with
+## nobody on it) x drive x its land (a Cog Press on spent brass, a FATIGUED Mainspring: nothing). 0 while it stands idle
+## (unlinked, swapping, needing a Mainspring).
 static func efficiency(b: Building) -> Array:
 	if not uses_drive(b.kind) or not b.built or b.dead:
 		return []
@@ -186,14 +202,15 @@ static func efficiency(b: Building) -> Array:
 			var cap := b.crew_max()
 			var share := float(gp["base"]) + (1.0 - float(gp["base"])) * float(mini(b.working_crew(), cap)) / float(cap)
 			var left := b.lode_left()
-			var brass := 1.0 if left > 0.0 else float(Defs.GEAR["spent"])
+			var brass := 1.0 if left > 0.0 else Defs.LODE_SPENT
 			return [share * work * brass, b.working_crew(), cap, left, "brass"]
 		"mainspring":
 			var info := spring_info(b.gear_big)
 			var cap2 := int(info["crew"])
 			var base := float(Defs.GEAR["mainspring"]["base"])
 			var share2 := base + (1.0 - base) * float(mini(b.working_crew(), cap2)) / float(cap2)
-			return [share2 * work, b.working_crew(), cap2, -1.0, ""]
+			var life := b.soil_left()
+			return [share2 * work * Defs.second_share(life, Defs.TENSION_FLOOR), b.working_crew(), cap2, life, "spring life"]
 	return [work, 0, 0, -1.0, ""]
 
 
@@ -218,7 +235,9 @@ static func card_text(b: Building) -> String:
 			parts.append(ring_words(steps))        # (no crew: its efficiency is its drive)
 	if b.kind == Defs.GEAR_PRESS and float(e[3]) <= 0.0:
 		parts.append(Loc.t("brass spent"))
-	if b.kind == "mainspring" and tension_full(b.game, b.team):
+	if b.kind == "mainspring" and b.fatigued():
+		parts.append(Loc.t("FATIGUED"))
+	elif b.kind == "mainspring" and tension_full(b.game, b.team):
 		parts.append(Loc.t("Tension full"))
 	var head: String = Loc.t("Efficiency %d%%") % int(round(float(e[0]) * 100.0))
 	return head + (": " + " · ".join(parts) if not parts.is_empty() else "")
@@ -232,8 +251,14 @@ static func card_info(b: Building) -> String:
 	if not net.is_linked(b):
 		return ""
 	if b.kind == "mainspring":
-		# (what it stores of the side's whole store; a full pool shows on the efficiency line: "Tension full", card_text)
-		return Loc.t("Stores %d of your %d Tension") % [int(spring_info(b.gear_big)["store"]), int(tension_cap(b.game, b.team))]
+		# (its Clocktower's spring life, then what it stores of the side's whole store; a full pool shows on the efficiency
+		# line: "Tension full", card_text)
+		var store := Loc.t("Stores %d of your %d Tension") % [int(spring_info(b.gear_big)["store"]), int(tension_cap(b.game, b.team))]
+		if b.fatigued():
+			return Loc.t("FATIGUED: the spring has taken a set (its Clocktower's spring life is spent): it winds at %d%%. A Mainspring by a new Clocktower winds at full strength.") % int(round(Defs.TENSION_FLOOR * 100.0)) + "  ·  " + store
+		var h: Building = b.game.soil_hall(b)
+		var life := Loc.t("Spring life %d / %d") % [int(ceil(h.soil)), int(h.reserve())] if h != null else ""
+		return life + "  ·  " + store
 	if b.kind == Defs.CW_TECH:
 		return ""
 	if Defs.TENSION_USERS.has(b.kind):

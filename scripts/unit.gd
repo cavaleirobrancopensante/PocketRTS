@@ -4915,10 +4915,10 @@ func _repair(delta: float) -> Vector2:
 			if not _next_order():
 				cmd_stop()
 			return Vector2.ZERO
-		game.players[team]["gold_f"] = float(game.players[team].get("gold_f", 0.0)) - cost
+		game.players[team]["repair_f"] = float(game.players[team].get("repair_f", 0.0)) - cost
 		game.stats[team]["repair"] = float(game.stats[team].get("repair", 0.0)) + cost       # (the gold a side spent mending buildings)
-		while float(game.players[team]["gold_f"]) <= -1.0:
-			game.players[team]["gold_f"] = float(game.players[team]["gold_f"]) + 1.0
+		while float(game.players[team]["repair_f"]) <= -1.0:
+			game.players[team]["repair_f"] = float(game.players[team]["repair_f"]) + 1.0
 			game.players[team]["gold"] -= 1
 		e.hp = minf(e.max_hp, e.hp + heal)
 		if e is Unit:

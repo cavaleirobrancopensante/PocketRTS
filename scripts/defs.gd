@@ -22,7 +22,27 @@ const HALL_SPACING := 18          # a new hall needs its own ground: tiles from 
 ## ore lasts a saturated Clockwork base (~1,150-1,200 ore a minute) about 10 minutes. Once
 ## spent, its Mill / Crushers yield NOTHING (LODE_SPENT = 0: barren, no efficiency trickle). Like soil, a hall raised where one fell takes
 ## over what was left there. The Brood has no lode (its pits' ground is PIT_GROUND).
-const LODE := {"town_hall": 1320.0, "clocktower": 11400.0}     # 3 x 440 powder, 3 x 3,800 ore
+const LODE := {"town_hall": 1320.0, "clocktower": 9000.0}     # saltpetre 3 x 440 powder; raw brass 9,000 cogs, the Crown's soil (0.24.0, docs/exhaust_economy.md; was 11,400)
+## SPRING LIFE (0.24.0, the owner 2026-10-30: MAINSPRINGS EXHAUST): every Clocktower's ground holds this much Tension for its
+## Mainspring (the Crown's saltpetre: 11 minutes of a full small Mainspring); a Mainspring draws on its nearest Clocktower's
+## (kept in that Clocktower's `soil`, the field the retired coal used); spent, the spring is FATIGUED ("it has taken a set":
+## it keeps its bend and loses part of its working force): it winds at TENSION_FLOOR. It still drives its rings and stores Tension.
+const TENSION_RESERVE := 1320.0
+## THE SECONDARY RESOURCES' FLOOR (the owner, 2026-10-30 14:44): the Crown's POWDER (a Mill on its hall's saltpetre) and the
+## Clockwork's TENSION (a Mainspring on its Clocktower's spring life) do not run out to nothing: as the reserve is drawn the
+## building's yield falls with it from 100% (fresh) to this share (spent), and stays there for the rest of the game (the Crown
+## must still shoot; the Clockwork's Heavy Works hang on a Mainspring). Only while it is WORKED: no crew, nothing (no
+## trickle). The primary resources (soil, brass, a Rootmaw's ground) still run out to 0. The floors differ (the owner, 14:47):
+## POWDER 15% (spent on every shot and refill, a running cost), TENSION 5% (spent only on units and research; a fatigued
+## Mainspring still counts as a Mainspring for everything meshed with it). Measured: docs/exhaust_economy.md.
+const POWDER_FLOOR := 0.15
+const TENSION_FLOOR := 0.05
+
+
+## A secondary resource's yield share with `left` (0..1) of its reserve left: 100% fresh, `floor` spent (POWDER_FLOOR,
+## TENSION_FLOOR), linear between.
+static func second_share(left: float, floor_share: float) -> float:
+	return floor_share + (1.0 - floor_share) * clampf(left, 0.0, 1.0)
 const LODE_NAME := {"town_hall": "saltpetre", "clocktower": "brass"}      # (the Clockwork's: ore on the old Line economy, raw brass for the cog presses)
 const LODE_FOR := {"powder_mill": "town_hall", "ore_crusher": "clocktower", "ore_drill": "clocktower", "boiler": "clocktower", "cog_press": "clocktower"}
 const LODE_SPENT := 0.0
@@ -35,7 +55,8 @@ const EFF_POOR := 0.4
 # farmers + 6 millers, ~1,140 gold and ~120 powder a minute. (Horse Breeders are production
 # buildings: they sell horses for gold, as many breeders as you like.)
 const FARM_GROW := 40.0           # seconds to ripen with a full crew
-const FARM_BASE := 0.15           # share of that speed with nobody working it
+const FARM_BASE := 0.0            # share of that speed with nobody working it: NONE (EXHAUSTED MEANS EXHAUSTED, the owner 2026-10-30: no free
+                                  # trickle for any faction; was 0.15, docs/exhaust_economy.md)
 const FARM_YIELD := 380           # gold a harvest (fresh soil; was 450 while a hall allowed one farm)
 ## Soil fatigue: each Town Hall's farmland holds a fixed reserve of gold, shared by the farms
 ## that belong to it (a farm belongs to the nearest hall). Every harvest draws its yield from
@@ -352,7 +373,7 @@ const GEAR_PRESS := "cog_press"
 ## A new worker's first job (owner, 2026-10-26), every faction: a post on the PRIMARY resource (Farms, Feeding
 ## Pits, Cog Presses, the old ore buildings) before any on the SECONDARY one (tier 1: Powder Mills, Mainsprings, the
 ## old Boilers), and hauling at the Town Hall last. Nearest first within a tier. Kinds not listed are tier 0.
-const CREW_TIER := {"powder_mill": 1, "mainspring": 1, "boiler": 1}
+const CREW_TIER := {"powder_mill": 1, "mainspring": 1}
 
 ## TURNING GEARS (docs/gear_turn.md). Guesses, the owner's to tune.
 const GEAR_TURN := {
@@ -387,17 +408,24 @@ const GEAR := {
 	"swap_time": 4.0,
 	"start_cogs": 300,
 	# THE COG PRESS: `full` cogs a second at full crew; with nobody on it, `base` of that (like a farm with nobody on
-	# it); every Winder winding it adds an equal share up to `crew`. Small gear: 8/s, crew 6. Big gear: 10.5/s, crew 12:
-	# a Winder adds 1.13 (small) or 0.74 (big), about a Crown Labourer on a Farm (1.19 gold/s); six pay 8.0 vs 6.0, nine
-	# 8.0 vs 8.3: the big gear only wins from 9 Winders. 2 presses per Clocktower (Defs.FACTIONS econ). (Crews were 3 and
-	# 6 until 0.14.33: the Clockwork earned about twice the Crown per worker, docs/clockwork_economy_study.md.)
-	"press": {"base": 0.15, "small": {"full": 8.0, "crew": 6}, "big": {"full": 10.5, "crew": 12}},
+	# it); every Winder winding it adds an equal share up to `crew`. Small gear: 7.2/s, crew 5. Big gear: 10/s, crew 8: a
+	# Winder adds 1.44 (small) or 1.25 (big), a little more than a Crown Labourer on a Farm (1.19 gold/s; a Winder costs 60
+	# against his 50, so both pay back in about 42 s); five pay 7.2 vs 6.25: the big gear wins from 6 Winders. 2 presses
+	# per Clocktower (Defs.FACTIONS econ). (Crews were 3 and 6 until 0.14.33: the Clockwork earned about twice the Crown per
+	# worker, docs/clockwork_economy_study.md.)
+	# 0.24.0 (EXHAUSTED MEANS EXHAUSTED, the owner 2026-10-30; docs/exhaust_economy.md): NO trickle (`base` 0: a press with
+	# nobody on it presses nothing) and FEWER WINDERS than the Crown's Labourers for about the same income (the Winders are
+	# needed at the front): small 7.2/s with 5 (1.44 a Winder), big 10.0/s with 8 (1.25 a Winder). (Was base 0.15, small
+	# 8.0 with 6, big 10.5 with 12.)
+	"press": {"base": 0.0, "small": {"full": 7.2, "crew": 5}, "big": {"full": 10.0, "crew": 8}},
 	# THE MAINSPRING (docs/clockwork_ground_up.md): winds TENSION, the second resource, at `full` a second with its whole
 	# `crew`, `base` of that alone, like the press: SMALL gear 2.0/s with 3 Winders, BIG gear 2.6/s with 6 (the big one wins
 	# from 5 Winders). Every finished Mainspring STORES `store` Tension: winding stops when the pool holds what the springs
 	# store together (GearEcon.tension_cap; nothing unwinds). Spent on the strong things (their `tension` price).
 	# (docs/clockwork_economy_study.md)
-	"mainspring": {"base": 0.15, "small": {"full": 2.0, "crew": 3, "store": 200}, "big": {"full": 2.6, "crew": 6, "store": 400}},
+	# 0.24.0: no trickle (`base` 0), and every Mainspring draws its Clocktower's SPRING LIFE (TENSION_RESERVE): spent, it is
+	# FATIGUED (the spring has taken a set) and winds nothing. 1 Mainspring per Clocktower (FACTIONS econ).
+	"mainspring": {"base": 0.0, "small": {"full": 2.0, "crew": 3, "store": 200}, "big": {"full": 2.6, "crew": 6, "store": 400}},
 	# DRIVE (a building's EFFICIENCY, GearEcon): the Clocktower and every Mainspring drive the field; a building meshing with
 	# one works at the first share, each ring farther out at the next (the last one from there on). An idler is free.
 	"drive": [1.0, 0.9, 0.8, 0.7],
@@ -423,7 +451,7 @@ const GEAR := {
 	"escapement_dt": 0.125,         # ... of the Escapement's anchor and wheel (while it is active: linked and meshed with a Mainspring):
 	"escapement_frames": 24,        #     a tick or a tock every 4 frames (0.5 s), the wheel's half-tooth jump as the anchor swings through
 	"aviary_dt": 0.15,              # ... of the Clock Aviary's doors and bird (4 frames, while it makes a Swift or researches)
-	"spent": 0.25,                  # share of a press's yield once its Clocktower's raw brass (Defs.LODE) is spent
+	"spent": 0.0,                   # share of a press's yield once its Clocktower's raw brass (Defs.LODE) is spent: NOTHING (0.24.0; was a quarter)
 	# colours of the drawn gears (code-drawn placeholder art: docs/art_style_inconsistency.md)
 	"col": {"brass": Color("#e8c76a"), "edge": Color("#3b2a14"), "rim": Color(0.282, 0.18, 0.071), "dead": Color("#4a443c"), "off": Color("#8c8478"),
 		"ok": Color("#8fe39a"), "clash": Color("#ff7f6a"), "far": Color("#ffc65a")},
@@ -805,9 +833,11 @@ const FACTIONS := {
 		"name": "The Clockwork", "hall": "clocktower", "worker": "winder", "supply": "spring_tower",
 		"build": ["clocktower", "spring_tower", "boiler", "ore_crusher", "charging_pylon", "assembly_works", "engine_hall", "capacitor_works", "pressure_relay", "rail_yard"],
 		"start_workers": 4, "ready": true, "max_supply": 200,
-		"res": ["Cogs", "Energy"], "econ": {"boiler": 2, "ore_crusher": 2, "ore_drill": 2, "cog_press": 2},
+		# (gear mode: 2 Cog Presses and 1 Mainspring per Clocktower, the owner 2026-10-30; "econ_line": the shelved Line's
+		# Boilers, Ore Crushers and Ore Drills, used only with Defs.gear_mode off: Defs.econ_of)
+		"res": ["Cogs", "Energy"], "econ": {"cog_press": 2, "mainspring": 1}, "econ_line": {"boiler": 2, "ore_crusher": 2, "ore_drill": 2},
 		"start": ["ore_crusher"], "start_gold": 300,
-		"about": "A spreading machine of gears. Every building sits in a ring of ground gears that must mesh with the Clocktower's: unlinked buildings stop. Winders wind the Cog Presses for COGS, the money. Each Clocktower's brass and coal run out in time. Supply cap 200.",
+		"about": "A spreading machine of gears. Every building sits in a ring of ground gears that must mesh with the Clocktower's: unlinked buildings stop. Winders wind the Cog Presses for COGS, the money, and the Mainspring for TENSION. Each Clocktower's brass and spring life run out in time. Supply cap 200.",
 	},
 }
 
@@ -924,7 +954,7 @@ const UNITS := {
 	},
 	"winder": {
 		"tags": ["light"],
-		"name": "Winder", "hp": 46, "armor": 1, "speed": 74, "cost": 50, "time": 12.0, "supply": 1,
+		"name": "Winder", "hp": 46, "armor": 1, "speed": 74, "cost": 60, "time": 12.0, "supply": 1,
 		"sight": 7, "range": 20, "damage": 7, "cooldown": 1.0, "radius": 12, "from": "clocktower",
 		"faction": "clockwork", "worker": true, "repairs": true,
 		"about": "The one worker: his job is WINDING. He winds a Cog Press for cogs (send him onto it: up to its crew), builds (he fetches a crate from the nearest Clocktower and carries it to the site, where it unfolds and builds itself; killed or sent elsewhere on the way, he drops it for another Winder to carry on) and repairs. He can fight a little.",
@@ -1306,7 +1336,7 @@ const UNITS := {
 const BUILDINGS := {
 	"town_hall": {
 		"name": "Town Hall", "hp": 1600, "armor": 2, "cost": 400, "time": 60.0, "size": Vector2i(5, 4),
-		"supply": 10, "sight": 9, "trains": ["labourer"], "haulers": 6, "faction": "crown", "about": "Trains labourers. Right-click Labourers onto it to make them haulers: they lead horses to the Barracks and Foundry and carry powder kegs to the Wagons. Each Town Hall allows 2 Farms and 1 Powder Mill nearby. Its farmland holds a reserve of gold (once the farms have drawn it out they pay nothing) and its ground a reserve of saltpetre for the Mill (spent, the Mill grinds nothing). Expand to fresh land.",
+		"supply": 10, "sight": 9, "trains": ["labourer"], "haulers": 6, "faction": "crown", "about": "Trains labourers. Right-click Labourers onto it to make them haulers: they lead horses to the Barracks and Foundry and carry powder kegs to the Wagons. Each Town Hall allows 2 Farms and 1 Powder Mill nearby. Its farmland holds a reserve of gold (once the farms have drawn it out they pay nothing) and its ground a reserve of saltpetre for the Mill (spent, the Mill grinds at 15%). Expand to fresh land.",
 	},
 	"cottage": {
 		"name": "Cottage", "hp": 400, "armor": 1, "cost": 100, "time": 20.0, "size": Vector2i(2, 2),
@@ -1408,7 +1438,7 @@ const BUILDINGS := {
 	"powder_mill": {
 		"name": "Powder Mill", "hp": 600, "armor": 1, "cost": 100, "time": 30.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 5, "trains": [], "crew": 6, "faction": "crown",
-		"about": "Up to 6 labourers grind its Town Hall's saltpetre into black powder for the bank: it buys musketeers and wagons and pays for refilling soldiers' powder. Once that saltpetre is spent it grinds nothing. Soldiers and wagons nearby refill here.",
+		"about": "Up to 6 labourers grind its Town Hall's saltpetre into black powder for the bank: it buys musketeers and wagons and pays for refilling soldiers' powder. It grinds less as that saltpetre runs down, and 15% once it is spent. Soldiers and wagons nearby refill here.",
 	},
 	"horse_breeder": {
 		"name": "Horse Breeder", "hp": 500, "armor": 1, "cost": 100, "time": 25.0, "size": Vector2i(4, 3),
@@ -1437,13 +1467,13 @@ const BUILDINGS := {
 	},
 	"cog_press": {
 		"name": "Cog Press", "hp": 900, "armor": 2, "cost": 140, "time": 35.0, "size": Vector2i(3, 3),
-		"supply": 0, "sight": 6, "trains": [], "crew": 6, "faction": "clockwork",
-		"about": "Presses COGS from its Clocktower's brass: a trickle by itself, and every Winder winding it adds the same share (SMALL gear: faster, up to 6 Winders; BIG gear: slower per Winder but up to 12, and more in all from 9). It works at full speed when its gear ring meshes with the Clocktower's or a Mainspring's, less farther out. Spent brass: a quarter. Must stay linked to the gear field.",
+		"supply": 0, "sight": 6, "trains": [], "crew": 5, "faction": "clockwork",
+		"about": "Presses COGS from its Clocktower's brass: nothing by itself, and every Winder winding it adds the same share (SMALL gear: up to 5 Winders; BIG gear: less per Winder but up to 8, and more in all from 6). It works at full speed when its gear ring meshes with the Clocktower's or a Mainspring's, less farther out. Spent brass pays nothing: expand to a new Clocktower. 2 per Clocktower. Must stay linked to the gear field.",
 	},
 	"mainspring": {
 		"name": "Mainspring", "hp": 800, "armor": 2, "cost": 140, "time": 35.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 6, "trains": [], "crew": 3, "faction": "clockwork",
-		"about": "Winds TENSION, the Clockwork's second resource: a little by itself, more for every Winder cranking it (SMALL gear: up to 3; BIG gear: up to 6, more in all at 5 or 6). Each Mainspring stores 200 Tension (big: 400): winding stops when you hold what your Mainsprings store. It also DRIVES the rings that mesh with it, like the Clocktower. Anything that costs Tension is made only where a Mainspring's ring meshes: the Escapement, the Clock Aviary, the Heavy Works, and a Light Works for its Springers and Netters. Must stay linked to the gear field.",
+		"about": "Winds TENSION, the Clockwork's second resource: nothing by itself, more for every Winder cranking it (SMALL gear: up to 3; BIG gear: up to 6, more in all at 5 or 6). It draws its Clocktower's SPRING LIFE (1,320 Tension): it winds less as that runs down, and spent, the spring is FATIGUED (it has taken a set) and winds at 5%: expand to a new Clocktower for full strength. 1 per Clocktower. Each Mainspring stores 200 Tension (big: 400): winding stops when you hold what your Mainsprings store. It also DRIVES the rings that mesh with it, like the Clocktower. Anything that costs Tension is made only where a Mainspring's ring meshes: the Escapement, the Clock Aviary, the Heavy Works, and a Light Works for its Springers and Netters. Must stay linked to the gear field.",
 	},
 	"capacitor_works": {
 		"name": "Capacitor Works", "hp": 900, "armor": 2, "cost": 250, "time": 50.0, "size": Vector2i(2, 2),
@@ -2084,7 +2114,15 @@ static func is_econ(kind: String) -> bool:
 	if not BUILDINGS.has(kind):
 		return false
 	var f: String = BUILDINGS[kind]["faction"]
-	return FACTIONS[f]["econ"].has(kind) or (econ_test.has(f) and (econ_test[f] as Dictionary).has(kind))
+	return econ_of(f).has(kind) or (econ_test.has(f) and (econ_test[f] as Dictionary).has(kind))
+
+
+## A faction's economy buildings and how many each hall allows (FACTIONS "econ"; with the gear mode off, the shelved Line's
+## "econ_line" where a faction has one).
+static func econ_of(f: String) -> Dictionary:
+	if not gear_mode and FACTIONS[f].has("econ_line"):
+		return FACTIONS[f]["econ_line"]
+	return FACTIONS[f]["econ"]
 
 
 ## TEST-ONLY economy limits (tools/measure_economy.gd, docs/cw_economy_study.md): {faction: {kind: per hall}} added to
@@ -2097,7 +2135,7 @@ static var econ_test := {}
 static func econ_per_hall(faction: String, kind: String) -> int:
 	if econ_test.has(faction) and (econ_test[faction] as Dictionary).has(kind):
 		return int(econ_test[faction][kind])
-	return int(FACTIONS[faction]["econ"].get(kind, 0))
+	return int(econ_of(faction).get(kind, 0))
 
 const TEAM_COLOURS := [Color("#3a78e8"), Color("#e03a32")]
 const TEAM_NAMES := ["Blue", "Red"]
@@ -2206,7 +2244,7 @@ const TIPS := {
 ## The short tooltip text for a unit, building or research ("about" when it has none).
 ## Gear mode's own tooltips where the old text speaks of batteries, Boilers or coal (no power in gear mode).
 const GEAR_TIPS := {
-	"clocktower": "The blueprint of the machine: builds Winders, takes in the cogs and unlocks the other buildings. Its gear ring is the biggest: every building must mesh with it, directly or through others, or it stops. Allows 2 Cog Presses nearby. Its ground holds a reserve of raw brass for its presses (spent, they yield a quarter). A new Clocktower starts its own gear field.",
+	"clocktower": "The blueprint of the machine: builds Winders, takes in the cogs and unlocks the other buildings. Its gear ring is the biggest: every building must mesh with it, directly or through others, or it stops. Allows 2 Cog Presses and 1 Mainspring nearby. Its ground holds 9,000 raw brass for its presses (spent, they yield nothing) and 1,320 SPRING LIFE for its Mainspring (it winds less as that runs down, 5% once spent). A new Clocktower brings fresh brass and spring life and starts its own gear field.",
 }
 
 

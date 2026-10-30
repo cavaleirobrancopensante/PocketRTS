@@ -30,6 +30,9 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	# (these checks lay a second Mainspring by one Clocktower to test the Heavy Works' mesh: the test-only limit hook lifts
+	# 0.24.0's 1 Mainspring per Clocktower; the limit itself is tools/test_exhaust.gd's)
+	Defs.econ_test = {"clockwork": {"mainspring": 4}}
 	var g := U.make(root)
 	await process_frame
 	await process_frame

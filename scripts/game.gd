@@ -235,7 +235,7 @@ func _ready() -> void:
 		explored_by.append(ex)
 		last_placed.append({})
 		players.append({"gold": Defs.START_GOLD, "cap": 0, "faction": factions[t], "res2": 0.0,
-			"gold_f": 0.0, "split": Defs.SPLITS["ECONOMY"].duplicate(), "split_name": "ECONOMY", "gold_x": 0.0,
+			"gold_f": 0.0, "repair_f": 0.0, "split": Defs.SPLITS["ECONOMY"].duplicate(), "split_name": "ECONOMY", "gold_x": 0.0,
 			"tech": {}})
 	ground = Node2D.new()
 	ground.z_index = -20
@@ -2463,24 +2463,34 @@ func battery_sources(h: Building) -> Array:
 	return out
 
 
-## Draw `v` worth from the lode of a Mill's (Crusher's) hall: what it still holds pays in
-## full, the rest only LODE_SPENT. Returns what it pays.
+## Draw `v` worth from the lode of a Mill's (Crusher's, Cog Press's) hall: what it still holds pays in
+## full, the rest only LODE_SPENT (nothing: EXHAUSTED MEANS EXHAUSTED). Returns what it pays.
 func draw_lode(b: Building, v: float) -> float:
 	if v <= 0.0:
 		return 0.0
 	var h := lode_hall(b)
+	if b.kind == "powder_mill":
+		# POWDER, a secondary resource (the owner, 2026-10-30 14:44): the Mill grinds less as its hall's saltpetre runs down,
+		# Defs.POWDER_FLOOR once it is spent, and stays there (Defs.second_share); what it grinds is drawn while any is left
+		var share := Defs.second_share(h.lode / h.lode_full() if h else 0.0, Defs.POWDER_FLOOR)
+		var pay := v * share
+		if h and h.lode > 0.0:
+			h.lode = maxf(0.0, h.lode - pay)
+			_lode_check(h)
+		return pay
 	var fresh := 0.0
 	if h:
 		fresh = minf(h.lode, v)
 		h.lode -= fresh
 		_lode_check(h)
-	var spent: float = float(Defs.GEAR["spent"]) if b.kind == Defs.GEAR_PRESS else Defs.LODE_SPENT
-	return fresh + (v - fresh) * spent
+	return fresh + (v - fresh) * Defs.LODE_SPENT
 
 
 ## What `v` worth would pay right now (no side effects).
 func lode_pay(b: Building, v: float) -> float:
 	var h := lode_hall(b)
+	if b.kind == "powder_mill":
+		return v * Defs.second_share(h.lode / h.lode_full() if h else 0.0, Defs.POWDER_FLOOR)
 	var fresh := minf(h.lode, v) if h else 0.0
 	return fresh + (v - fresh) * Defs.LODE_SPENT
 
@@ -2493,12 +2503,12 @@ func _lode_check(h: Building) -> void:
 		return
 	h.lode_warned = level
 	var what: String = Defs.LODE_NAME[h.kind]
-	var user := "its Mill grinds" if h.kind == "town_hall" else ("its presses yield" if Defs.gear_mode else "its crushers pay")
+	var user := ("its Mill grinds at %d%%" % int(round(Defs.POWDER_FLOOR * 100.0))) if h.kind == "town_hall" else ("its presses yield nothing" if Defs.gear_mode else "its crushers pay nothing")
 	if mlog:
-		mlog.add("%s: the %s at a %s %s" % [mlog.who(h.team), what, h.d["name"], ("is spent (%s at a quarter)" % user) if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
+		mlog.add("%s: the %s at a %s %s" % [mlog.who(h.team), what, h.d["name"], ("is spent (%s)" % user) if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
 	if h.team == human and not demo and hud:
 		if level == 2:
-			hud.toast("The %s at your %s is spent: %s at a quarter. Expand to fresh %s." % [what, h.d["name"], user, what], false)
+			hud.toast("The %s at your %s is spent: %s. Expand to fresh %s." % [what, h.d["name"], user, what], false)
 			Sfx.announce(faction_of(h.team), "depleted", 10.0)
 		else:
 			hud.toast("The %s at your %s is running low (%d%% left): expand to fresh %s soon." % [what, h.d["name"], int(round(left * 100)), what], false)
@@ -2601,8 +2611,10 @@ func _soil_check(h: Building) -> void:
 	if level <= h.soil_warned:
 		return
 	h.soil_warned = level
+	if h.kind == "clocktower" and Defs.gear_mode:
+		return          # (gear mode: a Clocktower's `soil` is its SPRING LIFE: spring_check)
 	if h.kind == "clocktower":
-		# Clockwork coal: the Boilers around this Clocktower
+		# Clockwork coal: the Boilers around this Clocktower (the shelved Line, gear mode off)
 		if mlog:
 			mlog.add("%s: the coal of a Clocktower's Boilers %s" % [mlog.who(h.team), "is spent (they fill no more batteries)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
 		if h.team == human and not demo and hud:
@@ -2619,6 +2631,25 @@ func _soil_check(h: Building) -> void:
 	for b in buildings:
 		if b.kind == "farm" and b.team == h.team and not b.dead and b.built:
 			b._update_sprite()
+
+
+## A Clocktower's SPRING LIFE (its `soil` in gear mode, Defs.TENSION_RESERVE) running low or spent: once per level, a
+## match-log line and (for you) a toast; spent, its Mainspring is FATIGUED (it has taken a set) and lets its crew go.
+func spring_check(h: Building) -> void:
+	var left := h.soil / h.reserve()
+	var level := 2 if h.soil <= 0.0 else (1 if left < Defs.SOIL_LOW else 0)
+	if level <= h.soil_warned:
+		return
+	h.soil_warned = level
+	if mlog:
+		mlog.add("%s: the spring life at a Clocktower %s" % [mlog.who(h.team), "is spent (its Mainspring is FATIGUED: it winds at the floor)" if level == 2 else "is running low (under %d%%)" % int(Defs.SOIL_LOW * 100)])
+	if h.team == human and not demo and hud:
+		if level == 2:
+			hud.toast("The spring life at your Clocktower is spent: its Mainspring is FATIGUED (it has taken a set) and winds at %d%% from now on. A Mainspring by a new Clocktower winds at full strength." % int(round(Defs.TENSION_FLOOR * 100.0)), false)
+			Sfx.announce(faction_of(h.team), "depleted", 10.0)
+		else:
+			hud.toast("The spring life at your Clocktower is running low (%d%% left): plan a new Clocktower for fresh Tension." % int(round(left * 100)), false)
+		Sfx.play("done", h.center())
 
 
 ## A Town Hall raised where one fell takes over that tired land.
@@ -2680,6 +2711,9 @@ func add_res2(t: int, v: float) -> void:
 	players[t]["res2"] = float(players[t]["res2"]) + v
 
 
+## Income that comes in fractions (a Cog Press's cogs every tick, a grub's load): counted whole as it adds up. (Repairs
+## keep their own fraction, players "repair_f": they took it from this one, and the presses' cogs paid it before they
+## reached the "earned" statistic: the end screen's cogs earned was short by the repairs, docs/cw_economy_study.md 10.)
 func add_gold_f(t: int, v: float) -> void:
 	var acc: float = float(players[t]["gold_f"]) + v
 	var n := int(acc)

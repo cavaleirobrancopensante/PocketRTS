@@ -157,7 +157,7 @@ func _run() -> void:
 				line += " [%d k%d %s %.0f,%.0f]" % [u._mill_ph, u._mill_k, u.anim, u.position.x - r.get_center().x, u.position.y - r.end.y]
 			print(line)
 		var n: int = m.working_crew()
-		expect += Defs.MILL_RATE * float(n) * dt
+		expect += g.lode_pay(m, Defs.MILL_RATE * float(n) * dt)      # (0.24.0: the Mill grinds less as its saltpetre runs down, Defs.second_share)
 		if g.clock - t0 > 15.0:
 			samples += 1
 			if n == 6:

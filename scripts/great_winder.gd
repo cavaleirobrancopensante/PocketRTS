@@ -176,10 +176,10 @@ static func mend(u: Unit, o: Unit, delta: float) -> float:
 			u.work = ""
 			u.cmd_stop()
 			return 0.0
-		game.players[u.team]["gold_f"] = float(game.players[u.team].get("gold_f", 0.0)) - cost
+		game.players[u.team]["repair_f"] = float(game.players[u.team].get("repair_f", 0.0)) - cost
 		game.stats[u.team]["repair"] = float(game.stats[u.team].get("repair", 0.0)) + cost
-		while float(game.players[u.team]["gold_f"]) <= -1.0:
-			game.players[u.team]["gold_f"] = float(game.players[u.team]["gold_f"]) + 1.0
+		while float(game.players[u.team]["repair_f"]) <= -1.0:
+			game.players[u.team]["repair_f"] = float(game.players[u.team]["repair_f"]) + 1.0
 			game.players[u.team]["gold"] -= 1
 		o.hp = minf(o.max_hp, o.hp + heal)
 		u.set_meta("gw_mended", float(u.get_meta("gw_mended", 0.0)) + heal)

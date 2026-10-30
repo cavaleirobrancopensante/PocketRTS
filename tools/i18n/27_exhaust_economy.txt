@@ -1,0 +1,164 @@
+# EXHAUSTED MEANS EXHAUSTED (0.24.0, the owner 2026-10-30; docs/exhaust_economy.md): no free trickle for any faction (an
+# idle Farm, Cog Press or Mainspring makes nothing; spent brass pays nothing), MAINSPRINGS EXHAUST (each Clocktower's
+# SPRING LIFE: spent, the spring is FATIGUED, "it has taken a set"), 2 Cog Presses and 1 Mainspring per Clocktower.
+# "spring life": pt "vida da mola", es "vida del muelle". FATIGUED: pt FADIGADA (a mola), es FATIGADO (el muelle).
+# "taken a set" (a spring bent for good): pt "ficou deformada de vez", es "ha quedado deformado".
+
+> A spreading machine of gears. Every building sits in a ring of ground gears that must mesh with the Clocktower's: unlinked buildings stop. Winders wind the Cog Presses for COGS, the money, and the Mainspring for TENSION. Each Clocktower's brass and spring life run out in time. Supply cap 200.
+pt Uma máquina de engrenagens que se espalha. Toda construção fica num anel de engrenagens no chão que precisa engrenar com o da Torre do Relógio: construções desligadas param. Enroladores enrolam as Prensas de Engrenagens para obter ENGRENAGENS, o dinheiro, e a Mola Real para obter TENSÃO. O latão e a vida da mola de cada Torre do Relógio acabam com o tempo. Limite de suprimento: 200.
+es Una máquina de engranajes que se extiende. Todo edificio está en un anillo de engranajes en el suelo que debe engranar con el de la Torre del Reloj: los edificios sin enlace se detienen. Los Dadores de cuerda dan cuerda a las Prensas de Engranajes para obtener ENGRANAJES, el dinero, y al Muelle Real para obtener TENSIÓN. El latón y la vida del muelle de cada Torre del Reloj se acaban con el tiempo. Límite de suministro: 200.
+
+> Presses COGS from its Clocktower's brass: nothing by itself, and every Winder winding it adds the same share (SMALL gear: up to 5 Winders; BIG gear: less per Winder but up to 8, and more in all from 6). It works at full speed when its gear ring meshes with the Clocktower's or a Mainspring's, less farther out. Spent brass pays nothing: expand to a new Clocktower. 2 per Clocktower. Must stay linked to the gear field.
+pt Prensa ENGRENAGENS com o latão da sua Torre do Relógio: nada sozinha, e cada Enrolador que a enrola soma a mesma parte (engrenagem PEQUENA: até 5 Enroladores; engrenagem GRANDE: menos por Enrolador, mas até 8, e mais no total a partir de 6). Trabalha a toda velocidade quando seu anel de engrenagens engrena com o da Torre do Relógio ou de uma Mola Real, menos mais longe. Latão esgotado não paga nada: expanda para uma nova Torre do Relógio. 2 por Torre do Relógio. Precisa continuar ligada ao campo de engrenagens.
+es Prensa ENGRANAJES con el latón de su Torre del Reloj: nada por sí sola, y cada Dador de cuerda que le da cuerda suma la misma parte (engranaje PEQUEÑO: hasta 5 Dadores; engranaje GRANDE: menos por Dador, pero hasta 8, y más en total desde 6). Trabaja a toda velocidad cuando su anillo de engranajes engrana con el de la Torre del Reloj o un Muelle Real, menos más lejos. El latón agotado no paga nada: expándete a una nueva Torre del Reloj. 2 por Torre del Reloj. Debe seguir enlazada al campo de engranajes.
+
+> FATIGUED
+pt FADIGADA
+es FATIGADO
+
+> Spring life %d / %d
+pt Vida da mola %d / %d
+es Vida del muelle %d / %d
+
+> Spring life
+pt Vida da mola
+es Vida del muelle
+
+> spring life
+pt vida da mola
+es vida del muelle
+
+> The %s at your %s is spent: %s. Expand to fresh %s.
+pt O %s em sua %s está esgotado: %s. Expanda para %s novo.
+es El %s de tu %s está agotado: %s. Expándete a %s nuevo.
+
+> its presses yield nothing
+pt suas prensas não rendem nada
+es sus prensas no rinden nada
+
+> its crushers pay nothing
+pt suas trituradoras não pagam nada
+es sus trituradoras no pagan nada
+
+> The spring life at your Clocktower is running low (%d%% left): plan a new Clocktower for fresh Tension.
+pt A vida da mola da sua Torre do Relógio está acabando (%d%% restante): planeje uma nova Torre do Relógio para ter Tensão fresca.
+es La vida del muelle de tu Torre del Reloj se está agotando (queda el %d%%): planea una nueva Torre del Reloj para tener Tensión nueva.
+
+> Barren: its Town Hall's soil is spent, it grows nothing. Expand to fresh land.
+pt Estéril: o solo da sua Prefeitura acabou, ela não cresce nada. Expanda para terra fresca.
+es Estéril: el suelo de su Ayuntamiento se ha agotado, no crece nada. Expándete a tierra nueva.
+
+> Nobody works it: it grows nothing (+%d gold a harvest with a crew)
+pt Ninguém trabalha nela: não cresce nada (+%d de ouro por colheita com uma equipe)
+es Nadie la trabaja: no crece nada (+%d de oro por cosecha con una cuadrilla)
+
+> Harvest in %ds · +%d gold
+pt Colheita em %ds · +%d de ouro
+es Cosecha en %ds · +%d de oro
+
+> spent: its farms pay nothing
+pt esgotado: suas fazendas não pagam nada
+es agotado: sus granjas no pagan nada
+
+> Brass: %d left%s · Spring life: %d left%s · allows 2 Cog Presses and 1 Mainspring nearby
+pt Latão: restam %d%s · Vida da mola: restam %d%s · permite 2 Prensas de Engrenagens e 1 Mola Real por perto
+es Latón: quedan %d%s · Vida del muelle: quedan %d%s · permite 2 Prensas de Engranajes y 1 Muelle Real cerca
+
+> Spring life: %d left%s
+pt Vida da mola: restam %d%s
+es Vida del muelle: quedan %d%s
+
+> allows 2 Cog Presses and 1 Mainspring nearby
+pt permite 2 Prensas de Engrenagens e 1 Mola Real por perto
+es permite 2 Prensas de Engranajes y 1 Muelle Real cerca
+
+> (spent: its presses yield nothing; expand)
+pt (esgotado: suas prensas não rendem nada; expanda)
+es (agotado: sus prensas no rinden nada; expándete)
+
+> (spent: its Mainspring is FATIGUED; expand)
+pt (esgotada: sua Mola Real está FADIGADA; expanda)
+es (agotada: su Muelle Real está FATIGADO; expándete)
+
+> brass spent: it presses nothing; expand to a new Clocktower
+pt latão esgotado: não prensa nada; expanda para uma nova Torre do Relógio
+es latón agotado: no prensa nada; expándete a una nueva Torre del Reloj
+
+> x the brass (nothing once it is spent).
+pt x o latão (nada depois de esgotado).
+es x el latón (nada una vez agotado).
+
+> Winders winding the Cog Press: it presses cogs from the Clocktower's brass, %.1f a second with all %d; with nobody on it, nothing, and each Winder adds the same share, about %.2f a second.
+pt Enroladores dando corda na Prensa de Engrenagens: ela prensa engrenagens com o latão da Torre do Relógio, %.1f por segundo com todos os %d; sem ninguém nela, nada, e cada Enrolador acrescenta a mesma parte, cerca de %.2f por segundo.
+es Dadores de cuerda girando la Prensa de Engranajes: prensa engranajes con el latón de la Torre del Reloj, %.1f por segundo con los %d; sin nadie en ella, nada, y cada Dador de cuerda añade la misma parte, unos %.2f por segundo.
+
+> Labourers working the Farm. With all %d it ripens a %d-gold harvest every %d s; with nobody it grows nothing, and each farmer adds the same share: about %d gold a minute each. Harvests draw on the Town Hall's soil: once it is spent the Farm pays nothing.
+pt Trabalhadores cuidando da Fazenda. Com todos os %d ela amadurece uma colheita de %d de ouro a cada %d s; sem ninguém não cresce nada, e cada lavrador acrescenta a mesma parte: cerca de %d de ouro por minuto cada um. As colheitas tiram do solo da Prefeitura: quando ele acaba, a Fazenda não paga nada.
+es Peones trabajando la Granja. Con los %d madura una cosecha de %d de oro cada %d s; sin nadie no crece nada, y cada labrador añade la misma parte: unos %d de oro por minuto cada uno. Las cosechas tiran del suelo del Ayuntamiento: cuando se agota, la Granja no paga nada.
+
+> Soil: each Town Hall's farmland holds 9,000 gold that its farms draw out harvest by harvest (shown as "Soil: %" on the hall and its farms). Spent soil turns the fields yellow-brown and they pay nothing (and a Farm with nobody working it grows nothing): expand, and a new Town Hall brings fresh land.
+pt Solo: a terra de cultivo de cada Prefeitura guarda 9.000 de ouro que suas fazendas tiram colheita por colheita (mostrado como "Solo: %" na sede e nas suas fazendas). Solo esgotado deixa os campos marrom-amarelados e eles não pagam nada (e uma Fazenda sem ninguém trabalhando não cresce nada): expanda, e uma nova Prefeitura traz terra fresca.
+es Suelo: las tierras de cultivo de cada Ayuntamiento guardan 9.000 de oro que sus granjas sacan cosecha a cosecha (se muestra como "Suelo: %" en el edificio y sus granjas). El suelo agotado deja los campos marrón amarillento y no pagan nada (y una Granja sin nadie que la trabaje no crece nada): expándete, y un nuevo Ayuntamiento trae tierra nueva.
+
+> COGS AND TENSION: Winders wind the Cog Presses (2 per Clocktower) for COGS, the money: a press with nobody on it presses nothing, and each Winder adds the same share (small gear up to 5 Winders, 7.2 cogs a second; big gear up to 8, 10). They crank the Mainspring (1 per Clocktower) for TENSION, the second resource (small gear up to 3, 2 a second; big gear up to 6). Winders also repair (repairs cost cogs) and go with the army.
+pt ENGRENAGENS E TENSÃO: Enroladores enrolam as Prensas de Engrenagens (2 por Torre do Relógio) para obter ENGRENAGENS, o dinheiro: uma prensa sem ninguém não prensa nada, e cada Enrolador soma a mesma parte (engrenagem pequena até 5 Enroladores, 7,2 engrenagens por segundo; grande até 8, 10). Eles giram a manivela da Mola Real (1 por Torre do Relógio) para obter TENSÃO, o segundo recurso (engrenagem pequena até 3, 2 por segundo; grande até 6). Enroladores também consertam (consertos custam engrenagens) e acompanham o exército.
+es ENGRANAJES Y TENSIÓN: los Dadores de cuerda dan cuerda a las Prensas de Engranajes (2 por Torre del Reloj) para obtener ENGRANAJES, el dinero: una prensa sin nadie no prensa nada, y cada Dador suma la misma parte (engranaje pequeño hasta 5 Dadores, 7,2 engranajes por segundo; grande hasta 8, 10). Giran la manivela del Muelle Real (1 por Torre del Reloj) para obtener TENSIÓN, el segundo recurso (engranaje pequeño hasta 3, 2 por segundo; grande hasta 6). Los Dadores de cuerda también reparan (las reparaciones cuestan engranajes) y acompañan al ejército.
+
+# THE SECONDARY RESOURCES' FLOOR (the owner, 14:44): powder and Tension fall with their reserve to 15% (Defs.SECOND_FLOOR)
+# and stay there while worked.
+
+> Winds TENSION, the Clockwork's second resource: nothing by itself, more for every Winder cranking it (SMALL gear: up to 3; BIG gear: up to 6, more in all at 5 or 6). It draws its Clocktower's SPRING LIFE (1,320 Tension): it winds less as that runs down, and spent, the spring is FATIGUED (it has taken a set) and winds at 5%: expand to a new Clocktower for full strength. 1 per Clocktower. Each Mainspring stores 200 Tension (big: 400): winding stops when you hold what your Mainsprings store. It also DRIVES the rings that mesh with it, like the Clocktower. Anything that costs Tension is made only where a Mainspring's ring meshes: the Escapement, the Clock Aviary, the Heavy Works, and a Light Works for its Springers and Netters. Must stay linked to the gear field.
+pt Enrola TENSÃO, o segundo recurso do Mecanismo: nada sozinha, mais para cada Enrolador que gira a manivela (engrenagem PEQUENA: até 3; GRANDE: até 6, mais no total com 5 ou 6). Ela tira da VIDA DA MOLA da sua Torre do Relógio (1.320 de Tensão): enrola menos à medida que ela acaba, e esgotada, a mola fica FADIGADA (ficou deformada de vez) e enrola a 5%: expanda para uma nova Torre do Relógio para ter força total. 1 por Torre do Relógio. Cada Mola Real guarda 200 de Tensão (grande: 400): o enrolar para quando você tem o que suas Molas Reais guardam. Ela também MOVE os anéis que engrenam com ela, como a Torre do Relógio. Tudo o que custa Tensão só é feito onde o anel de uma Mola Real engrena: o Escape, a Casa do Cuco, a Oficina Pesada, e uma Oficina Leve para seus Saltadores e Lança-Redes. Precisa continuar ligada ao campo de engrenagens.
+es Da cuerda a la TENSIÓN, el segundo recurso del Mecanismo: nada por sí mismo, más por cada Dador de cuerda que gira su manivela (engranaje PEQUEÑO: hasta 3; GRANDE: hasta 6, más en total con 5 o 6). Tira de la VIDA DEL MUELLE de su Torre del Reloj (1.320 de Tensión): da menos cuerda a medida que se agota, y agotada, el muelle queda FATIGADO (ha quedado deformado) y da cuerda al 5%: expándete a una nueva Torre del Reloj para tener toda la fuerza. 1 por Torre del Reloj. Cada Muelle Real almacena 200 de Tensión (grande: 400): se deja de dar cuerda cuando tienes lo que almacenan tus Muelles Reales. También MUEVE los anillos que engranan con él, como la Torre del Reloj. Todo lo que cuesta Tensión solo se hace donde engrana el anillo de un Muelle Real: el Escape, la Casa del Cuco, el Taller Pesado y un Taller Ligero para sus Saltadores y Lanzarredes. Debe seguir enlazado al campo de engranajes.
+
+> The blueprint of the machine: builds Winders, takes in the cogs and unlocks the other buildings. Its gear ring is the biggest: every building must mesh with it, directly or through others, or it stops. Allows 2 Cog Presses and 1 Mainspring nearby. Its ground holds 9,000 raw brass for its presses (spent, they yield nothing) and 1,320 SPRING LIFE for its Mainspring (it winds less as that runs down, 5% once spent). A new Clocktower brings fresh brass and spring life and starts its own gear field.
+pt O projeto da máquina: cria Enroladores, recebe as engrenagens e libera as outras construções. Seu anel de engrenagens é o maior: toda construção precisa engrenar com ele, direto ou através de outras, ou para. Permite 2 Prensas de Engrenagens e 1 Mola Real por perto. Seu chão guarda 9.000 de latão bruto para suas prensas (esgotado, não rendem nada) e 1.320 de VIDA DA MOLA para sua Mola Real (ela enrola menos à medida que acaba, 5% quando esgotada). Uma nova Torre do Relógio traz latão e vida da mola frescos e começa seu próprio campo de engrenagens.
+es El plano de la máquina: construye Dadores de cuerda, recibe los engranajes y desbloquea los demás edificios. Su anillo de engranajes es el mayor: todo edificio debe engranar con él, directamente o a través de otros, o se detiene. Permite 2 Prensas de Engranajes y 1 Muelle Real cerca. Su suelo guarda 9.000 de latón en bruto para sus prensas (agotado, no rinden nada) y 1.320 de VIDA DEL MUELLE para su Muelle Real (da menos cuerda a medida que se agota, 5% una vez agotada). Una nueva Torre del Reloj trae latón y vida del muelle nuevos y empieza su propio campo de engranajes.
+
+> Up to 6 labourers grind its Town Hall's saltpetre into black powder for the bank: it buys musketeers and wagons and pays for refilling soldiers' powder. It grinds less as that saltpetre runs down, and 15% once it is spent. Soldiers and wagons nearby refill here.
+pt Até 6 operários moem o salitre da sua Prefeitura em pólvora negra para o banco: ela compra mosqueteiros e carroças e paga o reabastecimento de pólvora dos soldados. Mói menos à medida que o salitre acaba, e 15% quando ele se esgota. Soldados e carroças por perto se reabastecem aqui.
+es Hasta 6 peones muelen el salitre de su Ayuntamiento en pólvora negra para el banco: compra mosqueteros y carros y paga el relleno de pólvora de los soldados. Muele menos a medida que el salitre se agota, y un 15% una vez agotado. Los soldados y carros cercanos se rellenan aquí.
+
+> Trains labourers. Right-click Labourers onto it to make them haulers: they lead horses to the Barracks and Foundry and carry powder kegs to the Wagons. Each Town Hall allows 2 Farms and 1 Powder Mill nearby. Its farmland holds a reserve of gold (once the farms have drawn it out they pay nothing) and its ground a reserve of saltpetre for the Mill (spent, the Mill grinds at 15%). Expand to fresh land.
+pt Treina operários. Clique direito em Operários sobre ela para fazê-los carregadores: eles guiam cavalos até o Quartel e a Fundição e levam barris de pólvora às Carroças. Cada Prefeitura permite 2 Fazendas e 1 Moinho de Pólvora por perto. Suas terras de cultivo guardam uma reserva de ouro (esgotada pelas fazendas, não pagam nada) e seu solo uma reserva de salitre para o Moinho (esgotado, o Moinho mói a 15%). Expanda para terra fresca.
+es Entrena peones. Haz clic derecho con Peones sobre él para convertirlos en porteadores: guían caballos hasta el Cuartel y la Fundición y llevan barriles de pólvora a los Carros. Cada Ayuntamiento permite 2 Granjas y 1 Molino de pólvora cerca. Sus tierras de cultivo guardan una reserva de oro (agotada por las granjas, no pagan nada) y su suelo una reserva de salitre para el Molino (agotado, el Molino muele al 15%). Expándete a tierra nueva.
+
+> FATIGUED: the spring has taken a set (its Clocktower's spring life is spent): it winds at %d%%. A Mainspring by a new Clocktower winds at full strength.
+pt FADIGADA: a mola ficou deformada de vez (a vida da mola da sua Torre do Relógio acabou): ela enrola a %d%%. Uma Mola Real junto a uma nova Torre do Relógio enrola com força total.
+es FATIGADO: el muelle ha quedado deformado (la vida del muelle de su Torre del Reloj se ha agotado): da cuerda al %d%%. Un Muelle Real junto a una nueva Torre del Reloj da cuerda con toda su fuerza.
+
+> its Mill grinds at %d%%
+pt seu Moinho mói a %d%%
+es su Molino muele al %d%%
+
+> The spring life at your Clocktower is spent: its Mainspring is FATIGUED (it has taken a set) and winds at %d%% from now on. A Mainspring by a new Clocktower winds at full strength.
+pt A vida da mola da sua Torre do Relógio acabou: sua Mola Real está FADIGADA (ficou deformada de vez) e enrola a %d%% daqui em diante. Uma Mola Real junto a uma nova Torre do Relógio enrola com força total.
+es La vida del muelle de tu Torre del Reloj se ha agotado: su Muelle Real está FATIGADO (ha quedado deformado) y da cuerda al %d%% a partir de ahora. Un Muelle Real junto a una nueva Torre del Reloj da cuerda con toda su fuerza.
+
+> spent: the Mill grinds at %d%%
+pt esgotado: o Moinho mói a %d%%
+es agotado: el Molino muele al %d%%
+
+> saltpetre spent: it grinds at %d%%; expand to a new Town Hall
+pt salitre esgotado: mói a %d%%; expanda para uma nova Prefeitura
+es salitre agotado: muele al %d%%; expándete a un nuevo Ayuntamiento
+
+> Labourers grinding the Town Hall's saltpetre into black powder, about %d powder a minute each (%d with all %d). Powder buys Musketeers and Powder Wagons and refills your soldiers' shots. It grinds less as the saltpetre runs down, and %d%% of that once it is spent.
+pt Operários moendo o salitre da Prefeitura em pólvora negra, cerca de %d de pólvora por minuto cada um (%d com todos os %d). A pólvora compra Mosqueteiros e Carroças de Pólvora e recarrega os tiros dos seus soldados. Mói menos à medida que o salitre acaba, e %d%% disso quando ele se esgota.
+es Peones moliendo el salitre del Ayuntamiento en pólvora negra, unos %d de pólvora por minuto cada uno (%d con los %d). La pólvora compra Mosqueteros y Carros de Pólvora y recarga los tiros de tus soldados. Muele menos a medida que el salitre se agota, y el %d%% de eso una vez agotado.
+
+> Winders cranking the Mainspring: it winds Tension from its Clocktower's spring life, %.1f a second with all %d; with nobody on it, nothing, and each Winder adds the same share, about %.2f a second. Winding stops when you hold what your Mainsprings store. It winds less as the spring life runs down; once it is spent the spring is FATIGUED (it has taken a set) and winds at %d%%.
+pt Enroladores girando a manivela da Mola Real: ela enrola Tensão com a vida da mola da sua Torre do Relógio, %.1f por segundo com todos os %d; sem ninguém nela, nada, e cada Enrolador acrescenta a mesma parte, cerca de %.2f por segundo. Para de enrolar quando você tem o que suas Molas Reais guardam. Enrola menos à medida que a vida da mola acaba; quando ela se esgota, a mola fica FADIGADA (ficou deformada de vez) e enrola a %d%%.
+es Dadores de cuerda girando la manivela del Muelle Real: enrolla Tensión con la vida del muelle de su Torre del Reloj, %.1f por segundo con los %d; sin nadie en él, nada, y cada Dador de cuerda añade la misma parte, unos %.2f por segundo. Deja de enrollar cuando tienes lo que guardan tus Muelles Reales. Da menos cuerda a medida que la vida del muelle se agota; agotada, el muelle queda FATIGADO (ha quedado deformado) y da cuerda al %d%%.
+
+> Saltpetre: each Town Hall's ground also holds 1,320 powder's worth of saltpetre for its Mill, about 11 minutes of a fully worked Mill (about 120 powder a minute; "saltpetre %" on the Mill and the hall). The Mill grinds less as it runs down, and 15% once it is spent (it never stops while worked: you can always shoot). A new Town Hall brings fresh saltpetre: build a Mill there for full strength.
+pt Salitre: o solo de cada Prefeitura também guarda o equivalente a 1.320 de pólvora em salitre para seu Moinho, cerca de 11 minutos de um Moinho totalmente trabalhado (cerca de 120 de pólvora por minuto; "salitre %" no Moinho e na sede). O Moinho mói menos à medida que ele acaba, e 15% quando se esgota (nunca para enquanto trabalhado: você sempre pode atirar). Uma nova Prefeitura traz salitre fresco: construa um Moinho ali para ter força total.
+es Salitre: el suelo de cada Ayuntamiento guarda también el equivalente a 1.320 de pólvora en salitre para su Molino, unos 11 minutos de un Molino con toda su dotación (unos 120 de pólvora por minuto; "salitre %" en el Molino y el edificio). El Molino muele menos a medida que se agota, y un 15% una vez agotado (nunca se detiene mientras se trabaja: siempre puedes disparar). Un nuevo Ayuntamiento trae salitre nuevo: construye un Molino allí para tener toda la fuerza.
+
+> Brass and spring life: each Clocktower's ground holds 9,000 raw brass for its presses (about 10 minutes of two full presses; "Brass %" on the presses) and 1,320 SPRING LIFE for its Mainspring (about 11 minutes of a full Mainspring; "Spring life %"). Spent brass pays nothing. The Mainspring winds less as its spring life runs down; spent, it is FATIGUED (the spring has taken a set: it winds at 5%, still drives its rings and stores Tension). A new Clocktower brings fresh brass and spring life: expand.
+pt Latão e vida da mola: o solo de cada Torre do Relógio guarda 9.000 de latão bruto para suas prensas (cerca de 10 minutos de duas prensas cheias; "Latão %" nas prensas) e 1.320 de VIDA DA MOLA para sua Mola Real (cerca de 11 minutos de uma Mola Real cheia; "Vida da mola %"). Latão esgotado não paga nada. A Mola Real enrola menos à medida que a vida da mola acaba; esgotada, fica FADIGADA (a mola ficou deformada de vez: enrola a 5%, ainda move seus anéis e guarda Tensão). Uma nova Torre do Relógio traz latão e vida da mola frescos: expanda.
+es Latón y vida del muelle: el suelo de cada Torre del Reloj guarda 9.000 de latón en bruto para sus prensas (unos 10 minutos de dos prensas completas; "Latón %" en las prensas) y 1.320 de VIDA DEL MUELLE para su Muelle Real (unos 11 minutos de un Muelle Real completo; "Vida del muelle %"). El latón agotado no paga nada. El Muelle Real da menos cuerda a medida que la vida del muelle se agota; agotada, queda FATIGADO (el muelle ha quedado deformado: da cuerda al 5%, aún mueve sus anillos y almacena Tensión). Una nueva Torre del Reloj trae latón y vida del muelle nuevos: expándete.
+
+> Efficiency: over each of your economy buildings a small bar shows how well it's working right now, as a %: its workers against its full crew, times what's left of its base's reserve (soil, saltpetre, brass or spring life: 100% fresh; spent soil and brass pay nothing, spent saltpetre 15% and spring life 5%). Green is 80% or more, then yellow, then red. Select the building to see the breakdown.
+pt Eficiência: sobre cada uma das suas construções de economia uma pequena barra mostra como ela está trabalhando agora, em %: seus trabalhadores contra a equipe completa, vezes o que resta da reserva da sua base (solo, salitre, latão ou vida da mola: 100% fresca; solo e latão esgotados não pagam nada, salitre esgotado 15% e vida da mola esgotada 5%). Verde é 80% ou mais, depois amarelo, depois vermelho. Selecione a construção para ver os detalhes.
+es Eficiencia: sobre cada uno de tus edificios de economía una pequeña barra muestra lo bien que trabaja ahora mismo, en %: sus trabajadores frente a su dotación completa, por lo que queda de la reserva de su base (suelo, salitre, latón o vida del muelle: 100% nueva; el suelo y el latón agotados no pagan nada, el salitre agotado un 15% y la vida del muelle agotada un 5%). Verde es 80% o más, luego amarillo, luego rojo. Selecciona el edificio para ver el desglose.
