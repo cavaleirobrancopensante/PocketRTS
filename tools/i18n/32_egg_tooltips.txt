@@ -96,3 +96,7 @@ es %d de comida guardada
 > Grubs carry food from the Rootmaws and the food piles to the Brood Mother: she keeps it as the Brood's food, the green figure at the top. The farther a Rootmaw from her, the more a trip pays; each Rootmaw takes more grubs the farther it is. Select a Rootmaw (or rest the mouse on its GRUBS label) for its own numbers.
 pt As larvas levam comida dos Bocarraízes e dos montes de comida para a Mãe da Ninhada: ela a guarda como a comida da Ninhada, o número verde no alto. Quanto mais longe dela o Bocarraiz, mais paga uma viagem; cada Bocarraiz aceita mais larvas quanto mais longe está. Selecione um Bocarraiz (ou pare o mouse sobre o rótulo LARVAS dele) para ver os números dele.
 es Las larvas llevan comida de los Bocarraíces y de los montones de comida a la Madre de la Camada: ella la guarda como la comida de la Nidada, la cifra verde de arriba. Cuanto más lejos de ella esté un Bocarraíz, más paga un viaje; cada Bocarraíz admite más larvas cuanto más lejos está. Selecciona un Bocarraíz (o deja el ratón sobre su etiqueta LARVAS) para ver sus números.
+
+> Eggs: %d/%d
+pt Ovos: %d/%d
+es Huevos: %d/%d

@@ -86,9 +86,9 @@ static func _turtles_home(g: Game, q: Unit) -> int:
 
 # ------------------------------------------------------------------ the egg line on the map
 
-## The egg line's text over her ("4/10  4.8s · 00:35"): BroodNew.draw draws this.
+## The egg line's text over her ("Eggs: 4/10  4.8s · 00:35"): BroodNew.draw draws this.
 static func label_text(q: Unit) -> String:
-	var txt := "%d/%d" % [int(q.nb.get("eggs", 0)), BroodNew.eggs_max(q)]
+	var txt := Loc.t("Eggs: %d/%d") % [int(q.nb.get("eggs", 0)), BroodNew.eggs_max(q)]
 	var nl := BroodNew.next_egg_in(q)
 	if nl >= 0.0:
 		txt += "  " + BroodNew.clock_text(nl, true) + " · " + BroodNew.clock_text(BroodNew.full_in(q), false)

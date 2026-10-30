@@ -2283,6 +2283,7 @@ const T := {
 	"%d grubs at work on %d Rootmaws and food piles, %d carrying food now": "%d larvas trabajando en %d Bocarraíces y montones de comida, %d llevando comida ahora",
 	"%d food stored": "%d de comida guardada",
 	"Grubs carry food from the Rootmaws and the food piles to the Brood Mother: she keeps it as the Brood's food, the green figure at the top. The farther a Rootmaw from her, the more a trip pays; each Rootmaw takes more grubs the farther it is. Select a Rootmaw (or rest the mouse on its GRUBS label) for its own numbers.": "Las larvas llevan comida de los Bocarraíces y de los montones de comida a la Madre de la Camada: ella la guarda como la comida de la Nidada, la cifra verde de arriba. Cuanto más lejos de ella esté un Bocarraíz, más paga un viaje; cada Bocarraíz admite más larvas cuanto más lejos está. Selecciona un Bocarraíz (o deja el ratón sobre su etiqueta LARVAS) para ver sus números.",
+	"Eggs: %d/%d": "Huevos: %d/%d",
 	"WHERE ARE YOU PLAYING?": "¿DÓNDE ESTÁS JUGANDO?",
 	"YOU CAN CHANGE THIS LATER IN SETTINGS.": "PUEDES CAMBIARLO MÁS TARDE EN AJUSTES.",
 	"FITS MAP": "DEL MAPA",

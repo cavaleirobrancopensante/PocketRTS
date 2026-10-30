@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.22.8", "items": [
+		"The line over the Brood Mother now says what it counts: Eggs: 4/10  4.8s · 00:35.",
+	]},
 	{"v": "0.22.7", "items": [
 		"THE MOTHER'S EGG TOOLTIP: rest the mouse on the egg line over the Brood Mother (4/10  4.8s · 00:35) and a tooltip explains every number: her eggs and her clutch's size (her stage sets it: 10, 15, 20), the next egg and the time to a full clutch, her laying in all (eggs a minute, one every N s) and each lever with its value: her stage, the Sires near her (named), the Mound Turtles on new ground, her harvest veterancy, and the sum. It says what stops her laying (growing, a full clutch; a Sire who researches fathers no eggs of his line). Her card's LAYING button gives the same text. Only for your own Mother (and spectators).",
 		"ICONS ON THE UNIT CARD WITH THEIR TOOLTIPS: the stats row of a card now starts with what it works with. The Brood Mother: her EGGS (an egg and 4/10: the egg tooltip) and the GRUBS bringing her food. A Rootmaw or a food pile: its GRUBS (5/6) and its food. A Town Hall: its HAULERS; a Farm: FARMERS and its soil; a Powder Mill: POWDER MAKERS and its saltpetre; a Cog Press: WINDERS and its brass; a Mainspring: WINDERS; a Horse Breeder: its Town Hall's HAULERS. Rest the mouse on one (tap it on a phone) for the same tooltip as the label over it on the map.",
