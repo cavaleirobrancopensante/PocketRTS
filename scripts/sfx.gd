@@ -135,7 +135,12 @@ const GAP := {"ui/chat": 500, "combat/raptor_attack": 220, "combat/grub_attack":
 	"combat/hatchlings_death": 150, "combat/tyrannosaur_death": 400, "combat/dilophosaurus_death": 400,
 	"combat/pterodactyl_death": 400, "combat/rootmaw_death": 300, "combat/mound_turtle_death": 400,
 	"combat/brood_egg_death": 200, "brood/breath_tyrannosaur": 1500, "brood/breath_dilophosaurus": 1500,
-	"brood/breath_pterodactyl": 1500, "roar": 600}
+	"brood/breath_pterodactyl": 1500, "roar": 600,
+	# the owner's Brood sound pack (2026-10-30): wingbeats with a flyer's order (one flap for a whole flock), the globs
+	# landing, eggs hatching, the grubs' squish at work (all game long), rooting
+	"brood/wings_small": 700, "brood/wings_mid": 900, "brood/wings_big": 1200, "combat/spitter_hit": 150,
+	"combat/venom_challenger_hit": 180, "combat/dilophosaurus_hit": 250, "brood/hatch": 150, "brood/cocoon_split": 250,
+	"brood/moult": 300, "brood/lay_egg": 500, "brood/grub_take": 350, "brood/root": 400, "brood/uproot": 400, "brood/error": 250}
 
 ## How far a sound's pitch may wander from one play to the next (default 7%).
 const JITTER := {"combat/musketeer_attack": 0.04, "combat/cannon_attack": 0.04,
@@ -162,7 +167,7 @@ static func gain(st: AudioStream) -> float:
 static func _tier(name: String) -> int:
 	if name == "ui/chat":
 		return 1          # (the chat tick: the lowest tier, it never hushes the fight)
-	if name.begins_with("ui/") or name.begins_with("voice/announcer") or name == "click" or name.ends_with("/alert") or name.ends_with("/base_alert"):
+	if name.begins_with("ui/") or name.begins_with("voice/announcer") or name == "click" or name.ends_with("/alert") or name.ends_with("/base_alert") or name.ends_with("/error"):
 		return 3          # (a faction's own alarm, the Clockwork's alarm clock, as the shared one)
 	if name.begins_with("voice/") or name.begins_with("horse/") or name.begins_with("select/"):
 		return 2
@@ -252,7 +257,12 @@ static func building_selected(kind: String, faction: String) -> void:
 ## Units with no sounds of their own yet speak (and die) with another's: the Storm line with the retired Skywing's
 ## (docs/storm_line.md). Their own files (voice/<kind>/..., combat/<kind>_death) win as soon as they exist.
 const VOICE_AS := {"hatchlings": "skywing", "storm_challenger": "skywing"}
-const VOICE_EXTRA := {"dragoon": {"select": [["horse/neigh", 0.7]], "move": [["horse/neigh", 0.25]]},
+## The Brood's flyers beat their wings when sent off (and now and then when told to attack): the owner's pack, 2026-10-30.
+const VOICE_EXTRA := {"hatchlings": {"move": [["brood/wings_small", 1.0]], "attack": [["brood/wings_small", 0.6]]},
+	"skywing": {"move": [["brood/wings_small", 1.0]], "attack": [["brood/wings_small", 0.6]]},
+	"storm_challenger": {"move": [["brood/wings_mid", 1.0]], "attack": [["brood/wings_mid", 0.6]]},
+	"pterodactyl": {"move": [["brood/wings_big", 1.0]], "attack": [["brood/wings_big", 0.6]]},
+	"dragoon": {"select": [["horse/neigh", 0.7]], "move": [["horse/neigh", 0.25]]},
 	"horseman": {"select": [["horse/neigh", 0.7]], "move": [["horse/neigh", 0.25]]},
 	"horse": {"select": [["horse/neigh", 0.8]]},
 	"cuirassier": {

@@ -8,8 +8,10 @@ extends SceneTree
 ##   godot --headless --fixed-fps 30 --script res://tools/test_brood_sounds.gd
 ## The creatures still to come (no Defs.UNITS entry yet): their files are checked all the same.
 const LATER := ["hatchlings", "storm_challenger"]
-## The kinds that keep older sounds: the Raptor (the owner's lizard recording), the Skywing's spines and the Grub's bite.
-const OLD_BLOW := ["raptor", "skywing", "grub"]
+## The kinds that keep older blows: the Skywing's spines (the Raptor and the Grub bite with the 2026-10-30 pack's chomps).
+const OLD_BLOW := ["skywing"]
+## The owner's 2026-10-30 pack: sounds that must be heard in the match (wings, a glob landing, rooting, the error grunt).
+const PACK_HEARD := ["brood/wings_big", "brood/wings_small", "combat/spitter_hit", "brood/root", "brood/uproot", "brood/error"]
 ## Fallbacks a Brood creature played before it had its own sounds (scripts/unit.gd, game.gd, brood_*.gd).
 const FALLBACKS := ["clash", "combat/brood_death", "death_brood"]
 var main: Node
@@ -94,6 +96,13 @@ func _run() -> void:
 		check(has_sound("brood/mature_" + m), "%s matured" % m)
 	for w in ["select", "move", "attack"]:
 		check(has_sound("voice/brood_army/" + w), "a mixed Brood group answers %s" % w)
+	for n in ["brood/wings_small", "brood/wings_mid", "brood/wings_big", "brood/hatch", "brood/cocoon_split", "brood/moult",
+			"brood/lay_egg", "brood/grub_take", "brood/root", "brood/uproot", "brood/error", "combat/spitter_hit",
+			"combat/venom_challenger_hit", "combat/dilophosaurus_hit"]:
+		check(takes(n).size() >= 2 and has_sound(n), "the pack's %s: %d takes" % [n, takes(n).size()])
+	check(takes("brood/hatch").size() >= 3, "3+ egg hatching takes")
+	for k in ["hatchlings", "skywing", "storm_challenger", "pterodactyl"]:
+		check(Sfx.VOICE_EXTRA.has(k) and Sfx.GAP.has(String(Sfx.VOICE_EXTRA[k]["move"][0][0])), "%s beats its wings when sent (with a GAP)" % k)
 	# ---- a match
 	await process_frame
 	main.start({"map": "hollowfen", "seed": 4242, "slots": [
@@ -138,6 +147,17 @@ func _run() -> void:
 			g.command_sound(mixed, what, what)
 		await run(0.1)
 	g.set_selection([])
+	# ---- the pack: a Rootmaw roots and uproots, a failed order grunts
+	var maw: Unit = us["rootmaw"]
+	_free_sfx()
+	check(BroodNew.on_root(g, maw) == "", "the Rootmaw roots")
+	await run(0.2)
+	_free_sfx()
+	BroodNew.uproot(maw, false)
+	await run(0.2)
+	_free_sfx()
+	g.hud.toast("Not enough food")
+	await run(0.2)
 	# ---- fights: each fighter on its own against a Crown Musketeer standing still, till it hits
 	for k in kinds:
 		if not fights(k) or Defs.UNITS[k].get("air_only", false):
@@ -167,8 +187,14 @@ func _run() -> void:
 		var u: Unit = was if is_instance_valid(was) and not was.dead else null
 		if u == null:
 			u = g._add_unit(k, 0, at)
-			await run(0.1)
+			await run(0.6)          # (its sight must be on the fog map first: a death in the fog is not heard, 0.24.1)
+		if not BroodNew.rooted(u) and u.position.distance_to(at) > 200.0:
+			# (the grub went to work at the rooted Rootmaw and may be carrying food to a far corner, out of earshot)
+			u.cmd_stop()
+			u.position = at
+			g.note_move(u)
 		g.camera.position = u.position
+		g.camera.reset_smoothing()
 		_free_sfx()
 		u.hp = 0.0
 		u.die()
@@ -190,6 +216,9 @@ func _run() -> void:
 			check(h.has("combat/%s_attack" % k), "heard the %s's blow" % k)
 	for n in FALLBACKS:
 		check(not h.has(n), "no fallback: " + n)
+	for n in PACK_HEARD:
+		check(h.has(n), "heard the pack's " + n)
+	check(not h.has("bite"), "no synth bite: every Brood blow is a real one")
 	print("DONE  %d failure(s)" % fails)
 	quit(1 if fails > 0 else 0)
 

@@ -523,7 +523,7 @@ static func cocoon_tick(g: Game, u: Unit, delta: float) -> void:
 		BroodNew.recount(g, u.team)
 		g.swamp_dirty = true
 		if u.team == g.human:
-			Sfx.play("hatch", u.position)
+			Sfx.play_any(["brood/cocoon_split", "hatch"], u.position)
 			Sfx.voice(u.kind, "select")
 			if BroodNew.is_father(u.kind):
 				g.tell(u.team, "The %s came to the lure and ate it: he is yours, on his nest." % u.d["name"], true)

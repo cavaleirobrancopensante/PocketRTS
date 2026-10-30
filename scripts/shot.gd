@@ -10,6 +10,7 @@ var arc := 0.0               # height of the arc as a share of the distance
 var face_offset := 0.0       # the art's own facing (PI if drawn facing left)
 var impact := ""
 var impact_scale := 1.0
+var impact_sound := ""      # played where it lands (a venom glob's wet splat: combat/<kind>_hit)
 var game: Game
 var _t := 0.0
 var _dur := 0.1
@@ -57,4 +58,6 @@ func _process(delta: float) -> void:
 			var fx := game.spawn_effect(impact, to, 1.4)
 			fx.scale = Vector2(impact_scale, impact_scale)
 			fx.rotation = (to - from).angle() if impact == "acid_splash" else 0.0
+		if impact_sound != "":
+			Sfx.play_any([impact_sound, "combat/spitter_hit"], to)     # (a glob landing: heard only where your side sees)
 		queue_free()

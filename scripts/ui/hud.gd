@@ -71,12 +71,18 @@ func hud_has_screen(p: Vector2) -> bool:
 func toast(t: String, sound := true) -> void:
 	_msg = Loc.t(t)
 	_msg_t = 2.2
+	var fac := game.faction_of(game.human) if game and not game.demo else ""
+	var low := t.to_lower()
 	if sound:
-		Sfx.play_any(["ui/error", "error"])
+		# the faction's own "something went wrong" (the Brood: the owner's grunt, 2026-10-30), else the click; a
+		# little lower under an announcer line about resources or supply, so the two sit together
+		var vol := -5.0 if low.begins_with("not enough ") or low.begins_with("need more supply") else 0.0
+		if fac == "brood":
+			Sfx.play_any(["brood/error", "ui/error", "error"], Vector2.INF, vol)
+		else:
+			Sfx.play_any(["ui/error", "error"])
 	if game and not game.demo:
-		var fac := game.faction_of(game.human)
 		var res: Array = Defs.res_names(fac)
-		var low := t.to_lower()
 		if low.begins_with("not enough " + String(res[0]).to_lower()):
 			Sfx.announce(fac, "no_gold", 5.0)
 		elif low.begins_with("not enough " + String(res[1]).to_lower()) or low.begins_with("out of powder") or low.begins_with("powder bank empty"):

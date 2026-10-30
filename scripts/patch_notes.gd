@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.10", "items": [
+		"THE BROOD'S NEW SOUNDS, from the owner's sound pack: real bites and chomps under every Brood blow (the Raptor and the Grub too), wet splats where a venom glob lands (small for the Spitter, bigger for the Venom Challenger, biggest for the Venom Sire), a wet burst under every Brood death, eggs cracking as they hatch (3 kinds), a cocoon or moult splitting open, the Mother laying an egg, a grub's squish as it takes food, a squelch as a creature roots or uproots, and wingbeats when you send a flyer (small for the Hatchlings and Skywings, two beats for the Storm Challenger, heavy leathery beats for the Storm Sire; one flap for a whole flock). New takes for the Tyrant Challenger and the Tyrant Sire.",
+		"THE BROOD'S ERROR SOUND is now a creature's grunt (the owner's pick): every failed order (not enough food or spoils, no supply, no room, can't do that) grunts instead of clicking, a little softer when the announcer speaks too.",
+	]},
 	{"v": "0.24.9", "items": [
 		"THE GEAR SWAP IS GONE (Clockwork): the SMALL GEAR / BIG GEAR button is removed (a ring that grew clipped into the gears around it). Each building keeps the gear it is built with: the Heavy Works its big gear (the Pendulums, Ballistas and Great Winders are made there), every other building its small one. Saves made before still load.",
 		"THE SPRING MARK (the little gold coil over a Clockwork building) now shows only on buildings that use or spend Tension, and explains itself: rest the mouse on it (or long-press it on a phone): a Mainspring's ring meshes with this building's, so it is fed Tension and can work and make what costs Tension.",
