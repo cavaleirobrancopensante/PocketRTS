@@ -870,7 +870,7 @@ func _nb_lay(q: Unit) -> void:
 	if _nb_short():
 		keep = maxi(keep, 100)
 	elif BroodNew.count_of(game, team, BroodNew.FATHER) == 0 and grubs >= int(plan["sire_g"]) - 1:
-		keep = maxi(keep, 200)          # (the Tyrant Sire's lure first)
+		keep = maxi(keep, int(Defs.UNITS[BroodNew.FATHER]["cost"]))          # (the Tyrant Sire's lure first)
 	keep = maxi(keep, _nb_growth_keep(q) + (_morph_keep if _nb_growth_keep(q) > 0 else 0))
 	var any_father := BroodNew.FATHERS.any(func(f) -> bool: return BroodNew.father_near(game, team, f))
 	# grubs on the plan's curve ("drone": grubs a minute, from the 5 it starts with) come before warriors, unless the enemy

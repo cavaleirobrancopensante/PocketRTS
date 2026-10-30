@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.22.2", "items": [
+		"The TYRANT SIRE, the father every Brood opening needs (Raptors), is now the cheaper one: 150 food and 30 s (was 200, 35 s). The VENOM SIRE, the specialist, costs 200 food and 35 s (was 150, 30 s).",
+	]},
 	{"v": "0.22.1", "items": [
 		"MAKE (F3) selects the Brood Mother for a Brood player (the Brood has no buildings: she lays every egg) and jumps to her.",
 	]},
