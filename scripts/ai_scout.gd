@@ -759,8 +759,8 @@ func _evaluate() -> Dictionary:
 			halls += 1          # (a Mound Turtle rooted on new ground: the Brood's expansion)
 	var fac: String = game.faction_of(_foe)
 	var econ_cap := BROOD_ECON_CAP if fac == "brood" else 0
-	for k in Defs.FACTIONS[fac]["econ"]:
-		econ_cap += int(Defs.FACTIONS[fac]["econ"][k])
+	for k in Defs.econ_of(fac):
+		econ_cap += int(Defs.econ_of(fac)[k])
 	var ra := _recent_army()
 	var value: float = ra[0]
 	var sup: int = ra[1]

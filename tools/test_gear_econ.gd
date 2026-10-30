@@ -99,9 +99,9 @@ func _run() -> void:
 	if p2 != null:
 		var gp: Dictionary = Defs.GEAR["press"]
 		var want := float(gp["small"]["full"]) * float(gp["base"]) * 0.8
-		check("its trickle is 80%% of a press by the Clocktower (%.2f/s)" % want, absf(p2.press_rate() - want) < 0.01, "%.3f" % p2.press_rate())
+		check("with nobody on it it presses nothing (no trickle since 0.24.0: %.2f/s)" % want, absf(p2.press_rate() - want) < 0.01, "%.3f" % p2.press_rate())
 		var e2: Array = p2.efficiency()
-		check("its efficiency shows the trickle share times drive (12%)", not e2.is_empty() and absf(float(e2[0]) - float(gp["base"]) * 0.8) < 0.01, str(e2))
+		check("its efficiency shows the crew share times drive (0% empty)", not e2.is_empty() and absf(float(e2[0]) - float(gp["base"]) * 0.8) < 0.01, str(e2))
 		var sc := int(gp["small"]["crew"])
 		_crew(g, p2, sc)
 		check("crewed by its %d Winders it presses 80%% of the full rate" % sc, absf(p2.press_rate() - float(gp["small"]["full"]) * 0.8) < 0.05 and absf(float(p2.efficiency()[0]) - 0.8) < 0.01,

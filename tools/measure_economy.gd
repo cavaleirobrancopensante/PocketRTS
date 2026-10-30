@@ -231,6 +231,19 @@ func _snap(i: int) -> Dictionary:
 			"full_s": int(s["full_s"]), "spend_t_units": int(s["spend_t_units"]), "spend_t_bld": int(s["spend_t_bld"]),
 			"lode": int(lode), "lode_full": int(lode_full), "n_press": np, "n_press_big": npb, "crew_press": crew_p, "n_spring": ns,
 			"crew_spring": crew_s, "rate_press": snappedf(rate_p, 0.01), "rate_spring": snappedf(rate_s, 0.01)})
+	elif fac == "brood":
+		# the Brood (no halls): its grubs, rooted Rootmaws and the ground they still hold, the spoils it took in
+		var maws := 0
+		var ground := 0.0
+		for u in g.units:
+			if u.team == i and not u.dead and u.kind == BroodNew.MAW and BroodNew.rooted(u):
+				maws += 1
+				ground += BroodNew.ground_left(g, u)
+		var grubs := 0
+		for u in g.workers(i):
+			grubs += 1
+		r.merge({"powder_in": int(st["res2_in"]), "powder": int(p["res2"]), "soil": int(ground), "salt": 0, "n_farm": maws,
+			"crew_farm": grubs, "n_mill": 0, "crew_mill": 0, "spend_powder_units": int(s["spend_powder_units"])})
 	else:
 		var soil := 0.0
 		var salt := 0.0
@@ -261,6 +274,10 @@ func _line(i: int, r: Dictionary) -> String:
 			r["m"], i, r["earned"], r["press"], r["sweep"], r["other"], r["bank"], r["tension_in"], str(r["springs"]), r["tension"], r["tension_cap"],
 			r["full_s"], r["n_press"], r["n_press_big"], r["crew_press"], r["n_spring"], r["crew_spring"], r["lode"], r["workers"], r["army"], r["army_n"],
 			r["supply"], r["cap"], r["halls"]]
+	if r["fac"] == "brood":
+		return "%2d:00 t%d BR earned %d bank %d | spoils in %d bank %d | rootmaws %d grubs %d | ground %d | army %d (%d) supply %d/%d" % [
+			r["m"], i, r["earned"], r["bank"], r["powder_in"], r["powder"], r["n_farm"], r["crew_farm"], r["soil"], r["army"], r["army_n"],
+			r["supply"], r["cap"]]
 	return "%2d:00 t%d CR earned %d bank %d | powder in %d bank %d | farms %d crew %d mills %d crew %d | soil %d salt %d | workers %d army %d (%d) supply %d/%d halls %d" % [
 		r["m"], i, r["earned"], r["bank"], r["powder_in"], r["powder"], r["n_farm"], r["crew_farm"], r["n_mill"], r["crew_mill"], r["soil"], r["salt"],
 		r["workers"], r["army"], r["army_n"], r["supply"], r["cap"], r["halls"]]

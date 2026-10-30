@@ -25,6 +25,12 @@
 
 ## Current work
 
+- EXHAUSTED MEANS EXHAUSTED (owner, 2026-10-30), 0.24.0 (branch exhaust-economy, docs/exhaust_economy.md): no trickle for
+  anyone; spent soil/brass/ground pay 0; powder and Tension fall with their reserve to a FLOOR (Defs.POWDER_FLOOR 15%,
+  TENSION_FLOOR 5%, only while worked); each Clocktower's SPRING LIFE (1,320, in its `soil`) feeds its Mainspring, spent =
+  FATIGUED; 2 presses + 1 Mainspring per Clocktower; press 7.2/5 and 10/8, Winder 60, brass 9,000. Open: the Crown's
+  anti-rush timing slipped to 2:49 (test_ai_wall_vs_rush), the floors unmeasured in fights; tools/test_exhaust.gd.
+
 - Stun mark (owner, 2026-10-29), DONE in 0.15.24 (branch stun-mark): stars over a REALLY stunned unit (scripts/stun_mark.gd; Unit.stun(t, show, until) is the only way to stun; under 0.3 s, internal holds and nets show none); TONGUE pulls flyers through the air and never pulls the Brood Mother or a father (Defs.TONGUE "no_pull" + "father"); the Field Cannon question is still open. docs/stun_mark.md (durations table), tools/test_stun_mark.gd, pictures docs/shots/stun_mark/.
 - Swarm performance (owner, 2026-10-28: "200 Raptors a side... not a lag fest"): cloud job branch `swarm-perf` (0.15.6), DONE: docs/swarm_perf.md (numbers before/after, what is left). tools/stress_swarm.gd (+ .sh): idle, walk, melee, offmelee, grubs, muskets scenarios, trace:FILE must match between versions. The unit grid is packed (Game._gpos/_gteam/_grad, GRID_SLACK and grid_slack: a unit moved farther than the slack must call game.note_move or move in its own tick), find_target looks only at enemies (_near_foe), animation steps 10 Hz in a big battle on screen (anim_crowd), replay pictures and the autosave (SaveGame.begin/SaveJob) avoid a tick's frame. Left: the clash's peak ticks, walking crowds, draw calls on phones.
 

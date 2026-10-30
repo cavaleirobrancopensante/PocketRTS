@@ -18,6 +18,7 @@ const FOOD := Color(0.55, 0.85, 0.3)
 const SOIL := Color(0.98, 0.8, 0.2)
 const SALT := Color(0.88, 0.88, 0.92)
 const BRASS := Color(0.85, 0.68, 0.32)
+const SPRING := Color(0.55, 0.85, 1.0)        # (a Mainspring's spring life: the Tension blue)
 
 static var _pics := {}
 
@@ -91,9 +92,9 @@ static func chips(g: Game, e: Entity) -> Array:
 			if not L3.is_empty():
 				out.append({"icon": "", "pic": pic("labourer"), "text": String(L3["count"]), "title": "Haulers", "col": L3["col"],
 					"tipf": func() -> Dictionary: return WorkerLabels.tip(g, hall) if is_instance_valid(hall) and not hall.dead else {}})
-	var res := {"farm": ["Soil", SOIL], "powder_mill": ["Saltpetre", SALT], Defs.GEAR_PRESS: ["Brass", BRASS]}
+	var res := {"farm": ["Soil", SOIL], "powder_mill": ["Saltpetre", SALT], Defs.GEAR_PRESS: ["Brass", BRASS], "mainspring": ["Spring life", SPRING]}
 	if res.has(b.kind) and (b.crew_max() > 0 or b.haul_cap() > 0):
-		var left := b.soil_left() if b.kind == "farm" else b.lode_left()
+		var left := b.soil_left() if b.kind == "farm" or b.kind == "mainspring" else b.lode_left()      # (a Mainspring: its Clocktower's spring life)
 		out.append({"icon": "", "dot": res[b.kind][1], "text": "%d%%" % int(round(left * 100.0)), "title": res[b.kind][0],
 			"col": Color(1, 0.45, 0.4) if left <= 0.0 else null,
 			"tipf": func() -> Dictionary: return WorkerLabels.tip(g, b)})

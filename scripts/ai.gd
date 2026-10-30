@@ -602,6 +602,50 @@ var _esc_blocked := false       # gear mode: no room for the Escapement by any M
 var _tech_hold := false         # gear mode: the gold put by is for the Mainspring or the Escapement (the army pauses sooner)
 
 
+## Gear mode: room for another Mainspring (1 per Clocktower since 0.24.0, the owner 2026-10-30: FACTIONS econ; sites count).
+## Every place that plans a Mainspring asks this first: a Mainspring the limit refuses is not saved for.
+func _spring_ok() -> bool:
+	return game.econ_count(team, "mainspring") < game.econ_limit(team, "mainspring")
+
+
+## Gear mode, MAINSPRINGS EXHAUST (0.24.0): once no Mainspring of ours winds any more (each FATIGUED: its Clocktower's
+## spring life is spent) or the ones that wind are nearly spent, a Mainspring by a Clocktower whose spring life is fresh and
+## has none drawing on it (it draws on its nearest Clocktower's). The fatigued ones stay: they still drive their rings and
+## the tech round them. (_hall_first takes new Clocktowers as the brass and the spring life run out: _land.)
+var _fresh_spring_t := 0.0
+
+
+func _fresh_spring() -> void:
+	if game.clock < _fresh_spring_t or _mine("mainspring").is_empty() or _busy_building("mainspring") or not _spring_ok():
+		return
+	_fresh_spring_t = game.clock + 5.0
+	var winding := false
+	var drawn := {}
+	for sp in _mine("mainspring"):
+		var h: Building = game.soil_hall(sp)
+		if h != null:
+			drawn[h] = true
+		if sp.built and not sp.fatigued() and sp.soil_left() > 0.15:
+			winding = true
+	if winding:
+		return
+	for h in _halls():
+		if not h.built or drawn.has(h) or h.soil_left() < 0.5:
+			continue
+		var c := GearEcon.room_spot(game, team, "mainspring", [h])
+		if c.x < 0:
+			continue
+		var cost := int(Defs.BUILDINGS["mainspring"]["cost"])
+		if _gold() >= cost + 20:
+			_construct("mainspring", c)
+			if game.mlog and _busy_building("mainspring"):
+				game.mlog.add("%s builds a Mainspring by a fresh Clocktower (its springs are fatigued)" % game.mlog.who(team))
+		elif _threat() == Vector2.INF or _holds_line():
+			_reserve = maxi(_reserve, cost + 20)
+			_tech_hold = true
+		return
+
+
 ## Gear mode: when the tier-2 tech starts (the plan's tech clock, AI._build_up's `t`). Hard: about 2:50, so the
 ## Mainspring stands by ~3:30 and the Escapement by ~4:40: the first Springers, Netters and SHIELD WALL are out for the
 ## first big fight (docs/clockwork_ai.md). Sooner against a walled enemy: melee alone cannot take a wall that is mended.
@@ -654,7 +698,7 @@ func _tier2(t: float) -> void:
 	var next_cost := int(Defs.BUILDINGS[next]["cost"]) if next != "" else 0
 	if next == "mainspring":
 		next_cost += int(Defs.BUILDINGS[Defs.CW_TECH]["cost"])      # (the pair is laid at once: _tier2)
-	if next == Defs.CW_TECH and _esc_blocked:
+	if next == Defs.CW_TECH and _esc_blocked and _spring_ok():
 		next_cost += int(Defs.BUILDINGS["mainspring"]["cost"])      # (no room for it: another Mainspring first, saved for too)
 	if next != "" and _gold() < next_cost + 20 and (_threat() == Vector2.INF or _holds_line()):
 		_reserve = maxi(_reserve, next_cost + 20)
@@ -663,6 +707,7 @@ func _tier2(t: float) -> void:
 	_esc_spring(_mine(Defs.CW_HEAVY), true)      # (and a Heavy Works laid with no Mainspring by it)
 	_heavy_hold()          # (the Heavy Works' cogs, held back on every think)
 	_springer_works()          # (its own clock; the gold it wants is held back on every think)
+	_fresh_spring()            # (MAINSPRINGS EXHAUST: a new one by a fresh Clocktower once the old ones are fatigued)
 	_research_keep = 0.0
 	if not springs.is_empty():
 		_shield_research()
@@ -737,7 +782,7 @@ func _tier2(t: float) -> void:
 						return
 		# (else another Mainspring where there is room, then the Escapement by it; its cogs are held back like the
 		# Escapement's, _esc_blocked)
-		_esc_blocked = springs.size() < 3 and not _busy_building("mainspring")
+		_esc_blocked = _spring_ok() and not _busy_building("mainspring")
 		if _esc_blocked and _gold() >= int(Defs.BUILDINGS["mainspring"]["cost"]) + int(Defs.BUILDINGS[Defs.CW_TECH]["cost"]):
 			var ss := _spring_spot()
 			if ss.x >= 0:
@@ -754,7 +799,7 @@ func _tier2(t: float) -> void:
 ## Gear mode: an Escapement with no Mainspring meshing with it (laid first, _tier2) gets one beside it; `heavy`: the same for
 ## a Heavy Works (_tier3).
 func _esc_spring(esc: Array, heavy := false) -> void:
-	if esc.is_empty() or (not heavy and game.has_working(team, Defs.CW_TECH)) or _busy_building("mainspring"):
+	if esc.is_empty() or (not heavy and game.has_working(team, Defs.CW_TECH)) or _busy_building("mainspring") or not _spring_ok():
 		return
 	for e in esc:
 		if not e.dead and (not heavy or e.built) and game.gear_net.spring_for(e) == null:
@@ -903,7 +948,7 @@ func _tier3() -> void:
 		# still go beside it; it goes there next time)
 		if game.mlog:
 			game.mlog.add("%s finds no room for a Heavy Works by its Mainsprings" % game.mlog.who(team))
-		if _mine("mainspring").size() < 4 and not _busy_building("mainspring") and _gold() >= int(Defs.BUILDINGS["mainspring"]["cost"]) + 20:
+		if _spring_ok() and not _busy_building("mainspring") and _gold() >= int(Defs.BUILDINGS["mainspring"]["cost"]) + 20:
 			for b in _gear_neighbours():
 				var r7: Array = GearEcon.room_spot_n(game, team, "mainspring", [b], [Defs.CW_HEAVY])
 				if int(r7[1]) >= 1:
@@ -921,7 +966,7 @@ func _heavy_hold() -> void:
 	if not game.has_working(team, Defs.CW_TECH) or not _mine(Defs.CW_HEAVY).is_empty():
 		return
 	var cost := int(Defs.BUILDINGS[Defs.CW_HEAVY]["cost"])
-	if _heavy_no_room:
+	if _heavy_no_room and _spring_ok():
 		cost += int(Defs.BUILDINGS["mainspring"]["cost"])      # (no room by a Mainspring: one with room for it first)
 	if _gold() < cost + 20 and (_threat() == Vector2.INF or _holds_line()):
 		_reserve = maxi(_reserve, cost + 20)
@@ -1127,8 +1172,9 @@ func _springer_works() -> void:
 ## Where the next Springer Works comes from: a Mainspring beside a Works that has none (it winds Tension too), else a new
 ## Works by a Mainspring; {} when there is no room for either.
 func _jw_find(works: Array) -> Dictionary:
+	var may_spring := _spring_ok()          # (1 Mainspring per Clocktower: else only a Works by a Mainspring)
 	for w in works:
-		if w.built and game.gear_net.spring_for(w) == null:
+		if may_spring and w.built and game.gear_net.spring_for(w) == null:
 			var c := GearEcon.room_spot(game, team, "mainspring", [w])
 			if c.x >= 0:
 				return {"kind": "mainspring", "cell": c}
@@ -1143,7 +1189,7 @@ func _jw_find(works: Array) -> Dictionary:
 			if c2.x >= 0:
 				return {"kind": _works(), "cell": c2}
 	for w in works:
-		if w.built and game.gear_net.spring_for(w) == null:
+		if may_spring and w.built and game.gear_net.spring_for(w) == null:
 			for deg in [90.0, 270.0, 0.0, 180.0]:
 				var c3 := GearNet.ring_spot(game, team, "mainspring", w, deg, true)
 				if c3.x >= 0:
@@ -1190,7 +1236,7 @@ func _air(t: float) -> void:
 					spot = GearEcon.room_spot(game, team, Defs.CW_AIR, [sp])
 			if spot.x >= 0:
 				_construct(Defs.CW_AIR, spot)
-			elif _mine("mainspring").size() < 3 and not _busy_building("mainspring") and _gold() >= cost + int(Defs.BUILDINGS["mainspring"]["cost"]):
+			elif _spring_ok() and not _busy_building("mainspring") and _gold() >= cost + int(Defs.BUILDINGS["mainspring"]["cost"]):
 				var ss := _spring_spot(true)
 				if ss.x >= 0:
 					_construct("mainspring", ss)
@@ -1284,9 +1330,9 @@ func _workers() -> void:
 			extra = 1 + _escort_want(game.army(team))          # (the Winders that go with the army are extra hands, not taken from the presses)
 	var want := mini(int((cap * fill + extra) * float(_s("workers"))), 46 if difficulty >= 3 else _lv([16, 30, 40]))
 	if _clock():
-		# a base is saturated at ~13 Winders (Clocktower 4, 4-5 a Boiler; gear mode: two Cog Presses of 6 and a
+		# a base is saturated at ~13 Winders (Clocktower 4, 4-5 a Boiler; gear mode since 0.24.0: two Cog Presses of 5 and a
 		# Mainspring of 3): the rest of the supply is for the army
-		want = mini(want, (16 if Defs.gear_mode else 14) * _halls().size() + extra + 2)
+		want = mini(want, (13 if Defs.gear_mode else 14) * _halls().size() + extra + 2)
 		want = mini(want, 36 if difficulty >= 3 else _lv([16, 26, 32]))
 	var worker: String = _f()["worker"]
 	var queued := 0
@@ -1600,6 +1646,10 @@ func _mill_cap() -> int:
 			return maxi(mills, crew - 2)
 		return 99
 	if _mine("barracks").is_empty():
+		return 0
+	# (0.24.0, no trickle: a half-crewed Farm pays only its hands' share, so the first Farm gets its full crew before the
+	# Mill grinds; a feared rush keeps the Musketeers' powder first: docs/exhaust_economy.md, cw_economy_study.md 0)
+	if not _army_first() and not _mine("farm").any(func(f: Building) -> bool: return f.built and f.crew.size() >= f.crew_max()):
 		return 0
 	return 3 if _res2() < (20.0 if safe_opening else 50.0) else 1        # (powder for the first two Musketeers: 10 each; more hands belong on the farms)
 
@@ -1954,7 +2004,7 @@ func _build_up() -> void:
 	# Expand once our economy structures are all up (a new hall brings more slots).
 	var hall: String = _f()["hall"]
 	var full := true
-	for kind in _f()["econ"]:
+	for kind in Defs.econ_of(game.faction_of(team)):
 		if not Defs.build_list(game.faction_of(team)).has(kind):
 			continue        # (another mode's economy building: the Clockwork's crushers, drills or Boilers)
 		if game.econ_count(team, kind) < game.econ_limit(team, kind):
@@ -2019,11 +2069,11 @@ func _hall_first() -> bool:
 	if _crown():
 		need = maxi(need, mini(3, ceili(game.workers(team).size() / 16.0)))     # (three fresh halls at most: more halls only grew more hands, round 3)
 	elif _clock() and Defs.gear_mode and difficulty >= 1 and (not _mine(Defs.CW_TECH).is_empty() or game.clock > 360.0):
-		# (the Clockwork too, one for every 15 Winders: two presses of six and a Mainspring's crew a hall; it sat on two
+		# (the Clockwork too, one for every 13 Winders (0.24.0; was 15): two presses of five and a Mainspring's crew a hall; it sat on two
 		# halls with 32 Winders while its main ran dry, and the coached Crown out-earned it from 10:00, clockwork-ai.
 		# Once the Escapement is laid: saving for a hall pauses the rest, and an expansion at 2:50 put the Escapement off
 		# by up to ten minutes)
-		need = maxi(need, mini(3, ceili(game.workers(team).size() / 15.0)))
+		need = maxi(need, mini(3, ceili(game.workers(team).size() / 13.0)))
 	if fresh >= need or _busy_building(hall):
 		return false
 	_hall_reserve = true
@@ -2395,9 +2445,9 @@ func _best_soil() -> float:
 	return best if not _halls().is_empty() else 1.0
 
 
-## What's left of what a hall lives on: its soil (Crown), its ore (Clockwork).
+## What's left of what a hall lives on: its soil (Crown), its brass (Clockwork) or, if that runs out first, its spring
+## life (gear mode, 0.24.0: the Mainspring's Tension; the Line's Boilers' coal with the gear mode off).
 func _land(h: Building) -> float:
-	# (Clockwork: its ore, or its Boilers' coal if that runs out first)
 	return minf(h.lode_left(), h.soil_left()) if _clock() else h.soil_left()
 
 
@@ -2415,8 +2465,8 @@ func _lode_value(c: Vector2i) -> float:
 ## Crown / Clockwork: a Mill (Crusher) on spent saltpetre (ore) is pulled down when the limit
 ## leaves no room for one by a hall that still has fresh saltpetre (ore) and none working it.
 func _recycle_spent() -> void:
-	for kind in ["powder_mill", "ore_crusher", "ore_drill"]:
-		if Defs.BUILDINGS[kind]["faction"] != game.faction_of(team) or game.econ_count(team, kind) < game.econ_limit(team, kind):
+	for kind in ["powder_mill", "ore_crusher", "ore_drill", Defs.GEAR_PRESS]:
+		if Defs.BUILDINGS[kind]["faction"] != game.faction_of(team) or not Defs.is_econ(kind) or game.econ_count(team, kind) < game.econ_limit(team, kind):
 			continue
 		var dep: String = Defs.LODE_NAME[Defs.LODE_FOR[kind]]
 		var spent: Array = _mine(kind).filter(func(b: Building) -> bool: return b.built and b.lode_left() <= 0.0)

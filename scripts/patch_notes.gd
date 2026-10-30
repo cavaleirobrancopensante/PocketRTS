@@ -4,6 +4,13 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.0", "items": [
+		"EXHAUSTED MEANS EXHAUSTED: no free income for anyone. A Farm, Cog Press or Mainspring with nobody working it makes NOTHING (Farms and presses used to grow at 15% by themselves). Spent soil, spent brass and a Rootmaw's spent ground pay nothing (spent brass used to pay a quarter forever).",
+		"POWDER AND TENSION DON'T RUN DRY: a Powder Mill grinds less as its Town Hall's saltpetre runs down and 15% once it is spent; a Mainspring winds less as its Clocktower's new SPRING LIFE (1,320 Tension) runs down and 5% once it is spent. A spent Mainspring is FATIGUED (the spring has taken a set): it still drives its rings, stores Tension and counts as a Mainspring for everything meshed with it. Only while worked: an empty Mill or Mainspring gives nothing. A new hall brings them back to full strength.",
+		"CLOCKWORK LIMITS AND NUMBERS: 2 Cog Presses and 1 Mainspring per Clocktower (Mainsprings had no limit; older saves keep the ones they have). A Cog Press takes 5 Winders for 7.2 cogs a second (big gear: 8 for 10), a Winder costs 60, a Clocktower holds 9,000 brass (was 11,400): fewer Winders than the Crown's Labourers for about the same income.",
+		"The computers: the Crown fills its first Farm before it staffs the Mill (unless it fears a rush); the Clockwork builds one Mainspring per Clocktower and a new one by a fresh Clocktower once its springs are fatigued, and counts the spring life when it decides to expand.",
+		"Fixes: the Clockwork's \"cogs earned\" on the end screen no longer loses what was spent on repairs; the Powder Mill's card no longer says spent saltpetre pays a quarter; the Clocktower's card shows its brass and spring life; the help pages describe the gear economy instead of the old batteries and coal.",
+	]},
 	{"v": "0.22.10", "items": [
 		"No change to play: a study of the Clockwork's and the Crown's economies (docs/cw_economy_study.md) and the tool that measures them, with a switch only the study uses to try limits such as one Mainspring per Clocktower.",
 	]},

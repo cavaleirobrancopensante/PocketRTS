@@ -147,7 +147,7 @@ static func capture(game: Game, cfg: Dictionary) -> Dictionary:
 			"progress": b.progress, "hp": b.hp, "queue": b.queue, "kits": b.kits.map(func(kt): return _kit_save(kt)), "ar": b.auto_refit, "prod_t": b.prod_t,
 			"auto": b.auto_train, "bat": b.batteries, "v": b.vertical, "vl": b.dir_locked, "gl": b.locked,
 			"seeded": b.seeded, "ghost": b.ghost, "growth": b.growth, "gold_acc": b.gold_acc,
-			"stock": snappedf(b.stock, 0.1), "gb": b.gear_big, "gs": snappedf(b.gear_swap_t, 0.01), "gst": b.gear_swap_to, "soil": b.soil, "sw": b.soil_warned, "lode": snappedf(b.lode, 0.01), "lw": b.lode_warned,
+			"stock": snappedf(b.stock, 0.1), "gb": b.gear_big, "gs": snappedf(b.gear_swap_t, 0.01), "gst": b.gear_swap_to, "soil": b.soil, "sw": b.soil_warned, "tsn": 1 if b.kind == "clocktower" and Defs.gear_mode else 0, "lode": snappedf(b.lode, 0.01), "lw": b.lode_warned,
 			"crate": "ground" if b.crate == "carried" else b.crate,
 			"rally": _v2(b.rally) if b.rally != Vector2.INF else null,
 			"wrally": _v2(b.worker_rally) if b.worker_rally != Vector2.INF else null})
@@ -451,6 +451,11 @@ static func restore(game: Game, d: Dictionary) -> void:
 		if b.kind == "town_hall" or b.kind == "clocktower":
 			b.soil = float(bd.get("soil", b.reserve()))     # (older saves: fresh soil / coal)
 			b.soil_warned = int(bd.get("sw", 0))
+			if b.kind == "clocktower" and Defs.gear_mode and int(bd.get("tsn", 0)) == 0:
+				# (saves before 0.24.0: a Clocktower's `soil` was the retired coal, untouched since the Boilers went; it is its
+				# SPRING LIFE now: fresh)
+				b.soil = b.reserve()
+				b.soil_warned = 0
 		if b.lode_full() > 0.0:
 			if bd.has("lode"):
 				b.lode = float(bd["lode"])

@@ -1,6 +1,7 @@
 extends SceneTree
-## The Cog Press: a trickle by itself, an equal share per Winder winding it up to its crew cap, small vs big gear (the numbers
-## and crews from Defs.GEAR "press"), the 2-presses-per-Clocktower limit and what spent brass does (a quarter).
+## The Cog Press: nothing by itself (no trickle since 0.24.0), an equal share per Winder winding it up to its crew cap, small vs
+## big gear (the numbers and crews from Defs.GEAR "press"), the 2-presses-per-Clocktower limit and what spent brass does
+## (nothing: barren, its crew let go; docs/exhaust_economy.md).
 ##   godot --headless --fixed-fps 30 --script res://tools/test_gear_press.gd
 const U := preload("res://tools/gear_test_util.gd")
 var fails := 0
@@ -76,7 +77,7 @@ func _run() -> void:
 			break
 	# SMALL gear
 	var r0 = await _measure(g, press, 0)
-	check("nobody on it: a trickle of 15%% of the full rate (%.2f/s)" % (small_full * base), absf(r0[0] - small_full * base) < 0.15, "%.2f" % r0[0])
+	check("nobody on it: nothing (no trickle)", base == 0.0 and absf(r0[0]) < 0.01, "%.2f" % r0[0])
 	var prev := r0[0] as float
 	var small_tot := {}
 	for n in [1, sc / 2, sc]:
@@ -101,13 +102,13 @@ func _run() -> void:
 	check("big gear does NOT clearly beat the full small press at %d Winders" % (cross - 1), big_tot[cross - 1] <= small_full + 0.3, "%.2f <= %.2f" % [big_tot[cross - 1], small_full + 0.3])
 	check("big gear beats it at %d Winders" % cross, big_tot[cross] > small_full + 0.3, "%.2f > %.2f" % [big_tot[cross], small_full])
 	check("big gear has the higher total at full crew", big_tot[bc] > small_full * 1.2, "%.2f" % big_tot[bc])
-	# the brass: spent, it yields a quarter
+	# the brass: spent, it yields nothing (EXHAUSTED MEANS EXHAUSTED, 0.24.0)
 	var tower := U.hall(g, 0)
 	press.gear_big = false
 	tower.lode = 0.0
 	var rs = await _measure(g, press, sc)
-	check("spent brass: the press yields a quarter (%.2f/s)" % (small_full * 0.25), absf(rs[0] - small_full * 0.25) < 0.2, "%.2f" % rs[0])
-	check("and its crew is not sent away (never barren)", not press.barren() and rs[2] == sc)
+	check("spent brass: the press yields nothing", absf(rs[0]) < 0.01, "%.2f" % rs[0])
+	check("and it is barren: its crew is let go", press.barren() and rs[2] == 0, "%d at work" % rs[2])
 	tower.lode = tower.lode_full()
 	# at most 2 presses per Clocktower
 	var second := U.put(g, 0, Defs.GEAR_PRESS, tower.cell)

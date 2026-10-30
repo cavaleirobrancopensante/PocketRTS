@@ -3133,20 +3133,25 @@ func _draw_panel(font: Font) -> void:
 				info = "%s: %d%%" % ["Growing" if bb.d["faction"] == "brood" else "Under construction", int(bb.progress * 100)]
 			elif bb.kind == "farm":
 				var soil := bb.soil_left()
-				info = "Harvest in %ds · +%d gold%s" % [int(ceil((1.0 - bb.growth) * Defs.FARM_GROW / maxf(bb.farm_speed(), 0.01))),
-					game.harvest_value(bb), " · tired soil: expand" if soil <= 0.0 else ""]
+				if soil <= 0.0:
+					info = "Barren: its Town Hall's soil is spent, it grows nothing. Expand to fresh land."
+				elif bb.farm_speed() <= 0.0:
+					info = "Nobody works it: it grows nothing (+%d gold a harvest with a crew)" % game.harvest_value(bb)      # (no trickle since 0.24.0)
+				else:
+					info = "Harvest in %ds · +%d gold" % [int(ceil((1.0 - bb.growth) * Defs.FARM_GROW / maxf(bb.farm_speed(), 0.01))), game.harvest_value(bb)]
 			elif bb.kind == "town_hall" and (e.team == game.human or game.demo):
 				var soil := bb.soil_left()
 				var salt := bb.lode_left()
 				info = "Haulers %d/%d · Soil: %d%% (%d gold)%s · Saltpetre: %d%% (%d powder)%s · allows 2 Farms and 1 Powder Mill nearby" % [bb.haulers_free(), bb.haulers().size(), int(round(soil * 100)), int(bb.soil),
-					" spent: farms pay a third" if soil <= 0.0 else (" running low" if soil < Defs.SOIL_LOW else ""),
-					int(round(salt * 100)), int(bb.lode), " spent: the Mill grinds at a quarter" if salt <= 0.0 else (" running low" if salt < Defs.SOIL_LOW else "")]
+					" spent: its farms pay nothing" if soil <= 0.0 else (" running low" if soil < Defs.SOIL_LOW else ""),
+					int(round(salt * 100)), int(bb.lode), (" spent: the Mill grinds at %d%%" % int(round(Defs.POWDER_FLOOR * 100.0))) if salt <= 0.0 else (" running low" if salt < Defs.SOIL_LOW else "")]
 			elif bb.kind == "clocktower" and (e.team == game.human or game.demo):
 				var coal := bb.soil_left()
 				if Defs.gear_mode:
-					# (no power in gear mode: no batteries, no Boilers, no coal)
-					info = "Brass: %d left%s · allows 2 Cog Presses nearby" % [int(bb.lode),
-						" (spent: its presses yield a quarter; expand)" if bb.lode <= 0.0 else (" (running low)" if bb.lode_left() < Defs.SOIL_LOW else "")]
+					# (no power in gear mode: no batteries, no Boilers, no coal; its `soil` is its Mainspring's SPRING LIFE)
+					info = "Brass: %d left%s · Spring life: %d left%s · allows 2 Cog Presses and 1 Mainspring nearby" % [int(bb.lode),
+						" (spent: its presses yield nothing; expand)" if bb.lode <= 0.0 else (" (running low)" if bb.lode_left() < Defs.SOIL_LOW else ""),
+						int(ceil(bb.soil)), " (spent: its Mainspring is FATIGUED; expand)" if bb.soil <= 0.0 else (" (running low)" if bb.soil_left() < Defs.SOIL_LOW else "")]
 				else:
 					info = "%d/%d batteries ready (one every %.1f s) · Ore: %d left%s · Coal: %d%%%s · allows 2 Boilers and 2 Ore Crushers nearby" % [
 						bb.batteries, int(bb.d["battery"][1]), float(bb.d["battery"][0]), int(bb.lode),
@@ -3158,7 +3163,7 @@ func _draw_panel(font: Font) -> void:
 				info = "Horses here: %d (Horsemen, Dragoons, cannons, mortars and wagons need one each)  ·  " % game.horses_at(bb) + info
 			elif bb.kind == "powder_mill":
 				var sl := bb.lode_left()
-				info = "+%.1f powder/s%s" % [game.lode_pay(bb, Defs.MILL_RATE * bb.working_crew()), " · saltpetre spent: a quarter; expand to a new Town Hall" if sl <= 0.0 else (" · saltpetre running low" if sl < Defs.SOIL_LOW else "")]
+				info = "+%.1f powder/s%s" % [game.lode_pay(bb, Defs.MILL_RATE * bb.working_crew()), (" · saltpetre spent: it grinds at %d%%; expand to a new Town Hall" % int(round(Defs.POWDER_FLOOR * 100.0))) if sl <= 0.0 else (" · saltpetre running low" if sl < Defs.SOIL_LOW else "")]
 			elif bb.d.has("battery") and e.team == game.human:
 				var bat: Array = bb.d["battery"]
 				var coal2 := bb.soil_left()
@@ -3167,7 +3172,7 @@ func _draw_panel(font: Font) -> void:
 			elif bb.kind == Defs.GEAR_PRESS:
 				var bl := bb.lode_left()
 				info = "+%.1f cogs/s · %d/%d Winders winding · %s gear%s" % [bb.press_rate(), bb.working_crew(), bb.crew_max(), "BIG" if bb.gear_big else "SMALL",
-					" · brass spent: a quarter; expand to a new Clocktower" if bl <= 0.0 else (" · brass running low" if bl < Defs.SOIL_LOW else "")]
+					" · brass spent: it presses nothing; expand to a new Clocktower" if bl <= 0.0 else (" · brass running low" if bl < Defs.SOIL_LOW else "")]
 			elif bb.kind == "ore_drill":
 				var ol2 := bb.lode_left()
 				var q2 := 1.0 if ol2 > 0.0 else Defs.LODE_SPENT
