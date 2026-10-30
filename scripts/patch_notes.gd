@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.22.1", "items": [
+		"MAKE (F3) selects the Brood Mother for a Brood player (the Brood has no buildings: she lays every egg) and jumps to her.",
+	]},
 	{"v": "0.22.0", "items": [
 		"A REAL BROOD COMPUTER: the computer now plays the Brood from a build order per plan (Extreme rush, Rush, Timing attack, Balanced, Economy, Air rush). It grows the Brood Mother on time, raises its Sires through their lures (the Storm Sire first when it sees enemy flyers), researches (Bigger Clutch early, Pack Hunt before it attacks, Battering Horns before a siege, Quick Roots later), matures its young before a push, and expands with Mound Turtles on new ground with Rootmaws round them.",
 		"It scouts with a grub (and later a Raptor) and reacts to what it sees: an early army on the move makes it hold at home, enemy flyers bring the Storm Sire, a musket wall means Spitters and Brutes instead of Raptor waves into it. It gathers its army before it attacks, pulls a losing wave back, calls a wave home when the Mother is attacked, keeps Hatchlings home unless the enemy flies, and keeps its grubs to a sensible number.",

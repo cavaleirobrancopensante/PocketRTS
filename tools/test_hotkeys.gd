@@ -300,5 +300,24 @@ func _run() -> void:
 	check(g2.cam_slots[6] != null and (g2.cam_slots[6][0] as Vector2).distance_to(Vector2(2000, 1500)) < 1.0, "camera view F10 came back")
 	check(g2.cam_slots[1] != null, "camera view F5 came back")
 	SaveGame.clear()
+	# ---- the Brood has no buildings: F3 (MAKE) selects the Brood Mother (the owner, 2026-10-30)
+	main._to_menu()
+	await process_frame
+	await process_frame
+	main.start({"map": "greenhold", "seed": 5, "slots": [
+		{"who": "you", "faction": "brood", "colour": 0, "side": 0, "strategy": "balanced"},
+		{"who": "hard", "faction": "crown", "colour": 1, "side": 1, "strategy": "balanced"}]})
+	await process_frame
+	await process_frame
+	var g3: Game = main.game
+	for ai in g3.ais:
+		ai.process_mode = Node.PROCESS_MODE_DISABLED
+	for i in 5:
+		await physics_frame
+	var bar3: HotkeyBar = g3.hud.bar
+	bar3.key(_key(KEY_F3))
+	var q := BroodNew.queen(g3, g3.human)
+	check(q != null and g3.selection.size() == 1 and g3.selection[0] == q, "Brood: F3 selects the Brood Mother (%d selected)" % g3.selection.size())
+	SaveGame.clear()
 	print("DONE  %d failed" % fails)
 	quit(1 if fails > 0 else 0)

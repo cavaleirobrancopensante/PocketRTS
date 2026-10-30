@@ -268,9 +268,13 @@ func select_army() -> void:
 	gm.set_selection(a)
 
 
-## Every finished building that makes something (the Town Hall too).
+## Every finished building that makes something (the Town Hall too). The Brood has no buildings: its maker is the
+## Brood Mother (she lays every egg), so MAKE selects her (the owner, 2026-10-30).
 func production_buildings() -> Array:
 	var gm := game()
+	if BroodNew.on(gm, gm.human):
+		var q := BroodNew.queen(gm, gm.human)
+		return [q] if q != null and is_instance_valid(q) and not q.dead else []
 	return gm.buildings.filter(func(b: Building) -> bool:
 		return b.team == gm.human and not b.dead and b.built and not (b.d["trains"] as Array).is_empty())
 
@@ -281,6 +285,8 @@ func select_production() -> void:
 		hud.toast("No buildings that make anything yet.")
 		return
 	game().set_selection(pb)
+	if BroodNew.on(game(), game().human):
+		hud._jump(pb[0].position)
 
 
 func cam_save(j: int) -> void:
