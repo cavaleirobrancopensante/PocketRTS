@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.12", "items": [
+		"THE UNIT PANEL AND THE COMMAND CARD STAY UP WITH NOTHING SELECTED: they are drawn empty, with your faction's name faint in the panel (watching or a replay: the player you look through). Clicks on them never go to the map. EACH FACTION HAS ITS OWN FRAMES now, behind the icons and text, selected or not: the Crown dark wood with gold crowns and fleurs-de-lis, the Clockwork riveted brass with cogs and springs, the Brood twisted rope with claws and eggs.",
+	]},
 	{"v": "0.24.11", "items": [
 		"ONE COMMAND CARD, NO PAGES: the MORE button and its \"1/2\" pages are gone. All of a selection's commands are on one card, four to a row; it shows three rows and scrolls when there are more: the mouse wheel over the card, a finger dragged up or down on a phone, or the thin scroll bar at its right edge (Tab scrolls too). A new selection starts at the top; a unit dying keeps where you were. A worker's BUILD page scrolls the same way.",
 		"EVERY KEY ON THE CARD IS ITS OWN: no two commands on a card share a letter, and a command's key works even while its button is scrolled out of view, so you can just press it if you know it. The first row's commands and the production buttons keep their usual letters; a command that clashes takes the next free letter of its name. The Brood Mother: Raptors keep R; her RALLY and WORKERS take free letters (F and Z while QUICK ROOTS and SWAMP MENDING are still to research, Q and W after); rooted, UPROOT is D (was Q); uprooted, ROOT keeps D (the Mist Toad takes Q).",
