@@ -4,6 +4,51 @@ The owner's decisions of 2026-10-27, built. The study behind them is docs/clockw
 
 The owner was away. Every guess below is Claude's. Each one says so.
 
+## 0.24.12: pick the gear when you build (owner, 2026-10-30)
+
+The owner's words: "Choose the gear size when building and only then."
+
+While you place a Clockwork building, the card has a SMALL GEAR / BIG GEAR button. The key is G. The button shows the size the ghost is on now; pressing it switches. The ghost draws its ring at that size, and a small tag under its verdict says SMALL GEAR or BIG GEAR.
+
+The ghost's check uses the ring you picked. A big ring that would cut into another ring is refused, with CLASH, like any other ring. So a big ring needs room.
+
+Once placed, the size is fixed. There is no swap.
+
+Each kind remembers your last pick for the rest of the match (Game.gear_pick, kept in the save). The first pick of each kind is SMALL, the size every building had since 0.24.4.
+
+Which kinds can pick (GearNet.pickable): every Clockwork building that could swap before 0.24.4. The Cog Press, the Mainspring, the Light Works, the Ratchet Turret, the Escapement, the Clock Aviary and the Regulator. Not the Clocktower, which has its own ring. Not the Heavy Works, which is always big.
+
+### The price of the big ring
+
+The old swap cost 25 cogs and took 4 seconds. Claude used the same numbers (Defs.GEAR "big_pick"): a big ring costs 25 cogs more and takes 4 seconds more to build. A site cancelled before it began pays back all of it, the extra too. One begun pays back three quarters, the extra too.
+
+| kind | small | big |
+|---|---|---|
+| Cog Press | up to 5 Winders, 7.2 cogs a second | up to 8 Winders, 10 cogs a second; +25 cogs, +4 s |
+| Mainspring | up to 3 Winders, 2 Tension a second, stores 200 | up to 6 Winders, 2.6 a second, stores 400; +25 cogs, +4 s |
+| Ratchet Turret | 11 damage every 1.2 s | 21 damage every 2.2 s, better against armour; +25 cogs, +4 s |
+| Light Works | trains 15% faster | trains 15% slower; +25 cogs, +4 s |
+| Escapement, Clock Aviary | work 10% faster | work 10% slower; +25 cogs, +4 s |
+| Regulator | | only a wider ring that reaches farther; +25 cogs, +4 s |
+
+The tooltip of the button shows both prices and both trades. So does a building's tooltip on the BUILD page.
+
+A big Light Works, Escapement or Clock Aviary is slower and dearer. It only buys a wider ring, which may bridge a gap. Few will want it. It is offered because the owner asked for the choice on every building that had both sizes.
+
+### The computer
+
+It picks before it looks for a spot, so its spot search and its placement check use the same ring (AI._construct). The rule is simple, on purpose: a BIG Cog Press when the Winders to fill it already stand spare (8 or more beyond every post of its presses and Mainsprings, the builder and the army's escort), and a spot has room for the big ring. Otherwise small. Every other kind is small. A big press raises its Winder cap by 3 (AI._big_press_room).
+
+In practice the computer builds big presses late: at an expansion, after its first presses ran dry and freed their Winders.
+
+### Online, replays, saves
+
+The size goes with the build order: Game.place_building has a 6th argument, `big` (1 or 0). The host sets that side's pick from it, then checks, charges and places at that size. NetPredict shows the right price at once. The site's ring travels in the snapshot (Building.gear_big), so the guest and the replay see it. Saves keep each building's ring ("gb") and each side's last picks ("gpick").
+
+### Pictures
+
+docs/shots/gear_pick/, filmed by tools/shot_gear_pick.gd on Hollowfen: a Light Works ghost on its small ring and on its big ring at the same spot, and a big ring refused where the small one fits.
+
 ## 0.24.4: no more gear swap (owner, 2026-10-30)
 
 The owner played the Clockwork: "I dont understand the swap between big gear and small gear, it makes no sense because it clips with other gears and makes the sprites behave in an overlap way, I think we have to remove this feature".

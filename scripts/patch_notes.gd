@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.14", "items": [
+		"PICK THE GEAR WHEN YOU BUILD (Clockwork): while you place a Cog Press, Mainspring, Light Works, Ratchet Turret, Escapement, Clock Aviary or Regulator, the card has a SMALL GEAR / BIG GEAR button (key G) and the ghost shows its ring at that size and says which. A big ring costs 25 cogs more, takes 4 s longer to build and needs more room: the ghost checks the big ring, so it can't cut into another ring. Once placed the size is fixed. Each kind remembers your last pick for the match. The big ring's numbers are back: a Cog Press with up to 8 Winders for 10 cogs a second (small: 5 for 7.2), a Mainspring with 6 Winders storing 400 Tension (small: 3 and 200), the Ratchet Turret's slow heavy screws; the Light Works, Escapement and Clock Aviary work slower on it. The Heavy Works is always big.",
+		"The Clockwork computer lays a big Cog Press when it has the spare Winders to fill one and the room for its ring; everything else small. Online and in replays the size goes with the build order; saves keep each building's ring and your last picks.",
+	]},
 	{"v": "0.24.13", "items": [
 		"THE ROOTMAW'S GROUND IS TWICE AS WIDE: its circle is now 10 tiles round it (was 5), and two rooted circles still may not overlap, so Rootmaws stand 20 tiles apart. Each keeps the same 3,000 food and drinks at the same rate: this is a NERF to the Brood's economy (stacking 4 or 5 Rootmaws on one base was too strong). About 1 or 2 now fit on the Brood Mother's own swamp and 1 round each Mound Turtle; more swamp (turtles) means more room. The computer roots a turtle on new ground when it has no room for another Rootmaw.",
 		"MUSIC: you hear your own faction's music. With the default setting the opening, calm and skirmish pieces are always your faction's; only in a full battle is one piece in five the enemy's battle music (before, one piece in five was the enemy's in every moment, calm included). YOUR FACTION ONLY never plays the enemy's.",

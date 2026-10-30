@@ -565,10 +565,20 @@ func supply() -> int:
 	return int(d["supply"]) if built and not dead else 0
 
 
+## What was paid for it in the first resource: its cost, and a BIG gear's extra (GEAR PICK, Defs.GEAR "big_pick").
+func price() -> int:
+	return int(d["cost"]) + GearNet.big_extra_cost(kind, gear_big)
+
+
+## Seconds to build it: its time, and a BIG gear's extra (GEAR PICK).
+func build_time() -> float:
+	return float(d["time"]) + GearNet.big_extra_time(kind, gear_big)
+
+
 func add_progress(delta: float) -> void:
 	if built or dead:
 		return
-	var step := delta / float(d["time"])
+	var step := delta / build_time()
 	progress = minf(progress + step, 1.0)
 	hp = minf(hp + max_hp * 0.9 * step, max_hp)
 	if progress >= 1.0:

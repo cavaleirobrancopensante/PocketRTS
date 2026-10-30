@@ -44,6 +44,8 @@ static func linked_spot(g: Game, t: int, kind: String, near: Vector2i, big := fa
 	var size: Vector2i = Defs.BUILDINGS[kind]["size"]
 	var best := Vector2i(-1, -1)
 	var bd := INF
+	var was := g.gear_big_for(t, kind)
+	g.set_gear_pick(t, kind, big)          # (GEAR PICK: placement_problem checks the ring picked)
 	for y in range(near.y - 26, near.y + 27):
 		for x in range(near.x - 26, near.x + 27):
 			var c := Vector2i(x, y)
@@ -58,6 +60,7 @@ static func linked_spot(g: Game, t: int, kind: String, near: Vector2i, big := fa
 				continue
 			best = c
 			bd = d
+	g.set_gear_pick(t, kind, was)
 	return best
 
 

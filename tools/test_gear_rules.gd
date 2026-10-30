@@ -14,6 +14,9 @@ extends SceneTree
 ##     an empty bay when idle.
 ##  5. The brass floor plate for the Tension users, the gear view's toggle, and saves keep the Heavy Works, its queue and the
 ##     ring sizes.
+##  7. GEAR PICK (0.24.12): the ring is picked when placed and only then: a big ring beside another ring is refused (CLASH)
+##     where the small one fits; a big site costs 25 cogs and 4 s more, is fixed, and its pick is remembered (and saved);
+##     both sizes give their numbers (press crew 5/8, Mainspring store 200/400); the computer's rule.
 ##   godot --headless --fixed-fps 30 --script res://tools/test_gear_rules.gd
 const U := preload("res://tools/gear_test_util.gd")
 var fails := 0
@@ -191,6 +194,7 @@ func _run() -> void:
 	check("the gear view colours a driver bright gold and a full-speed ring green", g.gear_net.view_colour(sp).r > 0.9 and g.gear_net.view_colour(sp).g > 0.9 and g.gear_net.view_colour(esc).g > 0.9 and g.gear_net.view_colour(esc).r < 0.5)
 	g.toggle_gear_view()
 	check("and off again", not g.gear_net.view)
+	await _gear_pick(g, hall, sp)
 	# ---------------------------------------------------------------- 5. saves keep it all, and old turrets side by side
 	var tA: Building = g._add_building(Defs.CW_TURRET, 0, t1.cell + Vector2i(0, 3), true)      # (too close: as an old save had it)
 	if tA != null:
@@ -200,6 +204,7 @@ func _run() -> void:
 		lw.gear_big = true
 	g.train(hw, Defs.PENDULUM)
 	var q0 := hw.queue.duplicate()
+	g.set_gear_pick(0, Defs.GEAR_PRESS, true)          # (GEAR PICK: the last pick is kept in the save)
 	g.demo = false          # (a demo game is never saved)
 	SaveGame.save(g, {"map": "ashford_crossing", "seed": 4242})
 	var d := SaveGame.peek()
@@ -211,6 +216,7 @@ func _run() -> void:
 	g2.gear_net.solve()
 	var hw2 := _find(g2, Defs.CW_HEAVY, hw.cell)
 	check("the Heavy Works is there after a load, on its big gear", hw2 != null and hw2.gear_big)
+	check("the last gear pick per kind is kept (a big Cog Press, a small Regulator)", g2.gear_big_for(0, Defs.GEAR_PRESS) and not g2.gear_big_for(0, Defs.CW_SUPPLY))
 	check("with its queue", hw2 != null and hw2.queue == q0, str(hw2.queue if hw2 else []))
 	check("it meshes with its Mainspring again", hw2 != null and g2.gear_net.spring_for(hw2) != null)
 	check("its bay is drawn again", hw2 != null and hw2.bay != null)
@@ -223,6 +229,97 @@ func _run() -> void:
 		check("the Light Works' big gear is kept", lw2 != null and lw2.gear_big)
 	SaveGame.clear()
 	_end(g)
+
+
+## 7. GEAR PICK (the owner, 2026-10-30: "Choose the gear size when building and only then"): the ring is picked when the
+## building is placed, checked at that size, paid for (the big one 25 cogs and 4 s more) and fixed; the pick is remembered.
+func _gear_pick(g: Game, hall: Building, sp: Building) -> void:
+	var R := Defs.CW_SUPPLY
+	var extra := int(Defs.GEAR["big_pick"]["cost"])
+	var extra_t := float(Defs.GEAR["big_pick"]["time"])
+	check("the pickable kinds: press, Mainspring, turret, Light Works, Regulator; not the Clocktower nor the Heavy Works",
+		GearNet.pickable(Defs.GEAR_PRESS) and GearNet.pickable("mainspring") and GearNet.pickable(Defs.CW_TURRET) and GearNet.pickable(Defs.CW_WORKS)
+		and GearNet.pickable(R) and not GearNet.pickable("clocktower") and not GearNet.pickable(Defs.CW_HEAVY))
+	check("the default pick is the small ring", not g.gear_big_for(0, R) and not g.gear_big_for(0, Defs.GEAR_PRESS) and g.gear_big_for(0, Defs.CW_HEAVY))
+	check("the big ring costs more", extra > 0 and extra_t > 0.0 and g.build_price(0, R) == int(Defs.BUILDINGS[R]["cost"]), "%d cogs, %.0f s" % [extra, extra_t])
+	# a spot where the small ring fits but the big one would cut into a neighbour's ring
+	var tight := Vector2i(-1, -1)
+	var roomy := Vector2i(-1, -1)
+	for y in range(hall.cell.y - 24, hall.cell.y + 25):
+		for x in range(hall.cell.x - 24, hall.cell.x + 25):
+			var c := Vector2i(x, y)
+			if not g.in_map(c) or not g.margin_free(c, Defs.BUILDINGS[R]["size"]):
+				continue
+			g.set_gear_pick(0, R, false)
+			var ok_small := g.placement_problem(0, R, c) == ""
+			g.set_gear_pick(0, R, true)
+			var why_big := g.placement_problem(0, R, c)
+			if tight.x < 0 and ok_small and why_big.contains("clash"):
+				tight = c
+			if roomy.x < 0 and why_big == "":
+				roomy = c
+	g.set_gear_pick(0, R, false)
+	check("a spot exists where a small ring fits but a big one clashes", tight.x >= 0)
+	if tight.x >= 0:
+		g.set_gear_pick(0, R, true)
+		var st: Dictionary = g.gear_net.candidate(0, R, tight, true)
+		check("the big ring there is refused: it cuts into another ring", st["state"] == "clash" and g.place_building(0, R, tight, [], false, 1) == null, str(st["state"]))
+		var gt: Array = g.gear_net.ghost_text(0, R, tight, true)
+		check("the ghost at the big size says CLASH", String(gt[0]) == "CLASH", String(gt[0]))
+		g.set_gear_pick(0, R, false)
+		check("the small ring at the same spot is fine", g.gear_net.candidate(0, R, tight, false)["state"] == "ok")
+	check("a spot with room for a big ring exists", roomy.x >= 0)
+	if roomy.x >= 0:
+		var gold0 := int(g.players[0]["gold"])
+		var b: Building = g.place_building(0, R, roomy, [], false, 1)
+		check("a big-ring Regulator is placed, on its big ring", b != null and b.gear_big)
+		check("it costs %d cogs more" % extra, int(g.players[0]["gold"]) == gold0 - int(Defs.BUILDINGS[R]["cost"]) - extra, "%d -> %d" % [gold0, int(g.players[0]["gold"])])
+		check("it takes %.0f s more to build" % extra_t, b != null and is_equal_approx(b.build_time(), float(Defs.BUILDINGS[R]["time"]) + extra_t))
+		check("the pick is remembered for the kind", g.gear_big_for(0, R))
+		check("its ring is the big one (more teeth)", b != null and GearNet.b_n(b) == GearNet.ring_n(R, b.size, true) and GearNet.ring_n(R, b.size, true) > GearNet.ring_n(R, b.size, false))
+		check("there is no way to change it later (no swap)", not g.has_method("swap_gear"))
+		if b != null:
+			var gold1 := int(g.players[0]["gold"])
+			g.abandon(b)
+			check("a big site cancelled before it began pays back all of it, the extra too", int(g.players[0]["gold"]) == gold1 + int(Defs.BUILDINGS[R]["cost"]) + extra)
+	# both sizes give their numbers
+	var pr: Building = g._add_building(Defs.GEAR_PRESS, 0, Vector2i(2, 2), true)
+	var crew_s := pr.crew_max()
+	pr.gear_big = true
+	var crew_b := pr.crew_max()
+	g._remove_quietly(pr)
+	check("a Cog Press: 5 Winders on the small ring, 8 on the big", crew_s == int(Defs.GEAR["press"]["small"]["crew"]) and crew_b == int(Defs.GEAR["press"]["big"]["crew"]) and crew_b > crew_s, "%d / %d" % [crew_s, crew_b])
+	check("its card: 7.2 cogs a second small, 10 big", GearEcon.trade_line(Defs.GEAR_PRESS, false).contains("7.2") and GearEcon.trade_line(Defs.GEAR_PRESS, true).contains("10.0"))
+	if sp != null:
+		var cap_s := GearEcon.tension_cap(g, 0)
+		var was := sp.gear_big
+		sp.gear_big = true
+		var cap_b := GearEcon.tension_cap(g, 0)
+		sp.gear_big = false
+		var cap_s2 := GearEcon.tension_cap(g, 0)
+		sp.gear_big = was
+		check("a Mainspring stores 200 Tension on its small ring, 400 on its big", is_equal_approx(cap_b - cap_s2, 200.0) and sp.crew_max() >= 3, "%.0f / %.0f (%.0f)" % [cap_s2, cap_b, cap_s])
+	# the computer picks by its rule: small unless spare Winders fill a big press
+	var ai := AI.new()          # (not in the tree: only its rule is asked)
+	ai.game = g
+	ai.team = 0
+	var spare: Array = []
+	var small_first := not ai._want_big_gear(Defs.GEAR_PRESS)
+	var big_then := false
+	for i in 60:          # (Winders added one by one until the press goes big: its posts filled, 8 more stand spare)
+		spare.append(g._add_unit("winder", 0, hall.center() + Vector2(0, 140)))
+		if ai._want_big_gear(Defs.GEAR_PRESS):
+			big_then = true
+			break
+	check("the computer: a small press without spare Winders, a big one with 8 or more spare (at %d Winders)" % g.workers(0).size(),
+		small_first and big_then, "%s / %s" % [small_first, big_then])
+	check("the computer: other kinds stay small", not ai._want_big_gear(Defs.CW_TURRET) and not ai._want_big_gear("mainspring"))
+	for u in spare:
+		g.units.erase(u)
+		u.queue_free()
+	ai.free()
+	g.set_gear_pick(0, R, false)
+	await process_frame
 
 
 func _end(g: Game) -> void:

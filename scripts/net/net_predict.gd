@@ -321,9 +321,11 @@ func _ops(who: Object, fn: String, args: Array) -> Array:
 		"place_building":
 			var k := String(args[1])
 			var c: Vector2i = args[2]
-			if g.placement_problem(t, k, c) != "" or int(_player(t)["gold"]) < int(Defs.BUILDINGS[k]["cost"]) or not g.requirement_met(t, k):
+			if args.size() >= 6:
+				g.set_gear_pick(t, k, int(args[5]) == 1)      # (GEAR PICK: the ring it goes on, its price)
+			if g.placement_problem(t, k, c) != "" or int(_player(t)["gold"]) < g.build_price(t, k) or not g.requirement_met(t, k):
 				return []
-			ops.append(["res", "gold", -int(Defs.BUILDINGS[k]["cost"])])
+			ops.append(["res", "gold", -g.build_price(t, k)])
 			if Defs.tension_cost(Defs.BUILDINGS[k]) > 0:
 				ops.append(["res", "tension", -float(Defs.tension_cost(Defs.BUILDINGS[k]))])
 			ops.append(["site", k, c])
@@ -331,7 +333,7 @@ func _ops(who: Object, fn: String, args: Array) -> Array:
 			var b: Building = args[0]
 			if not _ok(b) or b.built:
 				return []
-			ops.append(["res", "gold", int(b.d["cost"]) if b.ghost else int(int(b.d["cost"]) * 0.75)])
+			ops.append(["res", "gold", b.price() if b.ghost else int(b.price() * 0.75)])
 			ops.append(["fade", b, Color(1, 1, 1, 0.2)])
 		"demolish":
 			var b: Building = args[0]

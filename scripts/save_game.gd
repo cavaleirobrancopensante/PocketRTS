@@ -279,6 +279,11 @@ static func capture(game: Game, cfg: Dictionary) -> Dictionary:
 				out.append(["u", ids[e]])
 		return out)
 	d["cams"] = game.cam_slots.map(func(c) -> Variant: return null if c == null else [c[0].x, c[0].y, c[1]])
+	# GEAR PICK: each side's last ring per kind ([team, kind, big], Game.gear_pick)
+	d["gpick"] = []
+	for gt in game.gear_pick:
+		for gk in game.gear_pick[gt]:
+			d["gpick"].append([int(gt), String(gk), bool(game.gear_pick[gt][gk])])
 	# Clockwork crates on the ground, and the ones on a Winder's back (they come back lying
 	# where he stood): [x, y, team, site cell x, site cell y, hp]
 	d["crates"] = []
@@ -323,6 +328,9 @@ static func _restore_groups(game: Game, d: Dictionary, made: Array) -> void:
 	for i in mini(cs.size(), game.cam_slots.size()):
 		var c = cs[i]
 		game.cam_slots[i] = [Vector2(float(c[0]), float(c[1])), float(c[2])] if c is Array and c.size() >= 3 else null
+	for gp in d.get("gpick", []):
+		if gp is Array and gp.size() >= 3 and Defs.BUILDINGS.has(String(gp[1])):
+			game.set_gear_pick(int(gp[0]), String(gp[1]), bool(gp[2]))
 
 
 ## Saves from v0.7.32 on had rock outcrops ([x, y, kind, amount left], 2x2 tiles): the share

@@ -406,6 +406,12 @@ const GEAR := {
 	"solve": 0.5,                   # seconds between connection recomputes
 	"teeth_rate": 1.4,              # teeth a second passing a mesh point: the Clocktower ring turns this slowly, small gears spin faster
 	# (no GEAR SWAP since 0.24.4, the owner: it clipped with the gears around; each building keeps the gear it is built with)
+	# GEAR PICK (the owner, 2026-10-30: "Choose the gear size when building and only then"): a Clockwork building that is
+	# neither the Clocktower nor big-only (GearNet.pickable) is placed on a SMALL or a BIG ring, picked on the placing
+	# ghost. The BIG ring costs `cost` more cogs and takes `time` more seconds to build (the old swap's price: 25 cogs, 4 s),
+	# and its wider ring is checked like any other (it needs more room). Fixed once placed. Game.gear_pick remembers each
+	# kind's last pick for the match.
+	"big_pick": {"cost": 25, "time": 4.0},
 	"start_cogs": 300,
 	# THE COG PRESS: `full` cogs a second at full crew; with nobody on it, `base` of that (like a farm with nobody on
 	# it); every Winder winding it adds an equal share up to `crew`. Small gear: 7.2/s, crew 5. Big gear: 10/s, crew 8: a
@@ -435,7 +441,8 @@ const GEAR := {
 	# the Clock Aviary trains 10% faster or slower (GearNet.tempo). Guesses. (The Cog Press and the Mainspring trade by
 	# crew instead, the Ratchet Turret by its screw: Defs.TURRET "small" / "big".)
 	"tempo": {"movement_works": [1.15, 0.85], "escapement": [1.1, 0.9], "cuckoo_house": [1.1, 0.9]},
-	# Kinds that sit on their BIG ring (the Heavy Works: the heavy torque; GearNet.big_only); every other kind is built small.
+	# Kinds that sit on their BIG ring (the Heavy Works: the heavy torque; GearNet.big_only); every other kind (but the Clocktower)
+	# on the ring picked when it is placed, small by default ("big_pick").
 	"big_only": ["heavy_works"],
 	# The buildings that use Tension stand on a polished BRASS floor plate, the others on the dark iron one (owner,
 	# 2026-10-27; GearArt.plate, tools/gear_art/make_brass_plate.py).

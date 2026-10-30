@@ -361,7 +361,8 @@ static func room_spot_n(game: Game, t: int, kind: String, must: Array, users: Ar
 			return [Vector2i(-1, -1), 0]
 	var T := float(Defs.TILE)
 	var size: Vector2i = Defs.BUILDINGS[kind]["size"]
-	var r := GearNet.ring_r(kind, size, false)
+	var big := game.gear_big_for(t, kind)          # (GEAR PICK: the ring this side would place it on)
+	var r := GearNet.ring_r(kind, size, big)
 	var slack := float(Defs.GEAR["slack"]) * T
 	var over := float(Defs.GEAR["overlap"]) * T
 	var a0: Building = must[0]
@@ -378,7 +379,7 @@ static func room_spot_n(game: Game, t: int, kind: String, must: Array, users: Ar
 			var gaps := 0.0
 			for m in must:
 				var gap: float = gc.distance_to(GearNet.b_c(m)) - r - GearNet.b_r(m)
-				if gap < -over or gap > slack or not GearNet.level_ok(game, kind, c, false, m):
+				if gap < -over or gap > slack or not GearNet.level_ok(game, kind, c, big, m):
 					ok = false          # (out of reach, or on the other ground level: THE LEVEL RULE)
 					break
 				gaps += absf(gap)
@@ -422,7 +423,7 @@ static func room_cells(game: Game, t: int, kind: String, c: Vector2i, users: Arr
 	var over := float(Defs.GEAR["overlap"]) * T
 	var size: Vector2i = Defs.BUILDINGS[kind]["size"]
 	var gc := GearNet.gpos(Vector2(c) * T + Vector2(size) * T * 0.5)
-	var r := GearNet.ring_r(kind, size, false)
+	var r := GearNet.ring_r(kind, size, game.gear_big_for(t, kind))
 	var lv := GearNet.foot_level(game, c, size)
 	var placed: Array = [[gc, r, Rect2i(c, size)]]
 	var rings: Array = []
@@ -432,7 +433,7 @@ static func room_cells(game: Game, t: int, kind: String, c: Vector2i, users: Arr
 	var out: Array = []
 	for uk in users:
 		var us: Vector2i = Defs.BUILDINGS[uk]["size"]
-		var ur := GearNet.ring_r(uk, us, false)
+		var ur := GearNet.ring_r(uk, us, game.gear_big_for(t, uk))
 		var found := false
 		for y in range(c.y - 9, c.y + 10):
 			if found:

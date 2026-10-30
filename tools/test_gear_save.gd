@@ -1,6 +1,7 @@
 extends SceneTree
 ## Gear sizes (and a swap under way) survive a save and load and travel in the online snapshot; the guest works out the
-## same connected field and turns the gears.
+## same connected field and turns the gears. GEAR PICK (0.24.12): a build order sent online carries the ring size, and the
+## site placed by it is big on the host and on the guest.
 ##   godot --headless --fixed-fps 30 --script res://tools/test_gear_save.gd
 const U := preload("res://tools/gear_test_util.gd")
 var fails := 0
@@ -69,6 +70,23 @@ func _run() -> void:
 	hs.game = g
 	hs.is_host = true
 	g.net = hs
+	# GEAR PICK online: a guest's build order carries the ring size (place_building's 6th argument); the host checks, pays
+	# and places it at that size
+	var R := Defs.CW_SUPPLY
+	var rc := U.linked_spot(g, 0, R, tower.cell, true)
+	check("a spot for a big-ring Regulator", rc.x >= 0)
+	var reg_big: Building = null
+	if rc.x >= 0:
+		var ok := [true]
+		var wire: Array = []
+		for a in [0, R, rc, [], false, 1]:
+			wire.append(NetCodec.enc(a, ok))
+		var gold0 := int(g.players[0]["gold"])
+		var why := NetCommands._apply(hs, 0, {"o": 0, "f": "place_building", "a": wire})
+		reg_big = _find(g, R, rc)
+		check("online: the guest's BIG GEAR order places a big-ring site", why == "" and reg_big != null and reg_big.gear_big, why)
+		check("online: paid with the big ring's extra", int(g.players[0]["gold"]) == gold0 - int(Defs.BUILDINGS[R]["cost"]) - int(Defs.GEAR["big_pick"]["cost"]))
+		check("online: the host remembers that side's pick", g.gear_big_for(0, R))
 	var m := NetSnapshot.build(hs)
 	var guest := Game.new()
 	guest.puppet = true
@@ -87,6 +105,9 @@ func _run() -> void:
 	var gw := _find(guest, "assembly_works", works.cell)
 	check("the guest sees the host's BIG gear", gp != null and gp.gear_big)
 	check("and the small gear of the works", gw != null and not gw.gear_big)
+	if reg_big != null:
+		var gr := _find(guest, R, reg_big.cell)
+		check("the guest sees the big-ring site placed by the order (the snapshot and the replay carry it)", gr != null and gr.gear_big)
 	guest.gear_net.tick(0.1)
 	guest.gear_net.tick(0.1)
 	var gt := U.hall(guest, 0)
