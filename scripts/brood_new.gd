@@ -1743,6 +1743,14 @@ static func _rooted_look(u: Unit, n: int) -> void:
 			s.self_modulate.a = 1.0
 
 
+## Seconds to her next egg at her laying rate now (-1: none coming, her clutch is full or she is growing).
+static func next_egg_in(q: Unit) -> float:
+	if float(q.nb.get("grow_t", 0.0)) > 0.0 or int(q.nb.get("eggs", 0)) >= eggs_max(q):
+		return -1.0
+	var rate := maxf(float(q.nb.get("rate", 1.0)), 0.01)
+	return maxf(0.0, (float(Defs.NB["egg_time"]) - float(q.nb.get("egg_t", 0.0))) / rate)
+
+
 ## Over the creature (Unit._draw_unit, its own space): the Mother's eggs, a Rootmaw's food and ground, an egg's
 ## incubation, the father's reach when picked.
 static func draw(u: Unit, top: float) -> void:
@@ -1751,6 +1759,11 @@ static func draw(u: Unit, top: float) -> void:
 	if u.kind == QUEEN and mine:
 		var font := ThemeDB.fallback_font
 		var txt := "%d/%d" % [int(u.nb.get("eggs", 0)), eggs_max(u)]
+		# and the countdown to her next egg (the owner, 2026-10-30): none when her clutch is full or she is growing
+		var nl := next_egg_in(u)
+		if nl >= 0.0:
+			var sec := int(ceil(nl))
+			txt += "  %02d:%02d" % [sec / 60, sec % 60]
 		u.draw_string_outline(font, Vector2(-14, top - 6), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, 4, Color(0, 0, 0, 0.8))
 		u.draw_string(font, Vector2(-14, top - 6), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.85, 1.0, 0.55) if int(u.nb.get("eggs", 0)) > 0 else Color(1.0, 0.55, 0.45))
 	if u.kind == MAW and mine:

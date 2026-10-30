@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.22.5", "items": [
+		"Over the Brood Mother, beside her eggs (4/10), a countdown to her next egg (00:05), at her laying rate now. None when her clutch is full or while she grows.",
+	]},
 	{"v": "0.22.4", "items": [
 		"GRUBS CAN BE SACRIFICED: SACRIFICE (C) is on the grub's card now. A grub offered up at the Brood Mother gives 10 spoils and a whole egg back (it hatches alone, like a Brute). A grub at work can be sent: it hands over the food or the body it carries when it gets to her. A grub on its way to turn into a Rootmaw, a Mound Turtle or a Sire can't be.",
 		"SACRIFICE PAYS MORE FOR RAPTORS: a Raptor offered up gives 15 spoils (was 9): 30 for the two of one egg, 45 for the three of a Bigger Clutch egg. The other creatures are unchanged (a Spitter 16, Hatchlings 14, a Tyrant Challenger or a Mist Toad 35, a Brute or a Venom or Storm Challenger 53).",
