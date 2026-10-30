@@ -72,6 +72,12 @@ static func chips(g: Game, e: Entity) -> Array:
 					"tipf": func() -> Dictionary: return WorkerLabels.tip(g, u)})
 			out.append({"icon": "", "dot": FOOD, "text": "%d" % int(float(u.nb.get("food", 0.0))), "title": "Food",
 				"tipf": func() -> Dictionary: return WorkerLabels.tip(g, u)})
+			if u.kind == BroodNew.MAW:
+				# the food left in its GROUND (the owner, 2026-10-30 19:33: as its tooltip says)
+				var gl := BroodNew.ground_left(g, u)
+				out.append({"icon": "", "dot": SOIL, "text": "%d" % int(gl), "title": "Ground",
+					"col": Color(1, 0.45, 0.4) if gl < 1.0 else null,
+					"tipf": func() -> Dictionary: return WorkerLabels.tip(g, u)})
 		return out
 	if not (e is Building):
 		return out

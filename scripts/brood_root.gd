@@ -371,7 +371,8 @@ static func morph_list() -> Array:
 	return [BroodNew.MAW, BroodNew.TURTLE] + (Defs.NB["lines"] as Dictionary).keys()
 
 
-## Why a grub of team t can't turn into a `k` now ("" = it can). `gr`: the grub (its own plan doesn't count).
+## Why a grub of team t can't turn into a `k` now ("" = it can). `gr`: the grub (its own plan doesn't count; if it has
+## paid already, nb "mpaid", the price is not asked again).
 static func morph_problem(g: Game, t: int, k: String, gr: Unit = null) -> String:
 	if not morph_list().has(k):
 		return "A grub can't turn into that."
@@ -387,6 +388,8 @@ static func morph_problem(g: Game, t: int, k: String, gr: Unit = null) -> String
 			return "Only one %s at a time." % u["name"]
 	var price := g.unit_price(t, k)
 	var res: Array = Defs.FACTIONS["brood"]["res"]
+	if gr != null and gr.nb.has("mpaid"):
+		price = [0, 0]          # (paid when it was ordered: PAY AT ONCE)
 	if int(g.players[t]["gold"]) < int(price[0]):
 		return "Not enough %s." % String(res[0]).to_lower()
 	if float(g.players[t]["res2"]) < float(price[1]):
@@ -397,9 +400,23 @@ static func morph_problem(g: Game, t: int, k: String, gr: Unit = null) -> String
 	return ""
 
 
+## PAY AT ONCE, PAID BACK IF IT FAILS (the owner's playtest, 2026-10-30): the grub pays the creature's price the moment
+## it is ordered (as a Crown or Clockwork building placed), held in nb "mpaid" [food, spoils]; killed, re-ordered,
+## stopped, or unable to morph there, it is all paid back (morph_refund); in its cocoon it is spent.
 static func start_morph(gr: Unit, k: String, p: Vector2) -> void:
-	gr._reset_work()
+	gr._reset_work()          # (an earlier morph order: paid back here)
 	gr._leave_mine()
+	var g: Game = gr.game
+	var why := morph_problem(g, gr.team, k, gr)
+	if why != "":
+		g.tell(gr.team, "The grub can't turn into a %s: %s" % [Defs.UNITS[k]["name"], why])
+		gr.cmd_stop()
+		return
+	var price := g.unit_price(gr.team, k)
+	g.players[gr.team]["gold"] -= int(price[0])
+	g.add_res2(gr.team, -float(price[1]))
+	g.stats[gr.team]["spent"] += int(price[0])
+	gr.nb["mpaid"] = [int(price[0]), float(price[1])]
 	gr.order = "nb_morph"
 	gr.target = null
 	gr.order_target = null
@@ -427,10 +444,12 @@ static func morph_tick(g: Game, gr: Unit, delta: float) -> Vector2:
 			gr.nb.erase("mk")
 			gr.cmd_stop()
 			return Vector2.ZERO
-		var price := g.unit_price(gr.team, k)
-		g.players[gr.team]["gold"] -= int(price[0])
-		g.add_res2(gr.team, -float(price[1]))
-		g.stats[gr.team]["spent"] += int(price[0])
+		if not gr.nb.has("mpaid"):          # (not paid yet, whatever the way: it pays here)
+			var price := g.unit_price(gr.team, k)
+			g.players[gr.team]["gold"] -= int(price[0])
+			g.add_res2(gr.team, -float(price[1]))
+			g.stats[gr.team]["spent"] += int(price[0])
+		gr.nb.erase("mpaid")          # (spent: its cocoon)
 		cocoon(g, gr.team, k, p)
 		if gr.team == g.human:
 			Sfx.play_any(["burrow", "work/brood_build"], gr.position, -4.0)
@@ -446,6 +465,20 @@ static func morph_tick(g: Game, gr: Unit, delta: float) -> Vector2:
 			return Vector2.ZERO
 		gr._request_path(r.get_center())
 	return gr._follow(delta)
+
+
+## A grub's paid morph called off (killed, stopped, given another order, or it can't morph there): all paid back.
+static func morph_refund(gr: Unit) -> void:
+	if not gr.nb.has("mpaid"):
+		return
+	var paid: Array = gr.nb["mpaid"]
+	gr.nb.erase("mpaid")
+	var g: Game = gr.game
+	if g == null or gr.team < 0:
+		return
+	g.players[gr.team]["gold"] += int(paid[0])
+	g.add_res2(gr.team, float(paid[1]))
+	g.stats[gr.team]["spent"] -= int(paid[0])
 
 
 ## The grub's cocoon: the creature already there (rooted, its footprint taken, its health growing as a building's
@@ -504,17 +537,41 @@ static func cocoon_tick(g: Game, u: Unit, delta: float) -> void:
 
 # ------------------------------------------------------------------ rally points
 
-## Rooted creatures and eggs take no orders: a right-click sets their rally point.
+## Rooted creatures and eggs take no orders: a right-click sets their rally point. One UPROOTING ("packing") is a
+## unit already (the owner's playtest, 2026-10-30): its card has MOVE, ATTACK..., right-clicks and Shift-queued orders
+## are kept and start once it is up (Unit._tesla holds it still meanwhile).
 static func fixed(u) -> bool:
-	return u is Unit and u._k_nb and (u.kind == BroodNew.EGG or (BroodNew.ROOTERS.has(u.kind) and u.tesla_mode != "packed"))
+	return u is Unit and u._k_nb and (u.kind == BroodNew.EGG or (BroodNew.ROOTERS.has(u.kind) and u.tesla_mode != "packed" and u.tesla_mode != "packing"))
 
 
 static func rally_of(u: Unit) -> Vector2:
 	return Vector2(float(u.nb["rx"]), float(u.nb["ry"])) if u.nb.has("rx") else Vector2.INF
 
 
+## THE MOTHER'S TWO RALLY POINTS (the owner's playtest, 2026-10-30): the WORKER rally (her grubs: nb "wx"/"wy", drawn
+## gold) and the WARRIOR rally (everything else: "rx"/"ry", drawn green). Her right-clicks take turns (the owner,
+## 19:33): the first sets the grubs' rally, the next the warriors', and so on (nb "rnext": what the next one sets,
+## shown pressed on her card); RALLY and WORKERS set either directly.
+static func worker_rally_of(u: Unit) -> Vector2:
+	return Vector2(float(u.nb["wx"]), float(u.nb["wy"])) if u.nb.has("wx") else Vector2.INF
+
+
 ## own: the player set it on this egg himself (a nest's father's rally does not replace it).
-static func set_rally(u: Unit, p: Vector2, own := true) -> void:
+## which (the Mother only): "auto" = a right-click: the one whose turn it is (rally_next), then the other's turn;
+## "worker" (her WORKERS button) the grubs' rally; "army" (RALLY) the warriors'.
+static func set_rally(u: Unit, p: Vector2, own := true, which := "army") -> void:
+	if u.kind == BroodNew.QUEEN and u.game != null:
+		if which == "auto":
+			which = rally_next(u)
+			u.nb["rnext"] = "army" if which == "worker" else "worker"
+		if which == "worker":
+			if p == Vector2.INF:
+				u.nb.erase("wx")
+				u.nb.erase("wy")
+			else:
+				u.nb["wx"] = p.x
+				u.nb["wy"] = p.y
+			return
 	if p == Vector2.INF:
 		u.nb.erase("rx")
 		u.nb.erase("ry")
@@ -525,10 +582,34 @@ static func set_rally(u: Unit, p: Vector2, own := true) -> void:
 		u.nb["ro"] = true
 
 
-## Where a hatchling goes: the egg's own rally; in the father's nest, his rally (unless the player gave the egg its own).
+## What the Mother's next right-click sets: "worker" (her grubs' rally; the first) or "army".
+static func rally_next(q: Unit) -> String:
+	return String(q.nb.get("rnext", "worker"))
+
+
+## A grubs' food source at p (an own Rootmaw or any food pile), or null.
+static func source_at(g: Game, t: int, p: Vector2) -> Unit:
+	for o in g.units_near(p, 90.0):
+		if BroodNew.is_source(o) and not o.dead and (o.kind == BroodNew.PILE or o.team == t) and (o.rect().grow(24.0).has_point(p) or o.position.distance_to(p) < 30.0):
+			return o
+	return null
+
+
+## Where a hatchling goes. The player's own rally on that egg first; then THE MOTHER'S, ALWAYS (the owner, 2026-10-30:
+## hers have priority, also for the warriors hatching in a Sire's nest): a grub to her worker rally, the others to her
+## warrior rally; then, if she has none, a nest's father's rally; then the rally the egg got when laid.
 static func hatch_rally(g: Game, e: Unit) -> Vector2:
+	if e.nb.has("ro"):
+		return rally_of(e)
+	var q := BroodNew.queen(g, e.team)
+	if q != null:
+		var mine := worker_rally_of(q) if String(e.nb.get("k", "grub")) == "grub" else rally_of(q)
+		if mine != Vector2.INF:
+			return mine
+		if String(e.nb.get("k", "grub")) == "grub":
+			return Vector2.INF          # (no worker rally: the grub finds work by itself)
 	var rp := rally_of(e)
-	if bool(e.nb.get("nest", false)) and not e.nb.has("ro"):
+	if bool(e.nb.get("nest", false)):
 		var f := BroodNew.father(g, e.team, BroodNew.father_of(String(e.nb.get("k", ""))))
 		if f != null and rally_of(f) != Vector2.INF:
 			rp = rally_of(f)
@@ -540,10 +621,10 @@ static func send(g: Game, u: Unit, rp: Vector2, i := 0) -> bool:
 	if rp == Vector2.INF:
 		return false
 	if u.kind == "grub":
-		for o in g.units_near(rp, 90.0):
-			if BroodNew.is_source(o) and not o.dead and (o.kind == BroodNew.PILE or o.team == u.team) and (o.rect().grow(24.0).has_point(rp) or o.position.distance_to(rp) < 30.0):
-				u.cmd_gather(o)
-				return true
+		var src := source_at(g, u.team, rp)
+		if src != null:
+			u.cmd_gather(src)
+			return true
 	u.cmd_move(rp + (Vector2.from_angle(float(i) * 2.1) * 12.0 if i > 0 else Vector2.ZERO))
 	return true
 
@@ -1325,9 +1406,13 @@ static func draw_ghost(g: Game, ov: Node2D, k: String, c: Vector2i, sc := 1.0) -
 		lines.append([why, Color(1.0, 0.5, 0.45)])
 	elif ok:
 		lines.append(["ROOT HERE", Color(0.6, 1.0, 0.55)])
+	if k == BroodNew.MAW:
+		# the food in the ground there (fresh, partly spent, or spent: BroodNew._claim's rule)
+		var gl := BroodNew.ground_at(g, p)
+		lines.append([Loc.t("%d food in the ground") % int(gl), Color(0.95, 0.85, 0.35) if gl >= 1.0 else Color(1.0, 0.45, 0.4), true])
 	var y0 := r.position.y - 8.0 - 18.0 * float(lines.size() - 1)       # (over the ghost: the card covers the screen's bottom)
 	for ln in lines:
-		var txt := Loc.t(String(ln[0]))
+		var txt := String(ln[0]) if ln.size() > 2 else Loc.t(String(ln[0]))       # (a third field: already in the player's words)
 		var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
 		var lp := Vector2(r.get_center().x - w * 0.5, y0)
 		ov.draw_string_outline(font, lp, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, 4, Color(0, 0, 0, 0.85))

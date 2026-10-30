@@ -178,6 +178,8 @@ static func capture(game: Game, cfg: Dictionary) -> Dictionary:
 			ud["ar"] = true
 		if u.clutch_n > 0:
 			ud["yo"] = u.clutch_n            # (a Brood young: its egg's clutch, for SACRIFICE)
+		if u.nb.has("mpaid") and u.order == "nb_morph":
+			ud["mref"] = u.nb["mpaid"]        # (orders aren't saved: a grub's paid morph is paid back on load)
 		if u._k_nb:
 			ud["nb"] = BroodNew.unit_save(u)         # (the Brood: eggs, food, an egg's kind and incubation)
 		if u.owl_t >= 0.0:
@@ -194,6 +196,8 @@ static func capture(game: Game, cfg: Dictionary) -> Dictionary:
 			ud["crew"] = ids[u.crew_of]              # (a Winder crewing a Spring Ballista: scripts/ballista.gd)
 		if u.kind == MarchingBand.KIND and not u.band.is_empty():
 			ud["band"] = MarchingBand.save(u)        # (the Marching Band: musicians, solo, cooldowns: scripts/marching_band.gd)
+		if u.auto_harvest:
+			ud["ah"] = true          # (a grub's HARVEST autocast)
 		if u.kind == Defs.GREAT_WINDER_KIND:
 			ud["gw"] = [0, u.auto_repair, u.auto_sweep]     # (a Great Winder: MEND and SWEEP, scripts/great_winder.gd; the first
 			# slot held its PARTS until 0.14.102, when the sweep began to pay cogs at once: kept as 0 so the layout stays)
@@ -525,6 +529,7 @@ static func restore(game: Game, d: Dictionary) -> void:
 		if uk == Defs.BALLISTA_KIND:
 			u.cooldown = float(ud.get("rl", 0.0))
 			u.loaded = u.cooldown <= 0.0
+		u.auto_harvest = bool(ud.get("ah", false))
 		if uk == Defs.GREAT_WINDER_KIND and ud.get("gw") is Array and (ud["gw"] as Array).size() >= 3:
 			u.auto_repair = bool(ud["gw"][1])
 			u.auto_sweep = bool(ud["gw"][2])
@@ -540,6 +545,9 @@ static func restore(game: Game, d: Dictionary) -> void:
 		u.clutch_n = int(ud.get("yo", 0))
 		if ud.get("nb") is Dictionary:
 			BroodNew.unit_load(u, ud["nb"])
+		if ud.get("mref") is Array and u.team >= 0 and u.team < game.players.size():
+			game.players[u.team]["gold"] += int(ud["mref"][0])
+			game.add_res2(u.team, float(ud["mref"][1]))
 		if ud.get("band") is Dictionary and u.kind == MarchingBand.KIND:
 			MarchingBand.load_state(u, ud["band"])
 		u.carrying = int(ud["carry"])

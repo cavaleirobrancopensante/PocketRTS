@@ -199,6 +199,9 @@ var bolt_hits: Array = []       # (a ballista) what its last bolt hit, in order 
 var _db_t := 0.0                # (a ballista) s to the next look for a shot on the move
 # the Great Winder (scripts/great_winder.gd): MEND is its auto_repair; SWEEP its auto_sweep (its side's wrecks into cogs)
 var auto_sweep := false         # (a Great Winder) SWEEP autocast: on from the start
+var auto_harvest := false       # (a grub) HARVEST autocast (the owner, 2026-10-30 19:33): idle, it harvests bodies near it
+var _harvest_auto := false      # (its harvest was its own choice: done, it goes idle again and back to work)
+var _ah_t := 0.0
 var _board_t := 0.0
 var _descend := 0.0             # (a balloon) 1 = down low, taking men on or letting them off
 var haul_t := -1.0              # (a balloon) a powder keg on the rope: seconds hauled so far (-1: none)
@@ -1974,6 +1977,12 @@ func cmd_nb_research(key: String) -> String:
 	return BroodResearch.start(game, self, key)
 
 
+## THE BROOD: a research queue's entry i cancelled (0: the one in hand), paid back.
+func cmd_nb_research_cancel(i: int) -> void:
+	if game.net_forward(self, "cmd_nb_research_cancel", [i]): return
+	BroodResearch.cancel_at(game, self, i)
+
+
 ## THE BROOD: STOP RESEARCH (paid back).
 func cmd_nb_research_stop() -> void:
 	if game.net_forward(self, "cmd_nb_research_stop", []): return
@@ -1996,10 +2005,11 @@ func cmd_uproot(spill: bool) -> void:
 
 
 ## THE BROOD: a rooted creature's (or an egg's) RALLY POINT (scripts/brood_root.gd); Vector2.INF clears it.
-func cmd_nb_rally(p: Vector2) -> void:
-	if game.net_forward(self, "cmd_nb_rally", [p]): return
+## which: "auto" (RALLY, a right-click), "worker" (the Mother's WORKERS button: her grubs' rally).
+func cmd_nb_rally(p: Vector2, which := "auto") -> void:
+	if game.net_forward(self, "cmd_nb_rally", [p, which]): return
 	if BroodRoot.fixed(self):
-		BroodRoot.set_rally(self, p)
+		BroodRoot.set_rally(self, p, true, which)
 		queue_redraw()
 
 
@@ -2915,6 +2925,8 @@ func plan_end() -> Vector2:
 
 func _reset_work() -> void:
 	war = false
+	if nb.has("mpaid"):
+		BroodRoot.morph_refund(self)      # (a grub's paid morph called off: paid back)
 	if not _keep_queue:
 		queue.clear()          # a new order (not Shift-queued) replaces the queue
 		line_rest.clear()
@@ -3670,6 +3682,15 @@ func _tick_unit(delta: float) -> void:
 					cmd_repair(hurt)
 				elif auto_work:
 					scan_t = 0.0      # nothing to fix: straight on to the WORK check below
+			# HARVEST autocast: an idle grub harvests the bodies near it, then goes back to work (WORK)
+			if auto_harvest and kind == "grub" and order == "idle" and not war:
+				_ah_t -= delta
+				if _ah_t <= 0.0:
+					_ah_t = 1.0
+					if game.find_corpse(self, float(Defs.HARVEST["range"]) * Defs.TILE) != null:
+						cmd_harvest()
+						_harvest_auto = true
+						scan_t = 1.0
 			# an idle Winder carries a crate dropped close by on to its site
 			if kind == "winder" and order == "idle" and scan_t <= 0.0 and not game.crates.is_empty():
 				var cr := game.free_crate(team, position, float(Defs.CRATE["auto"]) * Defs.TILE)
@@ -5613,6 +5634,7 @@ func cmd_harvest() -> void:
 		return      # riding in a balloon
 	_reset_work()
 	order = "harvest"
+	_harvest_auto = false
 	harvest_home = position
 	work = ""
 	target = null
@@ -5645,6 +5667,9 @@ func _harvest(delta: float) -> Vector2:
 			if _corpse:
 				_corpse.harvester = self
 				_request_path(_corpse.position)
+			elif _harvest_auto:
+				cmd_stop()          # (its own harvest done: idle, so WORK sends it back to its post)
+				return Vector2.ZERO
 		if _corpse == null:
 			if position.distance_to(harvest_home) > 40.0:
 				if (path.is_empty() or path_i >= path.size()) and not path_pending:
@@ -6393,6 +6418,8 @@ func die() -> void:
 	elif kind == "cannon" or kind == "mortar":
 		_team_bolts()
 	game.on_unit_died(self)
+	if nb.has("mpaid"):
+		BroodRoot.morph_refund(self)      # (a grub killed on its way to morph: its price paid back)
 	if _k_nb:
 		BroodNew.on_death(game, self)      # (a Rootmaw's food bursts out; the supply and swamp change)
 	Sfx.play_any(["combat/%s_death" % kind, "combat/%s_death" % String(Sfx.VOICE_AS.get(kind, kind)), "combat/%s_death" % Sfx.SHORT.get(d["faction"], "crown"), "death_" + Sfx.SHORT.get(d["faction"], "crown")], position)

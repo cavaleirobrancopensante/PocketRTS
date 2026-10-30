@@ -670,7 +670,7 @@ func _nb_far_have(q: Unit) -> int:
 ## what it needs (a Mound Turtle for supply, a Sire's lure, a turtle on new ground, more Rootmaws), a spot that passes
 ## the same ROOT placement checks as the player's ghost (BroodRoot.place_problem, keeping its ramps clear), and the
 ## grub nearest it.
-var _morph_keep := 0             # food kept for the structure-unit it saves for, or a grub on its way pays on arrival
+var _morph_keep := 0             # food kept for the structure-unit it saves for (a grub on its way has paid already)
 
 
 func _nb_morphs(q: Unit) -> void:
@@ -678,7 +678,6 @@ func _nb_morphs(q: Unit) -> void:
 	var walking := 0
 	for u in game.units:
 		if u.team == team and not u.dead and u.kind == "grub" and u.order == "nb_morph":
-			_morph_keep += int(game.unit_price(team, String(u.nb.get("mk", "grub")))[0])       # (it pays when it gets there)
 			walking += 1
 	# one at a time; a second only with food to spare (brood-eco: with the owner's economy the food came faster than one
 	# grub at a time could turn it into turtles, and 900+ food sat for minutes at the supply cap)
@@ -727,8 +726,7 @@ func _nb_morphs(q: Unit) -> void:
 				and u != _scout and (best == null or u.position.distance_squared_to(spot) < best.position.distance_squared_to(spot)):
 			best = u
 	if best != null:
-		best.give({"o": "nb_morph", "k": k, "p": spot})
-		_morph_keep += int(game.unit_price(team, k)[0])      # (it pays when it gets there: the eggs leave it the price)
+		best.give({"o": "nb_morph", "k": k, "p": spot})      # (it pays at once: BroodRoot.start_morph)
 		if BroodNew.is_father(k):
 			say("a grub goes to grow the %s" % BroodRoot.lure_name(k))
 		elif k == BroodNew.TURTLE and (spot as Vector2).distance_to(q.position) >= float(Defs.NB["expansion_tiles"]) * Defs.TILE * 0.9:

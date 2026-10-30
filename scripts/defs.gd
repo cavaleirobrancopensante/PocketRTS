@@ -1195,7 +1195,7 @@ const UNITS := {
 	"venom_challenger": {
 		"tags": ["armored"],
 		"name": "Venom Challenger", "hp": 220, "armor": 1, "speed": 58, "cost": 150, "cost2": 20, "time": 22.0, "supply": 2,
-		"sight": 9, "range": 165, "damage": 18, "cooldown": 2.0, "aim": 0.4, "radius": 18, "from": "brood_mother",
+		"sight": 9, "range": 165, "damage": 18, "cooldown": 2.0, "aim": 0.4, "radius": 13, "from": "brood_mother",
 		"acid": 4.0, "splash": 24, "anti_air": true, "venom": true, "plain_attack": true, "faction": "brood", "mature": true,
 		"about": "A Spitter grown into a young Venom Sire: a heavier venom glob than a Spitter's, as far, that strips armour and splashes a little round its target; it reaches flyers too. Tougher and slower than a Spitter. Never laid: a Spitter MATURES into it (the Brood Mother at stage 2).",
 	},
@@ -2058,6 +2058,11 @@ const TOAD := {"max": 150.0, "fill": 1.5, "swamp": 2.0, "start": 75.0}
 ## FOG: a swamp fog bank (`radius` px) laid on a spot within `range` for `time` s. Ranged
 ## attacks (range 100+) fired from inside it or into it miss `miss` of the time, and units
 ## inside see only `sight` tiles. It hides everyone, friend or foe.
+## MIASMA (the owner, 2026-10-29/30: the retired Spore Mother's MIASMA goes to the Mist Toad, its third energy spell): a
+## green cloud on a spot for `time` s; the Brood inside heal `hps` a second, up to `cap` of their health each (clouds
+## don't stack). The Spore Mother's numbers (range, radius, time, healing), paid from the Toad's energy (`cost`) instead
+## of her 30 spoils and 18 s cooldown.
+const MIASMA := {"cost": 60.0, "range": 220.0, "radius": 96.0, "time": 8.0, "hps": 7.0, "cap": 0.3, "cast": 0.7}
 const FOG := {"cost": 50.0, "range": 224.0, "radius": 96.0, "time": 12.0, "miss": 0.5, "sight": 2, "cast": 0.6}
 ## TONGUE: one enemy unit (on the ground or a flyer) within `range` px is marked for `windup` s (its owner sees
 ## the crosshair); the windup breaks if the Toad is stunned, killed or moved more than

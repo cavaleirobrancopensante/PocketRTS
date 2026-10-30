@@ -1212,7 +1212,7 @@ const BASE_UNITS := {
 		"walk_s": 6,
 		"walk_se": 6,
 	}},
-	"venom_challenger": {"cell": Vector2i(142, 132), "anchor": Vector2(71, 104), "frames": {
+	"venom_challenger": {"cell": Vector2i(90, 82), "anchor": Vector2(45, 64), "frames": {
 		"attack_e": 6,
 		"attack_n": 6,
 		"attack_ne": 6,
@@ -1397,7 +1397,7 @@ const EFFECTS := {
 	# the Spring Ballista's screw bolt in flight, pointing right (tools/import_ballista.py, cut from its concept)
 	"ballista_bolt": {"frames": 1, "size": Vector2i(58, 24)},
 	"spitter_glob": {"frames": 1, "size": Vector2i(16, 8)},
-	"venom_challenger_glob": {"frames": 1, "size": Vector2i(22, 8)},
+	"venom_challenger_glob": {"frames": 1, "size": Vector2i(16, 6)},
 }
 
 ## Clockwork battery backpacks (tools/make_packs.py - edit there, not here):

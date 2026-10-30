@@ -1,0 +1,53 @@
+# the owner's playtest of 2026-10-30 19:13 (branch brood-controls): the Mother's two rallies
+
+> Where what comes out goes: the Mother's warriors (also those hatching in a Sire's nest: her rally comes first), an egg's own hatchling. A right-click does the same; it never uproots. The Mother's right-clicks take turns: the first sets her grubs' rally (WORKERS), the next her warriors' (RALLY), and so on; the button the next right-click sets is shown pressed.
+pt Para onde vai o que sai: os guerreiros da Mãe (também os que eclodem no ninho de um Senhor: o ponto dela vem primeiro), o filhote de um ovo. Um clique direito faz o mesmo; nunca desenraiza. Os cliques direitos na Mãe se alternam: o primeiro define o ponto das larvas (TRABALHADORES), o seguinte o dos guerreiros (REUNIR), e assim por diante; o botão que o próximo clique direito define aparece pressionado.
+es Adónde va lo que sale: los guerreros de la Madre (también los que eclosionan en el nido de un Señor: su punto va primero), la cría de un huevo. Un clic derecho hace lo mismo; nunca desarraiga. Los clics derechos en la Madre se turnan: el primero fija el punto de las larvas (TRABAJADORES), el siguiente el de los guerreros (REUNIR), y así sucesivamente; el botón que fijará el próximo clic derecho se ve pulsado.
+
+> Workers rally
+pt Ponto dos trabalhadores
+es Punto de los trabajadores
+
+> Where her new grubs go (drawn gold): on a Rootmaw or a food pile they start gathering there. Her right-clicks take turns: the first sets this one, the next her warriors' rally (green), and so on; the button the next right-click sets is shown pressed. Without it, a new grub finds work by itself.
+pt Para onde vão as novas larvas dela (em dourado): num Bocarraiz ou num monte de comida, começam a coletar ali. Os cliques direitos nela se alternam: o primeiro define este, o seguinte o ponto dos guerreiros (verde), e assim por diante; o botão que o próximo clique direito define aparece pressionado. Sem ele, uma larva nova acha trabalho sozinha.
+es Adónde van sus nuevas larvas (en dorado): en un Bocarraíz o un montón de comida empiezan a recolectar allí. Sus clics derechos se turnan: el primero fija este, el siguiente el punto de sus guerreros (verde), y así sucesivamente; el botón que fijará el próximo clic derecho se ve pulsado. Sin él, una larva nueva encuentra trabajo sola.
+
+> Tap where her new grubs go to work.
+pt Toque onde as novas larvas dela vão trabalhar.
+es Toca dónde irán a trabajar sus nuevas larvas.
+
+> Ground
+pt Chão
+es Suelo
+
+> Automatic harvest on: an idle grub harvests the bodies near it by itself, then goes back to work.
+pt Colheita automática ligada: uma larva parada colhe sozinha os corpos perto dela e depois volta ao trabalho.
+es Cosecha automática activada: una larva ociosa cosecha sola los cuerpos cercanos y luego vuelve al trabajo.
+
+> Automatic harvest off.
+pt Colheita automática desligada.
+es Cosecha automática desactivada.
+
+> A click (or its key) matures ONE of them; Ctrl+click (Ctrl+its key), a right-click or a long press matures ALL that can.
+pt Um clique (ou a tecla dele) amadurece UM deles; Ctrl+clique (Ctrl+a tecla), um clique direito ou um toque longo amadurece TODOS que puderem.
+es Un clic (o su tecla) madura a UNO de ellos; Ctrl+clic (Ctrl+su tecla), un clic derecho o una pulsación larga madura a TODOS los que puedan.
+
+> %d food in the ground
+pt %d de comida no chão
+es %d de comida en el suelo
+
+> The research queue is full.
+pt A fila de pesquisa está cheia.
+es La cola de investigación está llena.
+
+> Not enough energy: MIASMA needs %d (it fills over time, faster on swamp).
+pt Energia insuficiente: o MIASMA precisa de %d (ela enche com o tempo, mais rápido no pântano).
+es Energía insuficiente: el MIASMA necesita %d (se llena con el tiempo, más rápido en el pantano).
+
+> Not enough energy: MIASMA needs %d.
+pt Energia insuficiente: o MIASMA precisa de %d.
+es Energía insuficiente: el MIASMA necesita %d.
+
+> 60 energy: a green cloud on a spot for 8 s. The Brood inside heal up to 30% of their health (7 a second; clouds don't stack).
+pt 60 de energia: uma nuvem verde num ponto por 8 s. A Ninhada dentro dela se cura até 30% da vida (7 por segundo; nuvens não se somam).
+es 60 de energía: una nube verde en un punto durante 8 s. La Nidada dentro se cura hasta un 30% de su vida (7 por segundo; las nubes no se acumulan).
