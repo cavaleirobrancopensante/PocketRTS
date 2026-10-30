@@ -143,7 +143,9 @@ const FOOD_MAX_D := 32.0          # a load is worth no more from farther out tha
 const PIT_CREW_STEP := 4.0
 const PIT_CREW_MAX := 12
 const PIT_GROUND := 3000          # biomass in each Rootmaw's ground
-const PIT_CLAIM := 5.0            # tiles: the radius of a Rootmaw's circle of ground (rooted circles may not overlap)
+const PIT_CLAIM := 10.0           # tiles: the radius of a Rootmaw's circle of ground (rooted circles may not overlap: their
+                                  # middles 20 tiles apart). Was 5 until 0.24.7: the owner (2026-10-30) found Rootmaws stacked
+                                  # on one base too strong and doubled it as a NERF (same ground and rate each; docs/brood_new.md)
 ## SACRIFICE: a Brood creature offered up at the Brood Mother gives this share of its biomass cost as spoils (a
 ## Brute 53); the Raptor (15) and the grub (10) are set by hand instead (Defs.NB "sac", 0.22.4).
 const SACRIFICE := 0.35
@@ -1155,7 +1157,7 @@ const UNITS := {
 		"name": "Rootmaw", "hp": 450, "armor": 0, "speed": 80, "cost": 75, "time": 18.0, "supply": 0,
 		"sight": 6, "range": 30, "damage": 14, "cooldown": 1.3, "aim": 0.3, "radius": 22, "from": "brood_mother",
 		"faction": "brood", "new_brood": true,
-		"about": "A swamp lizard that feeds the Brood. ROOT it on fresh ground on your swamp (3,000 food in a 5-tile circle; rooted circles may not overlap): it drinks the ground and swells, and grubs carry the food from its flank to the Brood Mother (farther pays more). Rooted it has more armour. UPROOT spills its food as a pile (grubs still collect it; it rots); HAUL walks off with it, slow and fat (killed hauling, it bursts). It bites.",
+		"about": "A swamp lizard that feeds the Brood. ROOT it on fresh ground on your swamp (3,000 food in a 10-tile circle; rooted circles may not overlap): it drinks the ground and swells, and grubs carry the food from its flank to the Brood Mother (farther pays more). Rooted it has more armour. UPROOT spills its food as a pile (grubs still collect it; it rots); HAUL walks off with it, slow and fat (killed hauling, it bursts). It bites.",
 	},
 	# (the owner, 2026-10-30: the Tyrant Sire, the basic line every opening needs, is the CHEAPER father (150 food,
 	# 30 s); the Venom Sire, the specialist, costs 200 food, 35 s. It was the other way round, priced by body.

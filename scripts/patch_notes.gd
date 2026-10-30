@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.7", "items": [
+		"THE ROOTMAW'S GROUND IS TWICE AS WIDE: its circle is now 10 tiles round it (was 5), and two rooted circles still may not overlap, so Rootmaws stand 20 tiles apart. Each keeps the same 3,000 food and drinks at the same rate: this is a NERF to the Brood's economy (stacking 4 or 5 Rootmaws on one base was too strong). About 1 or 2 now fit on the Brood Mother's own swamp and 1 round each Mound Turtle; more swamp (turtles) means more room. The computer roots a turtle on new ground when it has no room for another Rootmaw.",
+		"MUSIC: you hear your own faction's music. With the default setting the opening, calm and skirmish pieces are always your faction's; only in a full battle is one piece in five the enemy's battle music (before, one piece in five was the enemy's in every moment, calm included). YOUR FACTION ONLY never plays the enemy's.",
+	]},
 	{"v": "0.24.6", "items": [
 		"POWDER SMOKE, SMOOTHER: the puffs no longer show square edges when they grow (the painted frames touched their borders: each puff now fades out in a soft circle), no longer pop at the edge of the screen, and fade in over half a second. No puff vanishes at once any more: near the limit the oldest age faster and a new shot waits instead of wiping out an old puff.",
 		"POWDER SMOKE, NO MORE WHITE WALL: where many volleys land in one place the smoke merges into one cloud: each puff there is drawn thinner and ages faster, and a full cloud takes only some of a new shot's puffs. A heavy firefight still leaves a haze that lingers, but it thins steadily: after 30 Musketeers and 4 Field Cannons fire for 12 s, the thickest spot is about a third as solid as before (no white wall), and the haze still lingers some 20 s, thinning steadily.",

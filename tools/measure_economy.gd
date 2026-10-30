@@ -242,6 +242,15 @@ func _snap(i: int) -> Dictionary:
 		var grubs := 0
 		for u in g.workers(i):
 			grubs += 1
+		var turtles := 0
+		var far := 0
+		var q := BroodNew.queen(g, i)
+		for u in g.units:
+			if u.team == i and not u.dead and u.kind == BroodNew.TURTLE and BroodNew.rooted(u):
+				turtles += 1
+				if q != null and u.position.distance_to(q.position) >= float(Defs.NB["expansion_tiles"]) * Defs.TILE:
+					far += 1
+		r.merge({"turtles": turtles, "far": far})
 		r.merge({"powder_in": int(st["res2_in"]), "powder": int(p["res2"]), "soil": int(ground), "salt": 0, "n_farm": maws,
 			"crew_farm": grubs, "n_mill": 0, "crew_mill": 0, "spend_powder_units": int(s["spend_powder_units"])})
 	else:
@@ -275,8 +284,8 @@ func _line(i: int, r: Dictionary) -> String:
 			r["full_s"], r["n_press"], r["n_press_big"], r["crew_press"], r["n_spring"], r["crew_spring"], r["lode"], r["workers"], r["army"], r["army_n"],
 			r["supply"], r["cap"], r["halls"]]
 	if r["fac"] == "brood":
-		return "%2d:00 t%d BR earned %d bank %d | spoils in %d bank %d | rootmaws %d grubs %d | ground %d | army %d (%d) supply %d/%d" % [
-			r["m"], i, r["earned"], r["bank"], r["powder_in"], r["powder"], r["n_farm"], r["crew_farm"], r["soil"], r["army"], r["army_n"],
+		return "%2d:00 t%d BR earned %d bank %d | spoils in %d bank %d | rootmaws %d grubs %d | turtles %d (%d far) | ground %d | army %d (%d) supply %d/%d" % [
+			r["m"], i, r["earned"], r["bank"], r["powder_in"], r["powder"], r["n_farm"], r["crew_farm"], r.get("turtles", 0), r.get("far", 0), r["soil"], r["army"], r["army_n"],
 			r["supply"], r["cap"]]
 	return "%2d:00 t%d CR earned %d bank %d | powder in %d bank %d | farms %d crew %d mills %d crew %d | soil %d salt %d | workers %d army %d (%d) supply %d/%d halls %d" % [
 		r["m"], i, r["earned"], r["bank"], r["powder_in"], r["powder"], r["n_farm"], r["crew_farm"], r["n_mill"], r["crew_mill"], r["soil"], r["salt"],

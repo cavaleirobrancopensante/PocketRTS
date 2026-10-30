@@ -710,13 +710,21 @@ func _nb_morphs(q: Unit) -> void:
 				spot = fp[0]
 	elif _nb_next_father(q) != "":
 		k = _nb_next_father(q)
-	elif maws < _nb_wanted_maws() and (maws < 2 or _food() >= 100) and (maws < 3 or not _nb_saving_growth(q)):
+	elif maws < _nb_wanted_maws() and (maws < 2 or _food() >= 100) and (maws < 3 or not _nb_saving_growth(q)) \
+			and _nb_maw_room(q):
 		k = BroodNew.MAW
 	elif _nb_far_have(q) < _nb_far_wanted() and not _nb_saving_growth(q):          # (her stage before more ground: the Economy plan never grew her)
 		var picks := _nb_far_spots(q)
 		if not picks.is_empty():
 			k = BroodNew.TURTLE
 			spot = picks[0]
+	if k == "" and maws < _nb_wanted_maws() and _food() >= 100 and not _nb_saving_growth(q) and not _nb_maw_room(q) \
+			and _nb_far_have(q) < 6:
+		var more := _nb_far_spots(q, 40.0)    # (0.24.7: no room left for a Rootmaw: one more turtle on new ground makes room,
+		                                      # farther out than the planned expansions)
+		if not more.is_empty():
+			k = BroodNew.TURTLE
+			spot = more[0]
 	if k != "" and BroodRoot.morph_problem(game, team, k).begins_with("Need more supply"):
 		k = BroodNew.TURTLE          # (a Sire takes more supply than his grub: a turtle first)
 		spot = null
@@ -747,12 +755,26 @@ func _nb_morphs(q: Unit) -> void:
 			say("a grub goes to root a Mound Turtle on new ground, %d tiles out" % int((spot as Vector2).distance_to(q.position) / Defs.TILE))
 
 
+## Room for one more Rootmaw (0.24.7: its 10-tile circles leave 2 or 3 round her and one round each turtle; with none
+## free the next branch (a turtle on new ground) gets its turn instead of the morph waiting for a spot for ever).
+## Checked at most every 5 s.
+var _room_t := -99.0
+var _room := true
+
+
+func _nb_maw_room(q: Unit) -> bool:
+	if game.clock - _room_t >= 5.0:
+		_room_t = game.clock
+		_room = _nb_find_spot(q, null) != null
+	return _room
+
+
 ## The best free turtle spots on new ground (ExpansionSpots.nb_pick: room for Rootmaws, ways in, walk, safety), reachable.
 var _far_sent := {}               # far spot -> when a grub was last sent there (a grub killed on the way: not again soon)
 var _far_last := -999.0
 
 
-func _nb_far_spots(q: Unit) -> Array:
+func _nb_far_spots(q: Unit, reach := 0.0) -> Array:
 	var out: Array = []
 	if game.exp_spots == null or game.clock - _far_last < 45.0:
 		return out
@@ -763,7 +785,7 @@ func _nb_far_spots(q: Unit) -> Array:
 			continue
 		if game.clock - float(_far_sent.get(str(p.round()), -999.0)) < 180.0:
 			continue          # (tried lately: the grub did not get there)
-		if p.distance_to(q.position) > (28.0 if _eco() and not BroodNew.expansions(game, q).is_empty() else 30.0) * Defs.TILE:
+		if p.distance_to(q.position) > (reach if reach > 0.0 else (28.0 if _eco() and not BroodNew.expansions(game, q).is_empty() else 30.0)) * Defs.TILE:
 			continue          # (too far to guard: near the enemy's side)
 		if _foe_near(p, 12.0 * Defs.TILE):
 			continue
@@ -990,7 +1012,7 @@ func _nb_find_spot(q: Unit, m: Unit):
 	var far := float(Defs.NB["expansion_tiles"]) * Defs.TILE * 0.9
 	for t in _nb_mine(BroodNew.TURTLE):
 		if BroodNew.rooted(t) and t.position.distance_to(q.position) >= far:
-			centres.append([t.position, [4.5, 6.0, 7.5]])
+			centres.append([t.position, [4.5, 6.0, 7.5, 8.5]])
 	var from: Vector2 = m.position if m != null else q.position
 	var best = null
 	var bs := INF

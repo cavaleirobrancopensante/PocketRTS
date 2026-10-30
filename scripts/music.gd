@@ -5,7 +5,7 @@ extends Node
 ## cross-fades to battle pieces while fighting is hot near you; a sting at the end.
 ##
 ## Modes (Settings > Music):
-##   "vanilla"  your faction's music, now and then a piece from an enemy faction
+##   "vanilla"  your faction's music; in a full battle, now and then (ENEMY_CHANCE) a battle piece of an enemy faction
 ##   "faction"  only your faction's music
 ##   "all"      everything, shuffled
 ##   "picked"   only the pieces ticked in the music player
@@ -293,8 +293,9 @@ func _pool(mood: String) -> Array:
 				if all.is_empty():
 					all = own
 			return all
-	# vanilla: mostly ours, sometimes theirs
-	if not _enemies.is_empty() and randf() < ENEMY_CHANCE:
+	# vanilla: ours; the enemy's only now and then in a FULL battle, when the armies clash (brood-tune, the owner
+	# 2026-10-30: a Brood player heard too much Crown music; it was ENEMY_CHANCE in every mood, calm and openings too)
+	if mood == "battle" and not _enemies.is_empty() and randf() < ENEMY_CHANCE:
 		var theirs := pieces(_enemies[randi() % _enemies.size()], mood)
 		if not theirs.is_empty():
 			return theirs

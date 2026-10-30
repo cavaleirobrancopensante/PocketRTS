@@ -239,8 +239,8 @@ static func nb_rate(g: Game, t: int, all_sites: Array) -> Array:
 		if tc.x < 0:
 			continue
 		var maws := _maw_room(g, tc, fs)
-		if maws < 2:
-			continue           # (room for a turtle and SEVERAL Rootmaw circles)
+		if maws < 1:
+			continue           # (room for a turtle and a Rootmaw circle; since 0.24.7's 10-tile circles one fits round a turtle)
 		var e: Dictionary = s.duplicate()
 		e["tc"] = tc
 		e["maws"] = maws
