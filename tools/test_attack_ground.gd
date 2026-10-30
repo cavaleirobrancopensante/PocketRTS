@@ -262,18 +262,18 @@ func _run() -> void:
 		check(not under.torn and g.corpses.has(under), "ordinary fire leaves the bodies alone (combat share 0: only BOMBARD tears them)")
 	g.consume_unit(victim)
 
-	# ---- 4. the essence a body gives (Defs.HARVEST per_supply 2)
-	check(is_equal_approx(g.corpse_value(mb), 2.0), "a Musketeer's body: 2 essence (%.2f)" % g.corpse_value(mb))
-	check(is_equal_approx(g.corpse_value(rb), 2.0), "a Raptor's: 2")
+	# ---- 4. the spoils a body gives (Defs.HARVEST per_supply 4 since 0.22.4)
+	check(is_equal_approx(g.corpse_value(mb), 4.0), "a Musketeer's body: 4 spoils (%.2f)" % g.corpse_value(mb))
+	check(is_equal_approx(g.corpse_value(rb), 4.0), "a Raptor's: 4")
 	var brute: Unit = await _body("brute", 1, b_spot + Vector2(0, 120))
 	var rider: Unit = g._add_unit("cuirassier", 0, b_spot + Vector2(80, 120))
 	await physics_frame
 	rider.take_damage(99999.0, null)
 	await wait(0.5)
-	check(is_equal_approx(g.corpse_value(brute), 6.0), "a Brute's: 6 (%.2f)" % g.corpse_value(brute))
-	check(is_equal_approx(g.corpse_value(rider), 8.0), "a Horseman with his horse: 8 (%.2f)" % g.corpse_value(rider))
+	check(is_equal_approx(g.corpse_value(brute), 12.0), "a Brute's: 12 (%.2f)" % g.corpse_value(brute))
+	check(is_equal_approx(g.corpse_value(rider), 16.0), "a Horseman with his horse: 16 (%.2f)" % g.corpse_value(rider))
 	check(Game.essence_text(1.25) == "1.25" and Game.essence_text(5.0) == "5" and Game.essence_text(2.5) == "2.5", "essence shown as 1.25, 5, 2.5")
-	# a grub carries one home: +2 essence at the Brood Mother
+	# a grub carries one home: +4 spoils at the Brood Mother
 	var hive: Unit = BroodNew.queen(g, 1)
 	if hive:
 		var at: Vector2 = g.cell_center(g.nearest_free(g.cell_of(hive.position + Vector2(0, 200)), 8))
@@ -284,7 +284,7 @@ func _run() -> void:
 		gr.cmd_harvest()
 		var r0 := float(g.players[1]["res2"])
 		var got := await wait_for(func() -> bool: return float(g.players[1]["res2"]) > r0 + 0.01, 40.0)
-		check(got and is_equal_approx(float(g.players[1]["res2"]) - r0, 2.0), "a grub brings it home: +%.2f essence" % (float(g.players[1]["res2"]) - r0))
+		check(got and is_equal_approx(float(g.players[1]["res2"]) - r0, 4.0), "a grub brings it home: +%.2f spoils" % (float(g.players[1]["res2"]) - r0))
 		g.consume_unit(gr)
 	else:
 		check(false, "the Brood's hall")

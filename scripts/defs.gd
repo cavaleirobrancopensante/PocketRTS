@@ -124,7 +124,7 @@ const PIT_CREW_MAX := 12
 const PIT_GROUND := 3000          # biomass in each Rootmaw's ground
 const PIT_CLAIM := 5.0            # tiles: the radius of a Rootmaw's circle of ground (rooted circles may not overlap)
 ## SACRIFICE: a Brood creature offered up at the Brood Mother gives this share of its biomass cost as spoils (a
-## Raptor, 25 biomass, gives 9).
+## Brute 53); the Raptor (15) and the grub (10) are set by hand instead (Defs.NB "sac", 0.22.4).
 const SACRIFICE := 0.35
 # Clockwork: Winders carry batteries from the energy buildings to the Ore Crushers.
 ## Clockwork economy: only the Clocktower and Boilers (2 per Clocktower) fill batteries;
@@ -1096,7 +1096,8 @@ const UNITS := {
 		"about": "A swamp lizard that feeds the Brood. ROOT it on fresh ground on your swamp (3,000 food in a 5-tile circle; rooted circles may not overlap): it drinks the ground and swells, and grubs carry the food from its flank to the Brood Mother (farther pays more). Rooted it has more armour. UPROOT spills its food as a pile (grubs still collect it; it rots); HAUL walks off with it, slow and fat (killed hauling, it bursts). It bites.",
 	},
 	# (the owner, 2026-10-30: the Tyrant Sire, the basic line every opening needs, is the CHEAPER father (150 food,
-	# 30 s); the Venom Sire, the specialist, costs 200 food, 35 s. It was the other way round, priced by body.)
+	# 30 s); the Venom Sire, the specialist, costs 200 food, 35 s. It was the other way round, priced by body.
+	# The owner, 08:28: the Venom Sire also costs 25 SPOILS ("sac 3 grubs to get a Venom Sire"; docs/grub_sacrifice.md).)
 	"tyrannosaur": {
 		"tags": ["armored"],
 		"name": "Tyrant Sire", "hp": 1000, "armor": 2, "speed": 64, "cost": 150, "time": 30.0, "supply": 4,
@@ -1107,7 +1108,7 @@ const UNITS := {
 	# THE SECOND AND THIRD FATHERS (the owner, 2026-10-29 11:10: the father lines; numbers: Claude's choice, docs/brood_new.md)
 	"dilophosaurus": {
 		"tags": ["armored"],
-		"name": "Venom Sire", "hp": 650, "armor": 1, "speed": 78, "cost": 200, "time": 35.0, "supply": 4,
+		"name": "Venom Sire", "hp": 650, "armor": 1, "speed": 78, "cost": 200, "cost2": 25, "time": 35.0, "supply": 4,
 		"sight": 9, "range": 140, "damage": 20, "cooldown": 1.6, "aim": 0.4, "radius": 22, "from": "brood_mother",
 		"acid": 4.0, "anti_air": true, "building_bonus": 1.2, "faction": "brood", "new_brood": true, "father": true,
 		"about": "A FATHER, open from the start: rooted on his nest beside the Brood Mother, he fertilises the eggs of his line (Spitters from the start, Mist Toads from her stage 3). Uprooted he walks and SPITS venom from afar (on flyers too), a strong Spitter of his own. Only one at a time.",
@@ -1811,10 +1812,12 @@ const HORSE_REGEN := 0.5          # hp a second: horses heal by themselves (they
 ## per_supply: essence a harvested body gives for each point of its supply (a float: Game.corpse_value; was 1, raised to
 ## 1.25 when area shots began to tear bodies up, Defs.BODY_BLAST, and to 2 in 0.14.40 when the Brood Pen stopped taking the
 ## bodies that fell near it: a Musketeer 2, a Brute 6, a Horseman with his horse 8), plus 1 for each kill it made, up
-## to 50 (the kills veterancy counts, VET; 0.14.41).
+## to 50 (the kills veterancy counts, VET; 0.14.41). DOUBLED in 0.22.4 (the owner, 2026-10-30 08:39): 4 for each point of
+## supply and `per_kill` 2 for each kill, the kills part up to `kill_cap` 100 (a Musketeer 4, a Brute 12, a Horseman with
+## his horse 16).
 ## take: the seconds a grub takes to wrap a Musketeer-sized body (`ref` health); bigger bodies take a little longer, x the
 ## square root of their health over `ref`, from `take_min` to `take_max` (Game.harvest_time: a Raptor 0.9 s, a Brute 2.2).
-const HARVEST := {"range": 10, "take": 1.2, "per_supply": 2.0, "ref": 70.0, "take_min": 0.8, "take_max": 3.0}
+const HARVEST := {"range": 10, "take": 1.2, "per_supply": 4.0, "per_kill": 2.0, "kill_cap": 100.0, "ref": 70.0, "take_min": 0.8, "take_max": 3.0}
 ## BODIES ROT (owner, 2026-10-27): a body has the health its unit had in life (a rider's adds his horse's: it lies with him)
 ## and loses it at one speed for every body, `base` health a second, which doubles every `double` seconds it has lain
 ## (smoothly: base x 2^(seconds since death / double)). At 0 it is gone. Damage (ground attack, Defs.GROUND, and area shots
@@ -1867,6 +1870,13 @@ const NB := {
 	"turtle_switch": 2.5, "turtle_swamp": 10.0,  # the Mound Turtle: seconds to root or uproot, tiles of swamp round it rooted
 	"turtle_rooted_r": 60.0,                     # px: a rooted turtle's body (wider than a 3-tile ramp: nothing slips past along its rails)
 	"queen_regen": 4.0,                          # hp/s healed while rooted
+	# SACRIFICE (the owner, 2026-10-30 08:34): the spoils these kinds give when offered up at the Mother, overriding the
+	# 0.35 formula (Defs.SACRIFICE) for them; the others stay on the formula. A grub can be offered up too (it gives its
+	# whole egg back, like any creature that hatches alone). docs/grub_sacrifice.md
+	"sac": {"raptor": 15, "grub": 10},
+	# HER VETERANCY FROM HARVEST (the owner, 2026-10-30 08:39): each harvest a grub delivers to her gives her 1 veterancy,
+	# each worth +1% laying ("hvet_rate"), up to "hvet_max" (+50%); it adds to her other levers (BroodNew.lay_rate)
+	"hvet_rate": 0.01, "hvet_max": 50,
 	"maw_fill": 4.0, "maw_cap": 300.0, "start_food": 120.0,           # food/s a rooted Rootmaw draws from its ground, what it holds
 	"maw_crew": 6, "pile_crew": 4,
 	"haul_speed": 0.5,                           # HAUL: the full Rootmaw walks at half speed

@@ -1445,9 +1445,17 @@ func _nb_buttons(list: Array, units: Array) -> void:
 							toast(w2), gwhy == "", gwhy, _price_chip([int(nx["cost"]), int(nx["cost2"])], int(nx["cost2"]) > 0)])
 		var lev := BroodNew.levers_text(game, q)
 		var lev_lab := lev.split(":")[0].to_upper()          # (short on the button: "LAYING +15%"; the levers in the tooltip)
-		_tip_for[lev_lab] = ["Her laying", "%s. Three things make the Brood Mother lay faster, and they add up: her growth STAGE; every FATHER near her (as in some real lizards, the males' presence speeds the female's eggs: +%d%% each); every Mound Turtle rooted on NEW GROUND, %d tiles or more from her and from the other counted ones (their chimneys pump scent into the swamp water: she tastes new territory and lays more: +%d%% each, up to %d). Turtles at home give supply and swamp only." % [
-			lev, int(float(Defs.NB["father_rate"]) * 100.0), int(Defs.NB["expansion_tiles"]), int(float(Defs.NB["expansion_rate"]) * 100.0), int(Defs.NB["expansion_max"])]]
+		var hv_pct := int(round(float(Defs.NB["hvet_rate"]) * 100.0))
+		var hv_max := int(Defs.NB["hvet_max"])
+		_tip_for[lev_lab] = ["Her laying", "%s. Four things make the Brood Mother lay faster, and they add up: her growth STAGE; every FATHER near her (as in some real lizards, the males' presence speeds the female's eggs: +%d%% each); every Mound Turtle rooted on NEW GROUND, %d tiles or more from her and from the other counted ones (their chimneys pump scent into the swamp water: she tastes new territory and lays more: +%d%% each, up to %d); and her VETERANCY: every harvest a grub brings her is 1 veterancy, +%d%% each, up to %d. Turtles at home give supply and swamp only." % [
+			lev, int(float(Defs.NB["father_rate"]) * 100.0), int(Defs.NB["expansion_tiles"]), int(float(Defs.NB["expansion_rate"]) * 100.0), int(Defs.NB["expansion_max"]), hv_pct, hv_max]]
 		list.append(["brood_mother", lev_lab, func() -> void: pass, false, lev, ""])
+		# HER VETERANCY FROM HARVEST (the owner, 2026-10-30 08:39): shown once she has some
+		var hv := BroodNew.hvet(q)
+		if hv > 0:
+			var hv_lab := Loc.t("VETERANCY %d · EGGS +%d%%") % [hv, hv * hv_pct]
+			_tip_for[hv_lab] = ["Her veterancy", "Every harvest a grub delivers to the Brood Mother (a body of either side, wrapped on the field) gives her 1 veterancy: she lays %d%% faster for each, up to %d (+%d%%). She has %d. It adds to her other levers." % [hv_pct, hv_max, hv_max * hv_pct, hv]]
+			list.append(["ab_harvest", hv_lab, func() -> void: pass, false, Loc.t("Her laying is +%d%% from harvests.") % (hv * hv_pct), ""])
 	# EGGS: what it will hatch, and how (point 6)
 	var eggs := units.filter(func(u: Unit) -> bool: return u.kind == BroodNew.EGG and u.team == game.human)
 	if not eggs.is_empty():
@@ -3807,8 +3815,8 @@ const CMD_TIPS := {
 	"PACK": "Pack it up to move (3 s). It can't fire while packed.",
 	"CANISTER": "Short range, a cone of musket balls: big damage, +50% against Light units, and it hits flyers.",
 	"ROUND SHOT": "The longest range in the game. The ball ploughs through a line of men, YOUR OWN TOO, and smashes buildings. Can't hit flyers.",
-	"HARVEST": "The grubs wrap every body nearby (friend or foe) in a cocoon and carry it to the Brood Mother as spoils. Bodies rot after 2 minutes.",
-	"SACRIFICE": "The selected creatures (not grubs) walk to the Brood Mother and she devours them: spoils for each, and eggs back by the egg: the young of one egg together give one egg (a Brute one each), at once if her clutch has room.",
+	"HARVEST": "The grubs wrap every body nearby (friend or foe) in a cocoon and carry it to the Brood Mother as spoils (4 for each point of its supply, 2 for each kill it made); each harvest makes her lay 1% faster (up to 50%). Bodies rot after 2 minutes.",
+	"SACRIFICE": "The selected creatures walk to the Brood Mother and she devours them: spoils for each (a Raptor 15, a grub 10), and eggs back by the egg: the young of one egg together give one egg (a Brute or a grub one each), at once if her clutch has room. A grub hands over what it carries first; one on its way to turn into something can't be offered.",
 	"HOLD FIRE": "Pistols (glowing = on): Horsemen, Cuirassiers and Officers keep their one pistol shot and fight with the sabre only, until you turn it off. (HOLD is still stand-ground.)",
 	"FOG": "50 energy: a fog bank on a spot for 12 s. Shots fired from or into it miss half the time (yours too); units inside see 2 tiles.",
 	"TONGUE": "75 energy: mark an enemy on the ground for 3 s, then drag it to the Toad's feet. Heavy engines are only staggered.",

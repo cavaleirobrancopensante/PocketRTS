@@ -1,0 +1,29 @@
+# GRUB SACRIFICE, HARVEST, THE MOTHER'S VETERANCY (0.22.4, docs/grub_sacrifice.md)
+
+> %s. Four things make the Brood Mother lay faster, and they add up: her growth STAGE; every FATHER near her (as in some real lizards, the males' presence speeds the female's eggs: +%d%% each); every Mound Turtle rooted on NEW GROUND, %d tiles or more from her and from the other counted ones (their chimneys pump scent into the swamp water: she tastes new territory and lays more: +%d%% each, up to %d); and her VETERANCY: every harvest a grub brings her is 1 veterancy, +%d%% each, up to %d. Turtles at home give supply and swamp only.
+pt %s. Quatro coisas fazem a Mãe da Ninhada pôr mais rápido, e elas se somam: o ESTÁGIO de crescimento dela; cada PAI perto dela (como em alguns lagartos reais, a presença dos machos acelera os ovos da fêmea: +%d%% cada); cada Tartaruga-Montículo enraizada em TERRA NOVA, a %d quadrados ou mais dela e das outras contadas (suas chaminés bombeiam cheiro na água do pântano: ela prova território novo e põe mais: +%d%% cada, até %d); e a VETERANIA dela: cada colheita que uma larva lhe traz é 1 de veterania, +%d%% cada, até %d. Tartarugas em casa só dão suprimento e pântano.
+es %s. Cuatro cosas hacen que la Madre de la Camada ponga más rápido, y se suman: su FASE de crecimiento; cada PADRE cerca de ella (como en algunos lagartos reales, la presencia de los machos acelera los huevos de la hembra: +%d%% cada uno); cada Tortuga Montículo arraigada en TERRENO NUEVO, a %d casillas o más de ella y de las otras contadas (sus chimeneas bombean olor al agua del pantano: ella saborea territorio nuevo y pone más: +%d%% cada una, hasta %d); y su VETERANÍA: cada cosecha que una larva le trae es 1 de veteranía, +%d%% cada una, hasta %d. Las tortugas en casa solo dan suministro y pantano.
+
+> veterancy %d
+pt veterania %d
+es veteranía %d
+
+> VETERANCY %d · EGGS +%d%%
+pt VETERANIA %d · OVOS +%d%%
+es VETERANÍA %d · HUEVOS +%d%%
+
+> Her veterancy
+pt A veterania dela
+es Su veteranía
+
+> Every harvest a grub delivers to the Brood Mother (a body of either side, wrapped on the field) gives her 1 veterancy: she lays %d%% faster for each, up to %d (+%d%%). She has %d. It adds to her other levers.
+pt Cada colheita que uma larva entrega à Mãe da Ninhada (um corpo de qualquer lado, embrulhado no campo) lhe dá 1 de veterania: ela põe %d%% mais rápido por cada uma, até %d (+%d%%). Ela tem %d. Isso se soma às outras alavancas dela.
+es Cada cosecha que una larva entrega a la Madre de la Camada (un cuerpo de cualquier bando, envuelto en el campo) le da 1 de veteranía: pone un %d%% más rápido por cada una, hasta %d (+%d%%). Tiene %d. Se suma a sus otras palancas.
+
+> Her laying is +%d%% from harvests.
+pt A postura dela está +%d%% pelas colheitas.
+es Su puesta va +%d%% por las cosechas.
+
+> The grubs wrap every body nearby (friend or foe) in a cocoon and carry it to the Brood Mother as spoils (4 for each point of its supply, 2 for each kill it made); each harvest makes her lay 1% faster (up to 50%). Bodies rot after 2 minutes.
+pt As larvas embrulham cada corpo por perto (amigo ou inimigo) num casulo e o levam à Mãe da Ninhada como espólios (4 por ponto de suprimento, 2 por cada abate que ele fez); cada colheita a faz pôr 1% mais rápido (até 50%). Os corpos apodrecem depois de 2 minutos.
+es Las larvas envuelven cada cuerpo cercano (amigo o enemigo) en un capullo y lo llevan a la Madre de la Camada como botín (4 por cada punto de suministro, 2 por cada baja que hizo); cada cosecha la hace poner un 1% más rápido (hasta un 50%). Los cuerpos se pudren tras 2 minutos.

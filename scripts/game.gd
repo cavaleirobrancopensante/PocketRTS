@@ -3505,8 +3505,7 @@ func brood_in_match() -> bool:
 ## to the kills veterancy counts (Defs.VET max / per_kill: 50, the owner, 0.14.41; it had no cap before).
 ## A float (essence is kept as one): a Musketeer or a Raptor 2, a Brute 6, a Horseman on his horse 8.
 func corpse_value(u: Unit) -> float:
-	var vet_kills := float(Defs.VET["max"]) / float(Defs.VET["per_kill"])
-	return float(body_supply(u)) * float(Defs.HARVEST["per_supply"]) + minf(float(u.kills), roundf(vet_kills))
+	return float(body_supply(u)) * float(Defs.HARVEST["per_supply"]) + minf(float(u.kills) * float(Defs.HARVEST["per_kill"]), float(Defs.HARVEST["kill_cap"]))
 
 
 ## An amount of essence as text: "5", "1.25", "2.5".
@@ -4985,6 +4984,8 @@ func consume_unit(u: Unit) -> void:
 ## SACRIFICE: the spoils a Brood creature gives when it's offered up at the Brood Mother (0: it can't be).
 static func sacrifice_value(kind: String) -> int:
 	var d: Dictionary = Defs.UNITS[kind]
+	if (Defs.NB["sac"] as Dictionary).has(kind):
+		return int(Defs.NB["sac"][kind])      # (set by hand: a Raptor 15, a grub 10; the owner, 2026-10-30)
 	if d["faction"] != "brood" or d.get("worker", false) or d.get("new_brood", false):
 		return 0
 	return maxi(1, int(round(float(d["cost"]) / maxf(1.0, float(d.get("spawn", 1))) * Defs.SACRIFICE)))
@@ -4995,6 +4996,17 @@ func sacrifice(u: Unit, pen: Entity) -> void:
 	var ess := sacrifice_value(u.kind)
 	if ess <= 0 or u.dead:
 		return
+	if u.kind == "grub":
+		# a grub sent from work hands over what it carries first: she is where it goes anyway (food, a body's cocoon)
+		if u.load_f > 0.0:
+			add_gold_f(u.team, u.load_f)
+		if u.cocoon > 0.0:
+			add_res2(u.team, u.cocoon)
+			if pen is Unit and (pen as Unit).kind == BroodNew.QUEEN:
+				BroodNew.add_hvet(pen)          # (a harvest delivered: her veterancy)
+		u.carrying = 0
+		u.load_f = 0.0
+		u.cocoon = 0.0
 	add_res2(u.team, ess)
 	var st: Dictionary = stats[u.team]
 	st["sacrificed"] = int(st.get("sacrificed", 0)) + 1

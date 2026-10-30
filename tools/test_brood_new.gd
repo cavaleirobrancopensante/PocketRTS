@@ -504,6 +504,7 @@ func _run() -> void:
 	r2.cmd_sacrifice()
 	await wait_for(func() -> bool: return float(p["res2"]) > ess1, 8.0)
 	check(int(q.nb.get("eggs", 0)) == BroodNew.eggs_max(q) and int(q.nb.get("eggp", 0)) == 0, "    her clutch full: the egg it makes is lost, spoils still paid (%d eggs, %d parts)" % [int(q.nb.get("eggs", 0)), int(q.nb.get("eggp", 0))])
+	await _grub_sacrifice(q, p)
 	q.nb["egg_t"] = 0.0
 	# 12. no rooted creature attacks (the owner, 17:14): rooted, the Mother, a Rootmaw, a turtle and the Tyrannosaur can't
 	# hit a foe beside them; uprooted, they can
@@ -604,6 +605,112 @@ func _run() -> void:
 	await _research_resumed()
 	print("brood_new: %d failures" % fails)
 	quit(1 if fails > 0 else 0)
+
+
+## 11b. GRUB SACRIFICE (the owner, 2026-10-30 08:19; docs/grub_sacrifice.md): a grub can be offered up for less than a
+## Raptor (Defs.NB "sac": a grub 10 spoils, a Raptor 15, set by hand; the owner, 08:34) and gives its whole egg back (it hatches alone, like a Brute); a grub at work
+## hands over what it carries there (food, a body's cocoon); a grub on its way to turn into something (nb_morph) can't be.
+func _grub_sacrifice(q: Unit, p: Dictionary) -> void:
+	check(Game.sacrifice_value("grub") == int(Defs.NB["sac"]["grub"]) and Game.sacrifice_value("grub") == 10 and Game.sacrifice_value("raptor") == 15 and Game.sacrifice_value("brute") == 53,
+		"11b. GRUB SACRIFICE: a grub gives %d spoils, a Raptor %d (set by hand); a Brute on the formula %d" % [Game.sacrifice_value("grub"), Game.sacrifice_value("raptor"), Game.sacrifice_value("brute")])
+	q.nb["eggs"] = 2
+	q.nb["eggp"] = 0
+	var gr: Unit = g._add_unit("grub", 0, q.position + Vector2(q.radius + 30.0, 20.0))
+	gr.cmd_stop()
+	g.set_selection([gr])
+	var labs := card_labels()
+	var sac_key := ""
+	for it in g.hud._with_keys(g.hud._build_card()):
+		if String(it[1]) == "SACRIFICE":
+			sac_key = String(it[it.size() - 1])
+	check(gr.can_sacrifice() and labs.has("SACRIFICE") and (sac_key == "C" or (Settings.pc() and Settings.grid_keys)), "    SACRIFICE (%s) on the grub's card: %s" % [sac_key, str(labs)])
+	g.set_selection([])
+	var e0: float = float(p["res2"])
+	var n0 := int(g.stats[0].get("sacrificed", 0))
+	gr.cmd_sacrifice()
+	await wait_for(func() -> bool: return int(g.stats[0].get("sacrificed", 0)) >= n0 + 1, 8.0)      # (not the grub: it is freed)
+	check(is_equal_approx(float(p["res2"]) - e0, 10.0) and int(q.nb.get("eggs", 0)) == 3 and int(q.nb.get("eggp", 0)) == 0 and int(g.stats[0].get("sacrificed", 0)) == n0 + 1,
+		"    a grub offered up: +%.0f spoils and its WHOLE egg back (2 -> %d eggs, %d parts)" % [float(p["res2"]) - e0, int(q.nb.get("eggs", 0)), int(q.nb.get("eggp", 0))])
+	# from its work: a grub carrying food, one carrying a body's cocoon (HARVEST): what it carries is handed over at her
+	var fg: Unit = g._add_unit("grub", 0, q.position + Vector2(q.radius + 60.0, 30.0))
+	fg.carrying = 7
+	fg.load_f = 7.0
+	var hg: Unit = g._add_unit("grub", 0, q.position + Vector2(q.radius + 60.0, -30.0))
+	hg.cmd_harvest()
+	hg.cocoon = 6.0
+	var gold0: float = float(p["gold"]) + float(p["gold_f"])
+	var e1: float = float(p["res2"])
+	check(fg.can_sacrifice() and hg.can_sacrifice(), "    grubs at work (carrying food, harvesting a body) can be sent")
+	fg.cmd_sacrifice()
+	hg.cmd_sacrifice()
+	await wait_for(func() -> bool: return int(g.stats[0].get("sacrificed", 0)) >= n0 + 3, 10.0)
+	var gold_in: float = float(p["gold"]) + float(p["gold_f"]) - gold0
+	check(is_equal_approx(float(p["res2"]) - e1, 10.0 + 10.0 + 6.0) and gold_in >= 7.0 - 0.01,
+		"    they hand over their loads first: +%.0f spoils (10 + 10 + the cocoon's 6), +%.1f food (its 7)" % [float(p["res2"]) - e1, gold_in])
+	# a grub on its way to turn into something: not offered up, no button
+	var mg: Unit = g._add_unit("grub", 0, q.position + Vector2(q.radius + 60.0, 60.0))
+	var spot := free_spot(BroodNew.MAW, q.position, 12.0, mg)
+	BroodRoot.start_morph(mg, BroodNew.MAW, spot)
+	g.set_selection([mg])
+	var labs2 := card_labels()
+	g.set_selection([])
+	mg.cmd_sacrifice()
+	check(mg.order == "nb_morph" and not mg.can_sacrifice() and not labs2.has("SACRIFICE"), "    a grub on its way to morph can't be offered up (order %s, card %s)" % [mg.order, str(labs2)])
+	g.consume_unit(mg)
+	# the VENOM SIRE costs 25 spoils on top of his 200 food (the owner, 08:28: "sac 3 grubs to get a Venom Sire")
+	var gold_keep: int = int(p["gold"])
+	var res2_keep: float = float(p["res2"])
+	p["gold"] = 1000
+	p["res2"] = 20.0
+	var vg: Unit = g._add_unit("grub", 0, q.position + Vector2(q.radius + 60.0, 60.0))
+	g.set_selection([vg])
+	g.hud.page = "build"
+	var vlabs := card_labels()
+	var vtip: Array = g.hud._tip_for.get("VENOM SIRE", ["", "", ""])
+	var vi: Array = _item("VENOM SIRE")
+	var why20 := BroodRoot.morph_problem(g, 0, BroodNew.DILO, vg)
+	p["res2"] = 25.0
+	var why25 := BroodRoot.morph_problem(g, 0, BroodNew.DILO, vg)
+	g.hud.page = ""
+	g.set_selection([])
+	check(int(Defs.UNITS[BroodNew.DILO].get("cost2", 0)) == 25 and String(vtip[2]).begins_with("200 ") and String(vtip[2]).contains(" + 25 spoils") and vlabs.has("VENOM SIRE")
+		and not vi.is_empty() and not bool(vi[3]) and why20 == "Not enough spoils." and why25 == "",
+		"    the VENOM SIRE costs 200 food + 25 spoils: his lure's price on the BUILD card (%s), refused with 20 spoils (%s), fine with 25" % [String(vtip[2]), why20])
+	g.consume_unit(vg)
+	p["gold"] = gold_keep
+	p["res2"] = res2_keep
+	# HARVEST: twice the spoils (4 a supply point, 2 a kill), and each delivery is +1 veterancy for the Mother (+1% laying)
+	q.nb["hvet"] = 0
+	var foe_b: Unit = g._add_unit("musketeer", 1, q.position + Vector2(q.radius + 70.0, 0.0))
+	foe_b.kills = 3
+	await physics_frame
+	foe_b.take_damage(999999.0, null)
+	await wait(0.5)
+	check(g.corpses.has(foe_b) and is_equal_approx(g.corpse_value(foe_b), 4.0 + 6.0), "    HARVEST doubled: a Musketeer's body with 3 kills is worth %.0f (4 + 2 x 3)" % g.corpse_value(foe_b))
+	var hv_g: Unit = g._add_unit("grub", 0, q.position + Vector2(q.radius + 100.0, 0.0))
+	await physics_frame
+	hv_g.cmd_harvest()
+	var hr0: float = float(p["res2"])
+	var hv_got: bool = await wait_for(func() -> bool: return float(p["res2"]) > hr0 + 0.01, 30.0)
+	check(hv_got and is_equal_approx(float(p["res2"]) - hr0, 10.0) and BroodNew.hvet(q) == 1,
+		"    a grub brings it to the Mother: +%.0f spoils and her veterancy 0 -> %d" % [float(p["res2"]) - hr0, BroodNew.hvet(q)])
+	g.consume_unit(hv_g)
+	var base_rate: float = float(BroodNew.lay_rate(g, q)[0]) - float(BroodNew.lay_rate(g, q)[1]) * 0.01
+	for i in 60:
+		BroodNew.add_hvet(q)
+	var lr_v: Array = BroodNew.lay_rate(g, q)
+	await wait(0.7)
+	check(BroodNew.hvet(q) == 50 and int(lr_v[4]) == 50 and absf(float(lr_v[0]) - (base_rate + float(lr_v[1]) * 0.5)) < 0.001 and absf(float(q.nb.get("rate", 0.0)) - float(lr_v[0])) < 0.001
+		and BroodNew.levers_text(g, q).contains("veterancy 50"),
+		"    60 more harvests: capped at %d, laying x%.2f (x%.2f without it: eggs every %.2f s, not %.2f): %s" % [BroodNew.hvet(q), float(lr_v[0]), base_rate,
+		float(Defs.NB["egg_time"]) / float(lr_v[0]), float(Defs.NB["egg_time"]) / base_rate, BroodNew.levers_text(g, q)])
+	g.set_selection([q])
+	var q_labs := card_labels()
+	g.set_selection([])
+	check(q_labs.has("VETERANCY 50 · EGGS +50%"), "    her card shows it: %s" % str(q_labs.filter(func(l) -> bool: return String(l).begins_with("VET") or String(l).begins_with("LAY"))))
+	var sv := BroodNew.unit_save(q)
+	check(int(sv.get("hvet", -1)) == 50, "    saved with her (nb hvet %d)" % int(sv.get("hvet", -1)))
+	q.nb["hvet"] = 0
 
 
 ## 15. ROOTED = A BUILDING (the owner's playtest of 0.15.13; scripts/brood_root.gd).
