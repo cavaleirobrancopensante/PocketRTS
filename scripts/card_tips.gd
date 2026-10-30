@@ -68,7 +68,7 @@ static func chips(g: Game, e: Entity) -> Array:
 		elif BroodNew.is_source(u) and (u.kind == BroodNew.PILE or BroodNew.rooted(u)):
 			var L := WorkerLabels.layout(g, u)
 			if not L.is_empty() and String(L["count"]) != "":
-				out.append({"icon": "", "pic": pic("grub"), "text": String(L["count"]), "title": "Grubs", "col": L["col"],
+				out.append({"icon": "", "pic": pic("grub"), "text": String(L["count"]), "title": "Grubs", "col": L["col"], "crew_of": u,
 					"tipf": func() -> Dictionary: return WorkerLabels.tip(g, u)})
 			out.append({"icon": "", "dot": FOOD, "text": "%d" % int(float(u.nb.get("food", 0.0))), "title": "Food",
 				"tipf": func() -> Dictionary: return WorkerLabels.tip(g, u)})
@@ -89,14 +89,14 @@ static func chips(g: Game, e: Entity) -> Array:
 		var L2 := WorkerLabels.layout(g, b)
 		if not L2.is_empty() and String(L2["count"]) != "":
 			var ttl := String(WorkerLabels.WORDS.get(b.kind, "HAULERS" if b.haul_cap() > 0 else "WORKERS")).capitalize()
-			out.append({"icon": "", "pic": pic(worker), "text": String(L2["count"]), "title": ttl, "col": L2["col"],
+			out.append({"icon": "", "pic": pic(worker), "text": String(L2["count"]), "title": ttl, "col": L2["col"], "crew_of": b,
 				"tipf": func() -> Dictionary: return WorkerLabels.tip(g, b)})
 	elif b.kind == "horse_breeder":
 		var hall := home_hall(g, b)
 		if hall != null:
 			var L3 := WorkerLabels.layout(g, hall)
 			if not L3.is_empty():
-				out.append({"icon": "", "pic": pic("labourer"), "text": String(L3["count"]), "title": "Haulers", "col": L3["col"],
+				out.append({"icon": "", "pic": pic("labourer"), "text": String(L3["count"]), "title": "Haulers", "col": L3["col"], "crew_of": hall,
 					"tipf": func() -> Dictionary: return WorkerLabels.tip(g, hall) if is_instance_valid(hall) and not hall.dead else {}})
 	var res := {"farm": ["Soil", SOIL], "powder_mill": ["Saltpetre", SALT], Defs.GEAR_PRESS: ["Brass", BRASS], "mainspring": ["Spring life", SPRING]}
 	if res.has(b.kind) and (b.crew_max() > 0 or b.haul_cap() > 0):

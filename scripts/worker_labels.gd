@@ -354,6 +354,42 @@ static func draw_all(g: Game, font: Font) -> void:
 			draw(g, L, font)
 
 
+## The workers assigned to e (the ones its label counts): a hall's haulers, a Farm's, Mill's, press's or
+## Mainspring's crew, the grubs gathering at a Rootmaw or food pile.
+static func workers(g: Game, e: Entity) -> Array:
+	if e == null or not is_instance_valid(e) or e.dead:
+		return []
+	if e is Building:
+		var b := e as Building
+		if b.haul_cap() > 0:
+			return b.haulers()
+		return b.crew.filter(func(u) -> bool: return is_instance_valid(u) and not u.dead and not u.off_field)
+	var out: Array = []
+	for u in g.units:
+		if u.kind == "grub" and not u.dead and u.order == "gather" and u.home_mine == e:
+			out.append(u)
+	return out
+
+
+## A click on a worker label (or the card's worker chip): select the workers of e (`add`: Shift, added to the
+## selection). False when it has none (the click then picks the building as before).
+static func select_workers(g: Game, e: Entity, add := false) -> bool:
+	if e == null or not is_instance_valid(e) or e.team != g.human:
+		return false
+	var ws := workers(g, e)
+	if ws.is_empty():
+		return false
+	if add:
+		var sel: Array = g.selection.duplicate()
+		for w in ws:
+			if not sel.has(w):
+				sel.append(w)
+		ws = sel
+	g.set_selection(ws)
+	Sfx.play_any(["ui/click", "click"])
+	return true
+
+
 ## The entity whose label is under the world point p (with a little slack), or null.
 static func at(g: Game, p: Vector2) -> Entity:
 	var best: Entity = null
