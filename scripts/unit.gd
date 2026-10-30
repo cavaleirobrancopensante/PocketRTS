@@ -620,7 +620,7 @@ func bolt_from(from: Vector2) -> void:
 		for f in [1.0, 0.75, 0.5]:
 			var q: Vector2 = position + away.rotated(a) * dist * f
 			var c: Vector2i = game.cell_of(q)
-			if game.in_open_map(c) and game._clear_at(q, radius, team) and game.region_of(c) == here:
+			if game.in_open_map(c) and game._clear_at(q, ground_r(), team) and game.region_of(c) == here:
 				goal = q
 				break
 		if goal != Vector2.INF:
@@ -1025,10 +1025,22 @@ var _k_fac := ""                 # (d["faction"]: the kind's faction)
 var _k_nb := false               # one of the Brood's own kinds (BroodNew.KINDS: the Mother, the rooters, eggs, food piles)
 var _k_still := false            # (its egg or a food pile: stands where it is, BroodNew.still_tick)
 var _k_shell := false            # (a Mound Turtle: rooted, its own side climbs over it: Game.separation)
+var _k_root := false             # (a Brood creature that roots: its ground footprint is capped, ground_r)
 ## The Brood's own state (scripts/brood_new.gd: the Mother's eggs, a Rootmaw's food and ground, an egg's kind and
 ## incubation, the father's breath); saved and streamed as it is.
 var nb := {}
 var nb_mass := 1.0               # (Game.separation: how hard it is to shove; rooted and still things are not shoved)
+## A Brood young's clutch: how many hatched from its egg (2, 3 with BIGGER CLUTCH; 0 = not from a shared egg: its kind's
+## Defs "spawn"). SACRIFICE gives the Mother 1/that of an egg (BroodNew.devour); saved ("yo").
+var clutch_n := 0
+
+
+## The body it walks the ground with (Game.resolve_terrain, _clear_at, the ramp rails): its radius, but at most
+## BroodNew.GROUND_R for the big Brood creatures that root (the Mother, the Sires, the Mound Turtle: 0.22.1). A ramp's
+## side lane is 16 px from its rail: a body wider than that couldn't stand on the lane the pathfinder chose and stood
+## stuck at the ramp's top or foot (the Mother at stage 1 already). Units still keep apart by radius (separation).
+func ground_r() -> float:
+	return minf(radius, BroodNew.GROUND_R) if _k_root else radius
 
 
 func _kind_flags() -> void:
@@ -1041,6 +1053,7 @@ func _kind_flags() -> void:
 	_k_nb = BroodNew.is_nb(kind)
 	_k_still = kind == BroodNew.EGG or kind == BroodNew.PILE
 	_k_shell = kind == BroodNew.TURTLE
+	_k_root = BroodNew.ROOTERS.has(kind)
 	nb_mass = 1000.0 if _k_still else BroodNew.packed_mass(kind)
 	_k_cw = CwUnits.hooked(kind)
 	_k_musket = kind == "musketeer"
@@ -1795,6 +1808,9 @@ func _ready() -> void:
 func rect() -> Rect2:
 	if _k_nb and nb.has("fpx"):
 		return BroodRoot.rect_of(self)      # (a rooted Brood creature: its footprint, as a building's)
+	if kind == BroodNew.QUEEN:
+		var dr := BroodNew.drawn_r(self)   # (the Mother: her drawn size, bigger than the body she walks with: BroodNew.BODY_R)
+		return Rect2(global_position - Vector2(dr, dr), Vector2(dr, dr) * 2.0)
 	return Rect2(global_position - Vector2(radius, radius), Vector2(radius, radius) * 2.0)
 
 
@@ -2138,7 +2154,7 @@ func _tongue_tick(delta: float) -> void:
 				e.position = _pull_from.lerp(position + dir * float(Defs.TONGUE["over"]), f)
 			else:
 				var feet := position + dir * (radius + e.radius + 4.0)
-				e.position = game.resolve_terrain(_pull_from.lerp(feet, f), e.position, e.radius, e.team)
+				e.position = game.resolve_terrain(_pull_from.lerp(feet, f), e.position, e.ground_r(), e.team)
 			game.note_move(e)
 			e.velocity = Vector2.ZERO
 			if tongue_t <= 0.0:
@@ -3110,7 +3126,7 @@ func cmd_land() -> void:
 	target = null
 	order_target = null
 	leash_from = position
-	if game._clear_at(position, radius, team):
+	if game._clear_at(position, ground_r(), team):
 		_start_switch("landing")
 		return
 	var c := game.nearest_free(game.cell_of(position), 8)
@@ -3153,8 +3169,8 @@ func _sky_switch(delta: float) -> Vector2:
 		sky = "ground" if sky == "landing" else "air"
 		_sky_stats()
 		leash_from = position
-		if sky == "ground" and not game._clear_at(position, radius, team):
-			position = game.resolve_terrain(position, position, radius, team)
+		if sky == "ground" and not game._clear_at(position, ground_r(), team):
+			position = game.resolve_terrain(position, position, ground_r(), team)
 	return Vector2.ZERO
 
 
@@ -3906,6 +3922,8 @@ func _range() -> float:
 		return Defs.CANISTER["range"]
 	if mode == "pistol":
 		return float(Defs.PISTOL["range"])
+	if kind == BroodNew.QUEEN:
+		return float(d["range"]) + BroodNew.drawn_r(self) - radius     # (she reaches from her drawn edge: BroodNew.BODY_R)
 	return float(d["range"])
 
 
@@ -4141,7 +4159,7 @@ func _move(want: Vector2, delta: float) -> void:
 		v = Vector2.ZERO           # (a Mist Toad aiming its tongue squats: friends flow round it; a rooted Brood creature is dug in: her own eggs don't shove the Mother)
 	velocity = velocity.lerp(v, clampf(delta * 12.0, 0.0, 1.0))
 	if knock.length_squared() > 25.0 and not (_k_nb and tesla_mode != "packed"):
-		position = game.resolve_terrain(position + knock * delta, position, radius, team)
+		position = game.resolve_terrain(position + knock * delta, position, ground_r(), team)
 		knock *= exp(-7.0 * delta)
 	if velocity.length() > speed * 1.3:
 		velocity = velocity.normalized() * speed * 1.3
@@ -4160,13 +4178,13 @@ func _move(want: Vector2, delta: float) -> void:
 		var sc: Vector2i = game.cell_of(position)
 		if not game.in_map(sc) or game.solid[game.idx(sc)] == 1:
 			position = before
-		elif game.in_open_map(sc) and game._clear_at(position, radius, team):
+		elif game.in_open_map(sc) and game._clear_at(position, ground_r(), team):
 			squeeze_t = 0.0
 	else:
 		if _towed():
 			position = _tow_resolve(position, before)
 		else:
-			position = game.resolve_terrain(position, before, radius, team)
+			position = game.resolve_terrain(position, before, ground_r(), team)
 		if not game.cw_gates.is_empty():
 			position = CwUnits.gate_push(self, before, position)     # a Plate Wagon blocks the track
 		if not game.nb_walls.is_empty():
@@ -4537,9 +4555,11 @@ func _engage(e: Entity, delta: float, may_move: bool) -> Vector2:
 			return Vector2.ZERO
 		if tesla_mode != "packed":
 			return Vector2.ZERO
-	elif deploys() and (not _k_nb or kind == BroodNew.QUEEN) and (dist > rng or dist < min_r) and phase == "":
-		# (guns set up and don't chase; the Brood Mother stands her ground too, on her leash: BroodNew.mother_guard; the other
-		# rooters, up, are walking creatures and chase what they are told to attack)
+	elif deploys() and (not _k_nb or (kind == BroodNew.QUEEN and not BroodNew.mother_chases(self))) and (dist > rng or dist < min_r) and phase == "":
+		# (guns set up and don't chase; the Brood Mother stands her ground against what she picks for herself and on the
+		# computer's leash (BroodNew.mother_guard), but goes for what the player sends her at (ATTACK, ATTACK-MOVE: she
+		# stood at the foot of a ramp gate before, 0.22.1); the other rooters, up, are walking creatures and chase what
+		# they are told to attack)
 		target = null         # set-up guns don't chase
 		return Vector2.ZERO
 	if phase != "":
@@ -4822,7 +4842,7 @@ func _strike(e: Entity) -> void:
 			game.spawn_effect("hit", e.center() + Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.6)
 			if kind == "brute" and e is Unit and not e.dead:
 				var push: Vector2 = (e.position - position).normalized() * 26.0
-				e.position = game.resolve_terrain(e.position + push, e.position, e.radius, e.team)
+				e.position = game.resolve_terrain(e.position + push, e.position, e.ground_r(), e.team)
 				game.note_move(e)
 
 
@@ -7507,9 +7527,10 @@ func _draw_unit() -> void:
 		# (a rooted Brood creature is drawn in the building layer, under this: no shadow on its body; selected, its
 		# footprint is outlined: BroodNew.draw)
 		draw_set_transform(ring_at, 0.0, Vector2(1.0, 0.45))
-		draw_circle(Vector2.ZERO, (radius + 2.0) * shade, Color(0, 0, 0, 0.25 + 0.3 * clampf(lifted / 30.0, 0.0, 1.0)))
+		var lr := BroodNew.look_r(self) if _k_nb else radius      # (the Mother: her drawn size)
+		draw_circle(Vector2.ZERO, (lr + 2.0) * shade, Color(0, 0, 0, 0.25 + 0.3 * clampf(lifted / 30.0, 0.0, 1.0)))
 		if selected:
-			draw_arc(Vector2.ZERO, radius + 5.0, 0, TAU, 24, Color(0.4, 1.0, 0.4, 0.9), 2.0)
+			draw_arc(Vector2.ZERO, lr + 5.0, 0, TAU, 24, Color(0.4, 1.0, 0.4, 0.9), 2.0)
 		draw_set_transform(Vector2.ZERO)
 	if haul_t >= 0.0 and kind == "balloon" and _haul_node == null:
 		_draw_haul(self)
@@ -7997,7 +8018,7 @@ func do_dismount() -> void:
 		var man: Vector2 = mount_man(art, mount_dir(_mount_face))
 		if _mount_face.x < 0.0:
 			man.x = -man.x
-		position = game.resolve_terrain(position + man, position, radius, team)
+		position = game.resolve_terrain(position + man, position, ground_r(), team)
 	else:
 		# (the horse stands a step behind him, a little to one side: clear of his line of fire,
 		# and not drawn over him so he looks still mounted)

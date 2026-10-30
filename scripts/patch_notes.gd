@@ -4,6 +4,12 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.22.3", "items": [
+		"FIX: THE BROOD MOTHER CAN HIT A GATE ON A RAMP. Sent to ATTACK a gate (or anything out of her reach), the uprooted Mother stood still: she never chased what she was told to attack (a rule meant for the computer's Mother, kept on a leash at home). Now she goes for what you send her at, on ATTACK and ATTACK-MOVE; on her own (idle, HOLD) she still stands her ground, and the computer's Mother keeps her leash.",
+		"FIX: big Brood creatures got stuck at the top or foot of a ramp. The Mother's body was too wide to stand on a ramp's side lane where the path ran, and she stood pressing at the ramp's edge (the Tyrant Sire nearly so). The Mother, the Sires and the Mound Turtle now walk the ground with a narrower body: every ramp, 2 or 3 tiles wide, at every stage of the Mother.",
+		"THE MOTHER'S SIZE: her picture still grows with her stage (x1.15, x1.3), but her body does not, so she still fits through every ramp. She reaches from her drawn edge, enemies reach her at her drawn edge, and a click anywhere on her picture picks her.",
+		"SACRIFICE: the eggs a sacrifice gives back are now per EGG: the young of one egg together give the Mother ONE egg (two Raptors of one egg: one egg; three of a Bigger Clutch: one egg), not one each. Spoils are paid for each creature as before. A creature that hatches alone (a Brute) gives a whole egg; a matured Challenger counts as the young it was.",
+	]},
 	{"v": "0.22.2", "items": [
 		"The TYRANT SIRE, the father every Brood opening needs (Raptors), is now the cheaper one: 150 food and 30 s (was 200, 35 s). The VENOM SIRE, the specialist, costs 200 food and 35 s (was 150, 30 s).",
 	]},

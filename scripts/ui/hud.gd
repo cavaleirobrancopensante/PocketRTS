@@ -3808,7 +3808,7 @@ const CMD_TIPS := {
 	"CANISTER": "Short range, a cone of musket balls: big damage, +50% against Light units, and it hits flyers.",
 	"ROUND SHOT": "The longest range in the game. The ball ploughs through a line of men, YOUR OWN TOO, and smashes buildings. Can't hit flyers.",
 	"HARVEST": "The grubs wrap every body nearby (friend or foe) in a cocoon and carry it to the Brood Mother as spoils. Bodies rot after 2 minutes.",
-	"SACRIFICE": "The selected creatures (not grubs) walk to the Brood Mother and she devours them: spoils for each, and one egg at once if her clutch has room.",
+	"SACRIFICE": "The selected creatures (not grubs) walk to the Brood Mother and she devours them: spoils for each, and eggs back by the egg: the young of one egg together give one egg (a Brute one each), at once if her clutch has room.",
 	"HOLD FIRE": "Pistols (glowing = on): Horsemen, Cuirassiers and Officers keep their one pistol shot and fight with the sabre only, until you turn it off. (HOLD is still stand-ground.)",
 	"FOG": "50 energy: a fog bank on a spot for 12 s. Shots fired from or into it miss half the time (yours too); units inside see 2 tiles.",
 	"TONGUE": "75 energy: mark an enemy on the ground for 3 s, then drag it to the Toad's feet. Heavy engines are only staggered.",

@@ -163,7 +163,7 @@ static func boxed(g: Game, u: Unit) -> bool:
 		return false
 	if own_cell(g, g.idx(c), u.team):
 		return true
-	return g.sealed_in(u.position) or not g._clear_at(u.position, u.radius, u.team)
+	return g.sealed_in(u.position) or not g._clear_at(u.position, u.ground_r(), u.team)
 
 
 static func start_pass(g: Game, u: Unit) -> void:
@@ -228,14 +228,14 @@ static func clear_for(g: Game, p: Vector2, radius: float, t: int) -> bool:
 static func pass_move(g: Game, u: Unit, p: Vector2, before: Vector2, delta: float) -> Vector2:
 	u.nb_pass = maxf(0.0, u.nb_pass - delta)
 	var out := p
-	if not clear_for(g, p, u.radius, u.team):
+	if not clear_for(g, p, u.ground_r(), u.team):
 		out = before
-		if clear_for(g, Vector2(p.x, before.y), u.radius, u.team):
+		if clear_for(g, Vector2(p.x, before.y), u.ground_r(), u.team):
 			out = Vector2(p.x, before.y)
-		elif clear_for(g, Vector2(before.x, p.y), u.radius, u.team):
+		elif clear_for(g, Vector2(before.x, p.y), u.ground_r(), u.team):
 			out = Vector2(before.x, p.y)
 	var c := g.cell_of(out)
-	if g._clear_at(out, u.radius, u.team) and g.in_open_map(c) and not own_cell(g, g.idx(c), u.team):
+	if g._clear_at(out, u.ground_r(), u.team) and g.in_open_map(c) and not own_cell(g, g.idx(c), u.team):
 		u.nb_pass = 0.0           # (clear of them: a unit like any other)
 	return out
 
@@ -1160,7 +1160,7 @@ static func _fly_look(u: Unit, cs: Sprite2D, ground: Vector2, fly_f: float, sh_f
 		a = 0.4 * (1.0 - sh_f)
 	fn.set_meta("sh", sh)
 	fn.set_meta("a", a)
-	fn.set_meta("r", float(u.radius + 2.0) * (1.0 - 0.35 * (1.0 - clampf(sh_f if sh_f >= 0.0 else fly_f, 0.0, 1.0))) * ask)
+	fn.set_meta("r", float(BroodNew.look_r(u) + 2.0) * (1.0 - 0.35 * (1.0 - clampf(sh_f if sh_f >= 0.0 else fly_f, 0.0, 1.0))) * ask)
 	fn.queue_redraw()
 
 
