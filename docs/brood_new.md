@@ -126,7 +126,7 @@ THE STORM LINE is in since 0.21.0 (docs/storm_line.md): the Storm Sire fathers H
 | Health, armour | 1,000, 2 | 650, 1 | 700, 1 |
 | Speed | 64 (walks) | 78 (walks) | 110 (flies) |
 | Attack | bite 42 every 1.9 s (22 a second), melee | venom 20 every 1.6 s (12.5 a second) + acid 4 s, range 140, ground and air | dive bite 30 every 1.7 s (17.6 a second), melee, ground and air |
-| Cost | 200 food (+ the grub's 50) | 150 food (+ the grub) | 200 food, 50 spoils (+ the grub) |
+| Cost | 150 food (+ the grub's 50; was 200 until 0.22.2) | 200 food (+ the grub; was 150 until 0.22.2) | 200 food, 50 spoils (+ the grub) |
 | Morph time | 35 s | 30 s | 40 s |
 | Supply | 4 | 4 | 4 |
 | Rooted footprint | 4x3 | 3x3 | 4x3 |

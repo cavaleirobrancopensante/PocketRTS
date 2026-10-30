@@ -1095,9 +1095,11 @@ const UNITS := {
 		"faction": "brood", "new_brood": true,
 		"about": "A swamp lizard that feeds the Brood. ROOT it on fresh ground on your swamp (3,000 food in a 5-tile circle; rooted circles may not overlap): it drinks the ground and swells, and grubs carry the food from its flank to the Brood Mother (farther pays more). Rooted it has more armour. UPROOT spills its food as a pile (grubs still collect it; it rots); HAUL walks off with it, slow and fat (killed hauling, it bursts). It bites.",
 	},
+	# (the owner, 2026-10-30: the Tyrant Sire, the basic line every opening needs, is the CHEAPER father (150 food,
+	# 30 s); the Venom Sire, the specialist, costs 200 food, 35 s. It was the other way round, priced by body.)
 	"tyrannosaur": {
 		"tags": ["armored"],
-		"name": "Tyrant Sire", "hp": 1000, "armor": 2, "speed": 64, "cost": 200, "time": 35.0, "supply": 4,
+		"name": "Tyrant Sire", "hp": 1000, "armor": 2, "speed": 64, "cost": 150, "time": 30.0, "supply": 4,
 		"sight": 9, "range": 40, "damage": 42, "cooldown": 1.9, "aim": 0.35, "radius": 30, "from": "brood_mother",
 		"building_bonus": 1.4, "faction": "brood", "new_brood": true, "father": true,
 		"about": "A FATHER, open from the start: rooted on his nest beside the Brood Mother, he breathes on the eggs of his line (Raptors; Brutes from her stage 3) to fertilise them; an egg no father reaches in time hatches as a grub. Only one at a time. A terrible biter, but away from her no Raptors or Brutes are fathered.",
@@ -1105,7 +1107,7 @@ const UNITS := {
 	# THE SECOND AND THIRD FATHERS (the owner, 2026-10-29 11:10: the father lines; numbers: Claude's choice, docs/brood_new.md)
 	"dilophosaurus": {
 		"tags": ["armored"],
-		"name": "Venom Sire", "hp": 650, "armor": 1, "speed": 78, "cost": 150, "time": 30.0, "supply": 4,
+		"name": "Venom Sire", "hp": 650, "armor": 1, "speed": 78, "cost": 200, "time": 35.0, "supply": 4,
 		"sight": 9, "range": 140, "damage": 20, "cooldown": 1.6, "aim": 0.4, "radius": 22, "from": "brood_mother",
 		"acid": 4.0, "anti_air": true, "building_bonus": 1.2, "faction": "brood", "new_brood": true, "father": true,
 		"about": "A FATHER, open from the start: rooted on his nest beside the Brood Mother, he fertilises the eggs of his line (Spitters from the start, Mist Toads from her stage 3). Uprooted he walks and SPITS venom from afar (on flyers too), a strong Spitter of his own. Only one at a time.",
