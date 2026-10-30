@@ -412,12 +412,14 @@ func _think_stage(i: int) -> void:
 			_build_up()
 			_lap("ai/build", pt)
 		2:
+			var kept := _hide_kept()
 			_research()
 			_produce()
 			pt = _lap("ai/produce", pt)
 			if difficulty >= 1 and _crown() and not peaceful:
 				_raid()
 				_balloon_drop()
+			game.players[team]["gold"] += kept
 			_lap("ai/raid", pt)
 		3:
 			scout.tick()
@@ -425,8 +427,10 @@ func _think_stage(i: int) -> void:
 			_lap("ai/army", pt)
 		4:
 			if _crown():
+				var kept := _hide_kept()
 				_tend_wagon()
 				_horses()
+				game.players[team]["gold"] += kept
 			pt = _lap("ai/horses", pt)
 			_loose_horses()
 			pt = _lap("ai/loose", pt)
@@ -577,6 +581,8 @@ func _turrets() -> void:
 	var k := Defs.CW_TURRET
 	if not game.requirement_met(team, k) or _busy_building(k) or _gold() < int(Defs.BUILDINGS[k]["cost"]):
 		return
+	if _keeping() and _gold() - int(Defs.BUILDINGS[k]["cost"]) < _hall_keep():
+		return          # (ai-expand: the hall plan's gold first)
 	var have := _mine(k).size()
 	var want := 0
 	if game.clock > _lv([420.0, 300.0, 240.0]) or (_threat() != Vector2.INF and game.clock > 150.0):
@@ -1321,6 +1327,8 @@ func _workers() -> void:
 	var cap := 0
 	for b in game.buildings:
 		if b.team == team and not b.dead and b.crew_max() > 0:
+			if (b.kind == "farm" and b.soil_left() <= 0.0) or (b.kind == Defs.GEAR_PRESS and b.lode_left() <= 0.0):
+				continue        # (spent land has no posts: no hands are trained for it, ai-expand)
 			cap += b.crew_max()
 	var fill: float = 0.75 if difficulty == 0 else 1.0
 	var extra := 2
@@ -1344,6 +1352,8 @@ func _workers() -> void:
 	# (a feared rush with a Barracks standing: the first Musketeers before more labourers)
 	if _army_first() and labs.size() >= (6 if safe_opening else 8) + (4 if opening == "breeder" else 0) and not _mine("barracks").filter(func(b: Building) -> bool: return b.built).is_empty():
 		hold_gold = true
+	if _keeping() and _gold() < _hall_keep() + 50:
+		hold_gold = true            # (ai-expand: the hall plan's gold is not spent on more hands for spent land)
 	if r5.hold_labourers(labs.size() + queued):
 		hold_gold = true            # (round 5: against the Clockwork the army catches up first)
 	if _clock() and _mine(_works()).is_empty() and game.clock > _lv([90.0, 60.0, 40.0]) and labs.size() >= 7 \
@@ -1369,8 +1379,40 @@ func _workers() -> void:
 		_fill_farm(labs)
 	if _crown():
 		_move_off_tired_soil(labs)
+	_unpark()
 	if _clock():
 		_tend_sites(labs)
+
+
+## AI-EXPAND (0.24.2): hands let go by spent land with no post free become HAULERS waiting at a hall (Game.free_site's
+## fallback) and stayed there when a new hall's Farm came up: 10 Labourers waited by the Town Halls while the new Farm had 1
+## of 8 (test_ai_expand). A waiting hauler beyond KEEP_HAULERS a hall goes to a post with room on land that pays, a few a think.
+const KEEP_HAULERS := 2
+
+
+func _unpark() -> void:
+	var waiting := {}           # hall -> its waiting haulers
+	for u in game.units:        # (Game.workers leaves haulers out)
+		if u.team != team or u.dead or not u.is_worker() or u.aboard != null:
+			continue
+		var h = u.home_mine
+		if u.order != "gather" or not (h is Building) or (h as Building).haul_cap() <= 0 or not u.haul_job.is_empty() or u.carrying > 0:
+			continue
+		if not waiting.has(h):
+			waiting[h] = []
+		waiting[h].append(u)
+	var moved := 0
+	for h in waiting:
+		var list: Array = waiting[h]
+		for i in range(KEEP_HAULERS, list.size()):
+			if moved >= 3:
+				return
+			var u: Unit = list[i]
+			var site := game.free_site(team, u.position)
+			if site == null or site.haul_cap() > 0 or site.barren() or _unsafe(site.center(), u.position):
+				return          # (no paying post with room: they wait)
+			u.cmd_gather(site)
+			moved += 1
 
 
 # ---- worker safety (a good player keeps mining, pulls the hands out of reach of what they
@@ -2078,9 +2120,11 @@ func _hall_first() -> bool:
 		return false
 	_hall_reserve = true
 	_saving = true
-	var cost := int(Defs.BUILDINGS[hall]["cost"])
+	var cost := int(Defs.BUILDINGS[hall]["cost"]) + (_first_econ_cost() if _dry() else 0)     # (dry land: the Farm / press too)
 	if _stage_spot.x < 0 or game.placement_problem(team, hall, _stage_spot, true) != "":
 		_stage_spot = _safe_hall_spot()
+		if _stage_spot.x < 0 and _best_soil() < DRY_LAND:
+			_stage_spot = _last_resort_spot()
 		_stage_t = game.clock
 		if _stage_spot.x < 0:
 			_hall_reserve = false
@@ -2120,6 +2164,100 @@ func _hall_first() -> bool:
 	return true
 
 
+## AI-EXPAND (0.24.2; the owner's game 2026-10-30, v0.24.0 Cinder Steps: the Crown's main went barren at 13:41 and it earned
+## nothing till 23:30 with 36 idle Labourers). Since 0.24.0 spent land pays nothing at all (docs/exhaust_economy.md), so a
+## computer with its land nearly gone takes ANY free hall ground: when _safe_hall_spot finds none (every site on the
+## enemy's side, by its natural, or where a hall was lost), the nearest free spot by our halls or a base site not in the
+## enemy's yard (design_principles 2: depletion forces expansion; a barren computer is no opponent).
+const DRY_LAND := 0.25
+
+
+## The first economy building a new hall needs (a Farm / a Cog Press): with the land dry nothing pays for it after the hall.
+func _first_econ_cost() -> int:
+	return int(Defs.BUILDINGS[Defs.GEAR_PRESS if _clock() else "farm"]["cost"])
+
+
+## True while our built halls' land is nearly gone (under DRY_LAND).
+func _dry() -> bool:
+	return (_crown() or (_clock() and Defs.gear_mode)) and not _halls().is_empty() and _best_soil() < DRY_LAND
+
+
+## A finished hall on fresh land with no Farm / Cog Press yet while every other hall is dry: its first one is paid
+## before anything else (the 0.24.0 Crown finished its new Town Hall on spent land and spent the Farm's gold on soldiers).
+func _bare_hall() -> bool:
+	if not (_crown() or (_clock() and Defs.gear_mode)):
+		return false
+	var econ: String = Defs.GEAR_PRESS if _clock() else "farm"
+	var fresh: Array = []
+	for h in _halls():
+		if h.built and _land(h) >= DRY_LAND:
+			fresh.append(h)
+	if fresh.size() != 1 or _halls().filter(func(h: Building) -> bool: return h.built).size() < 2:
+		return false        # (none fresh: _dry's rule; two or more: an economy that pays; the main alone: the opening)
+	for b in _mine(econ):
+		if game.nearest_hall(b.center(), team) == fresh[0]:
+			return false
+	return true
+
+
+## The gold the hall plan keeps back (training, research, other buildings and new workers wait below it): the hall's
+## cost, and with the land dry its first Farm / Cog Press as well; while that hall goes up on dry land, the Farm's / press's.
+func _hall_keep() -> int:
+	if _bare_hall() or (_dry() and _busy_building(_f()["hall"])):
+		return _first_econ_cost()
+	if not _dry():
+		return int(Defs.BUILDINGS[_f()["hall"]]["cost"])
+	if _busy_building(_f()["hall"]):
+		return _first_econ_cost()
+	return int(Defs.BUILDINGS[_f()["hall"]]["cost"]) + _first_econ_cost()
+
+
+## AI-EXPAND: the hall plan's gold is set aside while the army, research and horses are paid for (they each check the
+## bank, some train several things a think: 0.24.0's Crown laid its hall on dry land and spent the Farm's gold on two
+## Cuirassiers and horses the same second, then had no income for good). Returns what was set aside; the caller puts it back.
+func _hide_kept() -> int:
+	if not _keeping():
+		return 0
+	var k: int = mini(int(game.players[team]["gold"]), _hall_keep())
+	game.players[team]["gold"] -= k
+	return k
+
+
+## Keeping gold for the hall plan now (see _hall_keep).
+func _keeping() -> bool:
+	return _hall_reserve or _low_soil_keep() or (_dry() and _busy_building(_f()["hall"])) or _bare_hall()
+
+
+func _last_resort_spot() -> Vector2i:
+	var hall: String = _f()["hall"]
+	var home := Vector2(game.starts[team]) + Vector2(2.5, 2.0)
+	var cands: Array = []
+	for bs in game.base_sites:
+		if game.placement_problem(team, hall, bs, true) == "" and (not _clock() or _lode_value(bs) > 1.0):
+			cands.append(bs)
+	for h in _halls():
+		if h.built and not _clock():
+			for pref in ["near", "far_safe"]:
+				var sp := game.find_spot(team, hall, h, Defs.HALL_SPACING, Defs.HALL_SPACING + 16, pref)
+				if sp.x >= 0:
+					cands.append(sp)
+	var foe := _foe_ground(false)
+	var best := Vector2i(-1, -1)
+	var bs_d := INF
+	for c in cands:
+		var cc := Vector2(c) + Vector2(Defs.BUILDINGS[hall]["size"]) * 0.5
+		var foe_d := INF
+		for fp in foe:
+			foe_d = minf(foe_d, cc.distance_to(fp))
+		if foe_d < 12.0 or float(_hall_bad.get(c, -1.0)) > game.clock:
+			continue
+		var d := cc.distance_to(home) - _lode_value(c)
+		if d < bs_d:
+			bs_d = d
+			best = c
+	return best
+
+
 ## Round 6 (Crown, Normal and up): once the best soil left at any finished hall is under LOW_SOIL_KEEP and no new hall is
 ## going up, a Town Hall's gold stays in the bank (training, research and other buildings wait for the gold above it),
 ## unless enemies are at our buildings (the army is trained to defend). 0.14.100 Kestrel Rise (seed 14, film b): the
@@ -2128,14 +2266,18 @@ const LOW_SOIL_KEEP := 0.25
 
 
 func _low_soil_keep() -> bool:
-	if not r6_cr or not _crown() or difficulty < 1 or peaceful or _halls().size() >= 7:
+	# (ai-expand 0.24.2: the Clockwork too, and Easy as well: spent land pays nothing since 0.24.0)
+	if not (_crown() or (_clock() and Defs.gear_mode)) or (_crown() and not r6_cr) or _halls().size() >= 7:
 		return false
-	if _best_soil() >= LOW_SOIL_KEEP:
+	var soil := _best_soil()
+	if soil >= LOW_SOIL_KEEP:
 		return false
 	for h in _halls():
 		if not h.built:
 			return false        # (a new hall is going up: its gold is spent already)
-	return _threat() == Vector2.INF
+	# (with the land nearly gone the hall's gold is kept even with enemies about: a Brood creature lingering by a Farm kept
+	# the Crown spending to the last coin, then barren for ten minutes; 0.24.0 Cinder Steps)
+	return _threat() == Vector2.INF or soil < 0.1
 
 
 ## Round 6: the enemy army we can see within EXPAND_SEEN of a spot (value), and what our army could stand there with.
@@ -2524,7 +2666,7 @@ const RESEARCH_AT := {"bayonet": ["musket", 3], "matchlock": ["musket", 4], "cha
 
 func _research() -> void:
 	_refit_army()
-	if _hall_reserve or (_low_soil_keep() and _gold() < int(Defs.BUILDINGS[_f()["hall"]]["cost"]) + 150):
+	if _hall_reserve or (_keeping() and _gold() < 150):      # (the hall plan's gold is set aside already: _hide_kept)
 		return
 	var army := game.army(team)
 	var n := {"musket": 0, "horse": 0, "soldier": 0, "gun": 0}
@@ -3397,7 +3539,8 @@ func site_failed(b: Building, why := "blocked") -> void:
 func _construct(kind: String, at := Vector2i(-1, -1)) -> void:
 	if _gold() < int(Defs.BUILDINGS[kind]["cost"]):
 		return
-	if kind != String(_f()["hall"]) and _low_soil_keep() and _gold() - int(Defs.BUILDINGS[kind]["cost"]) < int(Defs.BUILDINGS[_f()["hall"]]["cost"]):
+	if kind != String(_f()["hall"]) and not (Defs.is_econ(kind) and ((_dry() and _busy_building(_f()["hall"])) or _bare_hall())) and _keeping() \
+			and _gold() - int(Defs.BUILDINGS[kind]["cost"]) < _hall_keep():
 		return          # (round 6: the soil is nearly spent: a Town Hall's gold stays in the bank)
 	if game.clock - float(_abandoned.get(kind, -99.0)) < ABANDON_WAIT:
 		return          # (a site of this kind was just dropped, its builder fled: not again at once into the same danger)
@@ -3512,7 +3655,7 @@ func _find_spot(kind: String) -> Vector2i:
 func _produce() -> void:
 	# Saving up only pauses the army once there is a minimum army to hold the line.
 	var minimum := mini(40, 6 + int(game.clock / 20.0))
-	if (_hall_reserve or _low_soil_keep()) and _gold() < int(Defs.BUILDINGS[_f()["hall"]]["cost"]) + 30:
+	if _keeping() and _gold() < 30:          # (the hall plan's gold is set aside already: _hide_kept)
 		return          # (Crown: the new Town Hall first, whatever the army; round 6: and a hall's gold kept once the soil runs low)
 	if _tech_hold:
 		minimum = mini(minimum, _lv([12, 8, 6]))     # (gear mode: the tech before more Clock Soldiers: _tier2)
