@@ -55,6 +55,7 @@ var stuck_t := 0.0
 var squeeze_t := 0.0            # > 0: walking out of a sealed pocket through a building's edge (last resort)
 var nb_pass := 0.0              # > 0: a Brood creature walking out through its own side's rooted creatures (BroodRoot.pass_move)
 var _nb_top := -9999.0          # the Brood: where its bar sits over its drawn body (Unit._draw)
+var _nb_top_key := ""           # the Mother: her art and rooted state the steady _nb_top was taken for
 var wall_flee_t := 0.0          # (computer) pulled back from a wall that shooters behind it cover
 var siege_t := 0.0              # (computer) its army is breaking in at a wall: the AI's siege gives the orders
 var _wall_chk := 0.0
@@ -7558,7 +7559,15 @@ func bar_top(lifted := 0.0) -> float:
 		var br := BroodRoot.body_rect(self)
 		if br.size.x > 2.0:
 			var bt := br.position.y - global_position.y - 2.0
-			if absf(bt - _nb_top) > 14.0:
+			if kind == BroodNew.QUEEN:
+				# THE MOTHER'S BAR AND EGG LINE STAY PUT (the owner, 2026-10-30: it went up and down with her laying and
+				# swiping): the highest her body has reached in this picture (stage) and rooted state, never lower
+				var key := art + ("|r" if BroodRoot.fixed(self) else "|w")
+				if key != _nb_top_key or _nb_top < -9000.0:
+					_nb_top_key = key
+					_nb_top = bt
+				_nb_top = minf(_nb_top, bt)
+			elif absf(bt - _nb_top) > 14.0:
 				_nb_top = bt
 			top = _nb_top
 	return top

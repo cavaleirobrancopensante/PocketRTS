@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.7", "items": [
+		"The Brood Mother's egg line and health bar stay put: they no longer bob up and down as she lays, swipes or walks, so her egg count and its tooltip are easy to read.",
+	]},
 	{"v": "0.24.6", "items": [
 		"POWDER SMOKE, SMOOTHER: the puffs no longer show square edges when they grow (the painted frames touched their borders: each puff now fades out in a soft circle), no longer pop at the edge of the screen, and fade in over half a second. No puff vanishes at once any more: near the limit the oldest age faster and a new shot waits instead of wiping out an old puff.",
 		"POWDER SMOKE, NO MORE WHITE WALL: where many volleys land in one place the smoke merges into one cloud: each puff there is drawn thinner and ages faster, and a full cloud takes only some of a new shot's puffs. A heavy firefight still leaves a haze that lingers, but it thins steadily: after 30 Musketeers and 4 Field Cannons fire for 12 s, the thickest spot is about a third as solid as before (no white wall), and the haze still lingers some 20 s, thinning steadily.",
