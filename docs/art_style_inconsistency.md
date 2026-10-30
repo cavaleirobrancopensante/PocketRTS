@@ -518,3 +518,4 @@ The stars circling over a stunned unit's head are drawn in code: one 15 px five-
 - THE ICONS (tools/make_band_icons.py, drawn in code with PIL): the band's portrait (assets/icons/band.png: drum, crossed fife, drones) and its three buttons (ab_band_drums, ab_band_pipes, ab_band_fife). Flat shapes on a gradient, not the painted look of the other icons: ChatGPT icons wanted (same names, 64x64).
 - THE SOUND (tools/audio/make_band_sounds.py): the drums are the owner's snare recordings, the fife the real fife notes (fife_sampler), but the BAGPIPES are synthesised (two drones and a reedy chanter): a real pipes recording would sound much better.
 - (owner, 2026-10-30 19:13) TO REDRAW: the Brood Mother's rearing-up frames in her nest's production (laying) animation show TWO TAILS. Add to the ChatGPT redraw list.
+- (owner, 2026-10-30 19:33) TO REDRAW: the Spitter's EAST walk has no real gait (the legs don't step one by one).
