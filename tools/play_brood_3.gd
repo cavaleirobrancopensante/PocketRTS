@@ -34,7 +34,8 @@ extends "res://tools/play_brood_new.gd"
 ##   ecox     the same on the Economy profile (more grubs, the third turtle sooner)
 ##   ecoair   the AIR RUSH again on the owner's economy: spoils banked from offered-up Raptors for the Storm line (her
 ##            stage 2 early, the Storm Sire, Hatchlings, her stage 3, MATURE into Storm Challengers), then attack with them
-## The new SACRIFICE rule (one egg back per egg's worth of young) is applied by tools/brood_one_egg.gd (onegg:0 off).
+## The new SACRIFICE rule (one egg back per egg's worth of young) is the game's since 0.22.3 (onegg:1: tools/brood_one_egg.gd
+## applies it to an older build).
 
 const COACH := {
 	"rush": {"strategy": "xrush", "set": {}},
@@ -51,7 +52,7 @@ const COACH := {
 	"ai": {"strategy": "", "set": {}},
 	"eco": {"strategy": "balanced", "set": {"eco": true}},
 	"ecox": {"strategy": "economy", "set": {"eco": true}},
-	"ecoair": {"strategy": "air", "set": {"eco": true, "grow": [150.0, 360.0], "storm": 150.0, "storm_want": 12, "spoils_bank": 90.0,
+	"ecoair": {"strategy": "air", "set": {"eco": true, "grow": [150.0, 360.0], "storm": 150.0, "storm_want": 12, "spoils_bank": 150.0,
 		"wave": 16, "wave_t": 420.0, "mature": "push"}},
 }
 
@@ -85,7 +86,7 @@ func _initialize() -> void:
 			"sb2": strat2 = kv[1]
 			"ramp": ramp_job = kv[1] == "1"
 			"noscout": noscout = kv[1] == "1"
-			"onegg": _egg_rule.on = kv[1] != "0"
+			"onegg": _egg_rule.on = kv[1] == "1"
 			"set":
 				for pair in kv[1].split(","):
 					var p := pair.split("=", true, 1)

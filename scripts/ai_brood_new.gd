@@ -47,6 +47,10 @@ var held: Array = []             # creatures it leaves alone (a coach's hand ord
 ##  home_guard        Raptors kept home when a wave leaves (after the first)
 ##  drone             grubs a minute on the curve that comes before warriors (from the 5 it starts with)
 ##  maws0 / ahead0    a rush: Rootmaws before the first wave; supply kept ahead for it (the turtle right after the Sire)
+##  eco               the owner's economic build (2026-10-30, docs/brood_eco.md): the natural first, far Rootmaws, grubs
+##                    nonstop, her growth when eggs hold it back, the watching grub and the alarm
+##  spoils_bank       spoils kept wanted (Raptors laid and offered up for them): the Air rush's Storm line
+##  storm_want        Hatchlings kept to mature into Storm Challengers
 ##  edge              a wave goes only with this share of the biggest enemy army seen lately (0.6; 0.3 against the
 ##                    Clockwork), or at the supply cap
 ## Settings only a tool or a coach sets (tools/play_brood_3.gd): "sire_leads" (a Sire walks with the waves:
@@ -69,7 +73,7 @@ const PLANS := {
 		"venom": 420.0, "storm": 480.0, "far": [[0.0, 1], [240.0, 2], [480.0, 3]], "eco": true, "wave": 34, "wave_t": 510.0, "step": 12,
 		"pack": true, "mix": "venom", "mature": "push", "home_guard": 4},
 	"air": {"drone": 6.0, "sire_g": 11, "sire_t": 110.0, "grubs0": 0, "grubs": 36, "maws": [2, 85.0, 9], "grow": [180.0, 420.0],
-		"venom": 600.0, "storm": 200.0, "far": [[0.0, 1], [360.0, 2]], "eco": true, "wave": 18, "wave_t": 420.0, "step": 8, "pack": false,
+		"venom": 600.0, "storm": 150.0, "far": [[0.0, 1], [360.0, 2]], "eco": true, "spoils_bank": 120.0, "storm_want": 8, "wave": 18, "wave_t": 420.0, "step": 8, "pack": false,
 		"mix": "tyrant", "mature": "push", "home_guard": 3},
 }
 
@@ -202,12 +206,12 @@ func _alarm_on() -> bool:
 ## THE OWNER'S BUILD, its brake: grubs nonstop, but never with an army far smaller than the enemy army its creatures saw
 ## lately (the watching grub in the Clockwork's main sees it gather). In the first games of this round the Brood had 40
 ## grubs and no army at 7:00, and a Clockwork army of 2,000 took its Tyrant Sire and a third of its grubs. Warriors
-## first (with 16 grubs or more) while its army is under ARMED_SHARE of what it saw (0.5 against the Clockwork, which
+## first (with 16 grubs or more) while its army is under this share of what it saw (0.7 against the Clockwork, which
 ## comes early; 0.3 against the others).
 func _under_armed() -> bool:
 	if not _eco() or game.clock < 150.0 or seen_army < 200.0:
 		return false
-	var share := 0.5 if _foe_is("clockwork") else 0.3
+	var share := 0.7 if _foe_is("clockwork") else 0.3
 	return _value_of(_nb_army_units()) < seen_army * share
 
 
@@ -1145,6 +1149,19 @@ func _nb_spoils_want(q: Unit) -> float:
 	return want
 
 
+## Raptors to be laid for spoils: the plan banks spoils ("spoils_bank": the Air rush) or its Storm Sire / her stage 3
+## waits for them, and the spare Raptors at home are not enough to cover what is short.
+func _nb_feed_raptors(q: Unit) -> bool:
+	if float(plan.get("spoils_bank", 0.0)) <= 0.0 or _rush_on() or _attacking:
+		return false
+	var short := _nb_spoils_want(q) - _spoils()
+	if short <= 0.0:
+		return false
+	var spare := _nb_mine("raptor").filter(func(u: Unit) -> bool: return u.position.distance_to(q.position) < 16.0 * Defs.TILE \
+		and not _wave.has(u)).size() - maxi(2, int(plan["home_guard"]))
+	return float(spare) * float(Game.sacrifice_value("raptor")) < short
+
+
 func _nb_essence(q: Unit) -> void:
 	var want := _nb_spoils_want(q)
 	var have := _spoils()
@@ -1199,6 +1216,11 @@ func _nb_lay(q: Unit) -> void:
 	var danger := _nb_threat(q) != Vector2.INF or _rush_on() or _alarm_on() or (_under_armed() and grubs >= 16)
 	if grubs < want_grubs and (grubs < 6 or not any_father or (grubs < curve and not danger) or food - keep >= 200):
 		k = "grub"
+	# SPOILS FROM RAPTORS (the owner, 07:15: the Storm line and the Air rush are paid by offering Raptors up): while the
+	# spoils wanted now are short and too few spare Raptors stand at home to offer, a Raptor egg comes before the grub
+	# curve (with 12 grubs or more); _nb_essence offers them up as they hatch
+	if k == "grub" and grubs >= 12 and _nb_feed_raptors(q) and BroodNew.father_near(game, team, BroodNew.FATHER) and food - keep >= 50:
+		k = "raptor"
 	if k == "" and any_father:
 		k = _nb_warrior(food - keep)
 	if k == "" or BroodNew.lay_problem(game, q, k) != "":
@@ -1441,7 +1463,7 @@ func _nb_stage_point(q: Unit) -> Vector2:
 			if _nb_on_map(p) and game._walkable(game.cell_of(p)):
 				return p
 			return nat.position + Vector2(0, nat.radius + 40.0)
-	var tgt: Vector2 = q.position + Vector2(0, q.radius + 110.0)
+	var tgt: Vector2 = q.position + Vector2(0, BroodNew.drawn_r(q) + 110.0)
 	if foe >= 0:
 		var st := (Vector2(game.starts[foe]) + Vector2(2.5, 2.0)) * Defs.TILE
 		var p: Vector2 = q.position + (st - q.position).normalized() * 9.0 * Defs.TILE

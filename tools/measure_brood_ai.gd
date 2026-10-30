@@ -7,7 +7,7 @@ extends SceneTree
 ##   bank at each minute, losses and kills.
 ##   godot --headless --fixed-fps 30 --script res://tools/measure_brood_ai.gd -- \
 ##       [map:hollowfen] [seed:4242] [foe:crown|clockwork] [secs:900] [who:hard] [plan:balanced] [foeplan:balanced] [tag:x]
-##       [onegg:0]  (the new SACRIFICE rule, one egg back per egg's worth of young, is on by default: tools/brood_one_egg.gd)
+##       [onegg:1]  (an older build: the new SACRIFICE rule applied by the tool, tools/brood_one_egg.gd; the game has it since 0.22.3)
 ## Brood economy (docs/brood_eco.md): income a minute of both sides ("inc", "foe_inc": food / gold earned that minute),
 ## grubs and rooted Rootmaws a minute, the first Mound Turtle on new ground ("natural": when, how far), the third Rootmaw
 ## rooted ("maw3"), the scouting grub out ("scout"), spoils earned and Raptors offered up.
@@ -48,7 +48,7 @@ func _initialize() -> void:
 			"plan": plan = kv[1]
 			"foeplan": foeplan = kv[1]
 			"tag": tag = kv[1]
-			"onegg": _egg_rule.on = kv[1] != "0"
+			"onegg": _egg_rule.on = kv[1] == "1"
 			"set":
 				for pair in kv[1].split(","):
 					var p := pair.split("=", true, 1)

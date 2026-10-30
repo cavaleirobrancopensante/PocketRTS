@@ -4,9 +4,9 @@ extends RefCounted
 ## (two Raptors offered up gave the Mother two eggs; spoils unchanged). That fix is made on its own branch (brood-fixes);
 ## until it is in, the tools take the extra eggs back here so the numbers they measure are the new rule's. Each young
 ## creature offered up beyond the first of its egg's brood (2 Raptors to an egg, 3 with BIGGER CLUTCH) takes back the egg
-## the Mother was given for it (or the next one she lays). Off with `onegg:0` (once brood-fixes is merged, the game does
-## it itself: BroodNew.devour gives an egg only for a whole egg's worth, and this must be switched off).
-var on := true
+## the Mother was given for it (or the next one she lays). Since 0.22.3 (brood-fixes merged) the game does it itself
+## (BroodNew.devour: egg parts), so this is OFF by default; `onegg:1` switches it on for measuring an older build.
+var on := false
 var _seen := 0
 var _n := {}                    # kind -> young of it offered up so far
 var _debt := 0                  # eggs still to take back (the Mother had none when one was due)
