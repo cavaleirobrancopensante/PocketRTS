@@ -97,7 +97,7 @@ static func tempo_of(kind: String, big: bool) -> float:
 	return float(tt[kind][1 if big else 0])
 
 
-## A building's tempo (its ring now; while its gear is swapped, the gear it had).
+## A building's tempo (its ring's size).
 static func tempo(b: Building) -> float:
 	return tempo_of(b.kind, b.gear_big)
 
@@ -286,7 +286,7 @@ func speed_mult(b: Building) -> float:
 	if Defs.TENSION_USERS.has(b.kind) and not spring_of.has(b):
 		return 0.0
 	# (its drive share, times its ring size's tempo: a small Light Works trains 15% faster, Defs.GEAR "tempo")
-	return GearEcon.work_mult(self, b) * tempo(b) if linked.has(b) and b.gear_swap_t < 0.0 else 0.0
+	return GearEcon.work_mult(self, b) * tempo(b) if linked.has(b) else 0.0
 
 
 ## A Tension user's Mainspring (its ring meshing with this one's), null when it has none (or is not connected).
@@ -488,7 +488,7 @@ func band_at(p: Vector2, grow := 0.0) -> int:
 	return best
 
 
-## Is the band at index i turning now (its ring connected and not stopped for a gear swap)?
+## Is the band at index i turning now (its ring connected and turning)?
 func band_turning(i: int) -> bool:
 	var b: Building = bands[i][0]
 	return is_instance_valid(b) and not b.dead and absf(float(spin_w.get(b, 0.0))) > 0.0001
@@ -716,15 +716,6 @@ func tick(delta: float) -> void:
 	_clock += delta
 	if game == null:
 		return
-	if not game.puppet:
-		for b in game.buildings:
-			if is_instance_valid(b) and b.gear_swap_t >= 0.0 and not b.dead:
-				b.gear_swap_t -= delta
-				if b.gear_swap_t <= 0.0:
-					b.gear_swap_t = -1.0
-					b.gear_big = b.gear_swap_to
-					if game.hud != null and b.team == game.human and not game.demo:
-						game.float_text(b.center() + Vector2(0, -40), "big gear" if b.gear_big else "small gear", Color(0.95, 0.85, 0.5))
 	var s := _signature()
 	if s != _sig or _clock - _solved_at >= float(Defs.GEAR["solve"]):
 		_sig = s
@@ -748,9 +739,6 @@ func _spin(delta: float) -> void:
 	var rate := float(Defs.GEAR["teeth_rate"])
 	spin_w = {}
 	for b in order:
-		if b.gear_swap_t >= 0.0:
-			spin_w[b] = 0.0          # (its gear is being swapped: stopped, and so is everything hanging on it)
-			continue
 		var p: Building = parent_of.get(b)
 		var nb := b_n(b)
 		if p == null:
@@ -793,12 +781,6 @@ func _draw() -> void:
 		if not game.view_rect.grow(rp + 60.0).has_point(c):
 			continue
 		var s := 1.0
-		if b.gear_swap_t >= 0.0:
-			# the ring visibly changes size while the gear is swapped: from the old radius to the new one
-			var total := float(Defs.GEAR["swap_time"])
-			var k := clampf(1.0 - b.gear_swap_t / total, 0.0, 1.0)
-			var r_new := ring_r(b.kind, b.size, b.gear_swap_to)
-			s = lerpf(rp, r_new, k * k * (3.0 - 2.0 * k)) / rp
 		# state colours: connected (full), unlinked (dull red), a site (faint), dead (dark)
 		var m := Color(1, 1, 1, 1)
 		if b.dead:
@@ -957,15 +939,12 @@ func _draw_top() -> void:
 			continue
 		if not all and ft >= 0 and not game.allied(ft, b.team) and not b.visible:
 			continue        # (watching computers through one side's eyes: a building it hasn't seen)
-		if b.kind != "mainspring" and spring_for(b) != null and linked.has(b):
-			_spring_mark(b.rect().get_center() + Vector2(b.rect().size.x * 0.5 - 4.0, -b.rect().size.y * 0.5 - 4.0))
+		if has_spring_mark(b):
+			_spring_mark(spring_mark_pos(b))
 		var txt := ""
 		var col := Color(0.95, 0.35, 0.28)
 		if enforce and not linked.has(b):
 			txt = "UNLINKED"
-		elif b.gear_swap_t >= 0.0:
-			txt = "SWAPPING"
-			col = Color(0.95, 0.8, 0.4)
 		elif needs_spring(b):
 			txt = "NEEDS MAINSPRING"
 			col = Color(1.0, 0.72, 0.3)
@@ -976,6 +955,33 @@ func _draw_top() -> void:
 
 ## THE SPRING MARK (owner, 2026-10-27): a little brass coil over a building fed by a Mainspring (its ring meshes with one:
 ## it may make what costs Tension). Code-drawn: docs/art_style_inconsistency.md.
+## THE SPRING MARK (the little gold coil at a building's top right corner): a Mainspring's ring meshes with this building's,
+## so it gets Tension: a Tension user works, and what costs Tension can be made here (GearEcon.spend_problem). Shown only
+## on the buildings that use or spend Tension (GearEcon.spends_tension: the Light and Heavy Works, the Escapement, the
+## Clock Aviary...): a Cog Press or a Regulator by a Mainspring gets nothing from it, so it shows none (owner, 2026-10-30:
+## "what does that mean?"). Hovering it (or a long press on a phone) explains it: GearEcon.spring_tip.
+func has_spring_mark(b: Building) -> bool:
+	return b.kind != "mainspring" and b.built and not b.dead and linked.has(b) and spring_for(b) != null \
+		and GearEcon.spends_tension(b.kind)
+
+
+func spring_mark_pos(b: Building) -> Vector2:
+	return b.rect().get_center() + Vector2(b.rect().size.x * 0.5 - 4.0, -b.rect().size.y * 0.5 - 4.0)
+
+
+## The building whose spring mark is under world point p (as _draw_top shows them to the player), or null.
+func spring_mark_at(p: Vector2) -> Building:
+	if game == null or not Defs.gear_mode:
+		return null
+	var me := game.controlled_team()
+	for b in game.buildings:
+		if not is_instance_valid(b) or not has_spring_mark(b) or (me >= 0 and not game.allied(me, b.team)):
+			continue
+		if Rect2(spring_mark_pos(b) + Vector2(-12, -14), Vector2(24, 28)).has_point(p):
+			return b
+	return null
+
+
 func _spring_mark(p: Vector2) -> void:
 	var r := Rect2(p + Vector2(-9, -11), Vector2(18, 22))
 	_top.draw_rect(r, Color(0.05, 0.05, 0.07, 0.75))

@@ -25,7 +25,7 @@ const UNIT_PROPS := ["order", "phase", "work", "carrying", "mode", "tesla_mode",
 const UNIT_REFS := ["target", "home_mine", "leader", "aboard", "order_target", "crew_of"]      # (crew_of: a Ballista's crewman)
 const BLD_PROPS := ["built", "progress", "ghost", "queue", "prod_t", "growth",
 	"soil", "lode", "batteries", "auto_train", "auto_refit", "gate_open", "locked", "vertical", "seeded",
-	"crate", "unfold_t", "max_hp", "rally", "worker_rally", "stock", "gear_big", "gear_swap_t", "gear_swap_to"]
+	"crate", "unfold_t", "max_hp", "rally", "worker_rally", "stock", "gear_big"]
 const BLD_REFS := ["rally_target", "worker_rally_target"]
 const U_FIXED := 6      # id, kind, team, position, hp, facing angle
 const B_FIXED := 6      # id, kind, team, cell, hp, (spare)
@@ -64,7 +64,7 @@ static func bld_vals(b: Building) -> Array:
 	return [b.built, snappedf(b.progress, 0.01), b.ghost, b.queue, snappedf(b.prod_t, 0.01),
 		snappedf(b.growth, 0.01), snappedf(b.soil, 0.01), snappedf(b.lode, 0.01), b.batteries, b.auto_train, b.auto_refit, b.gate_open, b.locked, b.vertical, b.seeded,
 		b.crate, snappedf(b.unfold_t, 0.01), snappedf(b.max_hp, 0.01), b.rally, b.worker_rally, snappedf(b.stock, 0.01),
-		b.gear_big, snappedf(b.gear_swap_t, 0.01), b.gear_swap_to]
+		b.gear_big]
 
 
 ## Do the direct readers and writers match the lists? "" if so, else what differs (tools/bench_net_snapshot.gd and
@@ -488,8 +488,6 @@ static func _set_bld_vals(b: Building, row: Array, o: int) -> void:
 	b.worker_rally = row[o + 19]
 	b.stock = row[o + 20]
 	b.gear_big = row[o + 21]
-	b.gear_swap_t = row[o + 22]
-	b.gear_swap_to = row[o + 23]
 
 
 static func _building_refs(s: NetSession, b: Building, row: Array) -> void:

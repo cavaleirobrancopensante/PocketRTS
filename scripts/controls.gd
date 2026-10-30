@@ -629,7 +629,9 @@ func _process(delta: float) -> void:
 		if not info.is_empty() and not info["moved"] and not info["mouse"]:
 			if (Time.get_ticks_msec() - int(info["t"])) / 1000.0 > LONG_PRESS:
 				# a long press on a worker label ("FARMERS 3/8") explains it instead (WorkerLabels; the HUD's tooltip)
-				var le := WorkerLabels.at(game, to_world(info["pos"]))
+				var le: Entity = WorkerLabels.at(game, to_world(info["pos"]))
+				if le == null and game.gear_net != null:
+					le = game.gear_net.spring_mark_at(to_world(info["pos"]))      # (the spring mark: GearEcon.spring_tip)
 				if le != null and game.hud and game.hud.has_method("show_label_tip") \
 						and game.hud.show_label_tip(le, (info["pos"] as Vector2) / float(game.hud.ui_scale)):
 					_long_done = true

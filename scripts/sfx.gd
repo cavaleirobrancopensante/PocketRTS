@@ -243,8 +243,8 @@ static func building_selected(kind: String, faction: String) -> void:
 	if now - int(me._last.get("select/*", -99999)) < int(GAP.get("select/*", 40)):
 		return
 	me._last["select/*"] = now
-	# (the Town Hall is picked for every worker: its note sits a little under the rest)
-	play_any(["select/" + kind, "%s/select_building" % SHORT.get(faction, "crown")], Vector2.INF, -4.0 if kind == "town_hall" else 0.0)
+	# (the Town Hall and the Clocktower are picked for every worker: their note sits a little under the rest)
+	play_any(["select/" + kind, "%s/select_building" % SHORT.get(faction, "crown")], Vector2.INF, -4.0 if kind in ["town_hall", "clocktower"] else 0.0)
 
 
 ## Sounds that come with a unit's answer: kind -> {what: [[sound, chance], ...]} (each sound's

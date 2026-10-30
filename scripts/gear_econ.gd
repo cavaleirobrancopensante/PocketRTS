@@ -190,7 +190,7 @@ static func spend_problem(game: Game, b: Building) -> String:
 ## none), reserve name]; [] for one that shows none (the Clocktower, Regulators, the Ratchet Turret). Efficiency = what it
 ## does now against what it does at its best: crew share (a Cog Press and a Mainspring: each Winder's share; nothing with
 ## nobody on it) x drive x its land (a Cog Press on spent brass, a FATIGUED Mainspring: nothing). 0 while it stands idle
-## (unlinked, swapping, needing a Mainspring).
+## (unlinked, needing a Mainspring).
 static func efficiency(b: Building) -> Array:
 	if not uses_drive(b.kind) or not b.built or b.dead:
 		return []
@@ -277,8 +277,16 @@ static func card_info(b: Building) -> String:
 	return ""
 
 
-## SIZE SETS THE TEMPO (owner, 2026-10-27): what a `kind` on its big (or small) ring trades, in one line for its card and
-## the gear swap's tooltip ("Small gear: works 15% faster."), translated; "" for a kind whose ring changes nothing but reach.
+## The SPRING MARK's tooltip (GearNet.has_spring_mark): {title, body}, already in the player's language.
+static func spring_tip(b: Building) -> Dictionary:
+	if b == null or not is_instance_valid(b) or b.dead:
+		return {}
+	var body := Loc.t("A Mainspring's ring meshes with this building's, so it is fed Tension: it can work and make what costs Tension. Without a Mainspring beside it, it could not.")
+	return {"title": Loc.t("Fed by a Mainspring"), "body": body}
+
+
+## SIZE SETS THE TEMPO (owner, 2026-10-27): what a `kind` on its ring trades, in one line for its card ("Small gear: works
+## 15% faster."), translated; "" for a kind whose ring changes nothing but reach.
 static func trade_line(kind: String, big: bool) -> String:
 	if not Defs.gear_mode:
 		return ""

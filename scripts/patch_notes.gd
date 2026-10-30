@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.9", "items": [
+		"THE GEAR SWAP IS GONE (Clockwork): the SMALL GEAR / BIG GEAR button is removed (a ring that grew clipped into the gears around it). Each building keeps the gear it is built with: the Heavy Works its big gear (the Pendulums, Ballistas and Great Winders are made there), every other building its small one. Saves made before still load.",
+		"THE SPRING MARK (the little gold coil over a Clockwork building) now shows only on buildings that use or spend Tension, and explains itself: rest the mouse on it (or long-press it on a phone): a Mainspring's ring meshes with this building's, so it is fed Tension and can work and make what costs Tension.",
+		"THE CLOCKTOWER'S PICK SOUND is gentler and varied: four short strikes of the old bell (two pitched a little, one with two ticks before it) instead of two long ones, its low hum and clangy ring softened, and played a little quieter, like the Town Hall's (it is picked for every Winder).",
+	]},
 	{"v": "0.24.8", "items": [
 		"THE CLOCKWORK'S CHARGE IS SHOWN: every Clockwork unit that runs on a spring (Clock Soldier, Springer, Netter, Pendulum, Spring Ballista and the rest; not the Winders nor the Great Winder) shows its charge on its card: an amber bar under the health and the words first on the line: Charge 63%, Winding up: 63% while it stands on the gear field (or a Winder or a Great Winder winds it), Fully wound, or RUN DOWN. In a group, each portrait has a thin charge line under its health.",
 		"CHARGE BARS OVER YOUR UNITS: a thin amber bar over each of your Clockwork units that is not fully wound, draining as the spring runs down; on the gear field it turns pale gold and fills, and it is gone once full, so a wound-up army shows no extra bars. Settings: SHOW CHARGE BARS turns them off.",

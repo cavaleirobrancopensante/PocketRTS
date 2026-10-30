@@ -4,6 +4,16 @@ The owner's decisions of 2026-10-27, built. The study behind them is docs/clockw
 
 The owner was away. Every guess below is Claude's. Each one says so.
 
+## 0.24.4: no more gear swap (owner, 2026-10-30)
+
+The owner played the Clockwork: "I dont understand the swap between big gear and small gear, it makes no sense because it clips with other gears and makes the sprites behave in an overlap way, I think we have to remove this feature".
+
+So the SMALL GEAR / BIG GEAR button is gone, with Game.swap_gear, the online command, the SWAPPING badge and the swap's cost and time (Defs.GEAR "swap_cost", "swap_time"). Each building keeps the gear it is built with: the Heavy Works on its BIG gear (Defs.GEAR "big_only"), every other building on its SMALL one. Old saves still load: a swap under way in them ("gs", "gst") is ignored.
+
+What needed the swap: only the Pendulum's big gear (Defs.UNITS "big_gear"), and the Pendulum is made at the Heavy Works, which is always big. Size still sets the tempo (GearNet.tempo): the Light Works, Escapement and Clock Aviary get their small ring's speed; the Heavy Works its big ring's. The big-ring numbers of the Cog Press (8 Winders, 10 cogs a second), the Mainspring (6 Winders, 400 Tension stored) and the Ratchet Turret's heavy screw stay in Defs but no player building reaches them now. If the owner wants them back, the clean way is a choice when the building is PLACED (its ring is then checked like any other), not a swap afterwards.
+
+The spring mark (section 7) now shows only on buildings that use or spend Tension, and explains itself on hover (or a long press on a phone): GearEcon.spring_tip.
+
 ## What changed for the player
 
 ### 1. The turret circle
@@ -26,7 +36,7 @@ A new building: the Heavy Works. In Portuguese, Oficina Pesada. In Spanish, Tall
 
 It makes the heavy machines: the Pendulum, the Spring Ballista and the Great Winder. The Great Winder landed on main while this job ran; it moved here from the Movement Works too.
 
-It sits on its BIG gear only. It cannot swap to the small one. Its card says so: "Big gear only: slow and strong, the heavy torque."
+It sits on its BIG gear only. Its card says so: "Big gear only: slow and strong, the heavy torque."
 
 Everything it makes costs Tension. So it is a Tension user, like the Escapement and the Clock Aviary. Its ring must mesh with a Mainspring's ring. Without one it stands idle and shows NEEDS MAINSPRING.
 
@@ -74,7 +84,7 @@ The Ratchet Turret on its small ring fires quick light screws: 11 damage every 1
 
 The reach did not change: 200 pixels on both rings. A Crown gun reaches 430, so the big ring does not out-range the Crown's guns. The old turret did 14 every 1.5 seconds.
 
-Each card says its ring's trade in one line. For example: "Small gear: works 15% faster." The gear swap's tooltip says it too.
+Each card says its ring's trade in one line. For example: "Small gear: works 15% faster." (The gear swap's tooltip said it too, until the swap was removed in 0.24.4.)
 
 The Cog Press and the Mainspring already traded by crew. Their cards now say it in one line too.
 
@@ -92,7 +102,7 @@ The ghost says the percent it would work at. That is its drive times its ring's 
 
 When a building can't go there, or would stand idle, the ghost gives one red line: NO LINK, NO LINK: OTHER LEVEL, CLASH, TOO NEAR A TURRET, or NEEDS MAINSPRING.
 
-A small brass spring mark sits over every building fed by a Mainspring.
+A small brass spring mark sits over every building fed by a Mainspring. (Since 0.24.4: only over the buildings that use or spend Tension, and hovering it explains it.)
 
 THE GEAR VIEW shows the whole network at once. The key is the backquote, `. On a phone, every Clockwork building's card has a GEAR VIEW button. In the gear view, the drivers glow white gold: the Clocktowers and the Mainsprings. Every other ring is tinted by how well it works: green at full speed, yellow green at 90%, orange at 80%, red at 70% or idle. Each Mainspring's reach is outlined, dashed. The turret circles are drawn. The ground dims a little so the rings read.
 

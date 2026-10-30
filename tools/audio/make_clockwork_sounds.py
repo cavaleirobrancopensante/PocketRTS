@@ -10,6 +10,8 @@ Every sound below is a list of LAYERS mixed together. A layer is
   gain       its level against the other layers (each layer is first levelled to its own peak)
   pitch      1 = as recorded; 0.5 = an octave lower (and twice as long), 1.3 = higher and shorter
   fade-out   seconds of fade at its end (None: a quarter of the piece, at most 0.3 s)
+  extras     (optional 8th item) a dict: "hp" Hz and "lp" Hz, a soft high-pass / low-pass (an octave's taper);
+             "attack" seconds of fade-in (default 4 ms)
 Every layer also fades in over 4 ms, so nothing clicks; a quiet lead-in before the sound (under 1/20 of its peak)
 is trimmed off. The finished sound is levelled to a 0.7 peak
 (never clipped); tools/audio/make_mix.py then sets how loud it plays in the game.
@@ -92,6 +94,14 @@ def ding(i, length=0.55, at=0.0, gain=0.8, pitch=1.0):
 def bell(i, length=1.6, at=0.0, gain=1.0, pitch=1.0, fade=0.9):
     """A strike of the old clock bell."""
     return ("bell", BELL[i], length, at, gain, pitch, fade)
+
+
+def tower_bell(i, length=1.0, at=0.0, gain=1.0, pitch=1.0, fade=0.75):
+    """The Clocktower's pick (owner, 2026-10-30: "a bit annoying... something off"): the bell strike, shorter and
+    gentler than bell(): its low hum (99 and 326 Hz, a drone under the strike) rolled off below ~300 Hz, the clangy
+    upper partials (1.1-1.7 kHz) softened above 1.3 kHz, a 12 ms attack instead of the hammer's click, and the long
+    ring cut to about a second."""
+    return ("bell", BELL[i], length, at, gain, pitch, fade, {"hp": 300, "lp": 1300, "attack": 0.012})
 
 
 SOUNDS = {
@@ -250,8 +260,12 @@ SOUNDS = {
     "combat/winder_death_2": [crash(1.15, 0.4), clatter(1.4, 0.7, at=0.3, gain=0.45), boing(2, 0.3, at=0.35, gain=0.5)],
 
     # ================= BUILDINGS PICKED (assets/audio/select/<kind>) =================
-    "select/clocktower": [bell(0, 2.0, fade=1.0)],
-    "select/clocktower_1": [bell(1, 2.0, fade=1.0)],
+    # the Clocktower (picked for every Winder it trains, so often): four short strikes of the old bell (tower_bell),
+    # the game picks one at random; two pitched a little, one with the alarm clock's tick-tock before it
+    "select/clocktower": [tower_bell(0)],
+    "select/clocktower_1": [tower_bell(1, 0.95, pitch=0.94)],
+    "select/clocktower_2": [tower_bell(0, 0.9, pitch=1.06)],
+    "select/clocktower_3": [ticks(2, 1, pitch=0.9, gain=0.45), tower_bell(1, 0.9, at=0.62, pitch=1.0)],
     "select/cog_press": [("crank", 0.10, 1.10, 0.0, 1.0, 0.9, 0.35)],
     "select/cog_press_1": [("crank", 3.23, 1.10, 0.0, 1.0, 0.9, 0.35)],
     "select/mainspring": [("spring", 0.06, 1.30, 0.0, 1.0, 1.0, 0.6)],
@@ -303,14 +317,31 @@ def rd(name):
     return _cache[name]
 
 
-def layer(src, start, length, pitch, fade):
+def tilt(seg, hp=None, lp=None):
+    """A soft high-pass and/or low-pass: the spectrum tapered over one octave (a cosine), no ringing edges."""
+    if not hp and not lp:
+        return seg
+    f = np.fft.rfftfreq(len(seg), 1.0 / SR)
+    g = np.ones_like(f)
+    if hp:
+        k = np.clip(np.log2(np.maximum(f, 1.0) / (hp / 2.0)), 0.0, 1.0)      # 0 at hp/2 .. 1 at hp
+        g *= 0.5 - 0.5 * np.cos(np.pi * k)
+    if lp:
+        k = np.clip(np.log2(np.maximum(f, 1.0) / lp), 0.0, 1.0)              # 1 at lp .. 0 at 2 lp
+        g *= 0.15 + 0.85 * (0.5 + 0.5 * np.cos(np.pi * k))                   # (down to -16 dB: softened, not muffled)
+    return np.fft.irfft(np.fft.rfft(seg) * g, len(seg))
+
+
+def layer(src, start, length, pitch, fade, ex=None):
+    ex = ex or {}
     x = rd(src)
     a = int(start * SR)
     seg = x[a:a + int(length * SR)].copy()
     if pitch != 1.0:     # resample: higher and shorter, or lower and longer
         n = int(len(seg) / pitch)
         seg = np.interp(np.arange(n) * pitch, np.arange(len(seg)), seg)
-    fi = int(0.004 * SR)
+    seg = tilt(seg, ex.get("hp"), ex.get("lp"))
+    fi = int(float(ex.get("attack", 0.004)) * SR)
     seg[:fi] *= np.linspace(0, 1, fi)
     fo = int((fade if fade is not None else min(0.3, len(seg) / SR / 4)) * SR)
     fo = min(fo, len(seg))
@@ -320,7 +351,7 @@ def layer(src, start, length, pitch, fade):
 
 
 def build(layers):
-    parts = [(int(l[3] * SR), layer(l[0], l[1], l[2], l[5], l[6]) * l[4]) for l in layers]
+    parts = [(int(l[3] * SR), layer(l[0], l[1], l[2], l[5], l[6], l[7] if len(l) > 7 else None) * l[4]) for l in layers]
     n = max(at + len(p) for at, p in parts)
     out = np.zeros(n)
     for at, p in parts:

@@ -3,7 +3,7 @@ extends SceneTree
 ## the placement ghost (links / no link / clash) and the command card with the GEAR SWAP button.
 ##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 --script res://tools/shot_gear.gd -- <outdir>
 ## Writes <outdir>/gear_tower_a.png, gear_tower_b.png (half a second apart), gear_press.png, gear_unlinked.png, gear_ghost_ok.png,
-## gear_ghost_far.png, gear_ghost_clash.png, gear_card.png, gear_swap.png, gear_base.png
+## gear_ghost_far.png, gear_ghost_clash.png, gear_card.png, gear_base.png
 const U := preload("res://tools/gear_test_util.gd")
 var main: Node
 var g
@@ -85,14 +85,12 @@ func _run() -> void:
 	g.controls.ghost_cell = tower.cell + Vector2i(-1, 5)
 	await _snap("gear_ghost_clash")
 	g.controls.mode = ""
-	# the command card of the big-gear press, and a swap under way
+	# the command card of the big-gear press
 	g.camera.zoom = Vector2(1.5, 1.5)
 	if press2:
 		g.camera.position = press2.center()
 		g.set_selection([press2])
 		await _snap("gear_card")
-		g.swap_gear(press2)
-		await _snap("gear_swap", 1.5)
 	g.set_selection([])
 	g.camera.zoom = Vector2(0.9, 0.9)
 	g.camera.position = tower.center() + Vector2(20, 40)

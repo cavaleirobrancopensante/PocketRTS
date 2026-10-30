@@ -584,7 +584,7 @@ func _do_crew(s: String, kind: String, n: int) -> String:
 	return "done"
 
 
-## Clockwork "gear:<kind>:big|small": the newest finished building of that kind onto that gear (Game.swap_gear).
+## Clockwork "gear:<kind>:big|small": the newest finished building of that kind onto that gear (Game.swap_gear: removed in 0.24.4, so only a step already met is done; the rest are skipped).
 func _do_gear(s: String) -> String:
 	var p := s.split(":")
 	var kind := String(p[1])
@@ -593,14 +593,11 @@ func _do_gear(s: String) -> String:
 	if list.is_empty():
 		return "wait"
 	var b: Building = list[list.size() - 1]
-	if (b.gear_swap_to if b.gear_swap_t >= 0.0 else b.gear_big) == big:
+	if b.gear_big == big:
 		_log(s, game.clock)
 		return "done"
-	if game.gear_swap_problem(b) != "":
-		_hold = int(Defs.GEAR["swap_cost"])
-		return "wait"
-	game.swap_gear(b)
-	_log(s, game.clock + float(Defs.GEAR["swap_time"]))
+	# (no gear swap since 0.24.4, the owner: each building keeps the gear it is built with; the step is skipped)
+	_log(s + " (no gear swap)", game.clock)
 	return "done"
 
 

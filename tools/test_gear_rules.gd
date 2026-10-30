@@ -104,7 +104,7 @@ func _run() -> void:
 	U.step(g, 0.6)
 	g.players[0]["cap"] = 200
 	check("it sits on its BIG gear (the big ring's teeth)", hw.gear_big and GearNet.b_n(hw) == GearNet.ring_n(Defs.CW_HEAVY, hw.size, true))
-	check("it cannot swap to the small gear", g.gear_swap_problem(hw) != "", g.gear_swap_problem(hw))
+	check("there is no gear swap (removed in 0.24.4): it keeps its big gear", not g.has_method("swap_gear") and not g.has_method("gear_swap_problem"))
 	check("without a Mainspring it stands idle (NEEDS MAINSPRING)", g.gear_net.needs_spring(hw))
 	var why2 := g.can_train(hw, Defs.PENDULUM)
 	check("and refuses the Pendulum", why2 != "", why2)

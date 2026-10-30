@@ -90,7 +90,7 @@ func _run() -> void:
 		var hsp := _spring_beside(g, heavy)
 		U.step(g, 0.6)
 		check("a Mainspring put beside the Heavy Works meshes with it", hsp != null and g.gear_net.spring_for(heavy) != null)
-	check("the Heavy Works cannot swap to the small gear", g.gear_swap_problem(heavy) != "", g.gear_swap_problem(heavy))
+	check("the Heavy Works stays on its big gear (no gear swap since 0.24.4)", heavy.gear_big and not g.has_method("swap_gear"))
 	g.players[0]["cap"] = 200          # (the game counts the supply again as it runs: room for the orders)
 	var cogs0 := int(g.players[0]["gold"])
 	var ten0 := g.tension(0)
