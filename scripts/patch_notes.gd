@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.6", "items": [
+		"THE UNIT PANEL AND THE COMMAND CARD STAY UP WITH NOTHING SELECTED: they are drawn empty, with your faction's name faint in the panel (watching or a replay: the player you look through). Clicks on them never go to the map. EACH FACTION HAS ITS OWN FRAMES now, behind the icons and text, selected or not: the Crown dark wood with gold crowns and fleurs-de-lis, the Clockwork riveted brass with cogs and springs, the Brood twisted rope with claws and eggs.",
+	]},
 	{"v": "0.24.5", "items": [
 		"THE COMPUTER EXPANDS BEFORE IT GOES BROKE: since 0.24.0 spent land pays nothing, and a Hard Crown that lost its second Town Hall sat for ten minutes with 36 idle Labourers and no income. Now the Crown and Clockwork computers keep a hall's gold (and its first Farm's or Cog Press's) once their land runs low, even with enemies about; take any free hall ground when every usual site is on the enemy's side; train no Labourers or Winders for spent land; and send the hands waiting by the halls to the new Farms. The Brood computer already moves its Rootmaws off spent ground.",
 	]},

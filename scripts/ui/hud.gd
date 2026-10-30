@@ -338,7 +338,7 @@ func _layer_sig(n: String) -> Array:
 			return [_vs(), _counts, bar.hit(m) if pc else -1, bar.sig()]
 		"selection":
 			if game.selection.is_empty():
-				return [_vs(), 0]
+				return [_vs(), 0, game.fog_team(), game.over and not game.map_view]
 			# (drawn again at every look while something is selected: its bars and lines move)
 			var hv := -1
 			if pc:
@@ -358,7 +358,7 @@ func _layer_sig(n: String) -> Array:
 				for i in _card_buttons.size():
 					if (_card_buttons[i]["rect"] as Rect2).has_point(m):
 						hv = i
-			return [_vs(), _card_look, hv, _card_flash_phase()]
+			return [_vs(), _card_look, hv, _card_flash_phase(), game.fog_team(), game.over and not game.map_view]
 		"glow":
 			for b in _card_buttons:
 				if String(b["item"][1]).begins_with("~ "):
@@ -3039,9 +3039,13 @@ func _draw_panel(font: Font) -> void:
 	_queue_rects = []
 	_stat_rects = []
 	var r := panel_rect()
-	if game.selection.is_empty():
+	var fac := PanelArt.faction_for(game)
+	if game.over and not game.map_view:
 		return
-	UiStyle.draw_panel(_ci, r, UiStyle.accent(game.faction_of(game.human)))
+	PanelArt.draw(_ci, r, fac, "panel")         # (the frame stays up with nothing selected: scripts/ui/panel_art.gd)
+	if game.selection.is_empty():
+		PanelArt.draw_empty_name(_ci, r, fac)
+		return
 	var sel: Array = game.selection.filter(func(e: Entity) -> bool: return is_instance_valid(e) and not e.dead)
 	if sel.size() == 1:
 		var e: Entity = sel[0]
@@ -3992,10 +3996,10 @@ func _all_buttons() -> Array:
 
 
 func _draw_card(font: Font) -> void:
-	if _card_buttons.is_empty():
+	if game.over and not game.map_view:
 		return
 	var cr := card_rect()
-	UiStyle.draw_panel(_ci, cr.grow(4), UiStyle.accent(game.faction_of(game.human)))
+	PanelArt.draw(_ci, cr.grow(4), PanelArt.faction_for(game), "card")     # (up even when empty)
 	var hover := _mouse() if Settings.pc() else Vector2(-1, -1)
 	for bt in _card_buttons:
 		var it: Array = bt["item"]
