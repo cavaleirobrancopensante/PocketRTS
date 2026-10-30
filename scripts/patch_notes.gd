@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.6", "items": [
+		"THE BROOD'S NEW SOUNDS, from the owner's sound pack: real bites and chomps under every Brood blow (the Raptor and the Grub too), wet splats where a venom glob lands (small for the Spitter, bigger for the Venom Challenger, biggest for the Venom Sire), a wet burst under every Brood death, eggs cracking as they hatch (3 kinds), a cocoon or moult splitting open, the Mother laying an egg, a grub's squish as it takes food, a squelch as a creature roots or uproots, and wingbeats when you send a flyer (small for the Hatchlings and Skywings, two beats for the Storm Challenger, heavy leathery beats for the Storm Sire; one flap for a whole flock). New takes for the Tyrant Challenger and the Tyrant Sire.",
+		"THE BROOD'S ERROR SOUND is now a creature's grunt (the owner's pick): every failed order (not enough food or spoils, no supply, no room, can't do that) grunts instead of clicking, a little softer when the announcer speaks too.",
+	]},
 	{"v": "0.24.5", "items": [
 		"THE COMPUTER EXPANDS BEFORE IT GOES BROKE: since 0.24.0 spent land pays nothing, and a Hard Crown that lost its second Town Hall sat for ten minutes with 36 idle Labourers and no income. Now the Crown and Clockwork computers keep a hall's gold (and its first Farm's or Cog Press's) once their land runs low, even with enemies about; take any free hall ground when every usual site is on the enemy's side; train no Labourers or Winders for spent land; and send the hands waiting by the halls to the new Farms. The Brood computer already moves its Rootmaws off spent ground.",
 	]},

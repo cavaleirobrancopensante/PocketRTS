@@ -50,10 +50,25 @@ SRC_DIR = os.path.join(ROOT, "art", "audio_src", "brood")
 SRC = {"raspy": "freesound_community-small-dino-raspy-calls-39345.mp3", "spit": "spitter.mp3", "storm": "storm.mp3",
        "terr": "terrifying.mp3", "tchal": "tyrant_challanger.mp3", "tsire": "tyrant_sire.mp3", "venom": "venom.mp3",
        "venom2": "venom2.mp3", "vsire": "venom_sire.mp3", "weak": "weak_grown.mp3", "weird": "weird.mp3",
-       "bite": "../../../assets/audio/bite.wav", "hatch": "../../../assets/audio/hatch.wav"}
+       "bite": "../../../assets/audio/bite.wav", "hatch": "../../../assets/audio/hatch.wav",
+       # the owner's sound-effects pack (2026-10-30, Pixabay; SOURCES.txt): wings, egg cracks, wet hits, bites
+       "wbird": "u_editorpropro-bird-wings-598020.mp3", "wflap": "freesound_community-flapping-39306.mp3",
+       "wheavy": "dragon-studio-heavy-wings-flapping-364607.mp3", "wdragon": "dragon-studio-dragon-flapping-wings-364476.mp3",
+       "egg5": "freesound_community-egg-crack5-104555.mp3", "egg14": "freesound_community-egg-crack14-85853.mp3",
+       "eggc": "freesound_community-egg-cracking-6844.mp3", "splat": "freesound_community-splat2ogg-14668.mp3",
+       "cwet": "universfield-cartoon-wet-splat-352447.mp3", "slime": "universfield-slime-impact-352473.mp3",
+       "wetimp": "universfield-wet-impact-352440.mp3", "wsplat": "universfield-wet-splat-impact-567197.mp3",
+       "squelch": "universfield-wet-squelch-impact-352302.mp3", "slimy": "freesound_community-so-slimy-46602.mp3",
+       "squish": "freesound_community-extended-squish-26733.mp3", "chomp": "freesound_community-chomping-75836.mp3",
+       "chomp1": "cryptologymedia-chomp-155392.mp3", "mbite": "freesound_community-monster-bite-44538.mp3",
+       # three more the same day: grunt-1 (his pick for the Brood's error sound), the animalistic grunt he liked, a growl
+       "grunt1": "freesound_community-grunt-1-84550_maybe_not_enough_resources.mp3",
+       "agrunt": "dragon-studio-animalistic-grunt-463204_interesting_monster_sound.mp3",
+       "mgrowl": "daviddumaisaudio-monster-05-grunt-and-growl-195715.mp3"}
 # recordings that clip in places (tyrant_challanger 872 samples at full scale, terrifying 60): a gentle lowpass
 # rounds the clipped edges off
-SRC_LP = {"tchal": 6500, "terr": 8000, "tsire": 9000}
+SRC_LP = {"tchal": 6500, "terr": 8000, "tsire": 9000, "wdragon": 7000, "wbird": 9000, "mbite": 8000, "wsplat": 9000,
+          "agrunt": 7500, "mgrowl": 8000}
 
 # ---- where the useful bits are (measured: loudness every 20 ms, onsets, spectral centroid, pitch) ----
 # raspy calls: two calls of quick chirps, 0.10-0.50 s (chirps at .10 .21 .31 .39 .49; a quieter tail to 0.9) and
@@ -71,15 +86,49 @@ SRC_LP = {"tchal": 6500, "terr": 8000, "tsire": 9000}
 # venom_sire: a growl 0.18-2.5 s, growing to its loudest 1.0-1.8
 # weak_grown: a whining growl 0.08-1.2 s, a clear tone near 530 Hz, a pulse every 0.09 s
 # weird: a steady, bright warbling call 0.05-1.2 s (centroid ~3 kHz)
+# ---- the 2026-10-30 pack (loudness every 20 ms, spans within 18 dB of the loudest) ----
+# wbird (bird wings): a flutter 1.38-2.38 s, a wingbeat every ~0.14 s (clips: lowpass)
+# wflap (flapping): three beats at 0.14, 0.96, 1.92 s (0.15-0.2 s each)
+# wheavy (heavy wings): a big beat about every 1.05 s: 1.26 2.32 3.34 4.48 5.38 6.48 7.44 ... (0.2-0.35 s each)
+# wdragon (dragon flapping wings): a beat every 1.0 s: 0.16 1.16 2.18 3.20 4.20 ... (heavily clipped: lowpass)
+# egg5: one crack 0.10-0.64 s; egg14: a crack 0.16-0.46 and two crumbs 0.52, 0.68; eggc: a crack 1.06-1.30 s
+# splat 0.04-0.24 (a short wet slap); cwet 0.24-0.60 (a cartoon splat); slime 0.08-0.42 (a slimy hit); wetimp
+#   0.30-0.86 (a heavy wet thud); wsplat 0.04-0.30 (a sharp splat); squelch 0.12-0.68 (a long wet squelch)
+# slimy (so slimy): sticky squishes at 0.16, 0.50, 0.68, 0.88, 1.24-1.50, 1.58-1.72, 1.88
+# squish (extended squish, 64 s): single squishes at 5.20, 6.84, 8.14, 9.62, 13.34, 14.38, 15.48, 19.22, 20.36, 22.56
+# chomp (chomping, 37 s): bites at 1.06, 2.88, 4.58, 6.88, 8.38, 9.44, 17.08, 19.34, 21.06, 26.16; chomp1: one bite
+#   0.14-0.56 (quiet: levelled like the rest); mbite (monster bite): a big snap 0.48-0.84
+# grunt1: one grunt 0.30-0.88 s; agrunt (animalistic grunt): a long throaty grunt 0.02-1.62 (clips: lowpass);
+#   mgrowl (monster grunt and growl): a grunt into a growl 0.22-1.40 (clips a little)
+# (the mud boots are not used: the Brood has no footstep sounds for them to be; docs/brood_sounds.md)
 
 
 def cut(src, start, length, at=0.0, gain=1.0, pitch=1.0, fade=None, to=None, lp=None):
     return (src, start, length, at, gain, pitch, fade, to, lp)
 
 
-def bite(pitch=1.0, at=0.0, gain=0.6):
-    """The crunch of jaws under a blow (the game's older bite)."""
-    return cut("bite", 0.0, 0.30, at, gain, pitch, 0.12)
+# the real bites (the owner's pack): (recording, start, length); bite(v=...) picks one, so takes differ
+CHOMPS = [("mbite", 0.44, 0.42), ("chomp", 1.00, 0.36), ("chomp", 2.82, 0.30), ("chomp", 4.52, 0.36),
+          ("chomp", 8.32, 0.26), ("chomp", 17.02, 0.40), ("chomp", 19.28, 0.30), ("chomp1", 0.10, 0.46),
+          ("chomp", 26.10, 0.40)]
+
+
+def bite(pitch=1.0, at=0.0, gain=0.6, v=0):
+    """The crunch of jaws under a blow: a real bite since the 2026-10-30 pack (it was the game's older synth bite)."""
+    c = CHOMPS[v % len(CHOMPS)]
+    return cut(c[0], c[1], c[2], at, gain, pitch, 0.1)
+
+
+# wet hits by size (the owner's pack): (recording, start, length)
+SPLATS = {"s": [("splat", 0.02, 0.24), ("wsplat", 0.02, 0.30), ("slime", 0.06, 0.30)],
+          "m": [("cwet", 0.20, 0.42), ("slime", 0.06, 0.38), ("wsplat", 0.02, 0.40)],
+          "l": [("wetimp", 0.26, 0.62), ("squelch", 0.10, 0.60), ("cwet", 0.20, 0.50)]}
+
+
+def splat(size="s", v=0, pitch=1.0, at=0.0, gain=1.0):
+    """A wet hit: a glob landing, a body bursting ("s" small, "m" mid, "l" large)."""
+    c = SPLATS[size][v % len(SPLATS[size])]
+    return cut(c[0], c[1], c[2], at, gain, pitch, min(0.15, c[2] / 3))
 
 
 def hiss(pitch=1.0, length=0.30, start=0.03, at=0.0, gain=1.0):
@@ -137,16 +186,19 @@ SOUNDS = {
     # the Tyrant Challenger: his own roar, cut short
     "voice/tyrant_challenger/select_1": [cut("tchal", 0.12, 0.55)],
     "voice/tyrant_challenger/select_2": [cut("tchal", 0.30, 0.50, pitch=1.05)],
-    "voice/tyrant_challenger/select_3": [cut("tchal", 0.50, 0.50, pitch=0.97)],
+    "voice/tyrant_challenger/select_3": [cut("agrunt", 0.02, 0.62, fade=0.2)],     # (the animalistic grunt he liked)
+    "voice/tyrant_challenger/select_4": [cut("agrunt", 0.60, 0.62, pitch=0.95, fade=0.2)],
     "voice/tyrant_challenger/move_1": [cut("tchal", 0.22, 0.32, pitch=1.06)],
     "voice/tyrant_challenger/move_2": [cut("tchal", 0.45, 0.32, pitch=1.02)],
     "voice/tyrant_challenger/move_3": [cut("tchal", 0.65, 0.30, pitch=1.08)],
     "voice/tyrant_challenger/attack_1": [cut("tchal", 0.12, 0.45, pitch=0.95)],
     "voice/tyrant_challenger/attack_2": [cut("tchal", 0.30, 0.45, pitch=0.92)],
+    "voice/tyrant_challenger/attack_3": [cut("agrunt", 0.90, 0.70, pitch=0.92, fade=0.25)],
     # the Tyrant Sire (tyrannosaur): his growling roar, a little lower
     "voice/tyrannosaur/select_1": [cut("tsire", 0.08, 0.70, pitch=0.9)],
     "voice/tyrannosaur/select_2": [cut("tsire", 0.50, 0.70, pitch=0.88)],
     "voice/tyrannosaur/select_3": [cut("tsire", 0.90, 0.65, pitch=0.92)],
+    "voice/tyrannosaur/select_4": [cut("mgrowl", 0.20, 0.80, pitch=0.88, fade=0.25)],     # (the monster grunt and growl)
     "voice/tyrannosaur/move_1": [cut("tsire", 0.20, 0.45, pitch=0.9)],
     "voice/tyrannosaur/move_2": [cut("tsire", 0.70, 0.45, pitch=0.88)],
     "voice/tyrannosaur/move_3": [cut("tsire", 1.10, 0.42, pitch=0.93)],
@@ -239,34 +291,49 @@ SOUNDS = {
 
     # ================= COMBAT (assets/audio/combat/): blows, spits, deaths =================
     # the blows: a short snarl of the creature over the crunch of the old bite (bigger = lower)
-    "combat/tyrant_challenger_attack_1": [cut("tchal", 0.30, 0.22, gain=0.7, pitch=1.1, fade=0.08), bite(0.9)],
-    "combat/tyrant_challenger_attack_2": [cut("tchal", 0.50, 0.22, gain=0.7, pitch=1.05, fade=0.08), bite(0.85)],
-    "combat/tyrant_challenger_attack_3": [cut("tchal", 0.70, 0.22, gain=0.7, pitch=1.12, fade=0.08), bite(0.95)],
-    "combat/tyrannosaur_attack_1": [cut("tsire", 0.22, 0.32, gain=0.8, pitch=0.85, fade=0.1), bite(0.7, gain=0.7)],
-    "combat/tyrannosaur_attack_2": [cut("tsire", 0.70, 0.32, gain=0.8, pitch=0.82, fade=0.1), bite(0.68, gain=0.7)],
-    "combat/brute_attack_1": [cut("terr", 0.30, 0.26, gain=0.8, pitch=0.85, fade=0.1), bite(0.65, gain=0.7)],
-    "combat/brute_attack_2": [cut("terr", 0.70, 0.26, gain=0.8, pitch=0.82, fade=0.1), bite(0.62, gain=0.7)],
+    # (the bites are real since the 2026-10-30 pack: bite(v=...) is one of CHOMPS, the big ones with a wet hit under)
+    "combat/raptor_attack_1": [bite(1.1, gain=0.9, v=1), cut("raspy", 0.20, 0.10, gain=0.35, pitch=0.9, fade=0.05)],
+    "combat/raptor_attack_2": [bite(1.15, gain=0.9, v=2), cut("raspy", 1.27, 0.10, gain=0.35, pitch=0.9, fade=0.05)],
+    "combat/raptor_attack_3": [bite(1.05, gain=0.9, v=3), splat("s", 0, pitch=1.2, gain=0.3)],
+    "combat/grub_attack_1": [bite(1.45, gain=0.8, v=4)],
+    "combat/grub_attack_2": [bite(1.4, gain=0.8, v=6)],
+    "combat/tyrant_challenger_attack_1": [cut("tchal", 0.30, 0.22, gain=0.6, pitch=1.1, fade=0.08), bite(0.95, gain=0.9, v=0)],
+    "combat/tyrant_challenger_attack_2": [cut("tchal", 0.50, 0.22, gain=0.6, pitch=1.05, fade=0.08), bite(0.9, gain=0.9, v=5)],
+    "combat/tyrant_challenger_attack_3": [cut("tchal", 0.70, 0.22, gain=0.6, pitch=1.12, fade=0.08), bite(0.95, gain=0.9, v=8)],
+    "combat/tyrannosaur_attack_1": [cut("tsire", 0.22, 0.32, gain=0.7, pitch=0.85, fade=0.1), bite(0.75, gain=0.9, v=0), splat("m", 0, pitch=0.8, gain=0.3)],
+    "combat/tyrannosaur_attack_2": [cut("tsire", 0.70, 0.32, gain=0.7, pitch=0.82, fade=0.1), bite(0.72, gain=0.9, v=5), splat("m", 1, pitch=0.8, gain=0.3)],
+    "combat/brute_attack_1": [cut("terr", 0.30, 0.26, gain=0.7, pitch=0.85, fade=0.1), bite(0.7, gain=0.9, v=3), splat("m", 2, pitch=0.8, gain=0.3)],
+    "combat/brute_attack_2": [cut("terr", 0.70, 0.26, gain=0.7, pitch=0.82, fade=0.1), bite(0.68, gain=0.9, v=8), splat("m", 0, pitch=0.75, gain=0.3)],
     # the Brute's charge (Unit: running at its target): his full bellow
     "combat/brute_charge": [cut("terr", 0.06, 0.95, pitch=0.88, fade=0.35)],
-    "combat/brood_mother_attack_1": [cut("terr", 0.50, 0.32, gain=0.8, pitch=0.6, fade=0.12), bite(0.55, gain=0.7)],
-    "combat/brood_mother_attack_2": [cut("terr", 0.90, 0.32, gain=0.8, pitch=0.58, fade=0.12), bite(0.52, gain=0.7)],
-    # the Brood Mother devours an offering: a low growl and two crunches
-    "combat/brood_mother_devour": [cut("terr", 0.30, 0.50, gain=0.7, pitch=0.56, fade=0.2), bite(0.5, gain=0.8), bite(0.55, at=0.32, gain=0.6)],
-    "combat/rootmaw_attack_1": [cut("weak", 0.50, 0.26, gain=0.7, pitch=0.8, fade=0.1), bite(0.8)],
-    "combat/rootmaw_attack_2": [cut("weak", 0.90, 0.26, gain=0.7, pitch=0.78, fade=0.1), bite(0.78)],
-    "combat/mound_turtle_attack_1": [cut("venom2", 1.00, 0.26, gain=0.7, pitch=0.62, fade=0.1), bite(0.5, gain=0.7)],
-    "combat/mound_turtle_attack_2": [cut("venom2", 1.40, 0.26, gain=0.7, pitch=0.6, fade=0.1), bite(0.48, gain=0.7)],
-    "combat/pterodactyl_attack_1": [cut("storm", 0.45, 0.28, gain=0.7, pitch=0.85, fade=0.1), bite(0.75)],
-    "combat/pterodactyl_attack_2": [cut("storm", 1.20, 0.28, gain=0.7, pitch=0.82, fade=0.1), bite(0.72)],
-    "combat/storm_challenger_attack_1": [cut("storm", 0.60, 0.24, gain=0.7, pitch=1.1, fade=0.08), bite(0.95)],
-    "combat/storm_challenger_attack_2": [cut("storm", 1.40, 0.24, gain=0.7, pitch=1.08, fade=0.08), bite(0.92)],
-    "combat/hatchlings_attack_1": [cut("raspy", 0.20, 0.12, gain=0.8, pitch=1.3, fade=0.05), bite(1.3, gain=0.5)],
-    "combat/hatchlings_attack_2": [cut("raspy", 1.27, 0.12, gain=0.8, pitch=1.35, fade=0.05), bite(1.35, gain=0.5)],
-    # the Mist Toad's weak lick, and its TONGUE lashing out (it pulls its victim in)
-    "combat/mist_toad_attack_1": [cut("weird", 0.30, 0.16, gain=0.6, pitch=0.8, fade=0.06), bite(1.2, gain=0.5)],
-    "combat/mist_toad_attack_2": [cut("weird", 0.90, 0.16, gain=0.6, pitch=0.78, fade=0.06), bite(1.25, gain=0.5)],
-    "combat/mist_toad_tongue_1": [cut("weird", 0.10, 0.35, pitch=0.62, to=1.0, fade=0.12), bite(1.1, at=0.22, gain=0.5)],
-    "combat/mist_toad_tongue_2": [cut("weird", 0.60, 0.35, pitch=0.6, to=0.98, fade=0.12), bite(1.15, at=0.22, gain=0.5)],
+    "combat/brood_mother_attack_1": [cut("terr", 0.50, 0.32, gain=0.7, pitch=0.6, fade=0.12), bite(0.6, gain=0.9, v=0), splat("l", 0, pitch=0.8, gain=0.35)],
+    "combat/brood_mother_attack_2": [cut("terr", 0.90, 0.32, gain=0.7, pitch=0.58, fade=0.12), bite(0.58, gain=0.9, v=5), splat("l", 1, pitch=0.8, gain=0.35)],
+    # the Brood Mother devours an offering: a low growl, two crunches and a squelch
+    "combat/brood_mother_devour": [cut("terr", 0.30, 0.50, gain=0.6, pitch=0.56, fade=0.2), bite(0.6, gain=0.9, v=0), bite(0.65, at=0.32, gain=0.7, v=5),
+                                   cut("squelch", 0.10, 0.50, at=0.12, gain=0.5, pitch=0.8, fade=0.2)],
+    "combat/rootmaw_attack_1": [cut("weak", 0.50, 0.26, gain=0.6, pitch=0.8, fade=0.1), bite(0.85, gain=0.9, v=1)],
+    "combat/rootmaw_attack_2": [cut("weak", 0.90, 0.26, gain=0.6, pitch=0.78, fade=0.1), bite(0.82, gain=0.9, v=6)],
+    "combat/mound_turtle_attack_1": [cut("venom2", 1.00, 0.26, gain=0.6, pitch=0.62, fade=0.1), bite(0.6, gain=0.9, v=3)],
+    "combat/mound_turtle_attack_2": [cut("venom2", 1.40, 0.26, gain=0.6, pitch=0.6, fade=0.1), bite(0.58, gain=0.9, v=8)],
+    "combat/pterodactyl_attack_1": [cut("storm", 0.45, 0.28, gain=0.6, pitch=0.85, fade=0.1), bite(0.8, gain=0.9, v=0)],
+    "combat/pterodactyl_attack_2": [cut("storm", 1.20, 0.28, gain=0.6, pitch=0.82, fade=0.1), bite(0.78, gain=0.9, v=5)],
+    "combat/storm_challenger_attack_1": [cut("storm", 0.60, 0.24, gain=0.6, pitch=1.1, fade=0.08), bite(1.0, gain=0.9, v=2)],
+    "combat/storm_challenger_attack_2": [cut("storm", 1.40, 0.24, gain=0.6, pitch=1.08, fade=0.08), bite(0.97, gain=0.9, v=7)],
+    "combat/hatchlings_attack_1": [cut("raspy", 0.20, 0.12, gain=0.7, pitch=1.3, fade=0.05), bite(1.35, gain=0.8, v=4)],
+    "combat/hatchlings_attack_2": [cut("raspy", 1.27, 0.12, gain=0.7, pitch=1.35, fade=0.05), bite(1.4, gain=0.8, v=6)],
+    # the Mist Toad's weak lick, and its TONGUE lashing out (it pulls its victim in): a slimy slap, not a bite
+    "combat/mist_toad_attack_1": [cut("weird", 0.30, 0.16, gain=0.6, pitch=0.8, fade=0.06), splat("s", 2, pitch=1.1, gain=0.7)],
+    "combat/mist_toad_attack_2": [cut("weird", 0.90, 0.16, gain=0.6, pitch=0.78, fade=0.06), splat("s", 0, pitch=1.0, gain=0.7)],
+    "combat/mist_toad_tongue_1": [cut("weird", 0.10, 0.35, pitch=0.62, to=1.0, fade=0.12), splat("s", 2, at=0.22, gain=0.6)],
+    "combat/mist_toad_tongue_2": [cut("weird", 0.60, 0.35, pitch=0.6, to=0.98, fade=0.12), splat("s", 1, at=0.22, gain=0.6)],
+    # the globs LANDING (Shot.impact_sound / Game.blob_land: combat/<kind>_hit), sized as the globs (GLOB_SCALE)
+    "combat/spitter_hit_1": [splat("s", 0, pitch=1.15)],
+    "combat/spitter_hit_2": [splat("s", 1, pitch=1.2)],
+    "combat/spitter_hit_3": [splat("s", 2, pitch=1.25)],
+    "combat/venom_challenger_hit_1": [splat("m", 0), hiss(1.0, 0.18, at=0.05, gain=0.25)],
+    "combat/venom_challenger_hit_2": [splat("m", 1, pitch=0.95), hiss(1.0, 0.18, start=0.25, at=0.05, gain=0.25)],
+    "combat/dilophosaurus_hit_1": [splat("l", 0, pitch=0.85), hiss(0.85, 0.25, at=0.08, gain=0.3)],
+    "combat/dilophosaurus_hit_2": [splat("l", 2, pitch=0.8), hiss(0.8, 0.25, start=0.2, at=0.08, gain=0.3)],
     # the spits: the venom hiss (Game.acid_shot: combat/<kind>_attack), lower for the bigger spitters
     "combat/spitter_attack_1": [hiss(1.15, 0.28)],
     "combat/spitter_attack_2": [hiss(1.25, 0.28, start=0.22)],
@@ -328,7 +395,70 @@ SOUNDS = {
     "brood/mature_storm_challenger": [cut("storm", 0.15, 1.30, fade=0.45)],
     # the old synth "roar" (the fallback of every roar cue) is now a real one
     "roar": [cut("terr", 0.05, 1.30, pitch=0.95, fade=0.45)],
+
+    # ================= THE 2026-10-30 PACK: wings, eggs, squelches (assets/audio/brood/) =================
+    # WINGBEATS, played with a flyer's move order (Sfx.VOICE_EXTRA; a GAP each, so a flock is one flap, not a din)
+    # small (Hatchlings, Skywing): a quick bird flutter
+    "brood/wings_small_1": [cut("wbird", 1.34, 0.40, pitch=1.1, fade=0.12)],
+    "brood/wings_small_2": [cut("wbird", 1.72, 0.40, pitch=1.15, fade=0.12)],
+    "brood/wings_small_3": [cut("wbird", 2.02, 0.38, pitch=1.05, fade=0.12)],
+    # mid (Storm Challenger): two beats, closer together than recorded
+    "brood/wings_mid_1": [cut("wflap", 0.06, 0.34, fade=0.1), cut("wflap", 0.88, 0.34, at=0.32, gain=0.85, fade=0.12)],
+    "brood/wings_mid_2": [cut("wdragon", 0.08, 0.38, pitch=1.2, fade=0.1), cut("wflap", 1.84, 0.30, at=0.34, gain=0.8, fade=0.12)],
+    # big (Storm Sire): two heavy leathery beats
+    "brood/wings_big_1": [cut("wheavy", 1.14, 0.45, pitch=0.92, fade=0.15), cut("wheavy", 2.20, 0.45, at=0.5, gain=0.85, pitch=0.92, fade=0.15)],
+    "brood/wings_big_2": [cut("wdragon", 1.06, 0.42, pitch=0.9, fade=0.15), cut("wdragon", 2.08, 0.42, at=0.5, gain=0.85, pitch=0.9, fade=0.15)],
+    "brood/wings_big_3": [cut("wheavy", 7.32, 0.50, pitch=0.9, fade=0.18), cut("wdragon", 3.10, 0.40, at=0.04, gain=0.5, pitch=0.85, fade=0.15)],
+    # an EGG HATCHING (BroodNew: the young come out): a real shell cracking, a little goo after it
+    "brood/hatch_1": [cut("egg5", 0.06, 0.60, fade=0.15), cut("slimy", 0.12, 0.24, at=0.30, gain=0.4, fade=0.08)],
+    "brood/hatch_2": [cut("egg14", 0.12, 0.62, fade=0.15), cut("squish", 5.16, 0.22, at=0.22, gain=0.4, pitch=1.2, fade=0.08)],
+    "brood/hatch_3": [cut("eggc", 1.02, 0.40, fade=0.12), cut("egg14", 0.48, 0.26, at=0.30, gain=0.6, fade=0.08), splat("s", 2, at=0.18, gain=0.3)],
+    # a COCOON or a MOULT splitting open (BroodRoot: a grub's cocoon done; BroodMature: the moult done): lower and wetter
+    "brood/cocoon_split_1": [cut("eggc", 1.02, 0.40, pitch=0.7, fade=0.15), cut("squelch", 0.10, 0.55, at=0.08, gain=0.7, pitch=0.9, fade=0.2)],
+    "brood/cocoon_split_2": [cut("egg5", 0.06, 0.60, pitch=0.72, fade=0.15), cut("slimy", 1.22, 0.32, at=0.12, gain=0.7, pitch=0.85, fade=0.1)],
+    # a moult BEGINNING (BroodMature: the skin goes soft): a sticky squish
+    "brood/moult_1": [cut("slimy", 1.22, 0.34, fade=0.1), cut("squish", 8.10, 0.22, at=0.1, gain=0.5, fade=0.08)],
+    "brood/moult_2": [cut("slimy", 0.12, 0.30, fade=0.1), cut("squish", 13.30, 0.24, at=0.1, gain=0.5, fade=0.08)],
+    # the Mother LAYS an egg: a wet plop and the soft knock of the shell
+    "brood/lay_egg_1": [cut("slime", 0.06, 0.36, pitch=0.75, fade=0.12), cut("egg14", 0.50, 0.12, at=0.10, gain=0.35, pitch=0.8, lp=2500)],
+    "brood/lay_egg_2": [cut("cwet", 0.20, 0.42, pitch=0.7, fade=0.12), cut("egg14", 0.66, 0.10, at=0.12, gain=0.35, pitch=0.8, lp=2500)],
+    # a grub TAKES its load from a Rootmaw or a pile: a small squish (quiet: it happens all game)
+    "brood/grub_take_1": [cut("squish", 6.80, 0.24, pitch=1.2, fade=0.08)],
+    "brood/grub_take_2": [cut("squish", 9.58, 0.22, pitch=1.25, fade=0.08)],
+    "brood/grub_take_3": [cut("squish", 14.34, 0.22, pitch=1.15, fade=0.08)],
+    # a Rootmaw (or any rooting creature) ROOTS into the ground / UPROOTS out of it: a squelch, sinking / pulling
+    "brood/root_1": [cut("squelch", 0.10, 0.60, pitch=0.8, fade=0.2), cut("squish", 19.18, 0.30, at=0.18, gain=0.5, pitch=0.8, fade=0.1)],
+    "brood/root_2": [cut("wetimp", 0.26, 0.60, pitch=0.8, fade=0.2), cut("slimy", 1.56, 0.20, at=0.2, gain=0.5, pitch=0.8, fade=0.08)],
+    "brood/uproot_1": [cut("slimy", 1.22, 0.32, pitch=0.85, to=1.05, fade=0.1), cut("squish", 20.32, 0.30, at=0.12, gain=0.7, pitch=0.9, fade=0.1)],
+    "brood/uproot_2": [cut("squish", 22.52, 0.30, pitch=0.85, to=1.05, fade=0.1), cut("splat", 0.02, 0.24, at=0.22, gain=0.5, pitch=0.85)],
+
+    # ================= THE THREE GRUNTS (sent later on 2026-10-30) =================
+    # SOMETHING WENT WRONG (the owner's pick, grunt-1): the Brood's error sound for every failed order (not enough
+    # food or spoils, no room or supply, a blocked spot, can't do that: Hud.toast plays <faction>/error, else ui/error)
+    "brood/error_1": [cut("grunt1", 0.26, 0.66, fade=0.2)],
+    "brood/error_2": [cut("grunt1", 0.26, 0.66, pitch=0.92, fade=0.2)],
+    "brood/error_3": [cut("grunt1", 0.26, 0.62, pitch=1.06, fade=0.2)],
 }
+
+# WET DEATHS (the 2026-10-30 pack): every Brood death gets a wet burst under its dying call, sized by the creature
+# (kind: splat size, pitch, gain). Take n gets splat variant n-1, so takes differ.
+WET_DEATH = {"grub": ("s", 1.2, 0.5), "hatchlings": ("s", 1.25, 0.5), "spitter": ("s", 1.05, 0.55), "skywing": ("s", 1.1, 0.5),
+             "mist_toad": ("m", 1.0, 0.55), "venom_challenger": ("m", 0.95, 0.55), "tyrant_challenger": ("m", 0.95, 0.55),
+             "storm_challenger": ("m", 1.0, 0.5), "rootmaw": ("m", 0.85, 0.6), "brute": ("l", 0.9, 0.6),
+             "tyrannosaur": ("l", 0.8, 0.6), "dilophosaurus": ("l", 0.8, 0.6), "pterodactyl": ("l", 0.85, 0.55),
+             "mound_turtle": ("l", 0.75, 0.6), "brood_mother": ("l", 0.65, 0.7)}
+for _n in list(SOUNDS):
+    if _n.startswith("combat/") and "_death" in _n:
+        _k = _n[len("combat/"):_n.index("_death")]
+        _t = _n.rsplit("_", 1)[1]
+        if _k in WET_DEATH:
+            _s, _p, _g = WET_DEATH[_k]
+            SOUNDS[_n] = SOUNDS[_n] + [splat(_s, int(_t) - 1 if _t.isdigit() else 0, pitch=_p, at=0.04, gain=_g)]
+# the egg's death: a real shell breaking instead of the old synth hatch
+SOUNDS["combat/brood_egg_death_1"] = [cut("egg5", 0.06, 0.55, pitch=0.85, fade=0.15), splat("s", 2, at=0.08, gain=0.5),
+                                      cut("weak", 0.30, 0.30, at=0.05, gain=0.4, pitch=1.8, to=1.2, lp=2500)]
+SOUNDS["combat/brood_egg_death_2"] = [cut("egg14", 0.12, 0.55, pitch=0.85, fade=0.15), splat("s", 0, at=0.08, gain=0.5),
+                                      cut("weak", 0.70, 0.30, at=0.05, gain=0.4, pitch=1.85, to=1.25, lp=2500)]
 
 
 _cache = {}

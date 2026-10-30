@@ -605,7 +605,7 @@ static func lay(g: Game, q: Unit, k: String) -> String:
 	e.facing = Vector2.DOWN
 	BroodRoot.set_rally(e, BroodRoot.rally_of(q), false)       # (her rally goes to each egg she lays)
 	if q.team == g.human:
-		Sfx.play_any(["work/grub_deliver", "hatch"], p, -8.0)
+		Sfx.play_any(["brood/lay_egg", "work/grub_deliver", "hatch"], p, -6.0)
 	recount(g, q.team)
 	return ""
 
@@ -756,7 +756,7 @@ static func _hatch(g: Game, e: Unit) -> void:
 		g._first_of["%d:%s" % [t, k]] = true
 		g.mlog.add("%s got its first %s" % [g.mlog.who(t), Defs.UNITS[k]["name"]])
 	if t == g.human:
-		Sfx.play("hatch", at)
+		Sfx.play_any(["brood/hatch", "hatch"], at)
 		Sfx.voice(k, "select")
 	for i in n:
 		var off := Vector2.from_angle(TAU * i / maxf(1.0, n) + float(e.serial)) * (6.0 if n > 1 else 0.0)
@@ -1121,6 +1121,7 @@ static func on_root(g: Game, u: Unit) -> String:
 	BroodRoot.footprint_on(g, u)
 	if u.kind == MAW:
 		_claim(g, u)
+	Sfx.play("brood/root", u.position, -4.0)       # (it sinks into the ground: a squelch, where your side sees)
 	return ""
 
 
@@ -1132,6 +1133,7 @@ static func uproot(u: Unit, spill: bool) -> void:
 		BroodResearch.stop(u.game, u, "up")     # (got up: its research stops, paid back)
 	if u.kind == MAW:
 		u.nb["spill"] = spill
+	Sfx.play("brood/uproot", u.position, -4.0)     # (it pulls itself out of the ground)
 	u.cmd_pack()
 
 
@@ -1479,6 +1481,8 @@ static func grub_tick(g: Game, gr: Unit, delta: float) -> Vector2:
 				src.nb["food"] = have - take
 				gr.load_f = take
 				gr.carrying = maxi(1, int(round(take)))
+				if gr.team == g.human:
+					Sfx.play("brood/grub_take", gr.position, -8.0)     # (a small squish: all game long, so quiet)
 				gr.work = "to_hall"
 				gr.path = PackedVector2Array()
 			return Vector2.ZERO

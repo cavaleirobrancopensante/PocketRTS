@@ -111,7 +111,7 @@ Each change below is one sound line. Only the list of sound names changed, so th
 
 ## Decisions made while the owner was away
 
-- **The Raptor keeps the owner's lizard recording** (since 0.7.84) for its voice and deaths. Its blow, the Skywing's spines and the Grub's bite keep their older sounds. Every other Brood voice and death is new. The old insect clips of the Grub, Spitter, Brute, Mist Toad and Skywing are replaced, because the owner wants the Brood reptilian first.
+- **The Raptor keeps the owner's lizard recording** (since 0.7.84) for its voice and deaths. The Skywing's spines keep their older sound (the Raptor's and the Grub's bites are real chomps since 0.24.6). Every other Brood voice and death is new. The old insect clips of the Grub, Spitter, Brute, Mist Toad and Skywing are replaced, because the owner wants the Brood reptilian first.
 - The Grub's move voice was insect feet. Now it is the same small call, as with every other creature.
 - **Who got which recording** follows his file names. The ones he did not name are Claude's choice:
   - weak_grown: the Grub, the Rootmaw, the Egg and under the Mother.
@@ -124,11 +124,38 @@ Each change below is one sound line. Only the list of sound names changed, so th
 - A rooted creature answers with the same voice as when it walks. Sfx.voice does not know the state.
 - `make_brood_voices.py` (the old insect voices) is still there, but running it would bring the insect voices back. Do not run it.
 
+## The sound pack (2026-10-30, 0.24.6)
+
+The owner sent a pack of Pixabay sound effects (art/audio_src/brood/SOURCES.txt has which file went where), then three grunts. Same method: cut, layered, pitched, levelled; nothing synthesised. The cuts were found by measuring each recording (loudness every 20 ms); the script's header lists where each beat, crack or squish is.
+
+| Sound | When it plays | Cut from |
+|---|---|---|
+| `combat/<kind>_attack` (every Brood blow) | Each blow. The Raptor (3 takes) and the Grub (2) now have their own blows too. | The creature's snarl, as before, over a REAL bite: one of 9 chomps (`CHOMPS`: monster-bite, chomping, chomp), pitched to size. The Tyrant Sire, Brute and Mother have a wet hit under it. The Mist Toad's lick and tongue end on a slimy slap instead. |
+| `combat/spitter_hit` (3), `venom_challenger_hit` (2), `dilophosaurus_hit` (2) | A venom glob lands (Shot.impact_sound, Game.blob_land). | Wet splats sized like the globs: small and higher (splat2ogg, wet-splat, slime), mid (cartoon-wet-splat, slime), big and lower (wet-impact, cartoon-wet-splat) with a bit of hiss. |
+| `combat/<kind>_death` | Every Brood death. | The dying call as before, with a wet burst under it (`WET_DEATH`: small, mid or large splat per creature). The egg's death: a real shell cracking. |
+| `brood/hatch` (3) | An egg hatches. | egg-crack5, egg-crack14, egg-cracking, each with a little goo (so-slimy, extended-squish, a splat). |
+| `brood/cocoon_split` (2) | A grub's cocoon opens, and a moult opens as the creature matures. | egg-cracking or egg-crack5 lower (x0.7), with a squelch. |
+| `brood/moult` (2) | A moult begins (its skin goes soft). | so-slimy with a squish. |
+| `brood/lay_egg` (2) | The Mother lays an egg. | slime or cartoon splat lower (a wet plop), a soft muffled shell knock. |
+| `brood/grub_take` (3) | Your grub takes a load from a Rootmaw or a pile. | One small squish (extended-squish x1.2), played 8 dB down: it happens all game. |
+| `brood/root`, `brood/uproot` (2 each) | Any creature roots or uproots (the Rootmaw, the Mother, the Sires, the Mound Turtle). | A squelch sinking (wet-squelch, wet-impact, lower); a sticky pull rising in pitch (so-slimy, squish). |
+| `brood/wings_small` (3), `wings_mid` (2), `wings_big` (3) | A flyer is sent off (always) or told to attack (60%): Sfx.VOICE_EXTRA. Small: Hatchlings, Skywing. Mid: Storm Challenger. Big: Storm Sire. | bird-wings flutter; two flapping beats brought closer; two heavy leathery beats (heavy-wings, dragon flapping, lower). |
+| `brood/error` (3) | Every failed order of a Brood player (Hud.toast): not enough food or spoils, no supply, no room, can't do that. | grunt-1, the owner's pick. |
+| `voice/tyrant_challenger/select_3`, `_4`, `attack_3`; `voice/tyrannosaur/select_4` | New takes. | The animalistic grunt he liked; the monster grunt-and-growl, lower. |
+
+**Not stacking.** Every new sound has a GAP in scripts/sfx.gd: the wings 0.7 / 0.9 / 1.2 s, so a flock sent at once gives one flap (and the wings come with the ORDER, not every flyer's flight: a continuous flap per flyer would be a din). The glob splats 0.15 to 0.25 s, the grub's squish 0.35 s, rooting 0.4 s.
+
+**The fog.** The splats, hatching, rooting, laying and squishes are played at their spot, so Sfx.heard drops them where your side does not see. Wings and the error come with your own orders and have no spot.
+
+**The error and the announcer.** For a Brood player the grunt replaces the generic error click. When the toast is about resources or supply, the hive-mind's line ("not enough food") follows, so the grunt plays 5 dB lower under it. The grunt is tier 3 (like the alerts): a big fight never swallows it. The grunt is levelled like the announcer lines (make_mix: every sound's loudest 0.3 s to the same target): brood/error 0.4 to 0.6 dB, the Crown's no_gold -5.9, the Clockwork's +1.3, the Brood's -2.1.
+
+**The mud boots** are not used. The Brood has no footstep sounds to give them to (no creature plays steps), and a booted human gait in mud does not suit a reptile. They could become the Mother's heavy steps if steps are added one day.
+
+The levels: make_mix was run, and only the lines of the files this script writes were kept (63 changed, 37 new).
+
 ## What the owner could record next
 
-- **A bite or crunch**: real jaws on meat or a bone snapping. Every blow still uses the old synth bite under the creature's snarl.
-- **A spit or wet splat**: for the acid landing (`combat/spitter_hit` is still synth).
-- **An egg cracking**: a real shell breaking (the hatch sound is still synth).
+(Bites, splats, egg cracks, wings and squelches came in the 2026-10-30 pack: see above.)
 - **Small chirps or squeaks**: a second small creature, so the Grub and the Raptor's young are not all one recording.
-- **Wing flaps**: a big leathery flap for the Storm Sire and the Skywings.
-- **Mud and swamp sounds**: a squelch for rooting and uprooting, and a slurp for the Rootmaw drinking the ground.
+- **A slurp**: for the Rootmaw drinking the ground.
+- **Footsteps**: heavy reptile steps, if the Brood is ever given steps (the Mother, the Sires).

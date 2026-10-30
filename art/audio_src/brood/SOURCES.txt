@@ -96,3 +96,17 @@ freesound_community-small-dino-raspy-calls-39345.mp3 (1.8 s): "small dino raspy 
   daviddumaisaudio-monster-05-grunt-and-growl-195715.mp3
   freesound_community-grunt-1-84550_maybe_not_enough_resources.mp3
   dragon-studio-animalistic-grunt-463204_interesting_monster_sound.mp3
+
+HOW THE 2026-10-30 PACK IS USED (tools/audio/make_brood_sounds.py, docs/brood_sounds.md "The sound pack"):
+  wings: u_editorpropro-bird-wings (small flyers: Hatchlings, Skywing), freesound flapping (+ dragon-studio dragon
+    flapping, higher: the Storm Challenger), dragon-studio heavy wings + dragon flapping (the Storm Sire);
+    dragon-studio-dragon-wings-flapping-478385 is not used (the same kind of beat as 364476, more clipped)
+  egg cracks (egg-crack5, egg-crack14, egg-cracking): eggs hatching, a cocoon or moult splitting, the Mother laying,
+    an egg dying
+  wet hits (splat2ogg, universfield slime/wet/wet-squelch/cartoon-wet-splat/wet-splat impacts): globs landing (sized
+    by glob), wet deaths, rooting, the Mother's big blows; so-slimy and extended-squish: moults, a grub taking food,
+    uprooting, hatch goo
+  bites (chomping, chomp, monster-bite): every Brood blow (the old synth bite is no longer used by the Brood)
+  boots in mud: NOT used (the Brood has no footstep sounds; a booted human gait does not fit a reptile)
+  grunt-1: the Brood's error sound (every failed order); animalistic-grunt: the Tyrant Challenger's 4th select and 3rd
+    attack take; monster-05 grunt-and-growl: the Tyrant Sire's 4th select take

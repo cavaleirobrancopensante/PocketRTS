@@ -114,7 +114,7 @@ static func start(u: Unit) -> void:
 	u.moult_t = 0.0
 	u.facing = BroodNew.SE          # (the moult is drawn facing south-east: scripts/moult_look.gd)
 	if u.visible and g.view_rect.has_point(u.position):
-		Sfx.play_any(["hatch", "work/grub_deliver"], u.position, -6.0)
+		Sfx.play_any(["brood/moult", "hatch", "work/grub_deliver"], u.position, -6.0)
 
 
 ## Every tick of the moult (instead of moving and fighting: Unit._tick_unit). When the time is up it is the mature unit.
@@ -137,6 +137,7 @@ static func tick(u: Unit, delta: float) -> void:
 		MoultLook.finish(u)         # (the empty shell and the shed skin left on the ground)
 	if u.visible and g.view_rect.has_point(u.position):
 		g.spawn_effect("acid_splash", u.position + Vector2(0, -8), 0.9)
+		Sfx.play("brood/cocoon_split", u.position, -4.0)       # (the moult splits open)
 		Sfx.play_any(["brood/mature_" + u.kind, "hatch", "roar"], u.position, -6.0)
 	if g.mlog:
 		g.mlog.add("%s's %s matured into a %s" % [g.mlog.who(u.team), Defs.UNITS[was]["name"], Defs.UNITS[m]["name"]])

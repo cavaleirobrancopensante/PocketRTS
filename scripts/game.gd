@@ -6484,6 +6484,7 @@ func acid_shot(u: Unit, e: Entity, dmg: float) -> void:
 	s.scale = Vector2.ONE * venom_glob_scale(u)
 	s.impact = "acid_splash"
 	s.impact_scale = 0.7
+	s.impact_sound = "combat/%s_hit" % u.kind       # (sized as the glob: the Spitter's small, the Sire's big)
 	s.launch(self, venom_glob(u), mouth, e.center(), 330.0)
 
 
@@ -6628,7 +6629,7 @@ func blob_land(p: Vector2, dmg: float, splash: float, t: int, shooter: Entity, a
 	for i in 3:
 		var f2 := spawn_effect("acid_splash", p + Vector2(randf_range(-splash, splash) * 0.6, randf_range(-splash, splash) * 0.4), 1.2)
 		f2.scale = Vector2(0.9, 0.9)
-	Sfx.play_any(["combat/spitter_hit", "acid"], p)
+	Sfx.play_any(["combat/%s_hit" % (shooter.kind if shooter is Unit else ""), "combat/spitter_hit", "acid"], p)
 	for u in units_near(p, splash + 12.0):
 		if u == shooter or u.dead or u.is_air() or u.off_field:
 			continue
@@ -6883,6 +6884,7 @@ func ground_shot_fx(u: Unit, to: Vector2) -> void:
 			s.scale = Vector2.ONE * (venom_glob_scale(u) if u.kind != "skywing" else 1.3)
 			s.impact = "acid_splash"
 			s.impact_scale = 0.7
+			s.impact_sound = "combat/%s_hit" % u.kind
 			s.launch(self, venom_glob(u), from, to, 330.0)
 			Sfx.play_any(["combat/%s_attack" % u.kind, "combat/spitter_attack", "acid"], from)
 		"tesla_cart", "stormcaller", "ornithopter", "arc_thrower", "tesla_loco":
