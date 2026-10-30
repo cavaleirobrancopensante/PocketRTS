@@ -12,6 +12,7 @@ const SHORT := {"crown": "crown", "brood": "brood", "clockwork": "clock"}
 static var me: Sfx
 static var hush := false     # (a replay jumping to another time: the pictures in between make no sound)
 var camera: Camera2D
+var game: Node              # the match (main.gd sets it): a sound at a spot the player can't see is not heard
 var _streams := {}          # name -> Array of streams ([] = none)
 var _players := {}
 var _last := {}
@@ -171,6 +172,8 @@ static func _tier(name: String) -> int:
 static func play(name: String, pos := Vector2.INF, vol := 0.0) -> void:
 	if me == null or hush:
 		return
+	if not heard(name, pos):
+		return
 	var list := me._find(name)
 	if list.is_empty():
 		return
@@ -207,6 +210,28 @@ static func play(name: String, pos := Vector2.INF, vol := 0.0) -> void:
 	p.pitch_scale = randf_range(1.0 - j, 1.0 + j)
 	p.play()
 	MatchLog.sound(name)
+
+
+## SOUNDS THROUGH THE FOG (owner, 2026-10-30): a sound at a spot the player can't see (an
+## enemy's hammer, gunfire in the fog) is not heard; only sounds at spots his side sees.
+## Interface sounds and sounds with no spot (alerts, voices, the announcer) always play;
+## watching computers with all vision, a replay or FOG: OFF hear everything.
+static func heard(name: String, pos: Vector2) -> bool:
+	if pos == Vector2.INF or name == "click" or name.begins_with("ui/"):
+		return true
+	var g = me.game if me else null
+	if g == null or not is_instance_valid(g) or g.get("vis") == null or (g.vis as Array).is_empty():
+		return true
+	if g.replay != null or g.sees_all():
+		return true
+	var t: int = g.fog_team()
+	var i: int = g.idx(g.cell_of(pos))
+	if t == g.human and not (g._human_vis as PackedByteArray).is_empty():
+		return g._human_vis[i] == 1          # (your side's eyes: yours and your allies')
+	for o in g.n_players():
+		if g.allied(o, t) and o < g.vis.size() and i < (g.vis[o] as PackedByteArray).size() and g.vis[o][i] == 1:
+			return true
+	return false
 
 
 ## A building you pick answers with its own short sound (select/<kind>, else the faction's).

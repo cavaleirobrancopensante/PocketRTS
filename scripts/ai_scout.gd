@@ -213,7 +213,7 @@ func _send() -> void:
 	_stuck = 0.0
 	_mode = "route"
 	_flees = 0
-	u.cmd_move(_wps[0])
+	_go(u, _wps[0])
 	var what: String = Defs.UNITS[u.kind]["name"]
 	_say("sends a %s to scout%s" % [what, "" if trips == 1 else " again (trip %d)" % trips])
 
@@ -295,7 +295,7 @@ func _follow() -> void:
 		if _wp_i >= _wps.size():
 			_finish("done")
 			return
-		unit.cmd_move(_wps[_wp_i])
+		_go(unit, _wps[_wp_i])
 		return
 	if unit.order == "idle":
 		_stuck += 1.0
@@ -307,7 +307,35 @@ func _follow() -> void:
 				return
 			_finish("blocked")
 			return
-		unit.cmd_move(wp)
+		_go(unit, wp)
+
+
+## THE COMPUTER (ALMOST) NEVER USES PLAIN MOVE (owner, 2026-10-30: a scouting Musketeer on a
+## MOVE order was killed by one Raptor without firing back). A soldier scouts on ATTACK-MOVE,
+## marked "ai_scout" so it fires only at enemies that fight back (Unit._pick_target), not at
+## every hall and worker on its loop; a worker scout (no fighter) still walks, and both keep the
+## flee logic (_avoid: backing out of a guarded spot is a plain move).
+func _go(u: Unit, p: Vector2) -> void:
+	if u.is_worker():
+		u.cmd_move(p)
+		return
+	u.set_meta("ai_scout", true)
+	u.cmd_move(p, true)
+
+
+## An armed soldier scout can't outrun this threat (as fast or faster) or outweighs it: it
+## turns and fights instead of being run down with its back turned.
+func _stands(thr: Array) -> bool:
+	if unit.is_worker() or not unit.has_attack():
+		return false
+	var mine := float(Game.unit_value(unit)) + unit.hp
+	var theirs := 0.0
+	var faster := false
+	for e in thr:
+		theirs += float(Game.unit_value(e)) + e.hp
+		if float(e.d["speed"]) >= float(unit.d["speed"]) * 0.95:
+			faster = true
+	return thr.size() <= 2 and (faster or theirs <= mine)
 
 
 ## The nearest wall or gate of the enemy's right by the scout (what holds it up).
@@ -333,7 +361,9 @@ func _finish(how: String) -> void:
 	last_end = game.clock
 	if unit != null and is_instance_valid(unit) and not unit.dead:
 		var home := game.center_of_team(ai.team)
-		unit.cmd_move(home)
+		unit.remove_meta("ai_scout")
+		# (driven off: a retreat, a plain walk home; otherwise a soldier walks home on attack-move)
+		unit.cmd_move(home, how != "driven off" and not unit.is_worker())
 	unit = null
 	_observe()
 	if how in ["blocked", "driven off", "timeout"] and not _hall_seen:
@@ -679,6 +709,12 @@ func _find_ramp(home: Vector2) -> Vector2:
 ## or too often, it goes home. True while this is handling the scout.
 func _avoid() -> bool:
 	var thr := _threats()
+	if not thr.is_empty() and _stands(thr):
+		# (one or two it can't run from: it fights them where it stands, then goes on)
+		_stuck = 0.0
+		if not (unit.order == "attack" and thr.has(unit.order_target)):
+			unit.cmd_attack(thr[0])
+		return true
 	if not thr.is_empty():
 		if _mode != "flee":
 			if _flees >= MAX_FLEES or (foe_nonhorse_seen and _flees >= 1):

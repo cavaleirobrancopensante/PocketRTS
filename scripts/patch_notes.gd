@@ -4,6 +4,14 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.1", "items": [
+		"NO SOUNDS THROUGH THE FOG: a sound at a spot you can't see (an enemy's hammer on a building going up, gunfire, a death in the fog) is no longer heard. Your own base and your allies' are always heard; alerts and the announcer still speak; watching computers with all vision, a replay or FOG: OFF hear everything. Online, each player hears by his own vision.",
+		"THE COMPUTER (ALMOST) NEVER USES PLAIN MOVE: a computer's soldier sent to scout now goes on attack-move (a Musketeer scout was killed by one Raptor without firing back): it fires at enemies that fight back but not at every hall on its loop, turns and fights one or two it can't outrun, and walks home on attack-move (driven off, it still retreats on a plain move). A raider hunting workers attack-moves when an enemy soldier is in reach; the Brood's Raptor scout and its army gathering at the staging point attack-move too. Retreats, workers, siege set-up, wagons and horses still walk.",
+		"RESOURCE TOOLTIPS: rest the mouse on gold, powder, cogs, Tension, food or spoils in the top bar: what it is, how it is earned, what it pays for, how it runs out (spent soil, brass and ground pay nothing; powder and Tension fall to a floor), the workers on it out of the most its buildings take (Workers: 40 / 50 on 5 Farms), and your income a minute.",
+		"REFITS ONE AT A TIME: a click (or the key) on a refit (Armour, the shot pouch, a better lock, the bayonet) sends ONE soldier of the selection; Ctrl+click or Ctrl+the key sends all that can. The same for the Clockwork's MORPH TO OWL.",
+		"ATTACK GROUND's key now reads Ctrl+A (it read ^A).",
+		"FIX: continuing a match from the main menu, the fog of war was missing through the 3, 2, 1 countdown (every enemy unit stood in plain sight): it is in place from the first picture.",
+	]},
 	{"v": "0.24.0", "items": [
 		"EXHAUSTED MEANS EXHAUSTED: no free income for anyone. A Farm, Cog Press or Mainspring with nobody working it makes NOTHING (Farms and presses used to grow at 15% by themselves). Spent soil, spent brass and a Rootmaw's spent ground pay nothing (spent brass used to pay a quarter forever).",
 		"POWDER AND TENSION DON'T RUN DRY: a Powder Mill grinds less as its Town Hall's saltpetre runs down and 15% once it is spent; a Mainspring winds less as its Clocktower's new SPRING LIFE (1,320 Tension) runs down and 5% once it is spent. A spent Mainspring is FATIGUED (the spring has taken a set): it still drives its rings, stores Tension and counts as a Mainspring for everything meshed with it. Only while worked: an empty Mill or Mainspring gives nothing. A new hall brings them back to full strength.",
