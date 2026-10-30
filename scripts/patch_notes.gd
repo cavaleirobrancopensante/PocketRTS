@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.22.9", "items": [
+		"THE BROOD COMPUTER PLAYS A REAL ECONOMY (the designer's build): its first Mound Turtle goes on the NATURAL expansion in the first minute, its third Rootmaw at the natural's far edge (farther loads pay more), grubs come nonstop, and a second turtle takes the third expansion with Rootmaws round it. The Mother grows once her eggs, not her food, hold the Brood back. Against the Crown it now earns about as much as the Crown for the first ten minutes (it earned three quarters before).",
+		"A Brood grub now keeps WATCH all game: against the Crown it walks to and fro at the foot of the enemy's ramp, against the Clockwork it walks round the enemy's main. When an enemy army leaves its main the computer raises the ALARM: warriors before grubs, the army waits at the natural, grubs run from Rootmaws the enemy comes near, and a Mound Turtle roots in front of the natural. It never lets its army fall far behind the enemy army it has seen.",
+		"The Brood computer's Air rush lays Raptors and offers them up for the Storm line's spoils, and sends more grubs to harvest bodies.",
+	]},
 	{"v": "0.22.8", "items": [
 		"The line over the Brood Mother now says what it counts: Eggs: 4/10  4.8s · 00:35.",
 	]},

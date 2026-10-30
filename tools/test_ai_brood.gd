@@ -18,21 +18,31 @@ var seen := {}                  # milestone -> clock
 var bank_long := 0.0            # seconds in a row with food over BANK_MAX
 var bank_worst := 0.0
 var grubs_max := 0
+var natural_at := Vector2.INF         # the natural's turtle spot (the eco plans), from the start
 
 ## The latest each milestone may come (game seconds), per profile. "attack": the first wave leaves; "raptors8": 8
 ## Raptors at once; "stage2"/"stage3": the Mother grown; "venom"/"storm": the Sire came; "research": the first research
 ## done; "pack": Pack Hunt done (and before the first attack where the plan wants it); "far": a Mound Turtle on new ground;
-## "scout": a scout sent. (Against the Crown, Balanced does not attack this early: its wall rule waits for Spitters or
+## "scout": a scout sent.
+## THE OWNER'S BUILD (docs/brood_eco.md; the plans with "eco"): "natural": the first Mound Turtle on new ground is ON THE
+## NATURAL (the nearest turtle spot by walk, ExpansionSpots, as AIBroodNew._nb_eco_sites ranks them at the start);
+## "maw3": the third Rootmaw rooted (on new ground: the natural's far edge); "watch": the grub on watch sent out (the
+## Crown: the foot of its ramp); "income6": food earned by 6:00 at least INCOME6 (the profile's measured figure, less a
+## margin). (Against the Crown, Balanced does not attack this early: its wall rule waits for Spitters or
 ## Brutes with Battering Horns, docs/brood_ai.md.)
 const MILESTONES := {
 	"xrush": {"tyrant": 45.0, "raptors8": 180.0, "attack": 190.0},
 	"rush": {"tyrant": 100.0, "scout": 90.0, "attack": 270.0},
-	"timing": {"tyrant": 110.0, "scout": 90.0, "stage2": 380.0, "far": 400.0, "attack": 540.0},
-	"balanced": {"tyrant": 120.0, "scout": 90.0, "venom": 360.0, "stage2": 420.0, "far": 430.0, "pack": 700.0},
-	"economy": {"tyrant": 160.0, "scout": 90.0, "far": 340.0, "venom": 380.0, "stage2": 500.0, "research": 520.0},
-	"air": {"tyrant": 120.0, "scout": 90.0, "stage2": 340.0, "storm": 540.0, "attack": 560.0},
+	"timing": {"tyrant": 240.0, "scout": 90.0, "watch": 90.0, "natural": 200.0, "maw3": 330.0, "stage2": 600.0, "far": 200.0, "income6": 360.0, "attack": 690.0},
+	"balanced": {"tyrant": 260.0, "scout": 90.0, "watch": 90.0, "natural": 200.0, "maw3": 330.0, "venom": 620.0, "stage2": 620.0, "far": 200.0, "income6": 360.0, "pack": 720.0},
+	"economy": {"tyrant": 270.0, "scout": 120.0, "watch": 120.0, "natural": 200.0, "maw3": 330.0, "far": 200.0, "venom": 580.0, "stage2": 600.0, "income6": 360.0, "research": 560.0},
+	"air": {"tyrant": 220.0, "scout": 90.0, "watch": 90.0, "natural": 200.0, "maw3": 300.0, "stage2": 430.0, "storm": 600.0, "income6": 360.0, "attack": 780.0},
 }
-## (measured on 0.22.0, Greenhold seed 3, with about a minute's margin: docs/ai_build_timelines.md "Brood")
+## (measured on 0.22.4 with the owner's economic build, Greenhold seed 3, with about a minute's margin:
+## docs/ai_build_timelines.md "Brood", docs/brood_eco.md: the Tyrant Sire, her stage 2 and the Venom Sire come later
+## than in 0.22.0 on purpose, the grubs first)
+## food earned by 6:00 (the "income6" milestone, checked at its time), per profile
+const INCOME6 := {"timing": 2000, "balanced": 2000, "economy": 2000, "air": 1600}
 const BANK_MAX := 900
 const BANK_FOR := 60.0
 
@@ -115,12 +125,33 @@ func _watch() -> void:
 		_mark("pack")
 	if not BroodNew.expansions(g, q).is_empty():
 		_mark("far")
+	if natural_at == Vector2.INF and ai._eco() and g.clock > 1.0:
+		var sites: Array = ai._nb_eco_sites(q)
+		natural_at = BroodRoot.feet_at(BroodNew.TURTLE, sites[0]["tc"]) if not sites.is_empty() else Vector2(-1, -1)
+		print("  the natural: %s, %d tiles from the Mother" % [str(natural_at), int(natural_at.distance_to(q.position) / Defs.TILE)])
+	for e in BroodNew.expansions(g, q):
+		if natural_at != Vector2.INF and e.position.distance_to(natural_at) < 3.0 * Defs.TILE:
+			_mark("natural")
+	var rm := 0
+	for u in g.units:
+		if u.team == 0 and not u.dead and u.kind == BroodNew.MAW and BroodNew.rooted(u):
+			rm += 1
+	if rm >= 3:
+		_mark("maw3")
+	if g.clock >= 359.0 and not seen.has("income6"):
+		print("  food earned by 6:00: %d" % int(g.stats[0]["gold"]))
+		if int(g.stats[0]["gold"]) >= int(INCOME6.get(profile, 0)):
+			_mark("income6")
+		else:
+			seen["income6"] = 99999.0
 	for n in ai.note:
 		var s := String(n[1])
 		if s.begins_with("attacks with"):
 			_mark("attack")
 		elif s.begins_with("sends a"):
 			_mark("scout")
+			if s.contains("watch"):
+				_mark("watch")
 	grubs_max = maxi(grubs_max, BroodNew.count_of(g, 0, "grub"))
 	var food := int(g.players[0]["gold"])
 	if food > BANK_MAX:

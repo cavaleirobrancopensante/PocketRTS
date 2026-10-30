@@ -239,3 +239,19 @@ The batch was not run again after them.
 - The Mother MUST be able to hit a gate on a ramp: investigate and fix (branch brood-fixes).
 - Spoils for the Storm line / air rush: SACRIFICE RAPTORS. The sacrifice egg exploit is to be fixed: two young from one egg sacrificed gave two eggs; now a sacrifice still pays its spoils, but the young of one egg give back only ONE egg between them (branch brood-fixes).
 - The income gap: EXHAUST BETTER BROOD ECONOMIC PLAY FIRST before changing numbers. His build: the FIRST TURTLE on the NATURAL expansion spot; the THIRD ROOTMAW at the far edge of the natural; grubs made NONSTOP; then the SECOND TURTLE takes the THIRD expansion with a Rootmaw there. Spoils from sacrificing Raptors. Scouting for a healthy economy: a grub PATROLLING at the bottom of the enemy ramp against the Crown, and EXPLORING the Clockwork main, to see a rush or timing attack coming (branch brood-eco).
+
+## The owner's economic build (0.22.9, branch brood-eco)
+
+Every profile but the two rushes now plays the owner's build (plan setting `eco`; docs/brood_eco.md has the build,
+the numbers and the remaining gap):
+- the first Mound Turtle on the NATURAL in the first minute, the third Rootmaw at its far edge, the second turtle on
+  the third expansion; Rootmaws at the far edge of their ground;
+- grubs nonstop (Balanced 54, Economy 58, Timing 46, Air 44 at most; 44 against the Clockwork), the Tyrant Sire's lure
+  later (Balanced: 13 grubs or 2:30), her growth only once her eggs run short (or 4 minutes after the plan's time);
+- a grub on WATCH all game (the Crown's ramp foot, the Clockwork's main) and the ALARM when an enemy army leaves its
+  main (warriors first, the army at the natural, grubs pulled back, a turtle rooted in front of the natural);
+- never an army far behind the enemy army it saw (70% against the Clockwork, 30% against the others);
+- food kept for a structure only when food is what is short; up to 5 grubs harvesting; the Air rush lays Raptors to
+  offer up for its spoils (`spoils_bank`).
+The profile table above is the 0.22.0 one; the plans' new numbers are in PLANS (scripts/ai_brood_new.gd) and their
+timelines in docs/ai_build_timelines.md.
