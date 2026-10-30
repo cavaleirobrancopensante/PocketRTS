@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.11", "items": [
+		"ONE COMMAND CARD, NO PAGES: the MORE button and its \"1/2\" pages are gone. All of a selection's commands are on one card, four to a row; it shows three rows and scrolls when there are more: the mouse wheel over the card, a finger dragged up or down on a phone, or the thin scroll bar at its right edge (Tab scrolls too). A new selection starts at the top; a unit dying keeps where you were. A worker's BUILD page scrolls the same way.",
+		"EVERY KEY ON THE CARD IS ITS OWN: no two commands on a card share a letter, and a command's key works even while its button is scrolled out of view, so you can just press it if you know it. The first row's commands and the production buttons keep their usual letters; a command that clashes takes the next free letter of its name. The Brood Mother: Raptors keep R; her RALLY and WORKERS take free letters (F and Z while QUICK ROOTS and SWAMP MENDING are still to research, Q and W after); rooted, UPROOT is D (was Q); uprooted, ROOT keeps D (the Mist Toad takes Q).",
+		"The rarer commands go to the bottom of the card: WORK, AUTO REFIT, TEAM, HOLD FIRE, then RALLY and WORKERS (a right-click sets them too) and DEMOLISH last, so scrolling is rarely needed.",
+	]},
 	{"v": "0.24.10", "items": [
 		"THE BROOD'S NEW SOUNDS, from the owner's sound pack: real bites and chomps under every Brood blow (the Raptor and the Grub too), wet splats where a venom glob lands (small for the Spitter, bigger for the Venom Challenger, biggest for the Venom Sire), a wet burst under every Brood death, eggs cracking as they hatch (3 kinds), a cocoon or moult splitting open, the Mother laying an egg, a grub's squish as it takes food, a squelch as a creature roots or uproots, and wingbeats when you send a flyer (small for the Hatchlings and Skywings, two beats for the Storm Challenger, heavy leathery beats for the Storm Sire; one flap for a whole flock). New takes for the Tyrant Challenger and the Tyrant Sire.",
 		"THE BROOD'S ERROR SOUND is now a creature's grunt (the owner's pick): every failed order (not enough food or spoils, no supply, no room, can't do that) grunts instead of clicking, a little softer when the announcer speaks too.",
