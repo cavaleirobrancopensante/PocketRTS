@@ -3211,10 +3211,10 @@ func _draw_panel(font: Font) -> void:
 				info = "In danger near enemy buildings!" if not uu.untouchable() else "Can't be hurt here. Bandages wounded soldiers."
 			elif (e as Unit).powered_down():
 				info = "OUT OF CHARGE: shut down. A field (tower, pylon, deployed Tesla Cart) or a Winder brings it back."
-			elif (e as Unit).d["faction"] == "clockwork" and not (e as Unit).is_worker() and (e as Unit).wind < 0.99:
-				info = "Charge %d%%: it runs down away from a field and shuts down when empty." % int((e as Unit).wind * 100)
+			elif (e as Unit).d["faction"] == "clockwork" and not (e as Unit).is_worker() and (e as Unit).wind < 0.99 and not (e as Unit)._in_field:
+				info = "It runs down away from the gear field and shuts down when empty."      # (the charge itself: first on the line, below)
 			if uu.net_t > 0.0:
-				info = "CAUGHT IN A NET: %d s (it cannot move or fight)" % int(ceil(uu.net_t))      # (a Netter's: scripts/netter.gd)
+				info = "CAUGHT IN A NET: %d s (it cannot move or use abilities, but it can still attack)" % int(ceil(uu.net_t))      # (a Netter's: scripts/netter.gd)
 			elif uu.stun_left() > 0.0:
 				info = "STUNNED: %s s (it cannot move or fight)" % ("%.1f" % uu.stun_left())      # (a real stun's stars: scripts/stun_mark.gd)
 			if uu.hold_fire and not uu.has_pistol():
@@ -3354,6 +3354,16 @@ func _draw_panel(font: Font) -> void:
 				var rf := pu.reload_frac() if pu.powder >= 1.0 else 0.0
 				_ci.draw_rect(rb, Color(0, 0, 0, 0.6))
 				_ci.draw_rect(Rect2(rb.position, Vector2(rb.size.x * rf, rb.size.y)), Color(1.0, 0.85, 0.3) if rf >= 1.0 else Color(0.92, 0.92, 0.85))
+		var charge_pre := ""
+		if e is Unit and (e as Unit).has_charge() and (e.team == game.human or game.demo or game.allied(e.team, game.human)):
+			# CHARGE (the owner, 2026-10-30): its spring as a bar under the health (amber; pale gold while it is wound up on
+			# the gear field), and the words first on the text line (Unit.charge_text: "Winding up: 63%", "Fully wound")
+			var cu := e as Unit
+			var cb := Rect2(hb.position + Vector2(0, hb.size.y + 3), Vector2(hb.size.x, 5))
+			_ci.draw_rect(cb, Color(0, 0, 0, 0.6))
+			var cf := clampf(cu.wind, 0.0, 1.0)
+			_ci.draw_rect(Rect2(cb.position, Vector2(cb.size.x * cf, cb.size.y)), Color(1.0, 0.92, 0.55) if cu.charge_winding() else (Unit.CHARGE_BAR if cf > 0.2 else UiStyle.BAD))
+			charge_pre = cu.charge_text()      # (put first on the line once the line is translated, below)
 		if e is Unit and (e as Unit).has_pistol() and (e.team == game.human or game.demo):
 			# the pistol: a little pistol after the health figures, bright loaded, dim and crossed empty
 			_draw_pistol(Vector2(hb.end.x + 16 + font.get_string_size(hpt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x, hb.position.y), (e as Unit).pistol)
@@ -3381,6 +3391,8 @@ func _draw_panel(font: Font) -> void:
 			info = Loc.t(cwi) + ("  ·  " + Loc.t(info) if info != "" else "")      # (the experimental roster's state first)
 		else:
 			info = Loc.t(info)
+		if charge_pre != "":
+			info = charge_pre + ("  ·  " + info if info != "" else "")
 		eff_txt = Loc.t(eff_txt)
 		# (the fitting measures the line again and again, a character at a time: worked out once
 		# for each text and card width, it was most of the panel's cost, drawn 20 times a second)
@@ -3535,6 +3547,12 @@ func _draw_panel(font: Font) -> void:
 				_ci.draw_texture_rect(ic, ir, false)
 			var f := e.hp / e.max_hp
 			_ci.draw_rect(Rect2(ir.position.x, ir.end.y, ir.size.x * f, 3), Color(0.3, 0.9, 0.3) if f > 0.5 else Color(0.95, 0.4, 0.2))
+			if e is Unit and (e as Unit).has_charge() and (e.team == game.human or game.demo):
+				# its charge, a thin amber line under the health (pale gold while it is wound up; none when full)
+				var pcu := e as Unit
+				if pcu.wind < 0.995:
+					_ci.draw_rect(Rect2(ir.position.x, ir.end.y + 3, ir.size.x, 2), Color(0, 0, 0, 0.6))
+					_ci.draw_rect(Rect2(ir.position.x, ir.end.y + 3, ir.size.x * clampf(pcu.wind, 0.0, 1.0), 2), Color(1.0, 0.92, 0.55) if pcu.charge_winding() else Unit.CHARGE_BAR)
 			if e is Unit and (e as Unit).kills > 0:
 				_text(UiStyle.bold_font(), Vector2(ir.end.x - 1, ir.position.y + 11), str((e as Unit).kills), 12, Color(1, 0.82, 0.3), 2)
 		if sel.size() > n:

@@ -435,7 +435,7 @@ static func _specials(kind: String, d: Dictionary, st: Dictionary) -> Array:
 		Defs.OWL:
 			add.call("BOMB", Loc.t("On buildings it drops its weight: %d damage over a small area.") % int(Defs.OWL_BOMB["damage"]))
 		Defs.NETTER:
-			add.call("NET", Loc.t("Caught, it cannot move or fight for %d s; a flyer comes down to the ground.") % int(Defs.NET["time"]))
+			add.call("NET", Loc.t("Caught, it cannot move or use abilities for %d s (it can still attack); a flyer comes down to the ground.") % int(Defs.NET["time"]))
 		Defs.BALLISTA_KIND:
 			add.call("PIERCE", Loc.t("The bolt goes on through: the next enemies in line take 50% and 30%."))
 			add.call("CREW", Loc.t("Each Winder aboard: +%d%% reload and speed.") % int(float(Defs.BALLISTA["per_crew"]) * 100))

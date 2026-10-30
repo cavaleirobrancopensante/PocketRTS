@@ -25,7 +25,7 @@ The computer's Toads now also go for Balloons, Ornithopters and Skywings (AI.TON
 | Cavalry CHARGE (Cuirassier with Cavalry Charge, after a 2 s run), a light target | 0.6 s (Defs.CHARGE "stun") | yes |
 | Cavalry CHARGE, a target of 3+ supply | 0.24 s (0.6 x 0.4) | no (too short) |
 | Stormcaller STORM (RETIRED unit: not in the game) | 0.2 s topped up every tick while inside, up to the storm's 2.5 s + 0.2 s | yes, to the storm's end, if its code ever runs |
-| Netter's net | 4.0 s (Defs.NET "time") | no: the net shows itself; a netted unit never shows stars |
+| Netter's net | none since 0.24.4: a ROOT (Unit.net_t holds it in Unit._move; no spells or abilities), it still fights; 4.0 s (Defs.NET "time") | no: the net shows itself; a netted unit never shows stars |
 | A run-down construct (out of charge) | 0.25 s topped up while it has no charge | no: an internal hold ("RUN DOWN" on its card) |
 
 There are no other stuns: the 0.2 s in Game._tick_zones is the storm's own top-up, and the 0.25 s in Unit's tick is the

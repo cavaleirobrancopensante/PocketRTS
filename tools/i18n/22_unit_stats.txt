@@ -465,9 +465,9 @@ es Un salto de hasta %.1f casillas (no puede disparar en el aire).
 pt Sobre construções larga seu peso: %d de dano numa área pequena.
 es Sobre edificios suelta su peso: %d de daño en un área pequeña.
 
-> Caught, it cannot move or fight for %d s; a flyer comes down to the ground.
-pt Preso, não pode se mover nem lutar por %d s; um voador desce ao chão.
-es Atrapado, no puede moverse ni luchar durante %d s; un volador baja al suelo.
+> Caught, it cannot move or use abilities for %d s (it can still attack); a flyer comes down to the ground.
+pt Preso, não pode se mover nem usar habilidades por %d s (ainda pode atacar); um voador desce ao chão.
+es Atrapado, no puede moverse ni usar habilidades durante %d s (aún puede atacar); un volador baja al suelo.
 
 > The bolt goes on through: the next enemies in line take 50% and 30%.
 pt O projétil atravessa: os próximos inimigos na linha recebem 50% e 30%.

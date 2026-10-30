@@ -77,6 +77,7 @@ static func wind_area(u: Unit, dt: float) -> int:
 		if o is Unit and windable(u, o) and o.position.distance_to(u.position) <= r:
 			if o.wind < 1.0:
 				o.wind = minf(1.0, o.wind + float(G["wind"]) * dt)
+				o.wound_until = u.game.clock + dt + 0.3      # (its card and bar say it is winding up: Unit.charge_winding)
 				n += 1
 	return n
 

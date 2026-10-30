@@ -523,8 +523,7 @@ static func restore(game: Game, d: Dictionary) -> void:
 		u.net_t = float(ud.get("net", 0.0))
 		if ud.get("stun") is Array and (ud["stun"] as Array).size() >= 2:
 			u.stun(float(ud["stun"][0]), true, game.clock + float(ud["stun"][1]))
-		if u.net_t > 0.0:
-			u.stun_t = maxf(u.stun_t, u.net_t)      # (still caught: it stays put; a flyer is down on the ground)
+		if u.net_t > 0.0:      # (still caught: net_t holds it in place (no stun); a flyer is down on the ground)
 			u._low = 1.0 if u.d.get("air", false) else 0.0
 		if uk == Defs.BALLISTA_KIND:
 			u.cooldown = float(ud.get("rl", 0.0))

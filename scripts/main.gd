@@ -754,6 +754,9 @@ func show_settings() -> void:
 	v.add_child(_toggle_row("SHOW EXPANSION SPOTS", func() -> bool: return Settings.expansion_spots, func() -> void:
 		Settings.expansion_spots = not Settings.expansion_spots
 		Settings.save_all()))
+	v.add_child(_toggle_row("SHOW CHARGE BARS", func() -> bool: return Settings.charge_bars, func() -> void:
+		Settings.charge_bars = not Settings.charge_bars       # (the thin charge bar over own Clockwork units)
+		Settings.save_all()))
 	if not Settings.pc():
 		v.add_child(_toggle_row("ONE-FINGER DRAG", func() -> bool: return Settings.drag_mode == "box", func() -> void:
 			Settings.drag_mode = "pan" if Settings.drag_mode == "box" else "box"

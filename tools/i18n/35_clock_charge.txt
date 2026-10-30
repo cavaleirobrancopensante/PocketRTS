@@ -1,0 +1,28 @@
+# Clockwork charge on the unit card and over units (docs/clock_charge.md); the Netter's net no longer stops attacks
+> SHOW CHARGE BARS
+pt MOSTRAR BARRAS DE CARGA
+es MOSTRAR BARRAS DE CARGA
+
+> Fully wound
+pt Corda cheia
+es Cuerda completa
+
+> Winding up: %d%%
+pt Dando corda: %d%%
+es Dando cuerda: %d%%
+
+> RUN DOWN
+pt SEM CARGA
+es SIN CARGA
+
+> Charge %d%%
+pt Carga %d%%
+es Carga %d%%
+
+> It runs down away from the gear field and shuts down when empty.
+pt Perde carga longe do campo de engrenagens e para quando fica vazio.
+es Pierde carga lejos del campo de engranajes y se detiene cuando se vacía.
+
+> It is caught in a net: no spells until it is free.
+pt Está preso numa rede: sem feitiços até se soltar.
+es Está atrapado en una red: sin hechizos hasta que se libere.
