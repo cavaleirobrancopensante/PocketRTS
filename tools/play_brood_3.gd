@@ -27,6 +27,14 @@ extends "res://tools/play_brood_new.gd"
 ##   airrush    (the owner) Storm Challengers as fast as possible: stage 2, the Storm Sire's lure, Hatchlings, stage 3,
 ##              MATURE, and attack with them
 ##   ai       the computer's own profile (sb2:<strategy>), not steered
+## BROOD ECONOMY (docs/brood_eco.md; the owner, 2026-10-30 07:15: "exhaust better Brood economic play first"):
+##   eco      the owner's build on Balanced: the first Mound Turtle on the NATURAL, the third Rootmaw at the natural's FAR
+##            edge, grubs nonstop, the second turtle on the THIRD expansion with a Rootmaw there, spoils from offered-up
+##            Raptors, a grub on watch (the Crown's ramp foot / the Clockwork's main) and the alarm's reactions
+##   ecox     the same on the Economy profile (more grubs, the third turtle sooner)
+##   ecoair   the AIR RUSH again on the owner's economy: spoils banked from offered-up Raptors for the Storm line (her
+##            stage 2 early, the Storm Sire, Hatchlings, her stage 3, MATURE into Storm Challengers), then attack with them
+## The new SACRIFICE rule (one egg back per egg's worth of young) is applied by tools/brood_one_egg.gd (onegg:0 off).
 
 const COACH := {
 	"rush": {"strategy": "xrush", "set": {}},
@@ -41,6 +49,10 @@ const COACH := {
 	"mother": {"strategy": "balanced", "set": {"mother_free": true, "wave_t": 9999.0, "sire_g": 99, "sire_t": 9999.0, "maws": [0, 9999.0, 0], "far": []}},
 	"airrush": {"strategy": "air", "set": {"grow": [110.0, 320.0], "storm": 100.0, "storm_want": 14, "wave": 12, "wave_t": 0.0, "mature": "push"}},
 	"ai": {"strategy": "", "set": {}},
+	"eco": {"strategy": "balanced", "set": {"eco": true}},
+	"ecox": {"strategy": "economy", "set": {"eco": true}},
+	"ecoair": {"strategy": "air", "set": {"eco": true, "grow": [150.0, 360.0], "storm": 150.0, "storm_want": 12, "spoils_bank": 90.0,
+		"wave": 16, "wave_t": 420.0, "mature": "push"}},
 }
 
 var coach_plan := "ai"
@@ -57,6 +69,8 @@ var _matured_seen := {}
 var _ramp_t: Unit = null
 var _ramp_done := false
 var _waves_seen := 0
+var _egg_rule = preload("res://tools/brood_one_egg.gd").new()
+var _earned0 := [0, 0]
 
 
 func _initialize() -> void:
@@ -71,6 +85,7 @@ func _initialize() -> void:
 			"sb2": strat2 = kv[1]
 			"ramp": ramp_job = kv[1] == "1"
 			"noscout": noscout = kv[1] == "1"
+			"onegg": _egg_rule.on = kv[1] != "0"
 			"set":
 				for pair in kv[1].split(","):
 					var p := pair.split("=", true, 1)
@@ -105,6 +120,7 @@ func _process(delta: float) -> bool:
 		return false
 	g = main.game
 	if not g.over and _ai != null:
+		_egg_rule.tick(g, 0)
 		_coach3()
 	return super._process(delta)
 
@@ -255,12 +271,14 @@ func _minute(q: Unit) -> void:
 	for k in BroodResearch.keys():
 		if g.has_tech(0, k):
 			res.append(String(Defs.RESEARCH[k]["label"]).to_lower())
-	var line := "%s | stage %d | eggs laid %d | food %d spoils %d | supply %d/%d | grubs %d maws %d turtles %d (far %d) | army %d (%s) | foe army %d | matured %d | research %s | killed %d lost %d (value killed %d, lost by foe %d) | earned %d foe %d" % [
+	var line := "%s | stage %d | eggs laid %d | food %d spoils %d | supply %d/%d | grubs %d maws %d turtles %d (far %d) | army %d (%s) | foe army %d | matured %d | research %s | killed %d lost %d (value killed %d, lost by foe %d) | earned %d foe %d | income %d foe %d | spoils in %d, offered %d" % [
 		_mmss(g.clock), BroodNew.stage(q) + 1, laid - _laid0, int(g.players[0]["gold"]), int(g.players[0]["res2"]),
 		g.supply_used(0), int(g.players[0]["cap"]), BroodNew.count_of(g, 0, "grub"), BroodNew.count_of(g, 0, BroodNew.MAW),
 		BroodNew.count_of(g, 0, BroodNew.TURTLE), BroodNew.expansions(g, q).size(), val, _kinds(army()), fv, _matured_seen.size(),
 		",".join(res), int(g.stats[0]["killed"]), int(g.stats[0]["lost"]), int(g.stats[0]["value_killed"]), int(g.stats[1]["value_killed"]),
-		int(g.stats[0]["gold"]), int(g.stats[1]["gold"])]
+		int(g.stats[0]["gold"]), int(g.stats[1]["gold"]), int(g.stats[0]["gold"]) - _earned0[0], int(g.stats[1]["gold"]) - _earned0[1],
+		int(g.stats[0].get("res2_in", 0)), int(g.stats[0].get("sacrificed", 0))]
+	_earned0 = [int(g.stats[0]["gold"]), int(g.stats[1]["gold"])]
 	_laid0 = laid
 	_min_lines.append(line)
 	print("MIN " + line)

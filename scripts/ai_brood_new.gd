@@ -59,17 +59,17 @@ const PLANS := {
 	"rush": {"drone": 3.0, "sire_g": 7, "sire_t": 40.0, "grubs0": 9, "maws0": 2, "grubs": 28, "maws": [2, 120.0, 7], "grow": [330.0, 660.0],
 		"venom": 330.0, "storm": 720.0, "far": [[420.0, 1], [660.0, 2]], "wave": 10, "wave_t": 0.0, "step": 6, "pack": false,
 		"mix": "tyrant", "mature": "bank", "home_guard": 2},
-	"timing": {"drone": 4.0, "sire_g": 8, "sire_t": 60.0, "grubs0": 0, "grubs": 30, "maws": [2, 100.0, 7], "grow": [210.0, 540.0],
-		"venom": 420.0, "storm": 660.0, "far": [[300.0, 1], [540.0, 2]], "wave": 24, "wave_t": 330.0, "step": 10, "pack": true,
+	"timing": {"drone": 6.0, "sire_g": 11, "sire_t": 120.0, "grubs0": 0, "grubs": 36, "maws": [2, 90.0, 8], "grow": [210.0, 540.0],
+		"venom": 420.0, "storm": 660.0, "far": [[0.0, 1], [360.0, 2]], "eco": true, "wave": 24, "wave_t": 330.0, "step": 10, "pack": true,
 		"mix": "tyrant", "mature": "push", "home_guard": 3},
-	"balanced": {"drone": 5.0, "sire_g": 9, "sire_t": 70.0, "grubs0": 0, "grubs": 30, "maws": [2, 95.0, 8], "grow": [240.0, 480.0],
-		"venom": 240.0, "storm": 540.0, "far": [[270.0, 1], [480.0, 2]], "wave": 22, "wave_t": 390.0, "step": 10, "pack": true,
+	"balanced": {"drone": 7.0, "sire_g": 13, "sire_t": 150.0, "grubs0": 0, "grubs": 40, "maws": [2, 80.0, 10], "grow": [240.0, 480.0],
+		"venom": 360.0, "storm": 540.0, "far": [[0.0, 1], [300.0, 2], [540.0, 3]], "eco": true, "wave": 22, "wave_t": 390.0, "step": 10, "pack": true,
 		"mix": "mixed", "mature": "push", "home_guard": 3},
-	"economy": {"drone": 6.0, "sire_g": 10, "sire_t": 80.0, "grubs0": 0, "grubs": 34, "maws": [3, 80.0, 9], "grow": [200.0, 420.0],
-		"venom": 270.0, "storm": 480.0, "far": [[180.0, 1], [330.0, 2], [540.0, 3]], "wave": 34, "wave_t": 510.0, "step": 12,
+	"economy": {"drone": 8.0, "sire_g": 14, "sire_t": 165.0, "grubs0": 0, "grubs": 44, "maws": [3, 70.0, 11], "grow": [200.0, 420.0],
+		"venom": 420.0, "storm": 480.0, "far": [[0.0, 1], [240.0, 2], [480.0, 3]], "eco": true, "wave": 34, "wave_t": 510.0, "step": 12,
 		"pack": true, "mix": "venom", "mature": "push", "home_guard": 4},
-	"air": {"drone": 4.5, "sire_g": 9, "sire_t": 70.0, "grubs0": 0, "grubs": 30, "maws": [2, 95.0, 8], "grow": [180.0, 420.0],
-		"venom": 600.0, "storm": 200.0, "far": [[300.0, 1], [540.0, 2]], "wave": 18, "wave_t": 420.0, "step": 8, "pack": false,
+	"air": {"drone": 6.0, "sire_g": 11, "sire_t": 110.0, "grubs0": 0, "grubs": 36, "maws": [2, 85.0, 9], "grow": [180.0, 420.0],
+		"venom": 600.0, "storm": 200.0, "far": [[0.0, 1], [360.0, 2]], "eco": true, "wave": 18, "wave_t": 420.0, "step": 8, "pack": false,
 		"mix": "tyrant", "mature": "push", "home_guard": 3},
 }
 
@@ -139,6 +139,8 @@ func _tick_ai(delta: float) -> void:
 	if q == null:
 		return
 	_nb_observe(q)
+	if int(q.nb.get("eggs", 0)) <= EGG_LOW and float(q.nb.get("grow_t", 0.0)) <= 0.0:
+		_egg_low_t = game.clock          # (her clutch run down: eggs hold the Brood back, _nb_grow_time)
 	_nb_root_watch()
 	if difficulty >= 1:
 		_nb_scout(q)
@@ -146,6 +148,8 @@ func _tick_ai(delta: float) -> void:
 	_nb_grow(q)
 	_nb_rootmaws(q)
 	_nb_turtles(q)
+	if _eco():
+		_nb_alarm(q)
 	_nb_father(q)
 	_nb_morphs(q)
 	_nb_lay(q)
@@ -186,6 +190,13 @@ var rush_t := -1.0
 var _foe_blds := {}             # enemy building -> its centre (seen standing)
 var _foe_near_home := 0.0       # enemy army value seen near the Mother now
 var _obs_t := 0.0
+const ALARM_FOR := 75.0
+var alarm_t := -999.0              # when the alarm was last seen (an army out of the enemy's main)
+var alarm_at := Vector2.ZERO       # where it was seen
+
+
+func _alarm_on() -> bool:
+	return game.clock - alarm_t < ALARM_FOR
 
 
 func _nb_observe(q: Unit) -> void:
@@ -201,6 +212,11 @@ func _nb_observe(q: Unit) -> void:
 	var fast := 0
 	var foe := _foe()
 	var fst: Vector2 = (Vector2(game.starts[foe]) + Vector2(2.5, 2.0)) * Defs.TILE if foe >= 0 else Vector2.INF
+	var past := 0.0                 # (value seen past the foot of its ramp: an army that has left its main)
+	var past_at := Vector2.ZERO
+	var out_r := 22.0 * Defs.TILE
+	if _foot != Vector2.INF and fst != Vector2.INF:
+		out_r = minf(out_r, _foot.distance_to(fst) + 3.0 * Defs.TILE)
 	for u in game.units:
 		if u.dead or u.off_field or u.team < 0 or not game.hostile(u.team, team) or not game.is_visible_to(team, u.position):
 			continue
@@ -213,6 +229,9 @@ func _nb_observe(q: Unit) -> void:
 		var away: bool = fst == Vector2.INF or u.position.distance_to(fst) > 22.0 * Defs.TILE
 		if away:
 			out += v
+		if fst == Vector2.INF or u.position.distance_to(fst) > out_r:
+			past += v
+			past_at += u.position * v
 		if u.is_air():
 			air += 1
 		if float(u.d.get("speed", 0)) >= 95.0 and not u.is_air() and away:
@@ -236,6 +255,15 @@ func _nb_observe(q: Unit) -> void:
 	for b in _foe_blds.keys():
 		if not is_instance_valid(b) or b.dead:
 			_foe_blds.erase(b)
+	# THE ALARM (the owner's build: the watching grub sees an attack coming): an army out of the enemy's main, big
+	# enough to hurt (200, and 40% of its own army), at any time: for ALARM_FOR s it lays warriors, holds its army at
+	# home (gathered at the natural), pulls the grubs back from Rootmaws the enemy comes near and roots a Mound Turtle in
+	# front of the natural (_nb_alarm)
+	if _eco() and past >= 200.0 and past >= _value_of(_nb_army_units()) * 0.4 and not _attacking:
+		if game.clock - alarm_t > ALARM_FOR:
+			say("ALARM: an enemy army of %d out of its main at %s: warriors, grubs pulled back, a turtle in front" % [int(past), _mmss()])
+		alarm_t = game.clock
+		alarm_at = past_at / past
 	# rush evidence (before 4:30; what it saw OUT of the enemy's base: an army in its own base is no rush): fast riders
 	# in numbers, an army near home, or a big army on the move very early
 	if rush_seen == "" and game.clock < 270.0:
@@ -290,6 +318,9 @@ func _nb_scout(q: Unit) -> void:
 	var foe := _foe()
 	if foe < 0:
 		return
+	if _eco():
+		_nb_watch_scout(q, foe)
+		return
 	if _scout != null and (not is_instance_valid(_scout) or _scout.dead):
 		_scout = null
 	if _scout == null:
@@ -336,6 +367,215 @@ func _nb_scout(q: Unit) -> void:
 			_scout.cmd_move(_scout_pts[_scout_i])
 
 
+## THE WATCHING GRUB (the owner's build, 2026-10-30 07:15: scouting for a safe economy): from about 1:10 a grub stays
+## out on watch for the whole game, to see a rush or a timing attack coming:
+##  - against the CROWN it PATROLS at the bottom of the enemy's ramp (a little out from its foot, to and fro across it):
+##    everything that leaves the Crown's main walks past it;
+##  - against the CLOCKWORK (or any other) it EXPLORES the enemy's main, round and round (what it trains, how big its
+##    army is, where it gathers).
+## Hurt, or soldiers close to it, it runs home and goes back to work; another grub goes out after WATCH_GAP s (at most
+## WATCH_MAX in a game: a grub is an egg and 50 food).
+const WATCH_GAP := 60.0
+const WATCH_MAX := 4
+var _watch_n := 0
+var _watch_next := 70.0
+var _watch_flee := false
+var _foot := Vector2.INF            # the foot of the enemy's ramp (pixels), found once
+var _foot_dir := Vector2.ZERO       # out from its foot, away from the enemy's main
+
+
+func _nb_watch_scout(q: Unit, foe: int) -> void:
+	if _scout != null and (not is_instance_valid(_scout) or _scout.dead):
+		_scout = null
+		_watch_flee = false
+		_watch_next = game.clock + WATCH_GAP
+	var st := (Vector2(game.starts[foe]) + Vector2(2.5, 2.0)) * Defs.TILE
+	if _scout == null:
+		if game.clock < _watch_next or _watch_n >= WATCH_MAX or BroodNew.count_of(game, team, "grub") < 8:
+			return
+		var pick: Unit = null
+		for u in _nb_mine("grub"):
+			if u.carrying == 0 and u.order == "gather" and u.cocoon <= 0.0 and (pick == null \
+					or u.position.distance_squared_to(st) < pick.position.distance_squared_to(st)):
+				pick = u
+		if pick == null:
+			return
+		_scout = pick
+		_watch_n += 1
+		_scout_trips += 1
+		_scout_t0 = game.clock
+		_watch_flee = false
+		_scout_i = 0
+		if _foe_is("crown"):
+			if _foot == Vector2.INF:
+				_find_foe_foot(foe, q)
+			var c: Vector2 = _foot + _foot_dir * 5.0 * Defs.TILE if _foot != Vector2.INF else st
+			var side := _foot_dir.orthogonal() * 3.0 * Defs.TILE
+			_scout_pts = [c + side, c - side]
+		else:
+			var toward := (q.position - st).normalized()
+			_scout_pts = [st + toward * 8.0 * Defs.TILE, st + toward.orthogonal() * 7.0 * Defs.TILE, st - toward * 6.0 * Defs.TILE,
+				st - toward.orthogonal() * 7.0 * Defs.TILE, st]
+		pick.auto_work = false
+		pick.cmd_move(_scout_pts[0])
+		say("sends a Grub to %s" % ("watch the foot of the enemy's ramp" if _foe_is("crown") else "explore the enemy's main"))
+		return
+	# danger: hurt, or soldiers close: home, back to work
+	if not _watch_flee:
+		var close := false
+		for u in game.units_near(_scout.position, 6.5 * Defs.TILE):
+			if game.hostile(u.team, team) and not u.dead and not u.off_field and u.has_attack() and not u.is_worker() \
+					and game.is_visible_to(team, u.position):
+				close = true
+				break
+		if close or _scout.hp < _scout.max_hp * 0.7:
+			_watch_flee = true
+			_scout.cmd_move(q.position)
+			return
+	else:
+		if _scout.position.distance_to(q.position) < 10.0 * Defs.TILE or _scout.order == "idle":
+			_scout.auto_work = true
+			_scout.cmd_stop()          # (home: back to work)
+			_scout = null
+			_watch_flee = false
+			_watch_next = game.clock + WATCH_GAP
+		elif _scout.order != "move":
+			_scout.cmd_move(q.position)
+		return
+	# on watch: to and fro (the Crown's ramp foot), or round its main
+	if _scout.position.distance_to(_scout_pts[_scout_i]) < 1.5 * Defs.TILE or _scout.order == "idle":
+		_scout_i = (_scout_i + 1) % _scout_pts.size()
+		_scout.cmd_move(_scout_pts[_scout_i])
+
+
+## The foot of the ramp up to the enemy's main nearest to us (Game.ramp_foot's walk through a ramp, from the enemy's
+## plateau), and the way out from it.
+func _find_foe_foot(foe: int, q: Unit) -> void:
+	var hc := Vector2i(Vector2(game.starts[foe]) + Vector2(2.5, 2.0))
+	if not game.in_map(hc):
+		return
+	var h0 := int(game.height[game.idx(hc)])
+	var best := Vector2.INF
+	var bd := INF
+	for y in range(hc.y - 30, hc.y + 31):
+		for x in range(hc.x - 30, hc.x + 31):
+			var r := Vector2i(x, y)
+			if not game.in_map(r) or game.ramp[game.idx(r)] != 1:
+				continue
+			for dd in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var p: Vector2i = r + dd
+				if not game.in_map(p) or game.ramp[game.idx(p)] != 0 or int(game.height[game.idx(p)]) != h0:
+					continue
+				var f := r
+				var steps := 0
+				while game.in_map(f) and game.ramp[game.idx(f)] == 1 and steps < 12:
+					f += -dd
+					steps += 1
+				if not game.in_map(f) or int(game.height[game.idx(f)]) == h0:
+					continue
+				var fp := (Vector2(f) + Vector2(0.5, 0.5)) * Defs.TILE
+				var d := fp.distance_to(q.position)
+				if d < bd:
+					bd = d
+					best = fp
+					_foot_dir = Vector2(-dd).normalized()
+	_foot = best
+
+
+## THE ALARM'S REACTIONS (the owner's build; the alarm itself: _nb_observe) and, at any time, grubs pulled back:
+##  - the grubs of a Rootmaw that enemy soldiers come near (9 tiles; not the Rootmaws by the Mother, where the army
+##    fights) run to the Mother and wait there, then go back to work once the enemy has gone (or after 40 s);
+##  - with the alarm on and a natural taken: a Mound Turtle from home (only with 12 supply to spare: rooted, it gives
+##    the supply back) walks out in front of the natural, toward the enemy, and roots there (a tank in its way, very hard to
+##    hurt); one at a time, it stays there. (Not ON the ramp: a rooted turtle closes it, and the natural's grubs walk up it.)
+var _pulled := {}                  # grub -> [its Rootmaw, when]
+var _front_t: Unit = null          # the turtle rooting (rooted) in front of the natural
+var _front_done := false
+
+
+func _nb_alarm(q: Unit) -> void:
+	# grubs pulled back from a Rootmaw with enemy soldiers at it
+	for u in _nb_mine("grub"):
+		if u.order != "gather" or u == _scout or _pulled.has(u):
+			continue
+		var m = u.home_mine
+		if m == null or not is_instance_valid(m) or (m as Unit).position.distance_to(q.position) < 14.0 * Defs.TILE:
+			continue
+		if _foe_near((m as Unit).position, 9.0 * Defs.TILE) or _foe_near(u.position, 6.0 * Defs.TILE):
+			_pulled[u] = [m, game.clock]
+			u.auto_work = false
+			u.cmd_move(q.position)
+	for u in _pulled.keys():
+		if not is_instance_valid(u) or u.dead:
+			_pulled.erase(u)
+			continue
+		var m = _pulled[u][0]
+		var gone: bool = m == null or not is_instance_valid(m) or (m as Unit).dead or not _foe_near((m as Unit).position, 11.0 * Defs.TILE)
+		if (gone and game.clock - float(_pulled[u][1]) > 8.0) or game.clock - float(_pulled[u][1]) > 40.0:
+			_pulled.erase(u)
+			u.auto_work = true
+			if m != null and is_instance_valid(m) and not (m as Unit).dead and BroodNew.rooted(m):
+				u.cmd_gather(m)
+			else:
+				u.cmd_stop()
+	# a turtle in front of the natural
+	if _front_t != null and (not is_instance_valid(_front_t) or _front_t.dead):
+		_front_t = null
+	if _front_t != null:
+		if BroodNew.rooted(_front_t):
+			_front_done = true
+			say("a Mound Turtle roots in front of the natural")
+			_front_t = null
+		elif _front_t.tesla_mode == "packed" and _front_t.order != "nb_root" and _front_t.order != "move":
+			var fs = _nb_front_spot(q)
+			if fs != null:
+				_root_to(_front_t, fs)
+			else:
+				_front_t = null
+		return
+	if _front_done or not _alarm_on():
+		return
+	var cap := int(game.players[team]["cap"])
+	if cap - game.supply_used(team) < int(Defs.NB["turtle_supply"]) + 2:
+		return
+	var spot = _nb_front_spot(q)
+	if spot == null:
+		return
+	var far := float(Defs.NB["expansion_tiles"]) * Defs.TILE * 0.9
+	var pick: Unit = null
+	for t in _nb_mine(BroodNew.TURTLE):
+		if BroodNew.rooted(t) and t.position.distance_to(q.position) < far and not held.has(t) \
+				and (pick == null or t.position.distance_to(spot) < pick.position.distance_to(spot)):
+			pick = t
+	if pick == null:
+		return
+	_front_t = pick
+	BroodNew.uproot(pick, false)
+	say("ALARM: a Mound Turtle gets up to root in front of the natural")
+
+
+## In front of the natural: 6 tiles out from its turtle toward the enemy (or where the alarm saw the army), on a spot a
+## turtle may root (not on a ramp: BroodRoot.place_problem for the computer).
+func _nb_front_spot(q: Unit):
+	var nat: Unit = null
+	for u in BroodNew.expansions(game, q):
+		if nat == null or u.position.distance_to(q.position) < nat.position.distance_to(q.position):
+			nat = u
+	if nat == null:
+		return null
+	var foe := _foe()
+	var toward: Vector2 = (Vector2(game.starts[foe]) + Vector2(2.5, 2.0)) * Defs.TILE if foe >= 0 else alarm_at
+	var dir := (toward - nat.position).normalized()
+	for dist in [6.0, 5.0, 7.0, 4.0, 8.0]:
+		for turn in [0.0, 0.35, -0.35, 0.7, -0.7]:
+			var p: Vector2 = BroodRoot.snap(BroodNew.TURTLE, nat.position + dir.rotated(turn) * dist * Defs.TILE)
+			if not _nb_on_map(p) or not game._walkable(game.cell_of(p)) or _spot_bad(p):
+				continue
+			if BroodRoot.place_problem(game, team, BroodNew.TURTLE, p, _front_t, true) == "":
+				return p
+	return null
+
+
 ## The Mother: rooted at home; she CANNOT ATTACK while rooted, so when enemies reach her she uproots and fights, and
 ## roots again once it is really calm (BroodNew.mother_guard). Only its own Mother: never the player's.
 var _q_guard := {}
@@ -375,6 +615,9 @@ func _nb_short() -> bool:
 				or (u.kind == "grub" and u.order == "nb_morph" and String(u.nb.get("mk", "")) == BroodNew.TURTLE)):
 			coming += int(Defs.NB["turtle_supply"])
 	var ahead := 3 + int(game.clock / 60.0)
+	if _eco() and game.clock > 75.0 and _nb_far_have(BroodNew.queen(game, team)) < _nb_far_wanted():
+		ahead += 2          # (the next turtle walks out to new ground: it roots later than one at home; not in the first
+		                    # minute, when every 50 food is a grub: the first turtle at 0:32 cost a minute of grubs)
 	if int(plan["grubs0"]) > 0 and not _first_out:
 		ahead = int(plan.get("ahead0", 3))          # (the Extreme rush: the turtle right after the Sire, so its Raptors never wait for supply)
 	return game.supply_used(team) + ahead >= cap + coming
@@ -421,7 +664,7 @@ func _nb_morphs(q: Unit) -> void:
 	var k := ""
 	var spot = null
 	var tyrant := BroodNew.count_of(game, team, BroodNew.FATHER) > 0
-	if not tyrant and (grubs >= int(plan["sire_g"]) or game.clock > float(plan["sire_t"])) and maws >= 1:
+	if not tyrant and (grubs >= int(plan["sire_g"]) or game.clock > float(plan["sire_t"]) or _rush_on() or _alarm_on()) and maws >= 1:
 		k = BroodNew.FATHER         # (the first Sire: the warriors' line)
 	elif _nb_short():
 		k = BroodNew.TURTLE
@@ -477,17 +720,55 @@ func _nb_far_spots(q: Unit) -> Array:
 	var out: Array = []
 	if game.exp_spots == null or game.clock - _far_last < 45.0:
 		return out
-	for s in ExpansionSpots.nb_pick(game, team, game.exp_spots):
+	var picks: Array = _nb_eco_sites(q) if _eco() else ExpansionSpots.nb_pick(game, team, game.exp_spots)
+	for s in picks:
 		var p := BroodRoot.feet_at(BroodNew.TURTLE, s["tc"])
 		if BroodRoot.place_problem(game, team, BroodNew.TURTLE, p, null, true) != "":
 			continue
 		if game.clock - float(_far_sent.get(str(p.round()), -999.0)) < 180.0:
 			continue          # (tried lately: the grub did not get there)
-		if p.distance_to(q.position) > 30.0 * Defs.TILE:
+		if p.distance_to(q.position) > (28.0 if _eco() and not BroodNew.expansions(game, q).is_empty() else 30.0) * Defs.TILE:
 			continue          # (too far to guard: near the enemy's side)
 		if _foe_near(p, 12.0 * Defs.TILE):
 			continue
 		out.append(p)
+	return out
+
+
+## THE OWNER'S BUILD (2026-10-30 07:15, docs/brood_eco.md): the plan's "eco" (every profile but the rushes). The first
+## Mound Turtle goes on the NATURAL expansion (the nearest turtle spot by walk that counts as new ground), the third
+## Rootmaw at the natural's FAR edge (the farther a load comes, the more it pays and the more grubs a Rootmaw takes:
+## Game.food_at, BroodNew.crew_max), grubs nonstop, the second turtle on the THIRD expansion with a Rootmaw there.
+func _eco() -> bool:
+	return bool(plan.get("eco", false))
+
+
+## The turtle spots on new ground in WALK order (the natural first, then the third), free and fresh as nb_pick has them
+## (ExpansionSpots: its candidates, rated once; nb_pick's tests, without its "two best" cut).
+func _nb_eco_sites(q: Unit) -> Array:
+	var es: ExpansionSpots = game.exp_spots
+	ExpansionSpots.nb_pick(game, team, es)          # (rates the candidates once)
+	var far := float(Defs.NB["expansion_tiles"]) * Defs.TILE
+	var counted: Array = BroodNew.expansions(game, q)
+	var out: Array = []
+	for s in es.nb_cands.get(team, []):
+		var feet := BroodRoot.feet_at(BroodNew.TURTLE, s["tc"])
+		if q.position.distance_to(feet) < far or counted.any(func(o: Unit) -> bool: return o.position.distance_to(feet) < far):
+			continue
+		var taken := false
+		for u in game.units_near(feet, 7.0 * Defs.TILE):
+			if u.team == team and u.kind == BroodNew.TURTLE and not u.dead and u.tesla_mode != "packed":
+				taken = true
+		if taken or es._taken(s["c"]) or BroodRoot.place_problem(game, team, BroodNew.TURTLE, feet).begins_with("Blocked"):
+			continue
+		var spent := false
+		for id in game.nb_spots:
+			var sp: Dictionary = game.nb_spots[id]
+			if (sp["p"] as Vector2).distance_to(feet) < float(Defs.NB["turtle_swamp"]) * Defs.TILE and float(sp["left"]) < float(Defs.PIT_GROUND) * 0.5:
+				spent = true
+		if not spent:
+			out.append(s)
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["home"]) < float(b["home"]))
 	return out
 
 
@@ -577,7 +858,7 @@ func _nb_father_spot(q: Unit, me: Unit, k: String = BroodNew.FATHER):
 ## A Mound Turtle that is up (it was uprooted): walked to a spot and rooted there (ROOT like BUILD).
 func _nb_turtles(q: Unit) -> void:
 	for t in _nb_mine(BroodNew.TURTLE):
-		if t.tesla_mode != "packed" or t.order == "nb_root" or t.target != null or held.has(t):
+		if t.tesla_mode != "packed" or t.order == "nb_root" or t.target != null or held.has(t) or t == _front_t:
 			continue
 		var goal = _nb_turtle_spot(q, t)
 		if goal != null:
@@ -691,6 +972,10 @@ func _nb_find_spot(q: Unit, m: Unit):
 				if not _nb_spot_ok(p) or BroodRoot.place_problem(game, team, BroodNew.MAW, p, m, true) != "" or _spot_bad(p):
 					continue
 				var s := p.distance_to(q.position) * (1.0 if ci == 0 else 0.6) + (60.0 if int(game.height[game.idx(c)]) != h else 0.0) + p.distance_to(from) * 0.3
+				if _eco():
+					# (the owner's build: a Rootmaw at the FAR edge of the ground it roots on, the expansions first: a load
+					# from farther pays more and the Rootmaw takes more grubs; its draw is the same, so fewer eggs make it pay)
+					s = -p.distance_to(q.position) * 0.5 + (0.0 if ci > 0 else 400.0) + (60.0 if int(game.height[game.idx(c)]) != h else 0.0) + p.distance_to(from) * 0.1
 				var foe := _nb_nearest_foe_pos(p)
 				if foe != Vector2.INF:
 					s -= foe.distance_to(p) * 0.15         # (a little away from the enemy)
@@ -764,6 +1049,8 @@ func _nb_grow(q: Unit) -> void:
 		return
 	if _rush_on() and st == 0:
 		return
+	if not _nb_grow_time(q):
+		return
 	if BroodNew.count_of(game, team, BroodNew.FATHER) == 0:
 		return          # (the Tyrant Sire first: without him no warriors at all)
 	var nx: Dictionary = Defs.NB["stages"][st + 1]
@@ -774,11 +1061,28 @@ func _nb_grow(q: Unit) -> void:
 
 ## Food kept back for her next stage (from the plan's time on): warrior eggs only out of what is above it. Grubs and
 ## supply go on. Her stage 3 also wants its spoils (kept by _nb_spoils_keep).
+## THE OWNER'S BUILD: her growth only once EGGS are what holds the Brood back (her clutch run down: EGG_LOW or fewer in
+## the last EGG_BOUND s), or GROW_LATE s after the plan's time at the latest. In the first coached games of this round
+## her clutch sat FULL (10 eggs) until 8:00: food, not eggs, held the Brood back, and 300 food and 45 s without laying
+## for her stage 2 only took a minute of grubs away. (The Air rush keeps its times: the Storm line needs her stages.)
+const EGG_LOW := 2
+const EGG_BOUND := 45.0
+const GROW_LATE := 240.0
+var _egg_low_t := -999.0
+
+
+func _nb_grow_time(q: Unit) -> bool:
+	if not _eco() or strategy == "air" or bool(plan.get("grow_now", false)):
+		return true
+	var st := BroodNew.stage(q)
+	return game.clock - _egg_low_t < EGG_BOUND or game.clock >= float(plan["grow"][mini(st, 1)]) + GROW_LATE
+
+
 func _nb_growth_keep(q: Unit) -> int:
 	var st := BroodNew.stage(q)
 	if st >= (Defs.NB["stages"] as Array).size() - 1 or float(q.nb.get("grow_t", 0.0)) > 0.0 or _rush_on():
 		return 0
-	if game.clock < float(plan["grow"][st]) or BroodNew.count_of(game, team, BroodNew.FATHER) == 0:
+	if game.clock < float(plan["grow"][st]) or BroodNew.count_of(game, team, BroodNew.FATHER) == 0 or not _nb_grow_time(q):
 		return 0
 	var need2 := float(Defs.NB["stages"][st + 1].get("cost2", 0))
 	if need2 > 0.0 and _spoils() < need2 * 0.6:
@@ -822,6 +1126,8 @@ func _nb_spoils_want(q: Unit) -> float:
 		want = maxf(want, 45.0)          # (Brutes and Challengers)
 	if _wall_foe() and BroodNew.count_of(game, team, BroodNew.DILO) > 0:
 		want = maxf(want, 25.0)          # (against a wall: Spitters, 5 spoils an egg)
+	if float(plan.get("spoils_bank", 0.0)) > 0.0 and BroodNew.count_of(game, team, BroodNew.FATHER) > 0 and game.clock >= 150.0:
+		want = maxf(want, float(plan["spoils_bank"]))     # (the air rush: the Storm line's spoils, from offered-up Raptors)
 	return want
 
 
@@ -876,7 +1182,7 @@ func _nb_lay(q: Unit) -> void:
 	# grubs on the plan's curve ("drone": grubs a minute, from the 5 it starts with) come before warriors, unless the enemy
 	# is at the Mother or a rush is on; above the curve only with food to spare
 	var curve := 5.0 + game.clock / 60.0 * float(plan.get("drone", 4.0))
-	var danger := _nb_threat(q) != Vector2.INF or _rush_on()
+	var danger := _nb_threat(q) != Vector2.INF or _rush_on() or _alarm_on()
 	if grubs < want_grubs and (grubs < 6 or not any_father or (grubs < curve and not danger) or food - keep >= 200):
 		k = "grub"
 	if k == "" and any_father:
@@ -1110,6 +1416,17 @@ func _nb_sires_needed(q: Unit) -> bool:
 ## together).
 func _nb_stage_point(q: Unit) -> Vector2:
 	var foe := _foe()
+	if _eco() and _alarm_on() and not _attacking:
+		# (the alarm: the army waits at the natural, where an attack lands first, a little toward where it was seen)
+		var nat: Unit = null
+		for u in BroodNew.expansions(game, q):
+			if nat == null or u.position.distance_to(q.position) < nat.position.distance_to(q.position):
+				nat = u
+		if nat != null:
+			var p: Vector2 = nat.position + (alarm_at - nat.position).normalized() * 3.0 * Defs.TILE
+			if _nb_on_map(p) and game._walkable(game.cell_of(p)):
+				return p
+			return nat.position + Vector2(0, nat.radius + 40.0)
 	var tgt: Vector2 = q.position + Vector2(0, q.radius + 110.0)
 	if foe >= 0:
 		var st := (Vector2(game.starts[foe]) + Vector2(2.5, 2.0)) * Defs.TILE
@@ -1183,7 +1500,7 @@ func _nb_army(q: Unit) -> void:
 	for u in army:
 		if u.order == "idle" and u.target == null and u.position.distance_to(home) > 200.0:
 			u.cmd_move(home)
-	if peaceful or game.clock < _retreat_until or game.clock < float(plan["wave_t"]) or _rush_on():
+	if peaceful or game.clock < _retreat_until or game.clock < float(plan["wave_t"]) or _rush_on() or _alarm_on():
 		return
 	if sup < _attack_at:
 		return

@@ -7,6 +7,10 @@ extends SceneTree
 ##   bank at each minute, losses and kills.
 ##   godot --headless --fixed-fps 30 --script res://tools/measure_brood_ai.gd -- \
 ##       [map:hollowfen] [seed:4242] [foe:crown|clockwork] [secs:900] [who:hard] [plan:balanced] [foeplan:balanced] [tag:x]
+##       [onegg:0]  (the new SACRIFICE rule, one egg back per egg's worth of young, is on by default: tools/brood_one_egg.gd)
+## Brood economy (docs/brood_eco.md): income a minute of both sides ("inc", "foe_inc": food / gold earned that minute),
+## grubs and rooted Rootmaws a minute, the first Mound Turtle on new ground ("natural": when, how far), the third Rootmaw
+## rooted ("maw3"), the scouting grub out ("scout"), spoils earned and Raptors offered up.
 var main: Node
 var t := 0.0
 var g
@@ -24,6 +28,8 @@ var res := {}
 var _attack_seen := false
 var _matured := 0
 var _young_seen := {}
+var _egg_rule = preload("res://tools/brood_one_egg.gd").new()
+var _earned0 := [0, 0]
 
 
 func _initialize() -> void:
@@ -42,6 +48,7 @@ func _initialize() -> void:
 			"plan": plan = kv[1]
 			"foeplan": foeplan = kv[1]
 			"tag": tag = kv[1]
+			"onegg": _egg_rule.on = kv[1] != "0"
 			"set":
 				for pair in kv[1].split(","):
 					var p := pair.split("=", true, 1)
@@ -50,7 +57,9 @@ func _initialize() -> void:
 	res = {"tag": tag, "map": map, "seed": seed_, "foe": foe, "plan": plan, "who": who, "version": ProjectSettings.get_setting("application/config/version", "dev"),
 		"army": {}, "foe_army": {}, "bank": {}, "supply": {}, "first_attack": -1, "sires": {}, "stages": {}, "research": {},
 		"matured": 0, "far_turtles": 0, "turtles": 0, "maws": 0, "grubs_max": 0, "winner": -1, "end": 0, "lost": 0, "killed": 0,
-		"value_killed": 0, "foe_value_killed": 0, "earned": 0, "foe_earned": 0, "waves": 0, "scouted": ""}
+		"value_killed": 0, "foe_value_killed": 0, "earned": 0, "foe_earned": 0, "waves": 0, "scouted": "",
+		"inc": {}, "foe_inc": {}, "grubs": {}, "maws_at": {}, "natural": -1, "natural_tiles": 0, "maw3": -1, "scout": -1,
+		"spoils_in": 0, "sacrificed": 0, "eggs_taken": 0, "alarms": []}
 
 
 func _process(delta: float) -> bool:
@@ -73,6 +82,7 @@ func _process(delta: float) -> bool:
 	if g.hud:
 		g.hud.countdown = 0.0
 	paused = false
+	_egg_rule.tick(g, 0)
 	_watch()
 	if g.clock >= next_min:
 		var m := int(round(g.clock / 60.0))
@@ -81,6 +91,16 @@ func _process(delta: float) -> bool:
 		res["foe_army"][str(m)] = _value(1)
 		res["bank"][str(m)] = int(g.players[0]["gold"])
 		res["supply"][str(m)] = g.supply_used(0)
+		res["inc"][str(m)] = int(g.stats[0]["gold"]) - _earned0[0]
+		res["foe_inc"][str(m)] = int(g.stats[1]["gold"]) - _earned0[1]
+		_earned0 = [int(g.stats[0]["gold"]), int(g.stats[1]["gold"])]
+		res["grubs"][str(m)] = BroodNew.count_of(g, 0, "grub")
+		var rm := 0
+		for u in g.units:
+			if u.team == 0 and not u.dead and u.kind == BroodNew.MAW and BroodNew.rooted(u):
+				rm += 1
+		res["maws_at"][str(m)] = rm
+		print("       income this minute: brood %d, foe %d | grubs %d, rooted Rootmaws %d" % [res["inc"][str(m)], res["foe_inc"][str(m)], res["grubs"][str(m)], rm])
 		print("%2d:00  %s" % [m, _line(0)])
 		print("       %s" % _line(1))
 		var q = BroodNew.queen(g, 0)
@@ -141,6 +161,24 @@ func _watch() -> void:
 			if u.team == 0 and not u.dead and u.kind == BroodNew.TURTLE and BroodNew.rooted(u) and u.position.distance_to(q.position) >= float(Defs.NB["expansion_tiles"]) * Defs.TILE:
 				far += 1
 		res["far_turtles"] = maxi(int(res["far_turtles"]), far)
+		if far > 0 and int(res["natural"]) < 0:
+			res["natural"] = int(g.clock)
+			for u in BroodNew.expansions(g, q):
+				res["natural_tiles"] = int(u.position.distance_to(q.position) / Defs.TILE)
+		if int(res["maw3"]) < 0:
+			var rm := 0
+			for u in g.units:
+				if u.team == 0 and not u.dead and u.kind == BroodNew.MAW and BroodNew.rooted(u):
+					rm += 1
+			if rm >= 3:
+				res["maw3"] = int(g.clock)
+		if int(res["scout"]) < 0:
+			for a in g.ais:
+				if a.team == 0 and a is AIBroodNew:
+					for n in a.note:
+						if String(n[1]).begins_with("sends a"):
+							res["scout"] = int(n[0])
+							break
 		res["turtles"] = maxi(int(res["turtles"]), BroodNew.count_of(g, 0, BroodNew.TURTLE))
 		res["maws"] = maxi(int(res["maws"]), BroodNew.count_of(g, 0, BroodNew.MAW))
 		res["grubs_max"] = maxi(int(res["grubs_max"]), BroodNew.count_of(g, 0, "grub"))
@@ -178,6 +216,14 @@ func _finish() -> void:
 	res["foe_value_killed"] = int(g.stats[1]["value_killed"])
 	res["earned"] = int(g.stats[0]["gold"])
 	res["foe_earned"] = int(g.stats[1]["gold"])
+	res["spoils_in"] = int(g.stats[0].get("res2_in", 0))
+	res["sacrificed"] = int(g.stats[0].get("sacrificed", 0))
+	res["eggs_taken"] = _egg_rule.taken
+	for a in g.ais:
+		if a.team == 0 and a is AIBroodNew:
+			for n in a.note:
+				if String(n[1]).begins_with("ALARM") or String(n[1]).begins_with("rush evidence"):
+					res["alarms"].append("%d %s" % [int(n[0]), n[1]])
 	if g.mlog:
 		var waves := 0
 		for l in g.mlog.lines:
