@@ -574,6 +574,10 @@ func _on_input(event: InputEvent) -> void:
 			if mb.pressed:
 				sel_scroll_by(-1 if mb.button_index == MOUSE_BUTTON_WHEEL_UP else 1)
 			get_viewport().set_input_as_handled()
+		elif mb.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN] and _card_over() and card_rect().grow(4).has_point(mb.position):
+			if mb.pressed:
+				card_scroll_by(-1 if mb.button_index == MOUSE_BUTTON_WHEEL_UP else 1)
+			get_viewport().set_input_as_handled()
 		elif mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed and _hud_has(mb.position):
 				_mouse_hud = true
@@ -600,6 +604,8 @@ func _on_input(event: InputEvent) -> void:
 		var mm := event as InputEventMouseMotion
 		if not _sel_drag.is_empty():
 			_sel_move(mm.position)
+		elif not _card_drag.is_empty():
+			_card_move(mm.position)
 		elif menu_open:
 			_slide_drag(mm.position)
 		elif mini_rect().has_point(mm.position):
@@ -610,6 +616,8 @@ func _on_input(event: InputEvent) -> void:
 		if _hud_touches.has(e.index):
 			if not _sel_drag.is_empty():
 				_sel_move(e.position)
+			elif not _card_drag.is_empty():
+				_card_move(e.position)
 			elif menu_open:
 				_slide_drag(e.position)
 			elif mini_rect().has_point(e.position):
@@ -665,21 +673,28 @@ func _press(p: Vector2) -> void:
 	if hid >= 0:
 		bar.press(hid)
 		return
+	if not help_mode and _card_press(p):
+		return             # a long card: its scroll bar, or (phone) a tap or a drag
 	for b in _all_buttons():
 		if (b["rect"] as Rect2).has_point(p):
 			if b.has("alt") and not Settings.pc():
 				# phone: a tap trains, a long press switches automatic training (on release / in _process)
 				_alt_press = {"b": b, "t": Time.get_ticks_msec(), "done": false}
 				return
-			if b["enabled"]:
-				b["cb"].call()
-				Sfx.play_any(["ui/click", "click"])
-			elif b.has("why"):
-				toast(b["why"])
-				if game and game.mlog and not game.demo:
-					var pl: Dictionary = game.players[game.human]
-					game.mlog.add("%s pressed %s: refused, %s (had %d %s, %d tension)" % [game.mlog.who(game.human), (String(b["item"][1]) if b.has("item") and (b["item"] as Array).size() > 1 else "a button"), String(b["why"]), int(pl["gold"]), _res()[0].to_lower(), int(float(pl.get("tension", 0.0)))])
+			_use_button(b)
 			return
+
+
+## A HUD button pressed (or, on a long card on a phone, tapped): it acts, or says why it can't.
+func _use_button(b: Dictionary) -> void:
+	if b["enabled"]:
+		b["cb"].call()
+		Sfx.play_any(["ui/click", "click"])
+	elif b.has("why"):
+		toast(b["why"])
+		if game and game.mlog and not game.demo:
+			var pl: Dictionary = game.players[game.human]
+			game.mlog.add("%s pressed %s: refused, %s (had %d %s, %d tension)" % [game.mlog.who(game.human), (String(b["item"][1]) if b.has("item") and (b["item"] as Array).size() > 1 else "a button"), String(b["why"]), int(pl["gold"]), _res()[0].to_lower(), int(float(pl.get("tension", 0.0)))])
 
 
 ## A press while the menu is up: its buttons and sliders, the music player; anywhere off the panel closes it.
@@ -708,6 +723,8 @@ func _menu_press(p: Vector2) -> void:
 func _release(p: Vector2) -> void:
 	if not _sel_drag.is_empty():
 		_sel_release(p)
+	if not _card_drag.is_empty():
+		_card_release(p)
 	if not _alt_press.is_empty():
 		var b: Dictionary = _alt_press["b"]
 		if not _alt_press["done"] and (b["rect"] as Rect2).has_point(p):
@@ -954,13 +971,9 @@ func _build_card() -> Array:
 				_nb_buttons(list, units)
 				return list
 		if page in ["build", "advanced"] and has_lab:
-			# every building on one card (more pages if they don't fit)
-			var all: Array = Defs.build_list(game.faction_of(game.human))
-			var slots := _cols() * _rows()
-			var per := slots - 1 if all.size() <= slots - 1 else slots - 2
-			var pages := int(ceil(all.size() / float(per)))
-			build_page = clampi(build_page, 0, pages - 1)
-			for k in all.slice(build_page * per, build_page * per + per):
+			# every building on one card (it scrolls if they don't fit)
+			# (one list: the card scrolls when they don't fit, see _refresh_card)
+			for k in Defs.build_list(game.faction_of(game.human)):
 				var d: Dictionary = Defs.BUILDINGS[k]
 				var why := ""
 				if not game.requirement_met(game.human, k):
@@ -978,8 +991,6 @@ func _build_card() -> Array:
 				list.append([k, label, func() -> void:
 					page = ""
 					controls.begin_place(kk), why == "", why, _price_chip([int(d["cost"]), Defs.tension_cost(d)], Defs.tension_cost(d) > 0)])
-			if pages > 1:
-				list.append(["more", "MORE", func() -> void: build_page = (build_page + 1) % pages, true, "", ""])
 			list.append(["back", "BACK", func() -> void:
 				page = ""
 				build_page = 0, true, "", ""])
@@ -1921,7 +1932,7 @@ const CTRL_KEYS := {"ATTACK GROUND": "Ctrl+A"}      # (shown as "Ctrl+A", the ow
 ## Barracks...): everything they can do on one card. Each unit goes to the selected building
 ## that can train it and has the shortest queue (so four Barracks show a Musketeer once),
 ## each research to the Armoury (or whichever) that offers it; RALLY goes to all that train,
-## CANCEL takes the last order of the busiest one. If it doesn't fit, _paged adds MORE (Tab).
+## CANCEL takes the last order of the busiest one. If it doesn't fit, the card scrolls.
 func _mixed_card(bs: Array) -> Array:
 	var list: Array = []
 	var built := bs.filter(func(x: Building) -> bool: return x.built)
@@ -2001,25 +2012,36 @@ static func key_id(it: Array) -> String:
 
 
 const GRID_KEYS := ["Q", "W", "E", "R", "A", "S", "D", "F", "Z", "X", "C", "V"]
+## The last resort of a long card, after NEAR_KEYS: the rest of the letters.
+const ALL_KEYS := "QWERTASDFGZXCVBYUIOPHJKLNM"
 
-func _with_keys(items: Array) -> Array:
+## Letters for the whole card at once (one card, no pages: no two buttons share a letter, and a
+## button's key works whether it is scrolled into view or not). Clashes: the player's own keys and
+## the must-have commands first, then units and buildings (a letter of their name), then the other
+## commands' usual keys, then a letter of the label; within a step the earlier button (the card
+## puts the most used first) keeps the letter. Same card, same letters.
+## `first`: with grid keys, the first button shown (the keys are the shown places).
+func _with_keys(items: Array, first := 0) -> Array:
 	# computer, grid keys: the key is the button's place on the 4 x 3 card, under the left hand
 	if Settings.pc() and Settings.grid_keys:
 		for i in items.size():
-			items[i].append(GRID_KEYS[i] if i < GRID_KEYS.size() else "")
+			var j := i - first
+			items[i].append(GRID_KEYS[j] if j >= 0 and j < GRID_KEYS.size() else "")
 		return items
 	var used := {}
 	var chosen := {}
 	var lab_of := func(it: Array) -> String: return String(it[1]).trim_prefix("> ").trim_prefix("~ ")
 	var named := func(it: Array) -> bool: return Defs.UNITS.has(it[0]) or Defs.BUILDINGS.has(it[0]) or Defs.TRAIN_AS.has(it[0])
-	# 1. the player's own keys and the must-have command keys (A attack, S stop, H hold, ...)
+	# 1. the player's own keys, the must-have command keys (A attack, S stop, H hold, ...) and the first row's
 	for i in items.size():
 		var own := UiLayout.key_for(key_id(items[i]))
 		var lab: String = lab_of.call(items[i])
 		if own == "" and CTRL_KEYS.has(lab):
 			chosen[i] = String(CTRL_KEYS[lab])
 			continue
-		var k: String = own if own != "" else (String(FIXED_KEYS[lab]) if MUST_KEYS.has(lab) else String(UNIT_KEYS.get(String(items[i][0]), "")))
+		# (the first row's commands keep their usual letters too: ROOT D on the uprooted Mother, not the Mist Toad's)
+		var must := MUST_KEYS.has(lab) or (i < 4 and FIXED_KEYS.has(lab) and not CARD_LAST.has(lab))
+		var k: String = own if own != "" else (String(FIXED_KEYS[lab]) if must else String(UNIT_KEYS.get(String(items[i][0]), "")))
 		if k != "" and not used.has(k):
 			used[k] = true
 			chosen[i] = k
@@ -2053,6 +2075,17 @@ func _with_keys(items: Array) -> Array:
 						if not used.has(ch):
 							key = ch
 							break
+				# (a long card: a letter of the name anywhere, then any letter left)
+				if key == "":
+					for ch in name:
+						if ch >= "A" and ch <= "Z" and not used.has(ch):
+							key = ch
+							break
+				if key == "":
+					for ch in ALL_KEYS:
+						if not used.has(ch):
+							key = ch
+							break
 			if key != "":
 				used[key] = true
 				chosen[i] = key
@@ -2072,15 +2105,14 @@ func hotkey(code: int, repeat := false) -> bool:
 		page = ""
 		return true
 	if code == KEY_TAB:
-		# Tab flips the command card's pages (the same as its MORE button)
-		for it in _card_items:
-			if String(it[1]) == "MORE" and it[3]:
-				it[2].call()
-				_card_fresh = true
-				flash_card("MORE")
-				Sfx.play_any(["ui/click", "click"])
-				return true
-		return false
+		# Tab scrolls a long command card down a card's height (from the bottom: back to the top)
+		var span := maxi(0, _card_rows - _rows())
+		if span == 0:
+			return false
+		_card_scroll = 0 if _card_scroll >= span else mini(_card_scroll + _rows(), span)
+		_card_fresh = true
+		_redraw_t = 0.0
+		return true
 	var letter := OS.get_keycode_string(code)
 	if letter.length() != 1:
 		return false
@@ -3931,25 +3963,131 @@ func sel_icon_click(it: Dictionary, ctrl: bool, shift: bool) -> void:
 var _buttons_extra: Array = []
 
 
-## More buttons than the card holds (a big mixed selection): pages, with MORE on each.
-var _card_page := 0
-var _card_sig := ""
+## ONE CARD, NO PAGES (the owner, 2026-10-30): all of a selection's commands in one list, 4 wide;
+## the card shows 3 rows and scrolls when there are more (the wheel over the card, a finger's drag
+## on phones, the thin bar at its right edge, Tab). The most used first; the rarer ones last, in
+## this order (rallies also work by right-click; auto-cast toggles; DEMOLISH).
+const CARD_LAST := ["WORK", "AUTO REFIT", "PRESSURE", "TEAM", "HOLD FIRE", "RALLY", "WORKERS", "DEMOLISH"]
+var _card_scroll := 0           # the first row shown
+var _card_rows := 0             # rows in all
+var _card_sig := ""             # the command list the scroll belongs to
+var _card_sel := {}             # the selection it belongs to (instance ids)
+var _card_keep := {}            # this selection's scroll per command list (back from a placing card)
+var _card_bar := Rect2()        # the scroll bar's track (empty when everything fits)
+var _card_drag := {}            # a press on a long card: {p, s0, moved, bar, b}
 
 
-func _paged(all: Array) -> Array:
-	var slots := _cols() * _rows()
-	var sig := "%s|%d|%s" % [page, game.selection.size(), str(game.selection[0].get_instance_id()) if not game.selection.is_empty() and is_instance_valid(game.selection[0]) else ""]
-	if sig != _card_sig:
-		_card_sig = sig
-		_card_page = 0       # a new selection starts on the first page
-	if all.size() <= slots:
-		return all
-	var per := slots - 1
-	var pages := int(ceil(all.size() / float(per)))
-	_card_page = clampi(_card_page, 0, pages - 1)
-	var out: Array = all.slice(_card_page * per, _card_page * per + per)
-	out.append(["more", "MORE", func() -> void: _card_page = (_card_page + 1) % pages, true, "", "%d/%d" % [_card_page + 1, pages]])
+static func card_label(it: Array) -> String:
+	return String(it[1]).trim_prefix("> ").trim_prefix("~ ")
+
+
+## The rarer commands (CARD_LAST) moved to the end; the rest keep their order.
+static func card_order(all: Array) -> Array:
+	var out: Array = []
+	var tail := {}
+	for it in all:
+		var lab := card_label(it)
+		if CARD_LAST.has(lab):
+			if not tail.has(lab):
+				tail[lab] = []
+			(tail[lab] as Array).append(it)
+		else:
+			out.append(it)
+	for lab in CARD_LAST:
+		if tail.has(lab):
+			out.append_array(tail[lab])
 	return out
+
+
+## A new selection starts at the top; the same one keeps its scroll while its command list is the
+## same (a unit died), and gets it back when the list comes back (after a placing or targeting card).
+func _card_track(items: Array) -> void:
+	var ids := PackedStringArray()
+	for it in items:
+		ids.append(key_id(it))
+	var sig := page + "|" + ",".join(ids)
+	var sel := {}
+	var fresh := game.selection.is_empty()
+	for e in game.selection:
+		if is_instance_valid(e):
+			sel[e.get_instance_id()] = true
+			if not _card_sel.has(e.get_instance_id()):
+				fresh = true
+	_card_sel = sel
+	if fresh:
+		_card_keep = {}
+		_card_scroll = 0
+		_card_sig = sig
+	elif sig != _card_sig:
+		_card_keep[_card_sig] = _card_scroll
+		_card_scroll = int(_card_keep.get(sig, 0))
+		_card_sig = sig
+
+
+func _card_over() -> bool:
+	return _card_bar.size.x > 0.0 and not _card_buttons.is_empty()
+
+
+## Scroll by rows (the wheel: one at a time).
+func card_scroll_by(d: int) -> void:
+	_card_scroll = clampi(_card_scroll + d, 0, maxi(0, _card_rows - _rows()))
+	_card_fresh = true
+	_redraw_t = 0.0
+
+
+## A press on a long card: on the bar it drags the bar; on a phone the buttons act on release (a
+## drag scrolls instead). True if it took the press.
+func _card_press(p: Vector2) -> bool:
+	if not _card_over() or not card_rect().grow(4).has_point(p):
+		return false
+	if _card_bar.grow(6).has_point(p):
+		_card_drag = {"p": p, "s0": _card_scroll, "moved": true, "bar": true}
+		_card_move(p)
+		return true
+	if Settings.pc():
+		return false
+	var hit := {}
+	for b in _card_buttons:
+		if (b["rect"] as Rect2).has_point(p):
+			hit = b
+	_card_drag = {"p": p, "s0": _card_scroll, "moved": false, "bar": false, "b": {} if hit.has("alt") else hit}
+	if hit.has("alt"):
+		_alt_press = {"b": hit, "t": Time.get_ticks_msec(), "done": false}
+	return true
+
+
+func _card_move(p: Vector2) -> void:
+	if _card_drag.is_empty():
+		return
+	var span := maxi(0, _card_rows - _rows())
+	if _card_drag["bar"]:
+		_card_scroll = clampi(int(round((p.y - _card_bar.position.y) / maxf(_card_bar.size.y, 1.0) * span)), 0, span)
+	elif _card_drag["moved"] or absf(p.y - (_card_drag["p"] as Vector2).y) > 10.0:
+		_card_drag["moved"] = true       # a drag, not a tap: the rows follow the finger
+		_alt_press = {}
+		_card_scroll = clampi(int(_card_drag["s0"]) - int(round((p.y - (_card_drag["p"] as Vector2).y) / _btn())), 0, span)
+	_card_fresh = true
+	_redraw_t = 0.0
+
+
+func _card_release(p: Vector2) -> void:
+	var d := _card_drag
+	_card_drag = {}
+	if d["bar"] or d["moved"] or (d.get("b", {}) as Dictionary).is_empty():
+		return
+	var b: Dictionary = d["b"]
+	if (b["rect"] as Rect2).has_point(p):
+		_use_button(b)
+
+
+func _draw_card_bar() -> void:
+	if _card_bar.size.x <= 0.0:
+		return
+	_ci.draw_rect(_card_bar, Color(0, 0, 0, 0.5))
+	var span := maxi(1, _card_rows - _rows())
+	var h := maxf(_card_bar.size.y * _rows() / float(_card_rows), 10.0)
+	var y := _card_bar.position.y + (_card_bar.size.y - h) * _card_scroll / float(span)
+	_ci.draw_rect(Rect2(_card_bar.position.x, y, _card_bar.size.x, h), UiStyle.TRIM)
 
 
 ## At each look: the command card's buttons (what they are, where, what they do) and a short
@@ -3961,17 +4099,28 @@ var _card_wait := 0
 
 func _refresh_card() -> void:
 	var _q := Time.get_ticks_usec()
-	var items := _with_keys(_paged(_build_card()))
-	_card_items = items
+	var all := card_order(_build_card())
+	_card_track(all)
+	_card_rows = ceili(all.size() / float(_cols()))
+	var span := maxi(0, _card_rows - _rows())
+	_card_scroll = clampi(_card_scroll, 0, span)
+	var first := _card_scroll * _cols()
+	var items := _with_keys(all, first)
+	_card_items = items          # (every button: their keys work scrolled out of view too)
 	var buttons: Array = []
 	var look := PackedStringArray()
+	_card_bar = Rect2()
 	if not items.is_empty():
 		var cr := card_rect()
 		var bsz := _btn()
 		look.append(str(cr))
-		for i in mini(items.size(), _cols() * _rows()):
+		if span > 0:
+			_card_bar = Rect2(cr.end.x - 3, cr.position.y + 3, 5, cr.size.y - 6)
+			look.append("scroll %d/%d" % [_card_scroll, _card_rows])
+		for i in range(first, mini(items.size(), first + _cols() * _rows())):
 			var it: Array = items[i]
-			var br := Rect2(cr.position + Vector2(2 + (i % _cols()) * bsz, 2 + (i / _cols()) * bsz), Vector2(bsz - 4, bsz - 4))
+			var j := i - first
+			var br := Rect2(cr.position + Vector2(2 + (j % _cols()) * bsz, 2 + (j / _cols()) * bsz), Vector2(bsz - 4, bsz - 4))
 			var bt := {"rect": br, "cb": it[2], "enabled": it[3], "why": it[4], "item": it}
 			var plain := String(it[1]).trim_prefix("> ").trim_prefix("~ ")
 			if _alt_for.has(plain):
@@ -4033,6 +4182,7 @@ func _draw_card(font: Font) -> void:
 			_ci.draw_rect(kr, Color(0.1, 0.08, 0.05, 0.85))
 			_ci.draw_rect(kr, UiStyle.TRIM_DIM, false, 1.0)
 			_text(UiStyle.bold_font(), kr.position + Vector2(kr.size.x * 0.5, 13), it[6], 12, Color(1, 0.92, 0.6), 1)
+	_draw_card_bar()          # (a long card: its scroll bar)
 
 
 ## Autocast (WORK, PUSH): a golden outline that breathes, with sparks running round it.

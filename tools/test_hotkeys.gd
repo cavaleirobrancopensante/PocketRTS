@@ -243,34 +243,42 @@ func _run() -> void:
 	hud._refresh_card()
 	labels = hud._card_items.map(func(it) -> String: return String(it[1]))
 	check(labels.has("CANCEL") and labels.has("RALLY"), "RALLY and CANCEL are on the merged card")
-	# pages: a Hall + Barracks + Stable + Armoury + Workshop ... many things: force a long card
+	# ONE CARD, NO PAGES: a Hall + Barracks + Breeder + Armoury + Mill: every command in one list, no MORE
 	var many := _build(g, "horse_breeder")
 	var mill := pm
 	g.set_selection(bks + [arm, hall] + ([many] if many else []) + ([mill] if mill else []))
 	hud._refresh_card()
-	hud._card_page = 0
-	var first: Array = hud._card_items.map(func(it) -> String: return String(it[1]))
-	var has_more: bool = first.has("MORE")
-	if has_more:
-		check(hud.hotkey(KEY_TAB), "Tab flips the card page")
+	var all_l: Array = hud._card_items.map(func(it) -> String: return String(it[1]))
+	check(not all_l.has("MORE"), "no MORE button (%d commands on one card)" % all_l.size())
+	var ks := {}
+	var dup := ""
+	for it in hud._card_items:
+		var kk := String(it[6])
+		if kk != "" and ks.has(kk):
+			dup += " %s=%s/%s" % [kk, ks[kk], it[1]]
+		ks[kk] = String(it[1])
+	check(dup == "", "no two commands share a key:%s" % dup)
+	check(hud._card_buttons.size() <= 12, "the card shows at most 3 rows (%d buttons)" % hud._card_buttons.size())
+	if all_l.size() > 12:
+		check(hud._card_bar.size.x > 0.0, "a long card has its scroll bar")
+		var last: Array = hud._card_items.back()
+		var shown: bool = hud._card_buttons.any(func(bt) -> bool: return bt["item"] == last)
+		check(not shown, "the last command is scrolled out of view at first")
+		check(hud.hotkey(KEY_TAB), "Tab scrolls the card")
 		hud._refresh_card()
-		var second: Array = hud._card_items.map(func(it) -> String: return String(it[1]))
-		check(second != first, "the second page differs from the first")
-		check(hud._card_items.size() > 0, "the second page is not blank")
-	else:
-		print("PASS  (this selection fits on one page: %d buttons)" % first.size())
-	# force a long list: a fake selection of many kinds would need many buildings; test _paged directly
+		check(hud._card_scroll > 0, "...down (row %d)" % hud._card_scroll)
+		hud.card_scroll_by(-99)
+		hud._refresh_card()
+		check(hud._card_scroll == 0, "the wheel scrolls back to the top")
+	# a long fake list: 16 commands = 4 rows, every one with its own key, 12 shown
 	var fake: Array = []
 	for i in 16:
 		fake.append(["move", "CMD%d" % i, func() -> void: pass, true, "", ""])
-	hud._card_page = 0
-	hud._card_sig = "fake"
-	var pg: Array = hud._paged(fake)
-	check(pg.size() == 12 and String(pg[11][1]) == "MORE", "16 commands: page 1 has 11 + a MORE button")
-	hud._card_items = hud._with_keys(pg)
-	check(hud.hotkey(KEY_TAB), "Tab works as MORE")
-	pg = hud._paged(fake)
-	check(String(pg[0][1]) == "CMD11", "page 2 starts after page 1")
+	var kf: Array = hud._with_keys(fake)
+	var kset := {}
+	for it in kf:
+		kset[String(it[6])] = true
+	check(kset.size() == 16 and not kset.has(""), "16 commands get 16 different keys")
 
 	# ---- leave to the menu and CONTINUE: groups and views stay
 	g.set_selection([m[6]])
