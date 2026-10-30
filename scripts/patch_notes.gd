@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.5", "items": [
+		"THE COMPUTER EXPANDS BEFORE IT GOES BROKE: since 0.24.0 spent land pays nothing, and a Hard Crown that lost its second Town Hall sat for ten minutes with 36 idle Labourers and no income. Now the Crown and Clockwork computers keep a hall's gold (and its first Farm's or Cog Press's) once their land runs low, even with enemies about; take any free hall ground when every usual site is on the enemy's side; train no Labourers or Winders for spent land; and send the hands waiting by the halls to the new Farms. The Brood computer already moves its Rootmaws off spent ground.",
+	]},
 	{"v": "0.24.4", "items": [
 		"THE SELECTION PANEL SHOWS EVERYONE: with several units selected the panel no longer ends in \"+N\". First comes one icon per kind with its count (gold frame), then every unit's own icon with his health; when they don't fit, scroll with the mouse wheel, by dragging the icons (a finger on a phone) or with the bar at the right.",
 		"CLICKS ON THE PANEL, THE SC2 WAY: on a unit, a click keeps only him, Ctrl+click keeps his kind, Shift+click drops him, Ctrl+Shift+click drops his kind; on a kind's icon, a click keeps that kind, Shift+click drops it. On a phone: tap = the click, double tap on a unit = his kind, long press = drop (him, or the kind on a kind's icon).",
