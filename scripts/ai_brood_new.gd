@@ -45,6 +45,13 @@ var held: Array = []             # creatures it leaves alone (a coach's hand ord
 ##  mix               warrior mix: "tyrant" (Raptors, Brutes), "venom" (Spitters ahead), "mixed"
 ##  mature            mature young into Challengers: "push" (before a wave), "bank" (food piling up), "" (never early)
 ##  home_guard        Raptors kept home when a wave leaves (after the first)
+##  drone             grubs a minute on the curve that comes before warriors (from the 5 it starts with)
+##  maws0 / ahead0    a rush: Rootmaws before the first wave; supply kept ahead for it (the turtle right after the Sire)
+##  edge              a wave goes only with this share of the biggest enemy army seen lately (0.6; 0.3 against the
+##                    Clockwork), or at the supply cap
+## Settings only a tool or a coach sets (tools/play_brood_3.gd): "sire_leads" (a Sire walks with the waves:
+## "dilophosaurus" was the owner's good idea, the Tyrant Sire a bad one), "storm_want" (Hatchlings kept to mature into
+## Storm Challengers), "mother_free" (the computer leaves its Mother alone: the coach's Mother rush).
 const PLANS := {
 	"xrush": {"drone": 0.0, "sire_g": 5, "sire_t": 0.0, "grubs0": 6, "maws0": 1, "ahead0": 7, "grubs": 26, "maws": [2, 150.0, 6], "grow": [420.0, 780.0],
 		"venom": 600.0, "storm": 900.0, "far": [[600.0, 1]], "wave": 8, "wave_t": 0.0, "step": 4, "pack": false,
@@ -65,6 +72,11 @@ const PLANS := {
 		"venom": 600.0, "storm": 200.0, "far": [[300.0, 1], [540.0, 2]], "wave": 18, "wave_t": 420.0, "step": 8, "pack": false,
 		"mix": "tyrant", "mature": "push", "home_guard": 3},
 }
+
+
+## (a computer made by hand, as the tests do, has its plan from the start: Balanced until it is told otherwise)
+func _init() -> void:
+	_make_plan()
 
 
 func _ready() -> void:
@@ -88,6 +100,19 @@ func _make_plan() -> void:
 		plan["grubs"] = int(plan["grubs"]) - 6
 		plan["grow"] = [float(plan["grow"][0]) + 90.0, float(plan["grow"][1]) + 150.0]
 		plan["pack"] = false
+	# against the Clockwork, steady Raptor pressure from about 5:00 (round 3: g20 traded 11,020 for 4,345 with small early
+	# waves of Pack Hunt Raptors; holding home for a big army only let the richer Clockwork grow): smaller, earlier waves
+	if game == null:
+		_attack_at = int(plan["wave"])
+		return
+	if _foe_is("crown") and String(plan["mix"]) == "tyrant" and not strategy in ["xrush", "rush"]:
+		plan["mix"] = "mixed"          # (the Crown walls its ramp: claws alone never go in, the wall rule waits for Spitters)
+	if _foe_is("clockwork") and not strategy in ["xrush", "rush"]:
+		plan["wave"] = mini(int(plan["wave"]), 14)
+		plan["wave_t"] = minf(float(plan["wave_t"]), 300.0 if difficulty > 0 else 420.0)
+		plan["step"] = mini(int(plan["step"]), 4)
+		plan["edge"] = 0.3
+		plan["pack"] = false          # (Pack Hunt comes when it comes: the waves don't wait for it)
 	for k in over:
 		plan[k] = over[k]
 	_attack_at = int(plan["wave"])
@@ -114,6 +139,7 @@ func _tick_ai(delta: float) -> void:
 	if q == null:
 		return
 	_nb_observe(q)
+	_nb_root_watch()
 	if difficulty >= 1:
 		_nb_scout(q)
 	_nb_mother(q)
@@ -224,6 +250,11 @@ func _nb_observe(q: Unit) -> void:
 			rush_seen = why
 			rush_t = game.clock
 			say("rush evidence: %s: holds its army at home and lays warriors" % why)
+
+
+## The enemy flyers it has seen lately (the most at once): what it knows, not every flyer on the map.
+func _nb_foe_air() -> int:
+	return seen_air
 
 
 ## The enemy walls itself in (a wall seen, or the Crown, which walls its ramp in its first minute).
@@ -400,9 +431,9 @@ func _nb_morphs(q: Unit) -> void:
 				spot = fp[0]
 	elif _nb_next_father(q) != "":
 		k = _nb_next_father(q)
-	elif maws < _nb_wanted_maws() and (maws < 2 or _food() >= 100):
+	elif maws < _nb_wanted_maws() and (maws < 2 or _food() >= 100) and (maws < 3 or not _nb_saving_growth(q)):
 		k = BroodNew.MAW
-	elif _nb_far_have(q) < _nb_far_wanted():
+	elif _nb_far_have(q) < _nb_far_wanted() and not _nb_saving_growth(q):          # (her stage before more ground: the Economy plan never grew her)
 		var picks := _nb_far_spots(q)
 		if not picks.is_empty():
 			k = BroodNew.TURTLE
@@ -573,7 +604,7 @@ var _nb_bad_spots := {}            # spot (rounded) -> until when
 
 
 func _root_to(u: Unit, p: Vector2) -> void:
-	var id := u.get_instance_id()
+	var id: int = u.get_instance_id()
 	var last = _root_last.get(id)
 	if last != null and (last[0] as Vector2).distance_to(p) < Defs.TILE and game.clock - float(last[1]) < 40.0:
 		_nb_bad_spots[str(p.round())] = game.clock + 180.0
@@ -582,6 +613,30 @@ func _root_to(u: Unit, p: Vector2) -> void:
 	if last == null or (last[0] as Vector2).distance_to(p) >= Defs.TILE:
 		_root_last[id] = [p, game.clock]
 	u.give({"o": "nb_root", "p": p})
+
+
+## A creature on its way to root for more than 30 s (it can't get there: jostled on a crowded spot, a path that never
+## ends) is stopped and the spot left alone; it is sent somewhere else on the next think.
+var _root_since := {}           # creature id -> [spot, clock first seen on its way there]
+
+
+func _nb_root_watch() -> void:
+	var seen := {}
+	for u in game.units:
+		if u.team != team or u.dead or u.order != "nb_root":
+			continue
+		var id: int = u.get_instance_id()
+		seen[id] = true
+		var r = _root_since.get(id)
+		if r == null or (r[0] as Vector2).distance_to(u.order_point) > 1.0:
+			_root_since[id] = [u.order_point, game.clock]
+		elif game.clock - float(r[1]) > 30.0:
+			_nb_bad_spots[str(u.order_point.round())] = game.clock + 180.0
+			_root_since.erase(id)
+			u.cmd_stop()
+	for id in _root_since.keys():
+		if not seen.has(id):
+			_root_since.erase(id)
 
 
 func _spot_bad(p: Vector2) -> bool:
@@ -675,16 +730,18 @@ func _nb_one_father(q: Unit, f: Unit) -> void:
 	var reach := float(Defs.NB["father_r"]) * Defs.TILE
 	var threat := _nb_threat(q) != Vector2.INF
 	if f.tesla_mode == "deployed":
-		if d > reach or (threat and _nb_threat_big(q)):
+		if d > reach or (threat and _nb_sires_needed(q)):
 			f.cmd_uproot(false)       # (no rooted creature attacks: to fight off a real attack at the Mother he gets up)
 		return
-	if threat:
-		return          # (uprooted, he fights with the others: _nb_army; he roots again when it is calm)
+	if threat and _nb_sires_needed(q):
+		return          # (uprooted, he fights with the others: _nb_army; a scout or a few raiders near her do not keep him off his nest)
 	if f.tesla_mode == "packed" and d > 14.0 * Defs.TILE and f.order != "move" and f.order != "nb_root":
 		# (on a leash: an enemy he chased off from her could lead him across the map, and while he is away her
 		# warrior eggs wait for him; seen in a 0.18.0 match, the Tyrannosaur 62 tiles off with 1,600 food banked)
 		f.cmd_move(q.position)
 		return
+	if f.tesla_mode == "packed" and f.target != null and not _nb_sires_needed(q):
+		f.cmd_stop()          # (a fight he picked up by himself, nothing at the Mother: back to his nest)
 	if f.tesla_mode != "packed" or f.target != null or f.order == "nb_root":
 		return
 	var spot = _nb_father_spot(q, f, f.kind)
@@ -1043,6 +1100,12 @@ func _nb_threat_big(q: Unit) -> bool:
 	return v >= 120.0
 
 
+## The Sires get up for an attack at the Mother only when it is big and her army can't hold it alone (a Sire away from
+## his nest fathers nothing, and a dead one stops his line for minutes: round 3's games lost their Tyrant Sire this way).
+func _nb_sires_needed(q: Unit) -> bool:
+	return _nb_threat_big(q) and _foe_near_home > _value_of(_nb_army_units()) * 0.8
+
+
 ## The staging point: a little out from the Mother toward the enemy, on her ground (the army gathers there and goes
 ## together).
 func _nb_stage_point(q: Unit) -> Vector2:
@@ -1092,7 +1155,7 @@ func _nb_army(q: Unit) -> void:
 	var threat := _nb_threat(q)
 	if threat != Vector2.INF:
 		var defenders := army.filter(func(u: Unit) -> bool: return not _wave.has(u) or not _attacking or u.position.distance_to(q.position) < 30.0 * Defs.TILE)
-		if _nb_threat_big(q):
+		if _nb_sires_needed(q):
 			for fk in BroodNew.FATHERS:
 				var f := BroodNew.father(game, team, fk)
 				if f and f.tesla_mode == "packed" and not BroodRoot.in_cocoon(f):

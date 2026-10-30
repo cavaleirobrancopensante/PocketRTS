@@ -16,12 +16,6 @@ Runs vary a little from game to game (random choices): read the numbers to +-20 
 
 | Faction | Plan | Production building | First soldier | First attack | 2:00 | 3:00 | 4:00 | 5:00 |
 |---|---|---|---|---|---|---|---|---|
-| Brood | Extreme rush | Spawning Den 0:36 | 1:18 | 1:41 | 4 / 150 | 5 / 200 | 5 / 425 | 6 / 425 |
-| Brood | Rush | Spawning Den 0:51 | 1:25 | 1:47 | 6 / 150 | 9 / 150 | 10 / 300 | 14 / 300 |
-| Brood | Air rush | Spawning Den 1:18 | 2:08 | 3:56 | 9 / 0 | 10 / 150 | 14 / 300 | 18 / 225 |
-| Brood | Balanced | Spawning Den 1:19 | 2:04 | never (6:00+) | 9 / 0 | 9 / 225 | 12 / 300 | 16 / 300 |
-| Brood | Economy | Spawning Den 1:19 | 2:59 | never | 9 / 0 | 10 / 75 | 12 / 225 | 18 / 375 |
-| Brood | Timing attack | Spawning Den 1:19 | 2:04 | never (waits for a weaker foe) | 9 / 0 | 9 / 225 | 14 / 300 | 17 / 300 |
 | Crown | Rush (Horsemen) | Barracks 1:19 | 2:06 | 3:52 | 8 / 0 | 7 / 115 | 11 / 345 | 13 / 115 |
 | Crown | Balanced | Barracks 1:20 | 1:55 | never (6:00+) | 9 / 75 | 9 / 115 | 10 / 230 | 12 / 115 |
 | Crown | Economy | Barracks 1:20 | 1:55 | never | 9 / 115 | 11 / 115 | 13 / 230 | 17 / 230 |
@@ -35,24 +29,30 @@ Runs vary a little from game to game (random choices): read the numbers to +-20 
 
 ## What each plan is for, and how it is built
 
-### Brood
-- **Extreme rush** (new, "six-pool"; Brood only): the Spawning Den goes down as soon as 4 grubs and 150 biomass
-  are there (the Feeding Pit takes one grub), at most 8 grubs (held at 5 while the army is under its curve),
-  at most 2 Feeding Pits, no Brood Pen / upgrades, every egg hatches Raptors. The first
-  6 Raptors leave at once and go for the workers (an attack-move into armed defenders, a plain run at
-  workers otherwise); new Raptors follow. It pulls back when the defenders in sight are worth over 1.15x
-  the wave (and 100+) or after 75 s without headway, then plays Balanced (workers, Pen, tech, a bigger
-  army before the next push). The scout is switched off for this plan.
-- **Rush**: the same opening (Den ~0:50, 6 hands held until the first wave leaves, 10 after), but it keeps
-  an economy: first wave of 6 Raptors at ~1:50, then a Brood Pen, workers and the normal curve. It falls
-  back to Balanced the same way.
-- **Air rush / Balanced / Economy / Timing attack**: the Den as soon as 6-8 hands are up (the grubs wait for
-  its 150 biomass), then the army follows an army-value curve (`ARMY_CURVE` in ai.gd, per plan: start
-  second, full second, value) and any enemy army the Brood can SEE (x1.2). Under the curve workers stop
-  at 9-10 until the eggs have caught up, the Brood Pen waits (the Clutch Mound for supply is planted on joined swamp, forward when the pits lack room: AI._mound_spot). Balanced and Timing want 225+
-  by 3:00 to meet a Crown Horseman rush at ~3:30; Economy is a little later but still reacts to what it
-  sees. Timing attack starts at 4:30 (was 6:40) and only goes when the foe it scouted is not clearly
-  stronger.
+### Brood (the Brood of creatures, 0.22.0: scripts/ai_brood_new.gd, docs/brood_ai.md)
+The old Brood's rows (Spawning Den openings) are gone with it (0.18.0). Today's Brood has no buildings: its Tyrant Sire
+on his nest is its barracks, made from a grub's lure (200 food, 35 s). Measured by `tools/test_ai_brood.gd -- profile:<p>`
+(Hard Brood against a peaceful Hard Crown on Greenhold, seed 3; 0.22.0): the times each milestone came.
+
+| Plan | Scout | Tyrant Sire | 8 Raptors | Stage 2 | Venom Sire | Storm Sire | Far turtle | First research | First attack |
+|---|---|---|---|---|---|---|---|---|---|
+| Extreme rush | 3:14 (after the rush) | 0:36 | 2:40 | - | - | - | - | - | 2:40 (at the ramp ~3:10) |
+| Rush | 1:10 | 1:27 | 3:23 | - | - | - | - | - | 3:44 |
+| Timing attack | 1:10 | 1:36 | 6:45 | 5:11 | - | - | 5:33 | - | 7:56 |
+| Balanced | 1:10 | 1:47 | 7:23 | 6:02 | 4:59 | - | 6:12 | 9:25 (Pack Hunt) | not by 9:25 (the wall rule) |
+| Economy | 1:10 | 2:23 | 6:24 | 7:22 | 5:24 | - | 4:56 | 7:36 | - |
+| Air rush | 1:10 | 1:47 | 6:30 | 5:00 | - | 7:58 | 5:33 | 7:43 | 8:15 |
+
+- **Extreme rush**: the Tyrant Sire's lure at once, 6 grubs, one Rootmaw, a supply turtle right after him, every egg
+  Raptors; the 8 go together. The owner's yardstick (8 Raptors by 2:00, hitting 2:00-2:30) is out of reach for
+  today's Brood (the Sire's 200 food comes first): its fastest rush lands at about 3:10. Against the Hard Crown it
+  fails (the ramp wall stands at 0:38, its scout sees the Raptors at about 1:08) and the computer plays Balanced.
+- **Rush**: 9 grubs held until 10 Raptors leave (about 3:45), then Balanced's economy.
+- **Timing attack / Balanced / Economy / Air rush**: grubs first on a curve (4 to 6 a minute), the Sires, her stages
+  and expansions on the plan's clock, Pack Hunt before the first wave (except against the Clockwork, which gets smaller
+  waves from 5:00). Against the Crown no wave goes into its wall with claws alone (Spitters or Brutes with Battering
+  Horns first, or the supply cap), so its first attack against a walled Crown comes late or at the cap.
+- Its scouting decides: an army on the move early means hold and lay warriors; enemy flyers mean the Storm Sire first.
 
 ### Crown
 - Rush = Horse Breeder opening, 3 Horsemen out by ~3:30 (the owner's earlier log). Counter-play: the wall
@@ -67,12 +67,9 @@ Runs vary a little from game to game (random choices): read the numbers to +-20 
   the swamp both beat early wind-ups; not yet covered by a dedicated test.
 
 ## Tests that keep this honest
-- `tools/test_ai_xrush.gd [plan:xrush|rush] [defence:0|1]`: Brood Rush / Extreme rush timelines (Den by 1:05
-  for Rush, Raptors by 1:30, 6+ by 2:05, first attack by 2:50) against a sleeping Crown, and a Crown that
-  defends properly (palisade, three Musketeers by 1:50) holds, keeps its Town Hall and most labourers,
-  and the rush falls back to a normal game and is not idle.
-- `tools/test_ai_brood_army.gd [map:.. seed:.. brood:.. crown:..]`: Brood Rush vs Crown Rush (run it on
-  glimmerdeep/4242, kestrel_rise/7): the army reaches 150 by 3:00 and the Burrow survives to 4:30.
+- `tools/test_ai_brood.gd [profile:xrush|rush|timing|balanced|economy|air]`: the Brood table above, each milestone by
+  its latest time (about a minute's margin), no food bank over 900 for a minute, grubs at the plan's cap.
+- `tools/test_ai_wall_vs_rush.gd`: the Crown's wall and 3 Musketeers against the Brood computer's Extreme rush.
 - `tools/measure_ai_timelines.gd` / `run_ai_timelines.sh`: the table above.
 
 ## Known limits
