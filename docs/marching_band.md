@@ -139,7 +139,10 @@ What it says:
 
 `tools/test_marching_band_match.gd` (Hard Crown computer, experiment on, 12 minutes):
 
-RESULTS_MATCH
+Cut short (the owner's call): one 12-minute match against a Hard Brood (ashford_crossing, seed 4242). The Crown computer
+trained its band at 11:44 (it hovered at 0-110 gold all match and reached 6+ soldiers late), but never had the 50+ gold
+spare for a musician, so it played no solo. **Open:** the computer must SAVE for its musicians (e.g. hold production while
+the band lacks one and the army is 10+), then the band's use in AI matches can be measured.
 
 ## THE OWNER'S QUESTION: strongest or minor?
 
@@ -181,6 +184,8 @@ of a small army). With the Armoury's P1 (docs/armoury_study.md: the locks give a
 could rise to +35%.
 
 ## What is left (not in the POC)
+
+- The computer's use: it trains the band but doesn't save gold for musicians (see above); no measured AI matches.
 
 - Real art (a drum major and the musicians as figures; real bagpipes audio).
 - The band's music is a Sfx "din" sound (tier 1): in a very big fight the sound cap may skip a phrase.
