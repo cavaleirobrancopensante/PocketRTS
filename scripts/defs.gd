@@ -2048,7 +2048,21 @@ static func is_basic(kind: String) -> bool:
 static func is_econ(kind: String) -> bool:
 	if not BUILDINGS.has(kind):
 		return false
-	return FACTIONS[BUILDINGS[kind]["faction"]]["econ"].has(kind)
+	var f: String = BUILDINGS[kind]["faction"]
+	return FACTIONS[f]["econ"].has(kind) or (econ_test.has(f) and (econ_test[f] as Dictionary).has(kind))
+
+
+## TEST-ONLY economy limits (tools/measure_economy.gd, docs/cw_economy_study.md): {faction: {kind: per hall}} added to
+## (or replacing) FACTIONS[f]["econ"] for a study run, e.g. {"clockwork": {"mainspring": 1}}. Always empty in a real match
+## (nothing in the game sets it).
+static var econ_test := {}
+
+
+## How many of `kind` each hall of `faction` allows (0: no limit; FACTIONS econ, or the test-only override).
+static func econ_per_hall(faction: String, kind: String) -> int:
+	if econ_test.has(faction) and (econ_test[faction] as Dictionary).has(kind):
+		return int(econ_test[faction][kind])
+	return int(FACTIONS[faction]["econ"].get(kind, 0))
 
 const TEAM_COLOURS := [Color("#3a78e8"), Color("#e03a32")]
 const TEAM_NAMES := ["Blue", "Red"]

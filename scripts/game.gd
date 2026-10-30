@@ -2670,7 +2670,7 @@ func econ_count(t: int, kind: String) -> int:
 
 
 func econ_limit(t: int, kind: String) -> int:
-	return int(Defs.FACTIONS[faction_of(t)]["econ"].get(kind, 0)) * maxi(1, halls_of(t).size())
+	return Defs.econ_per_hall(faction_of(t), kind) * maxi(1, halls_of(t).size())
 
 
 func add_res2(t: int, v: float) -> void:
@@ -4583,7 +4583,7 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 	if Defs.is_econ(k):
 		if not limits_checked and econ_count(t, k) >= econ_limit(t, k):
 			return "Each %s allows %d %s. Expand for more." % [Defs.BUILDINGS[faction_hall(t)]["name"],
-				int(Defs.FACTIONS[faction_of(t)]["econ"][k]), Defs.BUILDINGS[k]["name"] + ("s" if int(Defs.FACTIONS[faction_of(t)]["econ"][k]) > 1 else "")]
+				Defs.econ_per_hall(faction_of(t), k), Defs.BUILDINGS[k]["name"] + ("s" if Defs.econ_per_hall(faction_of(t), k) > 1 else "")]
 		var mid := (Vector2(c) + Vector2(size) * 0.5) * T
 		var near := false
 		for h in (_spot_halls if limits_checked else halls_of(t)):
