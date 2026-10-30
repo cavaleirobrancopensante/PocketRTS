@@ -4,6 +4,12 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.23.0", "items": [
+		"THE MARCHING BAND (an EXPERIMENT, off by default: switch on MARCHING BAND (experiment) in Settings; a match keeps the rule it started with). The Crown can train ONE band at a Barracks (50 gold, 15 s). It starts as the bandmaster alone; ADD DRUMMER (50 gold, 8 s), ADD PIPER (75 gold, 12 s) and ADD FIFER (60 gold + 10 powder, 10 s) on its card take on musicians, one at a time, each +15 health. Every instrument it has plays a small buff to your soldiers and guns within 5 tiles of it: drums +5% speed, pipes +7% melee damage, fife +5% reload speed.",
+		"THE BAND'S SOLOS: DRUMS SOLO, PIPES SOLO and FIFE SOLO put that instrument in the lead for 8 s with its full buff (drums +25% speed, pipes +35% melee damage, fife +30% reload speed), then 45 s before it can solo again; one solo at a time. Its ring on the ground turns the instrument's colour and pulses (the enemy sees it too) and the band's music plays near it. It is unarmed and fragile: kill it and the music stops. With no orders it falls in behind your soldiers on the march; right-click one of your units to have it follow him.",
+		"The Crown computer trains a band when the experiment is on, takes on musicians and plays the fife's solo when its line fires, the pipes' when the enemy reaches it.",
+		"Studies, no numbers changed: what each Armoury research is worth in a fight (docs/armoury_study.md) and the band's fights (docs/marching_band.md).",
+	]},
 	{"v": "0.22.10", "items": [
 		"No change to play: a study of the Clockwork's and the Crown's economies (docs/cw_economy_study.md) and the tool that measures them, with a switch only the study uses to try limits such as one Mainspring per Clocktower.",
 	]},

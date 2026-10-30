@@ -748,6 +748,9 @@ func show_settings() -> void:
 	v.add_child(_toggle_row("TURNING GEARS (experiment)", func() -> bool: return Settings.gear_turn, func() -> void:
 		Settings.gear_turn = not Settings.gear_turn       # (from the next match: a match keeps the rule it started with)
 		Settings.save_all()))
+	v.add_child(_toggle_row("MARCHING BAND (experiment)", func() -> bool: return Settings.marching_band, func() -> void:
+		Settings.marching_band = not Settings.marching_band       # (the Crown's band at the Barracks: from the next match)
+		Settings.save_all()))
 	v.add_child(_toggle_row("SHOW EXPANSION SPOTS", func() -> bool: return Settings.expansion_spots, func() -> void:
 		Settings.expansion_spots = not Settings.expansion_spots
 		Settings.save_all()))
@@ -2127,6 +2130,10 @@ func start(cfg: Dictionary = {}) -> void:
 	if not cfg.has("gear_turn") and not watching and not cfg.has("resume"):
 		cfg["gear_turn"] = Settings.gear_turn
 	Defs.gear_turn = bool(cfg.get("gear_turn", false))
+	# THE MARCHING BAND (the experiment, scripts/marching_band.gd): the same way, off in a setup from before it existed
+	if not cfg.has("marching_band") and not watching and not cfg.has("resume"):
+		cfg["marching_band"] = Settings.marching_band
+	Defs.marching_band = bool(cfg.get("marching_band", false))
 	# a random map is picked here (among the pool's maps that hold everyone), so colours can
 	# be chosen to suit its ground
 	var pool := String(cfg.get("map", "random"))

@@ -3683,6 +3683,13 @@ func _produce() -> void:
 	for c in _mine("church"):
 		if c.built and c.queue.is_empty() and r5.missionary_ok() and game.can_train(c, "missionary") == "":
 			game.train(c, "missionary")
+	# THE MARCHING BAND (the experiment, scripts/marching_band.gd): one band once the army is 6 strong (into a Barracks queue the
+	# soldiers keep full: up to its 5)
+	if Defs.marching_band and army.size() >= 6 and _gold() >= int(Defs.UNITS[MarchingBand.KIND]["cost"]):
+		for bk in _mine("barracks"):
+			if bk.built and game.can_train(bk, MarchingBand.KIND) == "":
+				game.train(bk, MarchingBand.KIND)
+				break
 
 
 ## Gear mode: what the Mainsprings store at most (their Tension cap).
@@ -5895,6 +5902,8 @@ func _abilities() -> void:
 		ShieldWall.think(game, team)       # (Clock Soldiers: shields up in ranged fire, down to chase or fall back)
 	if not _crown():
 		return
+	if Defs.marching_band:
+		MarchingBand.ai_tick(game, team)     # (its musicians and solos: scripts/marching_band.gd)
 	for u in game.army(team):
 		if u.kind == "cannon":
 			var crowd := 0

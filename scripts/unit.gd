@@ -288,6 +288,20 @@ func set_brace(on: bool) -> void:
 	armor = float(Defs.BRACE["armor"]) if on else float(d["armor"])
 
 
+## THE MARCHING BAND: take on a musician ("drums", "pipes", "fife"; scripts/marching_band.gd).
+func band_hire(ins: String) -> void:
+	if game.net_forward(self, "band_hire", [ins]): return
+	if kind == MarchingBand.KIND:
+		MarchingBand.hire(self, ins)
+
+
+## THE MARCHING BAND: an instrument's SOLO.
+func band_solo(ins: String) -> void:
+	if game.net_forward(self, "band_solo", [ins]): return
+	if kind == MarchingBand.KIND:
+		MarchingBand.solo(self, ins)
+
+
 ## Clock Soldier: SHIELD FORWARD on or off (scripts/shield_wall.gd; needs the SHIELD WALL research).
 func set_shield(on: bool) -> void:
 	if game.net_forward(self, "set_shield", [on]): return
@@ -369,6 +383,16 @@ var _care_auto := false          # (a Missionary) the patient he walks to is his
 var _rein: Node2D                # (a horse) the reins to its leader, drawn over the horse
 var _rein_on := false
 var _feather: Node2D             # (a dismounted horseman) the plume on his hat (TEMP_ART "feather")
+# THE MARCHING BAND (scripts/marching_band.gd): the band's own state (MarchingBand.fresh: its musicians, solo, cooldowns)
+# and, on any unit its music reaches, the buff (speed, melee, reload multipliers) until the clock band_until
+var band := {}
+var band_mul := Vector3.ONE
+var band_until := -1.0
+var _band_t := 0.0
+var _band_scan := 0.0
+var _sound_t := 0.0
+var _band_draw_t := 0.0
+var _band_fx: Node2D
 
 
 func is_unit() -> bool:
@@ -1772,6 +1796,10 @@ func _ready() -> void:
 		_rein.draw.connect(_draw_rein)
 		add_child(_rein)
 	_update_feather()
+	if kind == MarchingBand.KIND:
+		_band_fx = Node2D.new()          # (its instruments and notes over the sprite: code-drawn stand-ins)
+		_band_fx.draw.connect(func() -> void: MarchingBand.draw_kit(self, _band_fx))
+		add_child(_band_fx)
 	if kind == "cannon" and not ArtData.UNITS["cannon"]["frames"].has("walk_e"):
 		_make_wheel()
 	if kind == "balloon" and ArtData.UNITS.has(kind):
@@ -2429,8 +2457,10 @@ func _blow_damage() -> float:
 		var bd := float(Defs.BAYONET["damage"]) + (float(Defs.RESEARCH["bayonet"]["damage"]) if bayonet else 0.0)
 		if d.has("sabre"):
 			bd = float(d["sabre"]["damage"])
-		return bd * vet
+		return bd * vet * (band_mul.y if band_until > game.clock else 1.0)
 	var dmg := float(d["damage"]) * vet
+	if band_until > game.clock and _range() < 60.0:
+		dmg *= band_mul.y
 	if d["faction"] == "clockwork":
 		dmg *= lerpf(0.7, 1.0, wind)
 	if overclock_t > 0.0:
@@ -3413,7 +3443,7 @@ func _tick_unit(delta: float) -> void:
 	if kind == Defs.BALLISTA_KIND:
 		Ballista.wind(self, delta)                 # (its spring is wound only while it stands, faster with crew)
 	elif kind != "dragoon":
-		cooldown = maxf(cooldown - delta, 0.0)     # (a Dragoon's reload waits while he rides)
+		cooldown = maxf(cooldown - delta * (band_mul.z if band_until > game.clock and mode != "bayonet" else 1.0), 0.0)     # (a Dragoon's reload waits while he rides; the band's FIFE: MarchingBand)
 	jump_cd = maxf(jump_cd - delta, 0.0)
 	if _pmax > 0.0:
 		_powder_tick(delta)
@@ -3454,6 +3484,10 @@ func _tick_unit(delta: float) -> void:
 	if slow_t > 0.0:
 		slow_t -= delta
 		speed *= Defs.ACID_SLOW
+	if band_until > game.clock:
+		speed *= band_mul.x                # (the band's DRUMS: scripts/marching_band.gd)
+	if kind == MarchingBand.KIND:
+		MarchingBand.tick(self, delta)
 	if Defs.cw_roster and _k_cw:
 		CwUnits.pre_tick(self, delta)
 	if shield_up or shield_t > 0.0:
@@ -3734,7 +3768,7 @@ func _tick_unit(delta: float) -> void:
 			var fe = order_target
 			if fe == null or not is_instance_valid(fe) or fe.dead or (fe as Unit).aboard != null:
 				cmd_stop()
-			elif position.distance_to(fe.position) > radius + fe.radius + 26.0:
+			elif position.distance_to(fe.position) > radius + fe.radius + (float(Defs.MARCHING_BAND["gap"]) if kind == MarchingBand.KIND else 26.0):
 				want = _walk_to(fe.position, delta)
 			else:
 				path = PackedVector2Array()
@@ -4686,6 +4720,8 @@ func _strike(e: Entity) -> void:
 	var dmg := float(d["damage"]) * (1.0 + minf(kills * float(Defs.VET["per_kill"]), float(Defs.VET["max"])))
 	if d["faction"] == "clockwork":
 		dmg *= lerpf(0.7, 1.0, wind)
+	if band_until > game.clock and _range() < 60.0:
+		dmg *= band_mul.y                  # (the band's PIPES on a blow up close: scripts/marching_band.gd)
 	if Defs.cw_roster and CwUnits.on(kind) and CwUnits.strike(self, e, dmg):
 		return
 	if overclock_t > 0.0:
@@ -4701,7 +4737,7 @@ func _strike(e: Entity) -> void:
 		var bd := float(Defs.BAYONET["damage"]) + (float(Defs.RESEARCH["bayonet"]["damage"]) if bayonet else 0.0)
 		if d.has("sabre"):
 			bd = float(d["sabre"]["damage"])           # a dismounted horseman's sabre
-		e.take_damage(bd * vet * float(Defs.BAYONET["bonus"].get(e.kind, 1.0)), self, BLOW_MELEE)
+		e.take_damage(bd * vet * float(Defs.BAYONET["bonus"].get(e.kind, 1.0)) * (band_mul.y if band_until > game.clock else 1.0), self, BLOW_MELEE)
 		Sfx.play_any(["combat/pikeman_attack", "clash"], position)
 		game.spawn_effect("hit", e.center() + Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.6)
 		return
@@ -7519,6 +7555,8 @@ func _draw_unit() -> void:
 		_draw_aim()
 	if selected and kind == Defs.GREAT_WINDER_KIND:
 		GreatWinder.draw_area(self)      # (its winding ring on the ground)
+	if kind == MarchingBand.KIND:
+		MarchingBand.draw_ring(self)     # (the band's ring on the ground, for everyone who sees it)
 	# (a Springer in the air: its shadow stays on the ground under it, a little smaller and darker so the leap reads)
 	var lifted := Springer.lift(self) if not jump.is_empty() else 0.0
 	var shade := 1.0 - clampf(lifted / 160.0, 0.0, 0.3)
