@@ -234,3 +234,8 @@ The batch was not run again after them.
 6. **The wall rule**: against the Crown the computer now waits for Brutes with Battering Horns or 8 Spitters before
    it attacks. It draws more and loses less, but rarely threatens the Crown. Is that the right character for the
    Brood, or should it gamble more?
+
+## The owner's answers (2026-10-30 07:15)
+- The Mother MUST be able to hit a gate on a ramp: investigate and fix (branch brood-fixes).
+- Spoils for the Storm line / air rush: SACRIFICE RAPTORS. The sacrifice egg exploit is to be fixed: two young from one egg sacrificed gave two eggs; now a sacrifice still pays its spoils, but the young of one egg give back only ONE egg between them (branch brood-fixes).
+- The income gap: EXHAUST BETTER BROOD ECONOMIC PLAY FIRST before changing numbers. His build: the FIRST TURTLE on the NATURAL expansion spot; the THIRD ROOTMAW at the far edge of the natural; grubs made NONSTOP; then the SECOND TURTLE takes the THIRD expansion with a Rootmaw there. Spoils from sacrificing Raptors. Scouting for a healthy economy: a grub PATROLLING at the bottom of the enemy ramp against the Crown, and EXPLORING the Clockwork main, to see a rush or timing attack coming (branch brood-eco).
