@@ -338,13 +338,6 @@ func _ops(who: Object, fn: String, args: Array) -> Array:
 			if not _ok(b):
 				return []
 			ops.append(["fade", b, Color(1.0, 0.55, 0.45, 0.45)])
-		"swap_gear":
-			var b: Building = args[0]
-			if not _ok(b) or g.gear_swap_problem(b) != "":
-				return []
-			ops.append(["res", "gold", -int(Defs.GEAR["swap_cost"])])
-			ops.append(["prop", b, "gear_swap_to", not b.gear_big])
-			ops.append(["timer", b, "gear_swap_t", float(Defs.GEAR["swap_time"]), -1.0])
 		"set_rally":
 			var b: Building = args[0]
 			if not _ok(b):

@@ -106,6 +106,10 @@ func _run() -> void:
 		g.set_selection([hall if k == "clocktower" else built[k]])
 		await run(0.2)
 	g.set_selection([])
+	# the Clocktower's pick (owner, 2026-10-30: "a bit annoying... not enough variety"): four short takes, picked at random
+	var ct: Array = Sfx.me._find("select/clocktower")
+	check(ct.size() == 4 and ct.all(func(s: AudioStream) -> bool: return s.get_length() <= 1.6),
+		"the Clocktower's pick has 4 short takes (%s s)" % ", ".join(ct.map(func(s: AudioStream) -> String: return "%.2f" % s.get_length())))
 	# a building finishes (the carriage slides back, the bell rings)
 	_free_sfx()
 	g.on_building_complete(built["regulator"])

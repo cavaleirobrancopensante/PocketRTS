@@ -35,7 +35,6 @@ func _run() -> void:
 			press = b
 	press.gear_big = true
 	var works := U.put(g, 0, "assembly_works", tower.cell, false)
-	g.swap_gear(works)
 	U.step(g, 1.0)
 	# ---- the save
 	SaveGame.save(g, {"map": "ashford_crossing", "seed": 4242})
@@ -48,7 +47,20 @@ func _run() -> void:
 	var press2 := _find(g2, Defs.GEAR_PRESS, press.cell)
 	var works2 := _find(g2, "assembly_works", works.cell)
 	check("the saved BIG gear is big after a load", press2 != null and press2.gear_big)
-	check("a swap under way is kept (time left and target)", works2 != null and works2.gear_swap_t > 0.0 and works2.gear_swap_to == true, "%.2f" % (works2.gear_swap_t if works2 else -1.0))
+	check("the small-gear works stays small after a load", works2 != null and not works2.gear_big)
+	# an old save with a gear swap under way ("gs", "gst": the swap was removed in 0.24.4) still loads, the fields ignored
+	var old := d.duplicate(true)
+	for bd in old.get("buildings", []):
+		if bd is Dictionary and bd.has("gb"):
+			bd["gs"] = 2.5
+			bd["gst"] = true
+	var g3 := U.make(root, ["clockwork", "crown"], "", false)
+	await process_frame
+	await process_frame
+	SaveGame.restore(g3, old)
+	await process_frame
+	var works3 := _find(g3, "assembly_works", works.cell)
+	check("an old save with a gear swap under way loads (the swap ignored)", works3 != null and not works3.gear_big)
 	g2.gear_net.solve()
 	check("the loaded game connects its field again", works2 != null and g2.gear_net.linked.has(press2))
 	SaveGame.clear()
@@ -74,7 +86,7 @@ func _run() -> void:
 	var gp := _find(guest, Defs.GEAR_PRESS, press.cell)
 	var gw := _find(guest, "assembly_works", works.cell)
 	check("the guest sees the host's BIG gear", gp != null and gp.gear_big)
-	check("and the swap under way", gw != null and gw.gear_swap_to == true and gw.gear_swap_t > 0.0)
+	check("and the small gear of the works", gw != null and not gw.gear_big)
 	guest.gear_net.tick(0.1)
 	guest.gear_net.tick(0.1)
 	var gt := U.hall(guest, 0)

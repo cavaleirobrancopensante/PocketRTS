@@ -98,20 +98,11 @@ func _do_gear(s: String) -> String:
 		return "wait"
 	var fed: Array = list.filter(func(b: Building) -> bool: return GearEcon.spend_problem(game, b) == "")
 	for o in list:
-		if (o.gear_swap_to if o.gear_swap_t >= 0.0 else o.gear_big) == big and (fed.is_empty() or fed.has(o)):
+		if o.gear_big == big and (fed.is_empty() or fed.has(o)):
 			_log(s, game.clock)
 			return "done"      # (one is on that gear already)
-	if fed.is_empty() and big:
-		return "wait"          # (none can make a Tension unit yet: wait for one that meshes, or the step's time limit)
-	var b: Building = fed[fed.size() - 1] if not fed.is_empty() else list[list.size() - 1]
-	if game.gear_swap_problem(b) != "":
-		_hold = int(Defs.GEAR["swap_cost"])
-		return "wait"
-	game.swap_gear(b)
-	_log(s, game.clock + float(Defs.GEAR["swap_time"]))
-	if game.mlog:
-		game.mlog.add("%s's scripted gear swap: %s %s onto its %s gear (%d of %d fed by a Mainspring)" % [game.mlog.who(team), kind,
-			"(fed)" if fed.has(b) else "(not fed)", "big" if big else "small", fed.size(), list.size()])
+	# (no gear swap since 0.24.4, the owner: each building keeps the gear it is built with; the step is skipped)
+	_log(s + " (no gear swap)", game.clock)
 	return "done"
 
 

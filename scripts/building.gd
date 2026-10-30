@@ -17,8 +17,6 @@ var drill_on := false           # Ore Drill: digging this moment
 var drill_anim := false         # Ore Drill: showing the working loop
 var batteries := 0               # Clockwork: full batteries waiting to be carried off
 var gear_big := false            # Clockwork (gear mode): the connecting gear is BIG (else SMALL): Defs.GEAR, scripts/gear.gd
-var gear_swap_t := -1.0          # seconds left of a gear swap (-1: none); the building idles meanwhile
-var gear_swap_to := false        # the size it swaps to
 var press_paid := 0.0            # Cog Press: cogs it has paid in all (statistics)
 var pop_got := 0.0               # Cog Press / Mainspring: cogs or Tension since its last "+N" over it (pop_income)
 var pop_t := 0.0                 # ... seconds since then
@@ -993,7 +991,7 @@ func _econ(delta: float) -> void:
 			while crew.size() > crew_max():
 				var extra: Unit = crew.pop_back()
 				if is_instance_valid(extra) and not extra.dead:
-					extra.cmd_stop()          # (a swap to the small gear lets the extra Winders go: WORK finds them another post)
+					extra.cmd_stop()          # (more Winders than posts: the extra ones go; WORK finds them another post)
 			var rate := press_rate()
 			if rate > 0.0:
 				var pay := game.draw_lode(self, rate * delta)
@@ -1006,7 +1004,7 @@ func _econ(delta: float) -> void:
 			while crew.size() > crew_max():
 				var extra2: Unit = crew.pop_back()
 				if is_instance_valid(extra2) and not extra2.dead:
-					extra2.cmd_stop()          # (a swap to the small gear lets the extra Winders go)
+					extra2.cmd_stop()          # (more Winders than posts: the extra ones go)
 			var sr := spring_rate()
 			if sr > 0.0:
 				pop_income(GearEcon.wind_spring(self, sr * delta), delta)      # (drawn from its Clocktower's spring life)

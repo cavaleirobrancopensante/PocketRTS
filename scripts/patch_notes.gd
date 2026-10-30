@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.4", "items": [
+		"THE GEAR SWAP IS GONE (Clockwork): the SMALL GEAR / BIG GEAR button is removed (a ring that grew clipped into the gears around it). Each building keeps the gear it is built with: the Heavy Works its big gear (the Pendulums, Ballistas and Great Winders are made there), every other building its small one. Saves made before still load.",
+		"THE SPRING MARK (the little gold coil over a Clockwork building) now shows only on buildings that use or spend Tension, and explains itself: rest the mouse on it (or long-press it on a phone): a Mainspring's ring meshes with this building's, so it is fed Tension and can work and make what costs Tension.",
+		"THE CLOCKTOWER'S PICK SOUND is gentler and varied: four short strikes of the old bell (two pitched a little, one with two ticks before it) instead of two long ones, its low hum and clangy ring softened, and played a little quieter, like the Town Hall's (it is picked for every Winder).",
+	]},
 	{"v": "0.24.3", "items": [
 		"THE BROOD MOTHER'S TWO RALLY POINTS: with her selected, her right-clicks take turns: the FIRST sets her GRUBS' rally (drawn gold: her new grubs go there; on a Rootmaw or a food pile they gather there), the SECOND her WARRIORS' rally (drawn green), and so on. The button the next right-click sets is shown pressed on her card; WORKERS and RALLY set either one directly. Her rallies come first, always: warriors hatching in a Sire's nest go to HER warrior rally (the Sire's only if she has none). Fixed: warriors didn't go to the rally, since an egg kept the rally she had when she laid it; now a hatchling looks at her rally when it hatches. Without a grubs' rally a new grub finds work by itself.",
 		"Grubs bringing food deliver at the NEAREST edge of the Mother (her back, her sides), no longer walking round to her front. The same for grubs bringing a body or going to be offered up, and for anyone walking up to a rooted creature.",

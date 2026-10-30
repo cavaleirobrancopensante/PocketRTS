@@ -9215,26 +9215,6 @@ func _takes_kept(t: int, k: String, c: Vector2i, kk: String) -> bool:
 
 
 ## Pull down a finished building of your own (nothing comes back).
-## GEAR SWAP (Clockwork, gear mode): a building's connecting gear changes between SMALL and BIG. Costs Defs.GEAR.swap_cost
-## cogs, takes Defs.GEAR.swap_time seconds; the building idles meanwhile and its ring visibly changes size. Returns "" or
-## why it can't be done (the card's tooltip).
-func gear_swap_problem(b: Building) -> String:
-	if not Defs.gear_mode or b.d["faction"] != "clockwork" or b.kind == "clocktower":
-		return "Only a Clockwork building's connecting gear can be swapped (not the Clocktower's)."
-	if not b.built or b.dead:
-		return "Wait until it is built."
-	if b.gear_swap_t >= 0.0:
-		return "Its gear is already being swapped."
-	if GearNet.big_only(b.kind):
-		return "The %s runs only on its big gear: the heavy torque." % String(b.d["name"])
-	var pw := Pendulum.swap_problem(b)       # (a Pendulum in its queue keeps the Works on the big gear)
-	if pw != "":
-		return pw
-	if int(players[b.team]["gold"]) < int(Defs.GEAR["swap_cost"]):
-		return "Not enough %s." % String(Defs.FACTIONS[faction_of(b.team)]["res"][0]).to_lower()
-	return ""
-
-
 ## THE GEAR VIEW (owner, 2026-10-27; the ` key, or GEAR VIEW on a Clockwork building's card): the whole gear network at a
 ## glance (GearNet._draw_view). A view only: nothing in the match changes, nothing is sent online.
 func toggle_gear_view() -> void:
@@ -9242,19 +9222,6 @@ func toggle_gear_view() -> void:
 	gear_net.queue_redraw()
 	if hud != null:
 		hud.toast("GEAR VIEW: green full speed, yellow 90%, orange 80%, red 70% or idle." if gear_net.view else "Gear view off.")
-
-
-func swap_gear(b: Building) -> String:
-	if net_forward(self, "swap_gear", [b]): return ""
-	var why := gear_swap_problem(b)
-	if why != "":
-		return why
-	players[b.team]["gold"] = int(players[b.team]["gold"]) - int(Defs.GEAR["swap_cost"])
-	stats[b.team]["spent"] += int(Defs.GEAR["swap_cost"])
-	b.gear_swap_to = not b.gear_big
-	b.gear_swap_t = float(Defs.GEAR["swap_time"])
-	Sfx.play_any(["ui/click", "click"], b.center())
-	return ""
 
 
 func demolish(b: Building) -> void:

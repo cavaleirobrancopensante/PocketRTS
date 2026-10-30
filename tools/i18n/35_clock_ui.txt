@@ -1,0 +1,9 @@
+# The Clockwork UI fixes (owner's playtest, 2026-10-30; 0.24.4): the spring mark's tooltip (GearEcon.spring_tip).
+
+> Fed by a Mainspring
+pt Alimentada por uma Mola Real
+es Alimentado por un Muelle Real
+
+> A Mainspring's ring meshes with this building's, so it is fed Tension: it can work and make what costs Tension. Without a Mainspring beside it, it could not.
+pt O anel de uma Mola Real engrena com o desta construção, então ela recebe Tensão: pode trabalhar e fazer o que custa Tensão. Sem uma Mola Real ao lado, não poderia.
+es El anillo de un Muelle Real engrana con el de este edificio, así que recibe Tensión: puede trabajar y hacer lo que cuesta Tensión. Sin un Muelle Real al lado, no podría.

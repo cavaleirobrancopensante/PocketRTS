@@ -1112,28 +1112,6 @@ func _build_card() -> Array:
 			for sb in game.selected_buildings():
 				game.abandon(sb), true, "", ""])
 		return list
-	if b and b.built and not b.dead and Defs.gear_mode and b.d["faction"] == "clockwork" and b.kind != "clocktower" and b.team == game.human \
-			and not GearNet.big_only(b.kind):
-		# GEAR SWAP: the button offers the other size of connecting gear (a small cost in cogs, a few seconds)
-		var to_big: bool = not (b.gear_swap_to if b.gear_swap_t >= 0.0 else b.gear_big)
-		var glab := "BIG GEAR" if to_big else "SMALL GEAR"
-		var gwhy := game.gear_swap_problem(b)
-		var trade := GearEcon.trade_line(b.kind, to_big)      # (SIZE SETS THE TEMPO: what this kind trades)
-		_tip_for[glab] = [("Swap to the BIG gear" if to_big else "Swap to the SMALL gear"),
-			Loc.t("Big gear: turns slow and works heavy and strong; a bigger ring that reaches farther." if to_big
-				else "Small gear: turns fast and works quick and light; a smaller ring.") + (" " + trade if trade != "" else ""),
-			"%d cogs  ·  %d s" % [int(Defs.GEAR["swap_cost"]), int(Defs.GEAR["swap_time"])]]
-		list.append(["ab_gear_big" if to_big else "ab_gear_small", glab, func() -> void:
-			var w := ""
-			for sb in game.selected_buildings():
-				if sb.team == game.human and game.gear_swap_problem(sb) == "":
-					w = game.swap_gear(sb)
-					if w != "":
-						break
-			if w != "":
-				toast(w)
-			else:
-				toast("Swapping the gear: the building idles for a few seconds."), gwhy == "", gwhy, str(int(Defs.GEAR["swap_cost"]))])
 	if b and Defs.gear_mode and b.d["faction"] == "clockwork" and not b.dead and (b.team == game.human or game.demo or game.spectating()):
 		# THE GEAR VIEW (also the ` key): the whole network at a glance (scripts/gear.gd); phone-friendly
 		_tip_for["GEAR VIEW"] = ["Gear view", "Shows the whole gear network: the drivers glow gold, every ring is tinted by how well it works (green full speed, yellow 90%, orange 80%, red 70% or idle), each Mainspring's reach is outlined and the turrets' circles are drawn. Key: `"]
@@ -3314,8 +3292,6 @@ func _draw_panel(font: Font) -> void:
 			if bb.built and not bb.dead and Defs.gear_mode and bb.d["faction"] == "clockwork" and (e.team == game.human or game.demo):
 				if not game.gear_net.is_linked(bb):
 					info = "UNLINKED: its gear ring does not mesh with the field, so it does nothing. Build a linked building beside it, or put it back in reach.  ·  " + info
-				elif bb.gear_swap_t >= 0.0:
-					info = "Swapping its gear (%d s)  ·  " % int(ceil(bb.gear_swap_t)) + info
 			if bb.built and (e.team == game.human or game.demo):
 				var ef: Array = bb.efficiency()
 				if not ef.is_empty() and Defs.gear_mode and bb.d["faction"] == "clockwork":
@@ -4201,6 +4177,9 @@ func _hover_at(p: Vector2) -> Dictionary:
 	var le := WorkerLabels.at(game, wp)
 	if le:
 		return {"id": "lab:%d" % le.get_instance_id(), "delay": TIP_LABEL_DELAY, "lab": le}
+	var sm: Building = game.gear_net.spring_mark_at(wp) if game.gear_net != null else null
+	if sm:          # (the spring mark over a building fed by a Mainspring: GearNet.has_spring_mark)
+		return {"id": "spr:%d" % sm.get_instance_id(), "delay": TIP_LABEL_DELAY, "spr": sm}
 	var eq := EggTip.at(game, wp)        # (the egg line over the Brood Mother: the same delay as the worker labels)
 	if eq:
 		return {"id": "egg:%d" % eq.get_instance_id(), "delay": TIP_LABEL_DELAY, "egg": eq}
@@ -4221,6 +4200,8 @@ func _tip_of(c: Dictionary) -> Dictionary:
 		return WorkerLabels.tip(game, c["lab"])
 	if c.has("egg"):
 		return EggTip.tip(game, c["egg"]) if is_instance_valid(c["egg"]) else {}
+	if c.has("spr"):
+		return GearEcon.spring_tip(c["spr"])
 	if c.has("e"):
 		return _entity_tip(c["e"])
 	if c.has("grp"):
@@ -4241,7 +4222,7 @@ func _help_on() -> bool:
 func show_label_tip(e: Entity, at: Vector2) -> bool:
 	if not Settings.tooltips or paused or menu_open:
 		return false
-	var t := WorkerLabels.tip(game, e)
+	var t := GearEcon.spring_tip(e) if e is Building else WorkerLabels.tip(game, e)      # (a Building: its spring mark)
 	if t.is_empty():
 		return false
 	_tip = t

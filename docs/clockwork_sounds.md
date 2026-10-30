@@ -86,7 +86,7 @@ The sounds could not be listened to. They were chosen by measuring them: loudnes
 | `combat/netter_death` (2 takes) | A Netter dies. A crash, a spring, clatter. | metallic noise 0.02 to 0.47 lower + spring scrape 0.08 to 0.68 lower + metallic noise 0.62 to 1.42 / metallic noise 0.02 to 0.47 lower + liquid wobble 2.51 to 2.91 lower + metallic noise 1.40 to 2.20 |
 | `combat/winder_attack` (2 takes) | A Winder hits something. A small clang and a click. | clang group 11.64 to 11.94 + crank loop 0.12 to 0.24 / clang group 8.28 to 8.58 higher + crank loop 3.25 to 3.37 |
 | `combat/winder_death` (2 takes) | A Winder dies. A crash, clatter, a little spring. | metallic noise 0.02 to 0.42 higher + metallic noise 0.62 to 1.32 + liquid wobble 0.05 to 0.35 / metallic noise 0.02 to 0.42 higher + metallic noise 1.40 to 2.10 + liquid wobble 1.63 to 1.93 |
-| `select/clocktower` (2 takes) | You pick the Clocktower. One strike of the old bell. | old clock bell 1.56 to 3.56 / old clock bell 3.66 to 5.66 |
+| `select/clocktower` (4 takes, 0.24.4) | You pick the Clocktower. One short strike of the old bell, softened (tower_bell: hum under 300 Hz and the clangy partials over 1.3 kHz rolled off, 12 ms attack), played 4 dB under the others like the Town Hall. | old clock bell 1.56 to 2.56 / 3.66 to 4.61 at 0.94 / 1.56 to 2.46 at 1.06 / alarm clock 1.86 to 2.46 lower, quiet + old clock bell 3.66 to 4.56 |
 | `select/cog_press` (2 takes) | You pick a Cog Press. A crank turning. | crank loop 0.10 to 1.20 lower / crank loop 3.23 to 4.33 lower |
 | `select/mainspring` | You pick a Mainspring. A spring scraping and ringing. | spring scrape 0.06 to 1.36 |
 | `select/escapement` (2 takes) | You pick an Escapement. Four ticks. | alarm clock 2.46 to 3.66 / alarm clock 4.26 to 5.46 |
@@ -121,3 +121,15 @@ Most sounds needed no code: the game looks for a file by its name.
 - `clock/no_res`, `clock/no_supply`, `clock/placed` and `clock/select_building` were left as they are. The game does not play the first three for the Clockwork, and every Clockwork building now has its own pick sound.
 - The Spring Catapult is not in the game yet, so it has no sounds. When it is added, a crank turn and a big spring boing from this script would fit.
 - One thing seen while testing: a Swift ordered onto a balloon right under it did not peck. It hovered on top of it. Put a little to the side, it pecked at once. This was not changed here.
+
+## The Clocktower's pick, redone (0.24.4)
+
+The owner (2026-10-30): "the clockwork sound when we select the clocktower is a bit annoying, maybe the decibel range, i like the style of sound but there is something off about it and we dont have enough variety of that sound".
+
+Measured against every building's pick sound (peak, RMS, the loudest 0.3 s after the mix gain, and the spectrum): its loudest moment was level with the others (-18 dB), but it was a 2-second bell that hardly decays (it is still within 6 dB of its strike a second later), with a low hum at 99 and 326 Hz under the 683 Hz note and clangy partials at 1.1 to 1.7 kHz that beat against each other. The Clocktower is picked for every Winder it trains, so that drone came again and again, at full level. The Town Hall had the same problem and already played 4 dB under the rest.
+
+What changed:
+- Four takes instead of two (the game picks one at random): each bell strike cut to about a second, two of them pitched 6% up or down, one with two quiet ticks of the alarm clock before the strike.
+- Each strike is softened in tools/audio/make_clockwork_sounds.py (tower_bell, and a new optional 8th item on a layer: "hp", "lp", "attack"): the hum under ~300 Hz rolled off, the partials over 1.3 kHz softened (down to -16 dB, not cut), a 12 ms attack.
+- scripts/sfx.gd plays it 4 dB under the other picks, like the Town Hall's.
+- The other Clockwork picks were measured too. All sit within a dB of -18 at their loudest 0.3 s, except the Heavy Works' (-14.8): it was missing from scripts/sound_mix.gd, so tools/audio/make_mix.py was run again.

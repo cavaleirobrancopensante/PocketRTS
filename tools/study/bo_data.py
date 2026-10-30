@@ -32,7 +32,7 @@ def main():
            "units": {k: {kk: v[kk] for kk in KEEP_UNIT if kk in v} for k, v in d["UNITS"].items()},
            "buildings": {k: {kk: v[kk] for kk in KEEP_BLD if kk in v} for k, v in d["BUILDINGS"].items()},
            "research": d["RESEARCH"], "factions": d["FACTIONS"], "hall_levels": d["HALL_LEVELS"],
-           "gear": {k: d["GEAR"][k] for k in ("press", "mainspring", "swap_cost", "swap_time", "start_cogs", "spent")},
+           "gear": {k: d["GEAR"][k] for k in ("press", "mainspring", "swap_cost", "swap_time", "start_cogs", "spent") if k in d["GEAR"]},
            "owl_morph": d["OWL_MORPH"], "turret": {k: d["TURRET"][k] for k in ("range", "damage", "cooldown")},
            "pistol": d["PISTOL"], "bayonet": d["BAYONET"], "crate": d["CRATE"], "dropship": d["DROPSHIP"],
            "econ": d["econ"], "build_list": d["build_list"], "start_list": d["start_list"], "supply_kind": d["supply_kind"],
