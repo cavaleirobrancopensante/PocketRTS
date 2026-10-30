@@ -162,6 +162,8 @@ func _tick_hud(delta: float) -> void:
 	_countdown(delta)
 	if _go_t > 0.0:
 		_go_t = maxf(_go_t - delta, 0.0)
+	if not _sel_drag.is_empty() or not _sel_tap.is_empty():
+		_sel_tick()
 	if not _alt_press.is_empty() and not _alt_press["done"] and Time.get_ticks_msec() - int(_alt_press["t"]) > 450:
 		_alt_press["done"] = true
 		if game:
@@ -349,7 +351,7 @@ func _layer_sig(n: String) -> Array:
 				var x := panel_rect()
 				if Rect2(x.end.x - 30, x.position.y + 2, 28, 28).has_point(m):
 					hv = 200
-			return [_vs(), _tick_n, hv]
+			return [_vs(), _tick_n, hv, _sel_scroll]
 		"command card":
 			var hv := -1
 			if pc:
@@ -568,7 +570,11 @@ func _on_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 	elif event is InputEventMouseButton and Settings.pc():
 		var mb := event as InputEventMouseButton
-		if mb.button_index == MOUSE_BUTTON_LEFT:
+		if mb.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN] and _sel_on() and _sel_area.has_point(mb.position):
+			if mb.pressed:
+				sel_scroll_by(-1 if mb.button_index == MOUSE_BUTTON_WHEEL_UP else 1)
+			get_viewport().set_input_as_handled()
+		elif mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed and _hud_has(mb.position):
 				_mouse_hud = true
 				_press(mb.position)
@@ -592,7 +598,9 @@ func _on_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 	elif event is InputEventMouseMotion and Settings.pc() and _mouse_hud:
 		var mm := event as InputEventMouseMotion
-		if menu_open:
+		if not _sel_drag.is_empty():
+			_sel_move(mm.position)
+		elif menu_open:
 			_slide_drag(mm.position)
 		elif mini_rect().has_point(mm.position):
 			_minimap_to(mm.position)
@@ -600,7 +608,9 @@ func _on_input(event: InputEvent) -> void:
 	elif event is InputEventScreenDrag:
 		var e := event as InputEventScreenDrag
 		if _hud_touches.has(e.index):
-			if menu_open:
+			if not _sel_drag.is_empty():
+				_sel_move(e.position)
+			elif menu_open:
 				_slide_drag(e.position)
 			elif mini_rect().has_point(e.position):
 				_minimap_to(e.position)
@@ -637,6 +647,9 @@ func _press(p: Vector2) -> void:
 		return
 	if mini_rect().has_point(p):
 		_minimap_to(p)
+		return
+	if _sel_on() and _sel_area.has_point(p) and not help_mode:
+		_sel_press(p)          # the multi-selection icons: a click (on release) or a scroll drag
 		return
 	if _help_on() and help_rect().has_point(p):
 		help_mode = not help_mode
@@ -693,6 +706,8 @@ func _menu_press(p: Vector2) -> void:
 
 
 func _release(p: Vector2) -> void:
+	if not _sel_drag.is_empty():
+		_sel_release(p)
 	if not _alt_press.is_empty():
 		var b: Dictionary = _alt_press["b"]
 		if not _alt_press["done"] and (b["rect"] as Rect2).has_point(p):
@@ -3409,7 +3424,6 @@ func _draw_panel(font: Font) -> void:
 				if Building.is_research(q[i]):
 					_ci.draw_rect(qr, Color(0.75, 0.55, 1.0, 0.9), false, 1.5)     # research: a violet frame
 	else:
-		var n := mini(sel.size(), 24)
 		var per_row := int((r.size.x - 20) / 38)
 		var men: Array = sel.filter(func(x: Entity) -> bool: return x is Unit and Defs.ARMOURED.has(x.kind) and x.team == game.human)
 		if not men.is_empty():
@@ -3450,24 +3464,7 @@ func _draw_panel(font: Font) -> void:
 					lines[-1] = tryl
 			for li in mini(lines.size(), 3):
 				_text(font, Vector2(r.end.x - cw, r.position.y + 46 + li * 17), lines[li], 14, Color(0.85, 0.88, 0.95))
-		if sel.size() > mini(n, per_row * 2):
-			n = mini(n, per_row * 2 - 1)     # (two rows, the stats row under them; the last cell says "+N")
-		_portraits = []
-		for i in n:
-			var e: Entity = sel[i]
-			var ir := Rect2(r.position + Vector2(10 + (i % per_row) * 38, 8 + (i / per_row) * 40), Vector2(34, 34))
-			_portraits.append({"rect": ir, "e": e})
-			if Settings.pc() and ir.has_point(_mouse()):
-				_ci.draw_rect(ir.grow(2), UiStyle.TRIM_DIM, false, 1.0)
-			var ic := _unit_icon(e)
-			if ic:
-				_ci.draw_texture_rect(ic, ir, false)
-			var f := e.hp / e.max_hp
-			_ci.draw_rect(Rect2(ir.position.x, ir.end.y, ir.size.x * f, 3), Color(0.3, 0.9, 0.3) if f > 0.5 else Color(0.95, 0.4, 0.2))
-			if e is Unit and (e as Unit).kills > 0:
-				_text(UiStyle.bold_font(), Vector2(ir.end.x - 1, ir.position.y + 11), str((e as Unit).kills), 12, Color(1, 0.82, 0.3), 2)
-		if sel.size() > n:
-			_text(font, r.position + Vector2(14 + (n % per_row) * 38, 32 + (n / per_row) * 40), "+%d" % (sel.size() - n), 16, Color.WHITE)
+		_draw_sel_icons(sel, r, per_row)
 	_draw_stats(sel, r)
 	# Deselect button
 	var x := Rect2(r.end.x - 30, r.position.y + 2, 28, 28)
@@ -3483,10 +3480,6 @@ func _draw_panel(font: Font) -> void:
 		_buttons_extra.append({"rect": qe["rect"], "enabled": true, "cb": func() -> void:
 			if is_instance_valid(qb) and not qb.dead:
 				game.cancel_train_at(qb, qi)})
-	if sel.size() > 1:
-		for pt in _portraits:
-			var pe: Entity = pt["e"]
-			_buttons_extra.append({"rect": pt["rect"], "enabled": true, "cb": func() -> void: _portrait_pressed(pe)})
 	_stat_buttons()
 
 
@@ -3516,6 +3509,21 @@ func _draw_stats(sel: Array, r: Rect2) -> void:
 
 ## Phone: a tap on a stat explains it (a computer shows it on hover: _hover_at).
 func _stat_buttons() -> void:
+	# a worker chip ("Farmers 3/8", CardTips "crew_of"): a click selects those workers (Shift adds); a phone: a long press
+	for sr in _stat_rects:
+		var cw = (sr[1] as Dictionary).get("crew_of")
+		if cw == null or not is_instance_valid(cw):
+			continue
+		var cb := func() -> void: WorkerLabels.select_workers(game, cw, Settings.pc() and Input.is_key_pressed(KEY_SHIFT))
+		if Settings.pc():
+			_buttons_extra.append({"rect": sr[0], "enabled": true, "cb": cb})
+		else:
+			var at: Vector2 = (sr[0] as Rect2).get_center()
+			var c: Dictionary = sr[1]
+			_buttons_extra.append({"rect": sr[0], "enabled": true, "alt": cb, "cb": func() -> void:
+				_tip = UnitStats.tip(c)
+				_tip_at = at
+				_tip_ms = Time.get_ticks_msec()})
 	if Settings.pc():
 		return
 	for sr in _stat_rects:
@@ -3665,18 +3673,182 @@ func _free_horse_near(us: Array, skip_led: bool) -> bool:
 var _queue_rects: Array = []        # the production line's pictures in the card: click = cancel that one
 
 
-## A portrait in a multiple selection: the first tap keeps only that kind, a tap when
-## they're all one kind keeps only that one (and a second tap on it centres the view).
-func _portrait_pressed(e: Entity) -> void:
-	if not is_instance_valid(e) or e.dead:
+## THE MULTI-SELECTION PANEL (owner, 2026-10-30): first one TYPE icon per kind in the selection with its count,
+## then every selected unit's own icon (health bar, kills); two rows are seen, the rest by scrolling (mouse wheel,
+## a drag on the icons, the bar at the right). Clicks, the SC2 way (sel_icon_click): on a unit, plain = only him,
+## Ctrl = his kind out of the selection, Shift = drop him, Ctrl+Shift = drop his kind; on a type icon, plain (or
+## Ctrl) = that kind, Shift = drop that kind. Phones: tap = plain, LONG PRESS = the Shift action (drop), DOUBLE TAP
+## on a unit = the Ctrl action (his kind; a single tap waits SEL_DOUBLE ms for a second one).
+const SEL_ROWS := 2
+const SEL_DOUBLE := 300
+var _sel_items: Array = []      # the icons: {"type": kind, "e": the first, "n": how many} first, then {"e": a unit}
+var _sel_scroll := 0            # the first row shown
+var _sel_rows := 0              # rows in all
+var _sel_cols := 1
+var _sel_sig := ""
+var _sel_area := Rect2()        # the icons (wheel and drag scroll there)
+var _sel_bar := Rect2()         # the scroll bar's track (empty when everything fits)
+var _sel_drag := {}             # a press on the icons: {p, s0, moved, t, it, bar, done}
+var _sel_tap := {}              # phone: a tap on a unit waiting for a second one: {it, t}
+
+
+## The panel's icons for this selection: the kinds in the order first met, then the units grouped by kind.
+func sel_items(sel: Array) -> Array:
+	var kinds := {}
+	for e in sel:
+		if not kinds.has(e.kind):
+			kinds[e.kind] = []
+		(kinds[e.kind] as Array).append(e)
+	var out: Array = []
+	for k in kinds:
+		out.append({"type": k, "e": kinds[k][0], "n": (kinds[k] as Array).size()})
+	for k in kinds:
+		for e in kinds[k]:
+			out.append({"e": e})
+	return out
+
+
+func _draw_sel_icons(sel: Array, r: Rect2, per_row: int) -> void:
+	var sig := "%d|%d" % [sel.size(), sel[0].get_instance_id()]
+	if sig != _sel_sig:
+		_sel_sig = sig
+		_sel_scroll = 0             # a new selection starts at the top
+	_sel_items = sel_items(sel)
+	var cols := maxi(1, per_row)
+	if ceili(_sel_items.size() / float(cols)) > SEL_ROWS:
+		cols = maxi(1, per_row - 1)     # (room for the scroll bar)
+	_sel_cols = cols
+	_sel_rows = ceili(_sel_items.size() / float(cols))
+	_sel_scroll = clampi(_sel_scroll, 0, maxi(0, _sel_rows - SEL_ROWS))
+	var over := _sel_rows > SEL_ROWS
+	_sel_area = Rect2(r.position + Vector2(6, 4), Vector2(cols * 38 + 6 + (14 if over else 0), SEL_ROWS * 40))
+	_sel_bar = Rect2(Vector2(_sel_area.end.x - 9, _sel_area.position.y + 4), Vector2(6, _sel_area.size.y - 6)) if over else Rect2()
+	_portraits = []
+	var first := _sel_scroll * cols
+	var bold := UiStyle.bold_font()
+	for i in range(first, mini(_sel_items.size(), first + cols * SEL_ROWS)):
+		var it: Dictionary = _sel_items[i]
+		var j := i - first
+		var e: Entity = it["e"]
+		var ir := Rect2(r.position + Vector2(10 + (j % cols) * 38, 8 + (j / cols) * 40), Vector2(34, 34))
+		_portraits.append({"rect": ir, "e": e, "it": it})
+		if Settings.pc() and ir.has_point(_mouse()):
+			_ci.draw_rect(ir.grow(2), UiStyle.TRIM_DIM, false, 1.0)
+		var ic := _unit_icon(e)
+		if it.has("type"):
+			_ci.draw_rect(ir.grow(1), Color(0, 0, 0, 0.45))
+			if ic:
+				_ci.draw_texture_rect(ic, ir, false)
+			_ci.draw_rect(ir.grow(1), Color(1, 0.82, 0.3), false, 1.5)      # a type icon: a gold frame and its count
+			var ns := str(int(it["n"]))
+			var nw := bold.get_string_size(ns, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+			_ci.draw_rect(Rect2(ir.end.x - nw - 4, ir.end.y - 14, nw + 4, 14), Color(0, 0, 0, 0.7))
+			_text(bold, Vector2(ir.end.x - 2, ir.end.y - 2), ns, 14, Color.WHITE, 2)
+			continue
+		if ic:
+			_ci.draw_texture_rect(ic, ir, false)
+		var f := e.hp / e.max_hp
+		_ci.draw_rect(Rect2(ir.position.x, ir.end.y, ir.size.x * f, 3), Color(0.3, 0.9, 0.3) if f > 0.5 else Color(0.95, 0.4, 0.2))
+		if e is Unit and (e as Unit).kills > 0:
+			_text(bold, Vector2(ir.end.x - 1, ir.position.y + 11), str((e as Unit).kills), 12, Color(1, 0.82, 0.3), 2)
+	if over:
+		_ci.draw_rect(_sel_bar, Color(0, 0, 0, 0.5))
+		var h := maxf(_sel_bar.size.y * SEL_ROWS / float(_sel_rows), 10.0)
+		var y := _sel_bar.position.y + (_sel_bar.size.y - h) * _sel_scroll / float(_sel_rows - SEL_ROWS)
+		_ci.draw_rect(Rect2(_sel_bar.position.x, y, _sel_bar.size.x, h), UiStyle.TRIM)
+
+
+func _sel_on() -> bool:
+	return game.selection.size() > 1 and not _sel_items.is_empty() and _sel_area.size.x > 0.0
+
+
+## The icon under p (its item), or {}.
+func _sel_hit(p: Vector2) -> Dictionary:
+	for pt in _portraits:
+		if (pt["rect"] as Rect2).has_point(p) and pt.has("it"):
+			return pt["it"]
+	return {}
+
+
+## Scroll by rows (the wheel: one at a time).
+func sel_scroll_by(d: int) -> void:
+	_sel_scroll = clampi(_sel_scroll + d, 0, maxi(0, _sel_rows - SEL_ROWS))
+	_redraw_t = 0.0
+
+
+func _sel_press(p: Vector2) -> void:
+	_sel_drag = {"p": p, "s0": _sel_scroll, "moved": false, "t": Time.get_ticks_msec(), "it": _sel_hit(p),
+			"bar": _sel_bar.size.x > 0.0 and _sel_bar.grow(6).has_point(p), "done": false}
+	if _sel_drag["bar"]:
+		_sel_move(p)
+
+
+func _sel_move(p: Vector2) -> void:
+	if _sel_drag.is_empty():
 		return
-	var sel: Array = game.selection.filter(func(x: Entity) -> bool: return is_instance_valid(x) and not x.dead)
-	var same: Array = sel.filter(func(x: Entity) -> bool: return x.kind == e.kind)
-	if same.size() < sel.size():
-		game.set_selection(same)
+	var span := maxi(0, _sel_rows - SEL_ROWS)
+	if _sel_drag["bar"]:
+		_sel_scroll = clampi(int(round((p.y - _sel_bar.position.y) / maxf(_sel_bar.size.y, 1.0) * span)), 0, span)
+		_sel_drag["moved"] = true
+	elif _sel_drag["moved"] or absf(p.y - (_sel_drag["p"] as Vector2).y) > 10.0:
+		_sel_drag["moved"] = true       # a drag, not a click: the rows follow the finger (or mouse)
+		_sel_scroll = clampi(int(_sel_drag["s0"]) - int(round((p.y - (_sel_drag["p"] as Vector2).y) / 40.0)), 0, span)
+	_redraw_t = 0.0
+
+
+func _sel_release(p: Vector2) -> void:
+	var d := _sel_drag
+	_sel_drag = {}
+	if d["moved"] or d["done"] or (d["it"] as Dictionary).is_empty() or _sel_hit(p) != d["it"]:
+		return
+	var it: Dictionary = d["it"]
+	if Settings.pc():
+		sel_icon_click(it, Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_META), Input.is_key_pressed(KEY_SHIFT))
+	elif it.has("type"):
+		sel_icon_click(it, false, false)
+	elif not _sel_tap.is_empty() and _sel_tap["it"]["e"] == it["e"] and Time.get_ticks_msec() - int(_sel_tap["t"]) < SEL_DOUBLE:
+		_sel_tap = {}
+		sel_icon_click(it, true, false)       # double tap: his kind
 	else:
-		game.set_selection([e])
-		_jump(e.global_position)
+		_sel_tap = {"it": it, "t": Time.get_ticks_msec()}
+
+
+## Phones: a held icon drops (the Shift action); a lone tap, once no second one came, keeps only him.
+func _sel_tick() -> void:
+	var now := Time.get_ticks_msec()
+	if not _sel_drag.is_empty() and not Settings.pc() and not _sel_drag["moved"] and not _sel_drag["done"] \
+			and not (_sel_drag["it"] as Dictionary).is_empty() and now - int(_sel_drag["t"]) > 450:
+		_sel_drag["done"] = true
+		_sel_tap = {}
+		game.input_cmd = true
+		sel_icon_click(_sel_drag["it"], false, true)
+		game.input_cmd = false
+	if not _sel_tap.is_empty() and now - int(_sel_tap["t"]) >= SEL_DOUBLE:
+		var it: Dictionary = _sel_tap["it"]
+		_sel_tap = {}
+		game.input_cmd = true
+		sel_icon_click(it, false, false)
+		game.input_cmd = false
+
+
+## A click on an icon of the panel (see above): `ctrl` = by kind, `shift` = take out.
+func sel_icon_click(it: Dictionary, ctrl: bool, shift: bool) -> void:
+	var e: Entity = it["e"]
+	var sel: Array = game.selection.filter(func(x: Entity) -> bool: return is_instance_valid(x) and not x.dead)
+	var kind: String = String(it["type"]) if it.has("type") else (e.kind if is_instance_valid(e) else "")
+	var by_kind := it.has("type") or ctrl
+	if not by_kind and (not is_instance_valid(e) or e.dead):
+		return
+	var out: Array
+	if shift:
+		out = sel.filter(func(x: Entity) -> bool: return x.kind != kind) if by_kind else sel.filter(func(x: Entity) -> bool: return x != e)
+	elif by_kind:
+		out = sel.filter(func(x: Entity) -> bool: return x.kind == kind)
+	else:
+		out = [e]
+	game.set_selection(out)
+	_card_fresh = true
+	Sfx.play_any(["ui/click", "click"])
 
 
 var _buttons_extra: Array = []

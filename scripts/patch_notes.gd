@@ -4,6 +4,12 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.2", "items": [
+		"THE SELECTION PANEL SHOWS EVERYONE: with several units selected the panel no longer ends in \"+N\". First comes one icon per kind with its count (gold frame), then every unit's own icon with his health; when they don't fit, scroll with the mouse wheel, by dragging the icons (a finger on a phone) or with the bar at the right.",
+		"CLICKS ON THE PANEL, THE SC2 WAY: on a unit, a click keeps only him, Ctrl+click keeps his kind, Shift+click drops him, Ctrl+Shift+click drops his kind; on a kind's icon, a click keeps that kind, Shift+click drops it. On a phone: tap = the click, double tap on a unit = his kind, long press = drop (him, or the kind on a kind's icon).",
+		"THE SAME ON THE MAP: Ctrl+Shift+click on one of your units drops his kind from the selection (if none of his kind is selected, it adds every one of his kind on screen); click, Ctrl+click (or a double click) and Shift+click work as before.",
+		"A CLICK ON A WORKER LABEL SELECTS ITS WORKERS: the label over a Town Hall (HAULERS), a Farm (FARMERS), a Powder Mill, a Cog Press or Mainspring (WINDERS), a Rootmaw or a food pile (GRUBS) now selects the workers of that building (Shift+click adds them to the selection; a tap on a phone); it used to select the building. The same with a click on the worker chip on the building's card (a long press on a phone; a tap still shows its tooltip). With nobody assigned, the click selects the building as before.",
+	]},
 	{"v": "0.24.1", "items": [
 		"NO SOUNDS THROUGH THE FOG: a sound at a spot you can't see (an enemy's hammer on a building going up, gunfire, a death in the fog) is no longer heard. Your own base and your allies' are always heard; alerts and the announcer still speak; watching computers with all vision, a replay or FOG: OFF hear everything. Online, each player hears by his own vision.",
 		"THE COMPUTER (ALMOST) NEVER USES PLAIN MOVE: a computer's soldier sent to scout now goes on attack-move (a Musketeer scout was killed by one Raptor without firing back): it fires at enemies that fight back but not at every hall on its loop, turns and fights one or two it can't outrun, and walks home on attack-move (driven off, it still retreats on a plain move). A raider hunting workers attack-moves when an enemy soldier is in reach; the Brood's Raptor scout and its army gathering at the staging point attack-move too. Retreats, workers, siege set-up, wagons and horses still walk.",

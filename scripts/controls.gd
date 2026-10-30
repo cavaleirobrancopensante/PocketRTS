@@ -1,8 +1,8 @@
 class_name Controls
 extends Node
 ## Map input. Two schemes, picked on the first start (Settings.device):
-## COMPUTER: left click selects (Shift adds, Ctrl or double-click = all of that type on
-##   screen), left drag = box, right click = command, wheel = zoom, middle drag or the
+## COMPUTER: left click selects (Shift adds or drops, Ctrl or double-click = all of that type on
+##   screen, Ctrl+Shift drops that type (map_click); a worker label selects its workers), left drag = box, right click = command, wheel = zoom, middle drag or the
 ##   screen edges or arrow keys = pan, letter hotkeys for everything on the command card,
 ##   1-9 and 0 groups (Ctrl+number sets, Ctrl+Shift+number adds the selection, Shift+number adds the group to the selection), F1 idle workers, F2 army, F3 make, F4-F10 camera views (Shift+F saves), Space = jump to
 ##   the selection, Esc = cancel. Shift with a command (right click, MOVE, ATTACK, REPAIR,
@@ -499,21 +499,13 @@ func _left_pc(e: InputEventMouseButton) -> void:
 		_finish_box(e.shift_pressed)
 		return
 	var p := to_world(e.position)
+	if not (e.ctrl_pressed or e.meta_pressed) and WorkerLabels.select_workers(game, WorkerLabels.at(game, p), e.shift_pressed):
+		return          # a click on a worker label ("FARMERS 3/8"): its workers (Shift: added)
 	var ent := game.entity_at(p)
 	var now := Time.get_ticks_msec()
 	if ent and ent.team == game.human:
 		var double: bool = now - _last_click_t < 350 and _last_click_kind == ent.kind
-		if e.ctrl_pressed or double:
-			_select_type_on_screen(ent.kind, e.shift_pressed)
-		elif e.shift_pressed:
-			var sel: Array = game.selection.duplicate()
-			if sel.has(ent):
-				sel.erase(ent)
-			else:
-				sel.append(ent)
-			game.set_selection(sel)
-		else:
-			game.set_selection([ent])
+		map_click(ent, e.ctrl_pressed or e.meta_pressed, e.shift_pressed, double)
 		_last_click_t = now
 		_last_click_kind = ent.kind
 		Sfx.play_any(["ui/click", "click"])
@@ -817,6 +809,8 @@ func _tap(screen: Vector2, is_mouse: bool, shift := false) -> void:
 			and units.any(func(u: Unit) -> bool: return u.is_worker()) and not is_mouse:
 		game.smart_command(units, p)
 		return
+	if own and WorkerLabels.at(game, raw) == e and WorkerLabels.select_workers(game, e):
+		return          # a tap on a worker label: its workers
 	if own:
 		var now := Time.get_ticks_msec()
 		if e is Unit and now - _last_tap_t < 350 and _last_tap_kind == e.kind:
@@ -841,6 +835,31 @@ func _tap(screen: Vector2, is_mouse: bool, shift := false) -> void:
 			game.set_rally(sb, p)
 		return
 	game.set_selection([e] if e else [])
+
+
+## A left click on one of your own on the map, the SC2 way (the same rules as the selection panel's icons,
+## Hud.sel_icon_click): plain = only it; Ctrl (or a double click) = every one of its kind on screen (Shift with a
+## double click adds them); Shift = it in or out; Ctrl+Shift = its kind out of the selection, or, if none of its
+## kind is selected, every one of its kind on screen added.
+func map_click(ent: Entity, ctrl: bool, shift: bool, double := false) -> void:
+	if ctrl and shift:
+		var sel: Array = game.selection.filter(func(x: Entity) -> bool: return is_instance_valid(x) and not x.dead)
+		var rest: Array = sel.filter(func(x: Entity) -> bool: return x.kind != ent.kind)
+		if rest.size() < sel.size():
+			game.set_selection(rest)
+		else:
+			_select_type_on_screen(ent.kind, true)
+	elif ctrl or double:
+		_select_type_on_screen(ent.kind, shift)
+	elif shift:
+		var sel: Array = game.selection.duplicate()
+		if sel.has(ent):
+			sel.erase(ent)
+		else:
+			sel.append(ent)
+		game.set_selection(sel)
+	else:
+		game.set_selection([ent])
 
 
 func _select_type_on_screen(kind: String, add := false) -> void:
