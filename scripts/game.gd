@@ -7091,6 +7091,8 @@ const CASTERS := {"storm": "stormcaller", "fog": "mist_toad", "miasma": "mist_to
 
 ## Why this unit can't cast that spell now ("" = it can).
 func spell_problem(u: Unit, spell: String) -> String:
+	if u.net_t > 0.0:
+		return "It is caught in a net: no spells until it is free."
 	if spell == "fog":
 		if u.charge < float(Defs.FOG["cost"]):
 			return "Not enough energy: FOG needs %d (it fills over time, faster on swamp)." % int(Defs.FOG["cost"])

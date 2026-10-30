@@ -235,6 +235,7 @@ var _shield_t := 0.0            # Bulwark: a shot just hit the shield (braced_hi
 var shield_up := false          # Clock Soldier: SHIELD FORWARD raised (or being raised): scripts/shield_wall.gd
 var shield_t := 0.0             # Clock Soldier: the shield's switch under way (s left)
 var self_wind_t := 0.0          # Winder: stopped to wind itself
+var wound_until := 0.0         # Clockwork: the game clock till which a Great Winder's ring is winding it (charge_winding)
 var cranked_t := 0.0            # Wind-up Soldier: a Winder is cranking it (wind-up anim)
 var jump := {}                  # Springer: the leap under way ({} on the ground; scripts/springer.gd)
 var jump_cd := 0.0              # Springer: seconds before its spring can JUMP again
@@ -1031,6 +1032,35 @@ func is_horse() -> bool:
 
 
 ## A Clockwork construct with no charge left.
+## Does this unit run on a charge (its `wind`) that the player should see? Every Clockwork fighting unit (Clock Soldier,
+## Springer, Netter, Pendulum, Ballista...), not the Winders (they wind themselves) nor the Great Winder (never runs down).
+func has_charge() -> bool:
+	return _k_fac == "clockwork" and not is_worker() and kind != Defs.GREAT_WINDER_KIND
+
+
+## Is its charge being wound up right now (on its side's gear field, cranked by a Winder, or by a Great Winder's ring)?
+func charge_winding() -> bool:
+	return _in_field or cranked_t > 0.0 or overclock_t > 0.0 or (game != null and wound_until > game.clock)
+
+
+## The charge on the unit card (docs/clock_charge.md): "Fully wound", "Winding up: 63%", "Charge 63%" or "RUN DOWN".
+func charge_text() -> String:
+	var pc := int(floor(clampf(wind, 0.0, 1.0) * 100.0 + 0.001))
+	if wind >= 0.995:
+		return Loc.t("Fully wound")
+	if charge_winding():
+		return Loc.t("Winding up: %d%%") % pc
+	if wind <= 0.0:
+		return Loc.t("RUN DOWN")
+	return Loc.t("Charge %d%%") % pc
+
+
+## Is the thin charge bar over it shown? Own (and allied) units with a charge, not full, with SHOW CHARGE BARS on.
+func charge_bar_shown() -> bool:
+	return Settings.charge_bars and has_charge() and wind < 0.995 and not dead and game != null \
+		and (team == game.human or (game.human >= 0 and game.allied(team, game.human)) or game.demo)
+
+
 func powered_down() -> bool:
 	return d["faction"] == "clockwork" and not is_worker() and wind <= 0.0
 
@@ -2046,6 +2076,8 @@ func _cast(delta: float) -> Vector2:
 		game.tell(team, why)
 		cmd_stop()
 		return Vector2.ZERO
+	if net_t > 0.0:
+		return Vector2.ZERO        # (caught in a net: no spells and no walking to cast; it waits for the net to fall)
 	if position.distance_to(cast_at) <= _spell_range():
 		if tesla_mode == "deploying" or tesla_mode == "packing":
 			return Vector2.ZERO
@@ -2108,7 +2140,7 @@ func _tongue_order(delta: float) -> Vector2:
 		return Vector2.ZERO
 	var dist: float = (e as Unit).position.distance_to(position)
 	if dist <= float(Defs.TONGUE["range"]):
-		if stun_t > 0.0:
+		if stun_t > 0.0 or net_t > 0.0:
 			return Vector2.ZERO
 		path = PackedVector2Array()
 		charge -= float(Defs.TONGUE["cost"])
@@ -2137,6 +2169,8 @@ func _tongue_tick(delta: float) -> void:
 				why = "gone"
 			elif stun_t > 0.0:
 				why = "stunned"
+			elif net_t > 0.0:
+				why = "netted"
 			elif position.distance_to(_tongue_at) > float(Defs.TONGUE["moved"]):
 				why = "moved"
 			elif e.position.distance_to(position) > float(Defs.TONGUE["range"]) * float(Defs.TONGUE["break"]):
@@ -3469,7 +3503,7 @@ func _tick_unit(delta: float) -> void:
 		elif phase == "":
 			run_t = maxf(run_t - delta * 3.0, 0.0)
 	stun_t = maxf(stun_t - delta, 0.0)
-	net_t = maxf(net_t - delta, 0.0)      # (caught in a net: its stun_t holds it meanwhile)
+	net_t = maxf(net_t - delta, 0.0)      # (caught in a net: it cannot move or cast while net_t lasts, but it fights: _move, Netter)
 	held_t = maxf(held_t - delta, 0.0)
 	scan_t -= delta
 	_wall_watch(delta)
@@ -3894,7 +3928,7 @@ func _tick_unit(delta: float) -> void:
 		if kind == "mist_toad":
 			extra += ToadHop.draw_key(self) * 1000000     # (its shadow goes with the hopping body)
 		var key := Vector4i(int(selected) + (2 if carrying > 0 else 0) + (4 if cross_t > 0.0 else 0) + (8 if work == "feeding" else 0) + (16 if carry_empty else 0) + (32 if cocoon > 0 else 0) + kills * 64,
-			int(hp), int(wind * 40.0) + (int(carry_t * 4.0) * 100 if carrying > 0 else 0) if _k_fac == "clockwork" else int(powder * 2.0) + (1000 if supplying else 0),
+			int(hp), int(wind * 40.0) + (int(carry_t * 4.0) * 100 if carrying > 0 else 0) + (5000 if charge_winding() else 0) + (10000 if Settings.charge_bars else 0) if _k_fac == "clockwork" else int(powder * 2.0) + (1000 if supplying else 0),
 			int(max_hp) + extra + (int(reload_frac() * 16.0) + 17 * int(tesla_t * 4.0) + 850 * TESLA_MODES.find(tesla_mode)) * 10000 if has_attack() else int(max_hp) + extra)
 		if key != _draw_key:
 			_draw_key = key
@@ -4211,8 +4245,8 @@ func _move(want: Vector2, delta: float) -> void:
 	var v := want + push
 	if want == Vector2.ZERO:
 		v = push
-	if stun_t > 0.0 or braced or tongue_stage != "" or (_k_nb and tesla_mode != "packed"):
-		v = Vector2.ZERO           # (a Mist Toad aiming its tongue squats: friends flow round it; a rooted Brood creature is dug in: her own eggs don't shove the Mother)
+	if stun_t > 0.0 or net_t > 0.0 or braced or tongue_stage != "" or (_k_nb and tesla_mode != "packed"):
+		v = Vector2.ZERO           # (a netted unit is held where it is (it may still fight); a Mist Toad aiming its tongue squats: friends flow round it; a rooted Brood creature is dug in: her own eggs don't shove the Mother)
 	velocity = velocity.lerp(v, clampf(delta * 12.0, 0.0, 1.0))
 	if knock.length_squared() > 25.0 and not (_k_nb and tesla_mode != "packed"):
 		position = game.resolve_terrain(position + knock * delta, position, ground_r(), team)
@@ -7573,6 +7607,21 @@ func bar_top(lifted := 0.0) -> float:
 	return top
 
 
+## The thin CHARGE bar (SHOW CHARGE BARS): amber, draining as the spring runs down; on the gear field (being wound) it
+## turns pale gold and fills, and it is gone once full (charge_bar_shown). Redrawn only through _draw_key (wind in 1/40s).
+func _draw_charge_bar(y: float, bw: float) -> void:
+	if not charge_bar_shown():
+		return
+	var f := clampf(wind, 0.0, 1.0)
+	var col := Color(1.0, 0.92, 0.55) if charge_winding() else (CHARGE_BAR if f > 0.2 else Color(0.95, 0.35, 0.2))
+	draw_rect(Rect2(-bw * 0.5, y, bw, 2).grow(0.5), Color(0, 0, 0, 0.6))
+	draw_rect(Rect2(-bw * 0.5, y, bw * f, 2), col)
+
+
+## The amber Clockwork charge (the bar over the unit and on its card).
+const CHARGE_BAR := Color(0.95, 0.68, 0.2)
+
+
 func _draw() -> void:
 	var _p0 := Time.get_ticks_usec()
 	_draw_unit()
@@ -7640,6 +7689,9 @@ func _draw_unit() -> void:
 			draw_rect(Rect2(-bw * 0.5, ry, bw, 2).grow(0.5), Color(0, 0, 0, 0.6))
 			draw_rect(Rect2(-bw * 0.5, ry, bw * clampf(rf, 0.0, 1.0), 2), rcol)
 			gy += 3.5
+		_draw_charge_bar(gy, bw)
+	else:
+		_draw_charge_bar(top + 5.0 if hp < max_hp else top + 1.0, bw)
 	if work == "feeding":
 		return
 	if topter_bat != "":

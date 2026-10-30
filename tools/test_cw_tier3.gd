@@ -4,8 +4,8 @@ extends SceneTree
 ## Works) once an Escapement WORKS (none, or an idle one, refuses them); both cost cogs AND Tension (Tension short refuses; a
 ## cancel pays the Tension back). The Light Works cannot make the Pendulum; the Heavy Works cannot swap to the small gear. The Pendulum's swing hurts EVERY enemy in the arc
 ## in front of it, not one behind it nor one beside it out of the arc, never its own side; the blow lands on the 5th
-## frame of its swing. The Netter's net flies and catches ONE enemy: caught, it does not move or fire for the net's time,
-## then it does again; a flyer it catches is on the ground meanwhile (a ground-only unit can hit it, its sprite comes
+## frame of its swing. The Netter's net flies and catches ONE enemy: caught, it does not move or use abilities for the
+## net's time but still fires at what is in its reach (owner, 2026-10-30), then it moves again; a flyer it catches is on the ground meanwhile (a ground-only unit can hit it, its sprite comes
 ## down) and flies again after; the Netter then waits its long reload; by itself it nets the most dangerous enemy in reach
 ## and not one caught already. The Lab starts with a Heavy Works, two Pendulums and two Netters; the sandbox lists both.
 ## Both cost Tension, so (THE TENSION RULE, scripts/gear_econ.gd) they are made only at a Works whose ring meshes with a
@@ -167,7 +167,7 @@ func _run() -> void:
 	check("it cannot reach flyers", not pd.can_hit(_foe(g, "balloon", at + Vector2(30, -40))))
 	_clear(g, [pd, front, front2, front3, behind, beside, friend])
 	_clear_team(g, 1)
-	# ---- the NETTER: a net stops ONE enemy moving and fighting for its time
+	# ---- the NETTER: a net stops ONE enemy moving (and using abilities) for its time; it may still fight
 	var target: Unit = g._add_unit("clock_soldier", 0, _open_near(g, at + Vector2(-120, 0)))
 	target.cmd_hold()
 	target.max_hp = 5000.0
@@ -192,13 +192,27 @@ func _run() -> void:
 	check("the Netter fired a net and it caught the Springer", nt.nets == 1 and jk.nets_taken == 1 and jk.net_t > 0.0, "%.2f s, net_t %.2f" % [t, jk.net_t])
 	check("the net flew a while before it caught (visible in flight)", fired_at > 0.0 and g.clock - fired_at >= 0.1, "%.2f s" % (g.clock - fired_at))
 	var p0 := jk.position
+	check("caught is not stunned (no stun stars): a net roots, 0.24.4", jk.stun_t <= 0.0 and jk.stun_left() == 0.0)
 	jk.cmd_move(jk.position + Vector2(300, 0))          # (told to go on: it cannot)
-	var s0 := jk.shots
-	jk.cmd_attack(target)                               # (told to shoot: it cannot either)
-	step(g, float(Defs.NET["time"]) - 0.6)
-	check("the Netter is on its long reload meanwhile", nt.cooldown > float(Defs.UNITS[N]["cooldown"]) - float(Defs.NET["time"]), "%.1f s" % nt.cooldown)
+	var turn0 := Defs.gear_turn
+	Defs.gear_turn = false        # (here: its own walk only; a turning gear band carries a netted unit round, as any unit on it)
+	step(g, 1.0)
 	check("caught, it does not move", jk.position.distance_to(p0) < 2.0, "%.1f px" % jk.position.distance_to(p0))
-	check("caught, it does not fire", jk.shots == s0, "%d -> %d" % [s0, jk.shots])
+	check("caught, it cannot JUMP (an ability)", Springer.ready_problem(jk) != "")
+	var s0 := jk.shots
+	var near: Unit = g._add_unit("clock_soldier", 0, _open_near(g, jk.position + Vector2(-90, 0)))
+	near.max_hp = 5000.0
+	near.hp = 5000.0
+	near.cmd_hold()
+	jk.cmd_attack(near)                                 # (a target in reach: it still shoots, the owner 2026-10-30)
+	step(g, float(Defs.NET["time"]) - 1.6)
+	check("the Netter is on its long reload meanwhile", nt.cooldown > float(Defs.UNITS[N]["cooldown"]) - float(Defs.NET["time"]), "%.1f s" % nt.cooldown)
+	check("caught, it still does not move (even with a target)", jk.position.distance_to(p0) < 2.0, "%.1f px" % jk.position.distance_to(p0))
+	check("caught, it still FIRES at a target in its reach", jk.shots > s0, "%d -> %d" % [s0, jk.shots])
+	_clear(g, [near])
+	Defs.gear_turn = turn0
+	jk.cmd_stop()
+	s0 = jk.shots
 	check("the net still holds it near the end of its time", jk.net_t > 0.0, "%.2f" % jk.net_t)
 	step(g, 1.0)
 	check("then the net is gone", jk.net_t <= 0.0)

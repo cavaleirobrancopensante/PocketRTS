@@ -4,8 +4,10 @@ extends RefCounted
 ## machinery (no magic in the setting): a low iron drum on four short legs with a spring cannon on top. Its attack is the
 ## NET: on the 2nd frame of the recoil a weighted chain net leaves the muzzle (fire) and flies at ONE enemy unit (ChainNet,
 ## scripts/chain_net.gd, visible in flight, following it); where it lands the unit is CAUGHT (catch): for Defs.NET "time" s
-## it cannot move or fight, and a flyer comes down to the ground (Unit.is_air is false meanwhile: anything can hit it,
-## flyer hunters cannot). Then the long reload (its UNITS "cooldown"). It nets units only (never buildings), and by itself
+## it cannot move or use abilities and spells, but it still FIGHTS (melee or ranged) whatever is in its reach (the owner,
+## 2026-10-30: shutting a unit down completely was too strong), and a flyer comes down to the ground (Unit.is_air is
+## false meanwhile: anything can hit it, flyer hunters cannot). It is a root-type hold on `net_t` (Unit._move), not a
+## stun: no Unit.stun, no stun stars. Then the long reload (its UNITS "cooldown"). It nets units only (never buildings), and by itself
 ## the most dangerous enemy in reach that is not caught already nor about to be (pick); an ATTACK order on a caught one
 ## nets it again (its time is topped up, never stacked). The computer's Netters pick the same way (AI._micro leaves them to
 ## it). The caught unit's state lives on the Unit: `net_t` (s left), `nets_in` (nets flying at it).
@@ -97,8 +99,9 @@ static func fire(u: Unit, e: Entity) -> ChainNet:
 
 
 ## A net lands on unit o (ChainNet): o is CAUGHT for Defs.NET "time" s (topped up if it was caught already, never stacked):
-## it stops where it is, cannot move or fight (Unit.stun_t; a blow it was winding up is lost), a flyer comes down to the
-## ground; the weights hurt a little (`dmg`).
+## it stops where it is and cannot move (Unit._move holds it while net_t lasts) nor cast a spell or use an ability (a
+## spell it was casting is lost), but it can still attack whatever is in its reach; a flyer comes down to the ground; the
+## weights hurt a little (`dmg`). Not a stun: no stun_t, no stars (StunMark).
 static func catch(o: Unit, by: Entity, dmg: float) -> void:
 	if o == null or not is_instance_valid(o) or o.dead or o.off_field or o.aboard != null:
 		return
@@ -106,8 +109,9 @@ static func catch(o: Unit, by: Entity, dmg: float) -> void:
 	var t := float(Defs.NET["time"])
 	var fresh := o.net_t <= 0.0
 	o.net_t = maxf(o.net_t, t)
-	o.stun(t, false)      # (the net shows itself: no stun stars on a netted unit, StunMark)
-	o.phase = ""
+	if o.phase == "cast":
+		o.phase = ""           # (a spell it was casting is lost; a blow or a shot goes on: it may fight)
+	o.path = PackedVector2Array()
 	o.velocity = Vector2.ZERO
 	o.nets_taken += 1
 	o.net_drop = 0.0

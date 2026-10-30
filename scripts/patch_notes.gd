@@ -4,6 +4,12 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.8", "items": [
+		"THE CLOCKWORK'S CHARGE IS SHOWN: every Clockwork unit that runs on a spring (Clock Soldier, Springer, Netter, Pendulum, Spring Ballista and the rest; not the Winders nor the Great Winder) shows its charge on its card: an amber bar under the health and the words first on the line: Charge 63%, Winding up: 63% while it stands on the gear field (or a Winder or a Great Winder winds it), Fully wound, or RUN DOWN. In a group, each portrait has a thin charge line under its health.",
+		"CHARGE BARS OVER YOUR UNITS: a thin amber bar over each of your Clockwork units that is not fully wound, draining as the spring runs down; on the gear field it turns pale gold and fills, and it is gone once full, so a wound-up army shows no extra bars. Settings: SHOW CHARGE BARS turns them off.",
+		"THE SPRINGER'S SCREW is drawn about 1.8 times bigger in flight, so it is easier to see; its damage and its sparks are unchanged.",
+		"THE NETTER'S NET NO LONGER SHUTS A UNIT DOWN: a caught unit cannot move nor use its abilities or spells for the net's 4 s, but it still fights: it fires or strikes at whatever is in its reach. A flyer caught still comes down to the ground. It is not a stun (no stars).",
+	]},
 	{"v": "0.24.7", "items": [
 		"The Brood Mother's egg line and health bar stay put: they no longer bob up and down as she lays, swipes or walks, so her egg count and its tooltip are easy to read.",
 	]},

@@ -566,10 +566,11 @@ const TENSION_USERS := ["escapement", "cuckoo_house", "heavy_works"]
 ## Shot: the screw (the Ratchet Turret's projectile, Game.screw_shot) leaves the drill tip, `tips` game px from its feet per
 ## launcher ("r" the robot's right arm, "l" its left: the two fire in turn, scripts/springer.gd) and drawn direction (W/SW/NW
 ## mirror E/SE/NE; printed by tools/import_springer.py), at `shot_scale` of the turret's screw art (`muzzle_scale` for the
-## burst, played at that tip), `speed` px/s.
+## burst, played at that tip), `speed` px/s. `fly_scale`: the screw is drawn this big IN FLIGHT only (the owner, 2026-10-30:
+## too small to see; 0.75 is ~1.8x shot_scale); its sparks on impact stay at shot_scale. Looks only: the damage lands at once.
 const SPRINGER_JUMP := {"range": 160.0, "crouch": 0.35, "land": 0.2, "air": 0.3, "air_speed": 520.0, "peak": 20.0, "peak_per": 0.22,
 	"cooldown": 10.0, "search": 2, "ai_low": 0.4}
-const SPRINGER_SHOT := {"shot_scale": 0.42, "muzzle_scale": 0.5, "speed": 520.0,
+const SPRINGER_SHOT := {"shot_scale": 0.42, "fly_scale": 0.75, "muzzle_scale": 0.5, "speed": 520.0,
 	"tips": {"r": {"s": Vector2(-28, -13), "se": Vector2(-22, -11), "e": Vector2(24, -15), "ne": Vector2(25, -13), "n": Vector2(25, -11)},
 		"l": {"s": Vector2(27, -13), "se": Vector2(24, -12), "e": Vector2(22, -21), "ne": Vector2(-24, -18), "n": Vector2(-25, -12)}}}
 
@@ -653,8 +654,8 @@ const PENDULUM_SWING := {"reach": 62.0, "arc": 60.0, "strike": 0.29, "vs_light":
 ## The Netter's NET: a weighted chain net fired from its spring cannon (its UNITS entry: reach, the long reload) at ONE enemy
 ## unit, leaving the muzzle (`mouth`: per drawn direction, game px from its feet, W/SW/NW mirror E/SE/NE; printed by
 ## tools/import_tier3.py) on the 2nd frame of the recoil; it flies `speed` px/s along a low arc (`arc` of the distance) and
-## follows its target. Where it lands the target is CAUGHT for `time` s: it cannot move or fight (a blow it was winding up
-## is lost) and a FLYER is brought down to the ground for that time (then anything can hit it, flyer hunters cannot). The
+## follows its target. Where it lands the target is CAUGHT for `time` s: it cannot move nor use abilities or spells, but it
+## can still attack (melee or ranged) whatever is in reach (owner, 2026-10-30), and a FLYER is brought down to the ground for that time (then anything can hit it, flyer hunters cannot). The
 ## weights do `damage`. A second net on a caught unit only tops its time up. `strike`: s the recoil keeps playing.
 ## Spread over the caught unit: assets/effects/netter_net_open(_big).png, scaled to `cover` x its radius across.
 const NET := {"time": 4.0, "speed": 380.0, "arc": 0.12, "damage": 4.0, "strike": 0.5, "cover": 3.4, "drop": 0.12,
@@ -1027,7 +1028,7 @@ const UNITS := {
 		"about": "A tall clock tower on long legs with two arms, each a heavy weight with a crescent blade: they sweep low in turn, like scythes at ankle height, and every blow cuts EVERY enemy on the ground in the wide arc in front of it (never your own units), light units hardest. Slow and tough; it cannot reach flyers. Made at the Heavy Works (once an Escapement works). Costs Tension.",
 	},
 	# TIER 3 (gear mode; Defs.NET): the NETTER, the STOPPER (the owner's "unit that stops one enemy", made of machinery: no
-	# magic). Its spring cannon fires a weighted chain net at ONE enemy unit: caught, it cannot move or fight for 4 s, and a
+	# magic). Its spring cannon fires a weighted chain net at ONE enemy unit: caught, it cannot move or cast for 4 s (it can still attack), and a
 	# flyer is brought down to the ground for that time. Guesses (design_principles 1): a long reload (a net every 14.6 s:
 	# aim 0.11, the net leaves on the 2nd frame, + 0.5 + 14) and weak itself (120 hp + 1 armour, 4 damage a net, slow 54);
 	# its reach (180) is a Musketeer's (190) less a little and a Spitter's (150) more. 125 cogs + 50 Tension, 2 supply (a
@@ -1038,7 +1039,7 @@ const UNITS := {
 		"name": "Netter", "hp": 120, "armor": 1, "speed": 54, "cost": 125, "tension": 50, "time": 28.0, "supply": 2,
 		"sight": 9, "range": 180, "damage": 4, "cooldown": 14.0, "aim": 0.11, "radius": 16, "from": "movement_works",
 		"requires": "escapement", "anti_air": true, "faction": "clockwork",
-		"about": "A low iron drum on four short legs with a spring cannon on top: it fires a weighted chain NET at one enemy, which then cannot move or fight for 4 s; a flyer it catches comes down to the ground for that time, where anything can hit it. By itself it picks the most dangerous enemy in reach that is not caught already (right-click one to choose). A long reload, and weak itself: keep it behind the line. Made at a Light Works whose gear ring meshes with a Mainspring's, once an Escapement works. Costs Tension.",
+		"about": "A low iron drum on four short legs with a spring cannon on top: it fires a weighted chain NET at one enemy, which then cannot move or use abilities for 4 s (it can still attack what is in its reach); a flyer it catches comes down to the ground for that time, where anything can hit it. By itself it picks the most dangerous enemy in reach that is not caught already (right-click one to choose). A long reload, and weak itself: keep it behind the line. Made at a Light Works whose gear ring meshes with a Mainspring's, once an Escapement works. Costs Tension.",
 	},
 	# TIER 2 (gear mode; Defs.BALLISTA, scripts/ballista.gd, docs/ballista.md): the SPRING BALLISTA, the owner's unit
 	# (2026-10-27): against ARMOUR and BUILDINGS. Guesses (design_principles 1): a heavy screw bolt, 45 damage (x1.75 on an

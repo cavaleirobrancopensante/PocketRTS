@@ -47,9 +47,9 @@ es RED lista: dispara al enemigo más peligroso a su alcance que no esté atrapa
 pt Sua lâmina corta todos os inimigos no arco à sua frente (nunca as suas unidades). Não alcança voadores.
 es Su cuchilla corta a todos los enemigos en el arco que tiene delante (nunca a tus unidades). No alcanza a los voladores.
 
-> CAUGHT IN A NET: %d s (it cannot move or fight)
-pt PRESO NUMA REDE: %d s (não pode se mover nem lutar)
-es ATRAPADO EN UNA RED: %d s (no puede moverse ni luchar)
+> CAUGHT IN A NET: %d s (it cannot move or use abilities, but it can still attack)
+pt PRESO NUMA REDE: %d s (não pode se mover nem usar habilidades, mas ainda pode atacar)
+es ATRAPADO EN UNA RED: %d s (no puede moverse ni usar habilidades, pero aún puede atacar)
 
 > It is caught in a net.
 pt Está preso numa rede.

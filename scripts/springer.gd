@@ -276,6 +276,9 @@ static func shoot(u: Unit, e: Entity, dmg: float) -> void:
 	u.shots += 1
 	u.last_shot = u.game.screw_shot(u, e, dmg, tip(u, up), [], float(js["shot_scale"]), float(js["muzzle_scale"]), float(js["speed"]),
 		barrel_up(u) if up else Vector2.ZERO)
+	if u.last_shot != null:
+		var fs := float(js.get("fly_scale", js["shot_scale"]))
+		u.last_shot.scale = Vector2(fs, fs)      # (bigger in flight, to be seen; its sparks stay at shot_scale)
 	u.last_tip = tip(u, up)
 
 
