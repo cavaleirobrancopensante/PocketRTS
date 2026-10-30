@@ -532,6 +532,17 @@ static func draw_row(ci: CanvasItem, r: Rect2, s: Dictionary, fsz := 14) -> Arra
 		if String(c["icon"]) != "":
 			draw_icon(ci, String(c["icon"]), Rect2(cr.position.x + 3.0, cy - ICON * 0.5, ICON, ICON))
 			tx += ICON + 3.0
+		elif c.get("pic") != null:
+			# (CardTips: a worker's portrait, the Mother's egg)
+			var pt: Texture2D = c["pic"]
+			var ps := Vector2(pt.get_size()) * (ICON / maxf(pt.get_width(), pt.get_height()))
+			ci.draw_texture_rect(pt, Rect2(cr.position.x + 3.0 + (ICON - ps.x) * 0.5, cy - ps.y * 0.5, ps.x, ps.y), false)
+			tx += ICON + 3.0
+		elif c.has("dot"):
+			# (CardTips: a resource, its top-bar colour)
+			ci.draw_circle(Vector2(cr.position.x + 3.0 + ICON * 0.5, cy), ICON * 0.36, c["dot"])
+			ci.draw_arc(Vector2(cr.position.x + 3.0 + ICON * 0.5, cy), ICON * 0.36, 0, TAU, 16, Color(1, 1, 1, 0.45), 1.2)
+			tx += ICON + 3.0
 		if String(c["text"]) != "":
 			var col: Color = c["col"] if c.get("col") != null else UiStyle.TEXT
 			ci.draw_string(bold, Vector2(tx, cy + fsz * 0.36), String(c["text"]), HORIZONTAL_ALIGNMENT_LEFT, -1, fsz, col)
@@ -540,7 +551,7 @@ static func draw_row(ci: CanvasItem, r: Rect2, s: Dictionary, fsz := 14) -> Arra
 
 static func _chip_w(c: Dictionary, bold: Font, fsz: int) -> float:
 	var w := 6.0
-	if String(c["icon"]) != "":
+	if String(c["icon"]) != "" or c.get("pic") != null or c.has("dot"):
 		w += ICON + 3.0
 	if String(c["text"]) != "":
 		w += bold.get_string_size(String(c["text"]), HORIZONTAL_ALIGNMENT_LEFT, -1, fsz).x + 2.0
@@ -549,6 +560,8 @@ static func _chip_w(c: Dictionary, bold: Font, fsz: int) -> float:
 
 ## The tooltip of a chip of draw_row ({title, stats, body}).
 static func tip(c: Dictionary) -> Dictionary:
+	if c.has("tipf"):
+		return (c["tipf"] as Callable).call()       # (CardTips: the same tooltip as its label on the map)
 	if c.has("specials"):
 		var lines: Array = (c["specials"] as Array).map(func(e: Dictionary) -> String: return "%s: %s" % [Loc.t(String(e["name"])), String(e["line"])])
 		return {"title": "Special attacks and abilities", "stats": "", "body": "\n".join(lines)}

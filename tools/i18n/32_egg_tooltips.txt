@@ -1,0 +1,98 @@
+# THE MOTHER'S EGG TOOLTIP (scripts/egg_tip.gd) and the unit card's worker / egg chips (scripts/card_tips.gd; the owner,
+# 2026-10-30 09:06).
+
+> The Brood Mother's eggs
+pt Os ovos da Mãe da Ninhada
+es Los huevos de la Madre de la Camada
+
+> %d eggs of %d
+pt %d ovos de %d
+es %d huevos de %d
+
+> next egg in %s
+pt próximo ovo em %s
+es próximo huevo en %s
+
+> clutch full in %s
+pt ninhada cheia em %s
+es nidada llena en %s
+
+> Laying x%.2f: %.1f eggs a minute, one every %.1f s.
+pt Postura x%.2f: %.1f ovos por minuto, um a cada %.1f s.
+es Puesta x%.2f: %.1f huevos por minuto, uno cada %.1f s.
+
+> The numbers over her: eggs she holds / her clutch's size, then the time to her next egg (tenths of a second under 10 s) and the time until her clutch is full, at her laying now.
+pt Os números sobre ela: ovos que ela guarda / o tamanho da ninhada, depois o tempo até o próximo ovo (em décimos de segundo abaixo de 10 s) e o tempo até a ninhada ficar cheia, na postura de agora.
+es Los números sobre ella: huevos que guarda / el tamaño de su nidada, luego el tiempo hasta su próximo huevo (en décimas de segundo por debajo de 10 s) y el tiempo hasta que su nidada esté llena, a su puesta de ahora.
+
+> stage %d: %d
+pt estágio %d: %d
+es etapa %d: %d
+
+> Her clutch holds %d at stage %d; GROW raises it (%s).
+pt A ninhada dela guarda %d no estágio %d; CRESCER a aumenta (%s).
+es Su nidada guarda %d en la etapa %d; CRECER la aumenta (%s).
+
+> At stage 1 with no lever she lays one egg every %d s. Four levers make it faster:
+pt No estágio 1, sem alavanca, ela põe um ovo a cada %d s. Quatro alavancas a aceleram:
+es En la etapa 1, sin palanca, pone un huevo cada %d s. Cuatro palancas la aceleran:
+
+> Her stage %d: x%.1f.
+pt O estágio dela, %d: x%.1f.
+es Su etapa, %d: x%.1f.
+
+> Sires near her (within %d tiles), their pheromones: %s: +%d%%.
+pt Pais perto dela (a até %d casas), os feromônios deles: %s: +%d%%.
+es Padres cerca de ella (a %d casillas o menos), sus feromonas: %s: +%d%%.
+
+> Sires near her: none (each Sire within %d tiles: +%d%%).
+pt Pais perto dela: nenhum (cada pai a até %d casas: +%d%%).
+es Padres cerca de ella: ninguno (cada padre a %d casillas o menos: +%d%%).
+
+> Mound Turtles on new ground (%d tiles or more from her and from each other): %d of %d: +%d%%.
+pt Tartarugas-Montículo em terreno novo (a %d casas ou mais dela e umas das outras): %d de %d: +%d%%.
+es Tortugas Montículo en terreno nuevo (a %d casillas o más de ella y unas de otras): %d de %d: +%d%%.
+
+> %d rooted nearer count for nothing.
+pt %d enraizadas mais perto não contam.
+es %d arraigadas más cerca no cuentan.
+
+> Her veterancy %d of %d (1 for each harvest a grub brings her): +%d%%.
+pt A veterania dela, %d de %d (1 por colheita que uma larva lhe traz): +%d%%.
+es Su veteranía, %d de %d (1 por cada cosecha que una larva le trae): +%d%%.
+
+> In all: x%.1f x (1 + %.2f) = x%.2f.
+pt No total: x%.1f x (1 + %.2f) = x%.2f.
+es En total: x%.1f x (1 + %.2f) = x%.2f.
+
+> NOW: she is growing, and lays no eggs until she is done.
+pt AGORA: ela está crescendo e não põe ovos até terminar.
+es AHORA: está creciendo y no pone huevos hasta terminar.
+
+> NOW: her clutch is full: she lays again when an egg is used.
+pt AGORA: a ninhada dela está cheia: ela volta a pôr quando um ovo for usado.
+es AHORA: su nidada está llena: vuelve a poner cuando se use un huevo.
+
+> NOW: the %s is researching: he fathers no eggs of his line meanwhile (her laying goes on).
+pt AGORA: o %s está pesquisando: enquanto isso não fecunda ovos da sua linhagem (a postura dela continua).
+es AHORA: el %s está investigando: mientras tanto no fecunda huevos de su linaje (la puesta de ella sigue).
+
+> Laying stops while she grows and while her clutch is full. A Sire who researches fathers no eggs of his line meanwhile; she keeps laying while she researches.
+pt A postura para enquanto ela cresce e enquanto a ninhada está cheia. Um pai que pesquisa não fecunda ovos da sua linhagem enquanto isso; ela continua pondo enquanto pesquisa.
+es La puesta se detiene mientras crece y mientras su nidada está llena. Un padre que investiga no fecunda huevos de su linaje mientras tanto; ella sigue poniendo mientras investiga.
+
+> Grubs bringing her food
+pt Larvas trazendo comida para ela
+es Larvas que le traen comida
+
+> %d grubs at work on %d Rootmaws and food piles, %d carrying food now
+pt %d larvas trabalhando em %d Bocarraízes e montes de comida, %d carregando comida agora
+es %d larvas trabajando en %d Bocarraíces y montones de comida, %d llevando comida ahora
+
+> %d food stored
+pt %d de comida guardada
+es %d de comida guardada
+
+> Grubs carry food from the Rootmaws and the food piles to the Brood Mother: she keeps it as the Brood's food, the green figure at the top. The farther a Rootmaw from her, the more a trip pays; each Rootmaw takes more grubs the farther it is. Select a Rootmaw (or rest the mouse on its GRUBS label) for its own numbers.
+pt As larvas levam comida dos Bocarraízes e dos montes de comida para a Mãe da Ninhada: ela a guarda como a comida da Ninhada, o número verde no alto. Quanto mais longe dela o Bocarraiz, mais paga uma viagem; cada Bocarraiz aceita mais larvas quanto mais longe está. Selecione um Bocarraiz (ou pare o mouse sobre o rótulo LARVAS dele) para ver os números dele.
+es Las larvas llevan comida de los Bocarraíces y de los montones de comida a la Madre de la Camada: ella la guarda como la comida de la Nidada, la cifra verde de arriba. Cuanto más lejos de ella esté un Bocarraíz, más paga un viaje; cada Bocarraíz admite más larvas cuanto más lejos está. Selecciona un Bocarraíz (o deja el ratón sobre su etiqueta LARVAS) para ver sus números.

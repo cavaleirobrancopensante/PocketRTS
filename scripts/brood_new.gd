@@ -1775,15 +1775,12 @@ static func draw(u: Unit, top: float) -> void:
 	var mine := u.team == g.human or g.demo or g.spectating()
 	if u.kind == QUEEN and mine:
 		var font := ThemeDB.fallback_font
-		var txt := "%d/%d" % [int(u.nb.get("eggs", 0)), eggs_max(u)]
 		# and the countdown to her next egg (the owner, 2026-10-30): none when her clutch is full or she is growing
 		# (the owner, 09:27: always the time to her FULL clutch too, at any rate; her next egg in tenths of a second
-		# once it comes within 10 s: "4/10  3.5s · 00:36")
-		var nl := next_egg_in(u)
-		if nl >= 0.0:
-			txt += "  " + clock_text(nl, true) + " · " + clock_text(full_in(u), false)
-		u.draw_string_outline(font, Vector2(-14, top - 6), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, 4, Color(0, 0, 0, 0.8))
-		u.draw_string(font, Vector2(-14, top - 6), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.85, 1.0, 0.55) if int(u.nb.get("eggs", 0)) > 0 else Color(1.0, 0.55, 0.45))
+		# once it comes within 10 s: "4/10  3.5s · 00:36"). The text and where it is: EggTip (its hover tooltip).
+		var txt := EggTip.label_text(u)
+		u.draw_string_outline(font, Vector2(EggTip.X, top - 6), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, EggTip.SIZE, 4, Color(0, 0, 0, 0.8))
+		u.draw_string(font, Vector2(EggTip.X, top - 6), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, EggTip.SIZE, Color(0.85, 1.0, 0.55) if int(u.nb.get("eggs", 0)) > 0 else Color(1.0, 0.55, 0.45))
 	if u.kind == MAW and mine:
 		var bw := u.radius * 2.4
 		var f := clampf(float(u.nb.get("food", 0.0)) / float(Defs.NB["maw_cap"]), 0.0, 1.0)
