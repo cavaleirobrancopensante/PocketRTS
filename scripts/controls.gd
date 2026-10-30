@@ -469,7 +469,7 @@ func _left_pc(e: InputEventMouseButton) -> void:
 				if e.shift_pressed and mode == "nb_root":
 					_keep_for_shift()
 				return
-			"nb_rally":
+			"nb_rally", "nb_rally_worker":
 				_tap(e.position, false, e.shift_pressed)
 				return
 			"move", "attack", "bombard":
@@ -555,6 +555,8 @@ func _key(e: InputEventKey) -> void:
 		return
 	if Settings.pc() and hud and (e.ctrl_pressed or e.meta_pressed) and not e.shift_pressed and e.keycode != KEY_A and hud.ctrl_hotkey(e.keycode):
 		return          # (Ctrl+a refit's or MORPH TO OWL's key: all that can, not one)
+	if Settings.pc() and hud and (e.ctrl_pressed or e.meta_pressed) and not e.shift_pressed and hud.hotkey_ctrl(e.keycode):
+		return          # (Ctrl+MATURE's key: all of them)
 	if Settings.pc():
 		match e.keycode:
 			KEY_SPACE:
@@ -700,12 +702,13 @@ func _tap(screen: Vector2, is_mouse: bool, shift := false) -> void:
 				if hud:
 					hud.confirm_nb_root(shift)
 			return
-		"nb_rally":
-			# a rooted creature's (or an egg's) RALLY point
+		"nb_rally", "nb_rally_worker":
+			# a rooted creature's (or an egg's) RALLY point; the Mother's WORKERS: her grubs' rally (gold)
+			var wk := mode == "nb_rally_worker"
 			for u in units:
-				if BroodRoot.fixed(u):
-					u.cmd_nb_rally(p)
-			game._ping(p, Color(0.4, 1.0, 0.4))
+				if BroodRoot.fixed(u) and (not wk or u.kind == BroodNew.QUEEN):
+					u.cmd_nb_rally(p, "worker" if wk else "army")
+			game._ping(p, Color(1.0, 0.85, 0.3) if wk else Color(0.4, 1.0, 0.4))
 			cancel_mode()
 			return
 		"move", "attack":

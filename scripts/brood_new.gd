@@ -1062,7 +1062,7 @@ static func root_problem(g: Game, u: Unit) -> String:
 ## least of them: rooting beside spent ground can't refresh it, as the old pits).
 static func _claim(g: Game, u: Unit) -> void:
 	var r := float(Defs.PIT_CLAIM) * Defs.TILE * 2.0
-	var left := float(Defs.PIT_GROUND)
+	var left := ground_at(g, u.position)
 	var gone: Array = []
 	for id in g.nb_spots:
 		var s: Dictionary = g.nb_spots[id]
@@ -1075,6 +1075,18 @@ static func _claim(g: Game, u: Unit) -> void:
 	g.nb_spots[g.nb_spot_next] = {"p": u.position, "left": left, "maw": u.serial}
 	u.nb["spot"] = g.nb_spot_next
 	u.nb["gw"] = 0          # (its ground warnings start again on its new ground)
+
+
+## The food a Rootmaw rooted at p would have in its ground (_claim's rule): fresh PIT_GROUND, or the least of the old
+## free ground it overlaps (the ROOT ghost shows it: the owner, 2026-10-30 19:36).
+static func ground_at(g: Game, p: Vector2) -> float:
+	var r := float(Defs.PIT_CLAIM) * Defs.TILE * 2.0
+	var left := float(Defs.PIT_GROUND)
+	for id in g.nb_spots:
+		var s: Dictionary = g.nb_spots[id]
+		if (s["p"] as Vector2).distance_to(p) < r and int(s.get("maw", 0)) == 0:
+			left = minf(left, float(s["left"]))
+	return left
 
 
 static func _release(g: Game, u: Unit) -> void:
@@ -1430,6 +1442,14 @@ static func flank_point(g: Game, src: Unit, gr: Unit) -> Vector2:
 	return base + Vector2(float(i) * 2.0, float(i) * 5.0)
 
 
+## Where a grub carrying food walks to: the NEAREST point of the Mother (the owner, 2026-10-30: her back or any side,
+## not round to her front). Rooted: just outside the nearest edge of her footprint; up: her body's rim on its side.
+static func deposit_point(q: Unit, gr: Unit) -> Vector2:
+	if BroodRoot.has_fp(q):
+		return q.game.approach_point(q, gr.position)       # (a free cell on her footprint's ring, the nearest)
+	return q.position + (gr.position - q.position).normalized() * (q.radius + 6.0)
+
+
 ## A grub on a Rootmaw or a pile (Unit._gather): take a load at the flank, carry it to the Mother, back.
 static func grub_tick(g: Game, gr: Unit, delta: float) -> Vector2:
 	var src = gr.home_mine
@@ -1481,7 +1501,7 @@ static func grub_tick(g: Game, gr: Unit, delta: float) -> Vector2:
 					gr.cmd_stop()
 				return Vector2.ZERO
 			if (gr.path.is_empty() or gr.path_i >= gr.path.size()) and not gr.path_pending:
-				gr._request_path(q.position + (gr.position - q.position).normalized() * (q.radius + 6.0))
+				gr._request_path(deposit_point(q, gr))
 			return gr._follow(delta)
 	gr.work = "to_site"
 	var at := flank_point(g, src, gr)
@@ -1799,6 +1819,12 @@ static func draw(u: Unit, top: float) -> void:
 		u.draw_arc(Vector2.ZERO, float(Defs.PIT_CLAIM) * Defs.TILE, 0, TAU, 48, Color(0.75, 0.9, 0.3, 0.45), 1.5)
 	# (the father's range round the Mother: the game's overlay draws it, BroodRoot.draw_overlay)
 	# (rooted = a building: its footprint outlined when selected, as a building's, UNDER its pictures: BroodRoot._draw_frame)
+	if u.selected and mine and u.kind == QUEEN and BroodRoot.fixed(u):
+		var wp := BroodRoot.worker_rally_of(u)
+		if wp != Vector2.INF:
+			# her WORKER rally (gold, as a Hive's worker rally)
+			u.draw_dashed_line(Vector2(0, -12), wp - u.position, Color(1, 0.85, 0.3, 0.6), 2.0, 6.0)
+			u.draw_circle(wp - u.position, 4.5, Color(1, 0.85, 0.3, 0.95))
 	if u.selected and mine and (BroodRoot.fixed(u)):
 		var rp := BroodRoot.rally_of(u)
 		if u.kind == EGG and bool(u.nb.get("nest", false)) and not u.nb.has("ro"):
@@ -1866,6 +1892,8 @@ static func draw_key(u: Unit) -> int:
 	var x := 0
 	if u.nb.has("rx"):
 		x += (int(float(u.nb["rx"])) * 7 + int(float(u.nb["ry"])) * 13) % 997 + 1      # (its rally moved)
+	if u.nb.has("wx"):
+		x += (int(float(u.nb["wx"])) * 11 + int(float(u.nb["wy"])) * 5) % 991 + 3      # (her worker rally moved)
 	if u.nb.has("coc"):
 		x += (int(float(u.nb["coc"]) * 2.0) % 200) * 1009          # (the cocoon's bar)
 	if u.tesla_mode == "deploying" or u.tesla_mode == "packing":

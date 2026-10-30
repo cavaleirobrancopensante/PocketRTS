@@ -18,6 +18,10 @@ extends RefCounted
 ## Swamp Mending (mend, the Unit's swamp healing).
 
 const BAR := Color(0.55, 0.9, 0.85)        # (a research's bar: teal, apart from her growing's violet)
+## A RESEARCH QUEUE as a building's (the owner, 2026-10-30 19:38): the one in hand (nb "rs") and up to QUEUE_MAX - 1
+## more waiting (nb "rq", each paid when queued); its other research buttons stay on the card; a click on a queued
+## icon cancels it (paid back); the next starts when one is done or cancelled.
+const QUEUE_MAX := 5
 
 
 ## Every Brood research key, in the order of Defs.RESEARCH.
@@ -47,12 +51,22 @@ static func busy(u: Unit) -> bool:
 	return u != null and not u.dead and u.nb.has("rs")
 
 
-## Is this side's research `key` in hand anywhere?
+## Is this side's research `key` in hand (or queued) anywhere?
 static func in_hand(g: Game, t: int, key: String) -> bool:
 	for u in g.units:
-		if u.team == t and not u.dead and String(u.nb.get("rs", "")) == key:
+		if u.team == t and not u.dead and (String(u.nb.get("rs", "")) == key or (u.nb.has("rq") and (u.nb["rq"] as Array).has(key))):
 			return true
 	return false
+
+
+## The research waiting after the one in hand.
+static func queued(u: Unit) -> Array:
+	return u.nb.get("rq", []) if u != null and u.nb != null else []
+
+
+## The whole queue: the one in hand first.
+static func line_of(u: Unit) -> Array:
+	return ([current(u)] + queued(u)) if busy(u) else []
 
 
 ## Is the Sire of this line (k: the young or warrior kind, or the Sire's own kind) researching now?
@@ -176,8 +190,8 @@ static func problem(g: Game, u: Unit, key: String) -> String:
 	var t := u.team
 	if g.has_tech(t, key):
 		return "Already done."
-	if busy(u):
-		return "Already researching: one at a time."
+	if busy(u) and 1 + queued(u).size() >= QUEUE_MAX:
+		return "The research queue is full."
 	if in_hand(g, t, key):
 		return "Already being researched."
 	if not BroodNew.rooted(u):
@@ -207,6 +221,13 @@ static func start(g: Game, u: Unit, key: String) -> String:
 	g.players[u.team]["gold"] -= int(info["cost"])
 	g.add_res2(u.team, -float(info.get("cost2", 0)))
 	g.stats[u.team]["spent"] += int(info["cost"])
+	if busy(u):
+		var rq: Array = queued(u).duplicate()
+		rq.append(key)
+		u.nb["rq"] = rq           # (queued: paid now, started when its turn comes)
+		if u.team == g.human:
+			Sfx.play_any(["ui/click", "click"])
+		return ""
 	u.nb["rs"] = key
 	u.nb["rs_t"] = 0.0
 	if g.mlog:
@@ -216,8 +237,57 @@ static func start(g: Game, u: Unit, key: String) -> String:
 	return ""
 
 
-## Stopped (STOP RESEARCH, uprooted, killed): all of it paid back; why: "stop", "up" or "dead".
+## The next queued research starts (paid already).
+static func _advance(g: Game, u: Unit) -> void:
+	var rq: Array = queued(u).duplicate()
+	if rq.is_empty():
+		u.nb.erase("rq")
+		return
+	var key := String(rq.pop_front())
+	if rq.is_empty():
+		u.nb.erase("rq")
+	else:
+		u.nb["rq"] = rq
+	u.nb["rs"] = key
+	u.nb["rs_t"] = 0.0
+	if g.mlog:
+		g.mlog.add("%s's %s researches %s" % [g.mlog.who(u.team), u.d["name"], Defs.RESEARCH[key]["name"]])
+
+
+## The queue's entry i cancelled (0: the one in hand, then the next starts), paid back.
+static func cancel_at(g: Game, u: Unit, i: int) -> void:
+	if i <= 0:
+		stop(g, u, "stop")
+		return
+	var rq: Array = queued(u).duplicate()
+	if i - 1 >= rq.size():
+		return
+	var key := String(rq[i - 1])
+	rq.remove_at(i - 1)
+	if rq.is_empty():
+		u.nb.erase("rq")
+	else:
+		u.nb["rq"] = rq
+	_refund(g, u, key)
+	g.tell(u.team, Loc.t("Research stopped: %s, paid back.") % Loc.t(String(Defs.RESEARCH[key]["name"])), true)
+
+
+static func _refund(g: Game, u: Unit, key: String) -> void:
+	if u.team < 0 or u.team >= g.players.size() or not Defs.RESEARCH.has(key):
+		return
+	var info: Dictionary = Defs.RESEARCH[key]
+	g.players[u.team]["gold"] += int(info["cost"])
+	g.add_res2(u.team, float(info.get("cost2", 0)))
+	g.stats[u.team]["spent"] -= int(info["cost"])
+
+
+## Stopped (STOP RESEARCH, uprooted, killed): all of it paid back; why: "stop" (the one in hand; the next queued starts),
+## "up" or "dead" (the whole queue).
 static func stop(g: Game, u: Unit, why := "stop") -> void:
+	if why != "stop":
+		for qk in queued(u):
+			_refund(g, u, String(qk))
+		u.nb.erase("rq")
 	var key := current(u)
 	if key == "" or not Defs.RESEARCH.has(key):
 		u.nb.erase("rs")
@@ -228,9 +298,9 @@ static func stop(g: Game, u: Unit, why := "stop") -> void:
 	u.nb.erase("rs_t")
 	if u.team < 0 or u.team >= g.players.size():
 		return
-	g.players[u.team]["gold"] += int(info["cost"])
-	g.add_res2(u.team, float(info.get("cost2", 0)))
-	g.stats[u.team]["spent"] -= int(info["cost"])
+	_refund(g, u, key)
+	if why == "stop":
+		_advance(g, u)
 	var who := Loc.t(String(u.d["name"]))
 	var what := Loc.t(String(info["name"]))
 	match why:
@@ -257,6 +327,7 @@ static func tick(g: Game, u: Unit, delta: float) -> void:
 		u.nb.erase("rs")
 		u.nb.erase("rs_t")
 		done(g, u.team, key)
+		_advance(g, u)
 
 
 ## The side has it now: the flag, and its units' own stats.

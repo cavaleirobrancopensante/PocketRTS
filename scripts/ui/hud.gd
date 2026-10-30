@@ -1039,7 +1039,15 @@ func _build_card() -> Array:
 									u.cmd_gather(m)
 					toast("Workers go back to work on their own." if not auto else "Automatic work off: these workers wait for orders."), true, "", ""])
 			if units.any(func(u: Unit) -> bool: return u.kind == "grub"):
-				list.append(["ab_harvest", "HARVEST", func() -> void:
+				# a tap: harvest now; right-click / long press: HARVEST autocast (glows; the owner, 2026-10-30 19:33):
+				# an idle grub harvests the bodies near it by itself, then goes back to work
+				var auto_h: bool = units.filter(func(u: Unit) -> bool: return u.kind == "grub").all(func(u: Unit) -> bool: return u.auto_harvest)
+				_alt_for["HARVEST"] = func() -> void:
+					for u in game.selected_units():
+						if u.kind == "grub":
+							game.net_set(u, "auto_harvest", not auto_h)
+					toast("Automatic harvest on: an idle grub harvests the bodies near it by itself, then goes back to work." if not auto_h else "Automatic harvest off.")
+				list.append(["ab_harvest", ("~ " if auto_h else "") + "HARVEST", func() -> void:
 					for u in game.selected_units():
 						if u.kind == "grub":
 							u.cmd_harvest()
@@ -1578,17 +1586,59 @@ func _nb_buttons(list: Array, units: Array) -> void:
 		for k in kinds:
 			var p2 := BroodMature.price(game, game.human, k)
 			pairs.append(Loc.t("%s into a %s: %s") % [Loc.t(Defs.train_name(k)), Loc.t(String(Defs.UNITS[BroodMature.mature_of(k)]["name"])), _cost_text(int(p2[0]), int(p2[1]))])
-		_tip_for["MATURE"] = ["Mature", Loc.t("Each young unit selected grows into its mature form, one into one, as far as the food allows: it pays the mature form's price less its own share of its egg, moults %d s where it stands (it cannot move or fight), then it is the mature unit, its veterancy and wounds kept. Needs the Brood Mother at the mature form's stage.") % int(Defs.NB["moult"]) + " " + "; ".join(pairs) + "."]
-		list.append([mk, "MATURE", func() -> void:
-			var w := game.mature_order(game.selected_units())
-			if w != "":
-				toast(w), ywhy == "", ywhy, _price_chip(mp, int(mp[1]) > 0)])
+		_tip_for["MATURE"] = ["Mature", Loc.t("Each young unit selected grows into its mature form, one into one, as far as the food allows: it pays the mature form's price less its own share of its egg, moults %d s where it stands (it cannot move or fight), then it is the mature unit, its veterancy and wounds kept. Needs the Brood Mother at the mature form's stage.") % int(Defs.NB["moult"]) + " " + "; ".join(pairs) + ". " + Loc.t("A click (or its key) matures ONE of them; Ctrl+click (Ctrl+its key), a right-click or a long press matures ALL that can.")]
+		# ONE A CLICK (the owner, 2026-10-30 19:33): a click or its key matures ONE of the selection; Ctrl+click,
+		# Ctrl+key, a right-click or a long press: ALL that can
+		_alt_for["MATURE"] = func() -> void: _mature(true)
+		list.append([mk, "MATURE", func() -> void: _mature(_ctrl_all or Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_META)), ywhy == "", ywhy, _price_chip(mp, int(mp[1]) > 0)])
 	# RALLY (point 7): rooted creatures and eggs; a right-click on the ground does the same (and never uproots)
 	if units.any(func(u: Unit) -> bool: return BroodRoot.fixed(u) and u.team == game.human):
-		_tip_for["RALLY"] = ["Rally point", "Where what comes out goes: the Mother's eggs (and their hatchlings), the warriors hatching in a father's nest, an egg's own hatchling. Right-click the ground does the same; it never uproots."]
-		list.append(["rally", "RALLY", func() -> void:
+		_tip_for["RALLY"] = ["Rally point", "Where what comes out goes: the Mother's warriors (also those hatching in a Sire's nest: her rally comes first), an egg's own hatchling. A right-click does the same; it never uproots. The Mother's right-clicks take turns: the first sets her grubs' rally (WORKERS), the next her warriors' (RALLY), and so on; the button the next right-click sets is shown pressed."]
+		var qsel: Array = units.filter(func(u: Unit) -> bool: return u.kind == BroodNew.QUEEN and BroodRoot.fixed(u) and u.team == game.human)
+		var nxt := BroodRoot.rally_next(qsel[0]) if not qsel.is_empty() else ""
+		list.append(["rally", ("> " if nxt == "army" else "") + "RALLY", func() -> void:
 			controls.mode = "nb_rally"
 			toast("Tap where the hatchlings go."), true, "", ""])
+		if not qsel.is_empty():
+			# THE MOTHER'S WORKER RALLY (the owner's playtest, 2026-10-30; StarCraft 2's Hatchery): where her new grubs go
+			_tip_for["WORKERS"] = ["Workers rally", "Where her new grubs go (drawn gold): on a Rootmaw or a food pile they start gathering there. Her right-clicks take turns: the first sets this one, the next her warriors' rally (green), and so on; the button the next right-click sets is shown pressed. Without it, a new grub finds work by itself."]
+			list.append(["rally", ("> " if nxt == "worker" else "") + "WORKERS", func() -> void:
+				controls.mode = "nb_rally_worker"
+				toast("Tap where her new grubs go to work."), true, "", ""])
+
+
+## MATURE: all = every selected young unit that can; else one (the nearest the view's middle that can).
+func _mature(all: bool) -> void:
+	var sel: Array = game.selected_units().filter(func(u: Unit) -> bool: return BroodMature.mature_of(u.kind) != "")
+	if not all:
+		var ok: Array = sel.filter(func(u: Unit) -> bool: return BroodMature.problem(u) == "")
+		if not ok.is_empty():
+			var mid: Vector2 = game.camera.position
+			ok.sort_custom(func(a: Unit, b: Unit) -> bool: return a.position.distance_squared_to(mid) < b.position.distance_squared_to(mid))
+			sel = [ok[0]]
+	var w := game.mature_order(sel)
+	if w != "":
+		toast(w)
+
+
+## A Ctrl+key on the card (computer): the commands that do ALL with Ctrl (MATURE). True if used.
+var _ctrl_all := false
+func hotkey_ctrl(code: int) -> bool:
+	if paused or menu_open or game.over:
+		return false
+	var letter := OS.get_keycode_string(code)
+	for it in _card_items:
+		if it.size() > 6 and it[6] == letter and String(it[1]).trim_prefix("> ").trim_prefix("~ ") == "MATURE":
+			flash_card("MATURE")
+			if it[3]:
+				_ctrl_all = true
+				it[2].call()
+				_ctrl_all = false
+				Sfx.play_any(["ui/click", "click"])
+			elif it[4] != "":
+				toast(it[4])
+			return true
+	return false
 
 
 ## THE BROOD'S RESEARCH (scripts/brood_research.gd): on a ROOTED Sire's card his own line's research, on the Mother's
@@ -1607,10 +1657,10 @@ func _nb_research_buttons(list: Array, units: Array) -> void:
 			list.append(["cancel", "STOP RESEARCH", func() -> void:
 				if is_instance_valid(ru) and not ru.dead:
 					ru.cmd_nb_research_stop(), true, "", ""])
-			continue
+		# (busy: the others stay, to QUEUE as at a building; the queue's icons are on the card, a click cancels one)
 		for key in BroodResearch.keys_at(kd):
-			if game.has_tech(game.human, key):
-				continue          # (done: no button, as a building's research)
+			if game.has_tech(game.human, key) or BroodResearch.in_hand(game, game.human, key):
+				continue          # (done, in hand or queued: no button, as a building's research)
 			var kk: String = key
 			var info: Dictionary = Defs.RESEARCH[key]
 			var why := BroodResearch.problem(game, ru, kk)
@@ -1727,6 +1777,11 @@ func _ability_buttons(list: Array, units: Array) -> void:
 		list.append(["ab_tongue", "TONGUE", func() -> void:
 			controls.mode = "cast"
 			controls.cast_spell = "tongue", tongue_ok, "" if tongue_ok else "Not enough energy: TONGUE needs %d." % int(Defs.TONGUE["cost"]), str(int(Defs.TONGUE["cost"]))])
+		# MIASMA (the retired Spore Mother's, the owner 2026-10-29): a healing cloud for the Brood, from its energy
+		var mia_ok := top >= float(Defs.MIASMA["cost"])
+		list.append(["ab_miasma", "MIASMA", func() -> void:
+			controls.mode = "cast"
+			controls.cast_spell = "miasma", mia_ok, "" if mia_ok else "Not enough energy: MIASMA needs %d." % int(Defs.MIASMA["cost"]), str(int(Defs.MIASMA["cost"]))])
 	# HOLD FIRE for every Crown firearm (muskets, pistols, guns, the balloon's basket): glowing
 	# = on: they never open fire by themselves, only on what you order them to ATTACK (the
 	# cavalry keep their pistol shot even then); bayonets and sabres still fight. One button
@@ -1817,7 +1872,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 const FIXED_KEYS := {"MOVE": "V", "ATTACK": "A", "STOP": "S", "HOLD": "H", "PATROL": "P", "BUILD": "B", "ADVANCED": "V", "WORK": "G",
 	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "REPAIR": "R", "ROTATE": "R", "GRUBS": "F", "CANCEL": "X", "BACK": "X", "ABANDON": "X", "DEMOLISH": "Z", "MORE": "T", "PLACE": "F",
 	"CANISTER": "C", "ROUND SHOT": "C",
-	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "FOG": "F", "TONGUE": "T", "HARVEST": "Q", "SACRIFICE": "C", "START": "F", "END": "F",
+	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "FOG": "F", "TONGUE": "T", "MIASMA": "Q", "HARVEST": "Q", "SACRIFICE": "C", "START": "F", "END": "F",
 	"JUMP": "E", "HIGH LEAP": "E", "MORPH TO OWL": "E", "CANCEL MORPH": "X", "TICKING OWL": "E",
 	"LOAD": "F", "UNLOAD": "G", "DROP HERE": "G", "RESTOCK": "E", "COURIER": "C", "OVERLOAD": "V", "BRACE": "E", "SHIELD FORWARD": "F", "LAND": "D", "TAKE OFF": "D", "SUPPLY": "G",
 	"ARMOUR": "E", "MATCHLOCK": "F", "FLINTLOCK": "F", "CAPLOCK": "F", "BAYONET": "W", "AUTO REFIT": "Q", "POUCH": "T",
@@ -3385,6 +3440,22 @@ func _draw_panel(font: Font) -> void:
 					var pp := Rect2(pqr.position.x, pqr.end.y + 4, pqr.size.x, 2)
 					_ci.draw_rect(pp, Color(0, 0, 0, 0.6))
 					_ci.draw_rect(Rect2(pp.position, Vector2(pp.size.x * clampf(ps[i].powder / ps[i]._pmax, 0.0, 1.0), pp.size.y)), Unit.POWDER_BAR if ps[i].powder >= 1.0 else UiStyle.BAD)
+		if e is Unit and (e as Unit)._k_nb and e.team == game.human and not game.spectating() and BroodResearch.busy(e as Unit):
+			# THE BROOD'S RESEARCH QUEUE (the owner, 19:38): as a building's: each research's icon, the first with its
+			# bar, a click cancels it (paid back)
+			var rl: Array = BroodResearch.line_of(e as Unit)
+			for i in rl.size():
+				var ric := _icon(_research_icon(String(rl[i])))
+				var rqr := Rect2(r.end.x - 44 - (rl.size() - 1 - i) * 40, r.position.y + 8, 36, 36)
+				_queue_rects.append({"rect": rqr, "u": e, "i": i})
+				if Settings.pc() and rqr.has_point(_mouse()):
+					_ci.draw_rect(rqr.grow(2), UiStyle.BAD, false, 1.5)
+				if ric:
+					_ci.draw_texture_rect(ric, rqr, false)
+				if i == 0:
+					var rp := BroodResearch.progress(e as Unit)
+					_ci.draw_rect(Rect2(rqr.position.x, rqr.end.y + 2, rqr.size.x * float(rp.get("f", 0.0)), 4), BroodResearch.BAR)
+				_ci.draw_rect(rqr, Color(0.75, 0.55, 1.0, 0.9), false, 1.5)
 		var shq: Array = NetPredict.shown_queue(game, e) if e is Building else [[], [], 0.0]     # (online: an order just given shows at once, pending)
 		if e is Building and (e.team == game.human or game.spectating()) and not (shq[0] as Array).is_empty():
 			var q: Array = shq[0]
@@ -3478,8 +3549,14 @@ func _draw_panel(font: Font) -> void:
 	else:
 		_buttons_extra = []
 	for qe in _queue_rects:
-		var qb: Building = qe["b"]
 		var qi: int = qe["i"]
+		if qe.has("u"):
+			var qu: Unit = qe["u"]          # (a Brood creature's research queue)
+			_buttons_extra.append({"rect": qe["rect"], "enabled": true, "cb": func() -> void:
+				if is_instance_valid(qu) and not qu.dead:
+					qu.cmd_nb_research_cancel(qi)})
+			continue
+		var qb: Building = qe["b"]
 		_buttons_extra.append({"rect": qe["rect"], "enabled": true, "cb": func() -> void:
 			if is_instance_valid(qb) and not qb.dead:
 				game.cancel_train_at(qb, qi)})
@@ -3885,6 +3962,7 @@ const CMD_TIPS := {
 	"HARVEST": "The grubs wrap every body nearby (friend or foe) in a cocoon and carry it to the Brood Mother as spoils (4 for each point of its supply, 2 for each kill it made); each harvest makes her lay 1% faster (up to 50%). Bodies rot after 2 minutes.",
 	"SACRIFICE": "The selected creatures walk to the Brood Mother and she devours them: spoils for each (a Raptor 15, a grub 10), and eggs back by the egg: the young of one egg together give one egg (a Brute or a grub one each), at once if her clutch has room. A grub hands over what it carries first; one on its way to turn into something can't be offered.",
 	"HOLD FIRE": "Pistols (glowing = on): Horsemen, Cuirassiers and Officers keep their one pistol shot and fight with the sabre only, until you turn it off. (HOLD is still stand-ground.)",
+	"MIASMA": "60 energy: a green cloud on a spot for 8 s. The Brood inside heal up to 30% of their health (7 a second; clouds don't stack).",
 	"FOG": "50 energy: a fog bank on a spot for 12 s. Shots fired from or into it miss half the time (yours too); units inside see 2 tiles.",
 	"TONGUE": "75 energy: mark an enemy on the ground for 3 s, then drag it to the Toad's feet. Heavy engines are only staggered.",
 	"LAND": "Land (1.2 s) to bite ground units. Landed, anything can hit it, and it can't touch flyers.",

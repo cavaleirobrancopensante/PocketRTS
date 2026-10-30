@@ -280,6 +280,9 @@ func _ready() -> void:
 	body_bars.z_index = 1
 	body_bars.draw.connect(_draw_body_bars)
 	add_child(body_bars)
+	occluded_layer = OccludedLook.new()      # units hidden behind a bigger picture, drawn as silhouettes (scripts/occluded_look.gd)
+	occluded_layer.game = self
+	add_child(occluded_layer)
 	stun_layer = StunMark.new()          # the stars over stunned units' heads (scripts/stun_mark.gd)
 	stun_layer.game = self
 	add_child(stun_layer)
@@ -4363,6 +4366,12 @@ func spawn_trained(b: Building, k: String, kit: Dictionary = {}) -> void:
 				u.max_hp += Unit.horse_bonus_hp(u.horse_miles)    # a seasoned horse under him
 				u.hp = u.max_hp
 			HorseCoat.apply(u)
+		if u.is_worker() and not b.dual_rally() and u.kind == "labourer" and is_instance_valid(b.rally_target) and b.rally_target is Building \
+				and not b.rally_target.dead and not (b.rally_target as Building).built and b.rally_target.team == u.team:
+			# a rally ON a building going up (the Crown, the owner 2026-10-30 20:12): he joins its construction, as with
+			# a right-click on it; finished, it is a site like any other (or he finds work: WORK)
+			u.give({"o": "build", "e": b.rally_target})
+			continue
 		if u.is_worker():
 			var site: Building = null
 			if b.dual_rally() and is_instance_valid(b.worker_rally_target) and b.worker_rally_target is Building:
@@ -5374,7 +5383,7 @@ func line_clear(a: Vector2, b: Vector2, margin := 7.0) -> bool:
 
 ## A reachable point next to an entity, on the side nearest to `from`.
 func approach_point(e: Entity, from: Vector2) -> Vector2:
-	if e.is_unit():
+	if e.is_unit() and not (e is Unit and BroodRoot.has_fp(e)):      # (a ROOTED Brood creature: its footprint's ring, as a building's)
 		return e.global_position
 	var r := e.rect()
 	var c0 := cell_of(r.position) - Vector2i.ONE
@@ -6481,12 +6490,21 @@ func acid_shot(u: Unit, e: Entity, dmg: float) -> void:
 ## The missile a venom spitter's glob flies as: its own glob when it has one (the Spitter's and the Venom Challenger's,
 ## from the owner's east sheets, turned straight: tools/import_spitter_redo.py, effects <kind>_glob), else the small
 ## acid ball (the Venom Sire).
+## THE VENOM LINE'S GLOBS GROW WITH THE CREATURE (the owner, 2026-10-30 19:46): one glob (the Spitter's) for the Spitter,
+## the Venom Challenger and the Venom Sire, scaled 1.0 / 1.4 / 1.8 (GLOB_SCALE).
+const GLOB_SCALE := {"spitter": 1.0, "venom_challenger": 1.4, "dilophosaurus": 1.8}
+
+
 func venom_glob(u: Unit) -> String:
+	if GLOB_SCALE.has(u.kind) and ArtData.EFFECTS.has("spitter_glob"):
+		return "spitter_glob"
 	var own := u.kind + "_glob"
 	return own if ArtData.EFFECTS.has(own) else "acid_ball"
 
 
 func venom_glob_scale(u: Unit) -> float:
+	if venom_glob(u) == "spitter_glob":
+		return float(GLOB_SCALE.get(u.kind, 1.0))
 	return 1.3 if venom_glob(u) == "acid_ball" else 1.0
 
 
@@ -7065,10 +7083,10 @@ var zones: Array = []
 
 ## A spell's numbers (range, radius, cast time...) and who casts it.
 static func spell_info(spell: String) -> Dictionary:
-	return {"storm": Defs.STORM, "fog": Defs.FOG}.get(spell, Defs.FOG)
+	return {"storm": Defs.STORM, "fog": Defs.FOG, "miasma": Defs.MIASMA}.get(spell, Defs.FOG)
 
 
-const CASTERS := {"storm": "stormcaller", "fog": "mist_toad"}
+const CASTERS := {"storm": "stormcaller", "fog": "mist_toad", "miasma": "mist_toad"}
 
 
 ## Why this unit can't cast that spell now ("" = it can).
@@ -7076,6 +7094,9 @@ func spell_problem(u: Unit, spell: String) -> String:
 	if spell == "fog":
 		if u.charge < float(Defs.FOG["cost"]):
 			return "Not enough energy: FOG needs %d (it fills over time, faster on swamp)." % int(Defs.FOG["cost"])
+	elif spell == "miasma":
+		if u.charge < float(Defs.MIASMA["cost"]):
+			return "Not enough energy: MIASMA needs %d (it fills over time, faster on swamp)." % int(Defs.MIASMA["cost"])
 	elif spell == "storm":
 		if u.charge < float(Defs.STORM["cost"]):
 			return "Not enough charge: the Stormcaller recharges inside a Clockwork field."
@@ -7227,7 +7248,13 @@ func cast_spell(u: Unit, spell: String, p: Vector2) -> void:
 		tell(u.team, w)
 		return
 	var z := {"kind": spell, "pos": p, "team": u.team, "age": 0.0, "fx": null, "stage": "", "caster": u}
-	if spell == "fog":
+	if spell == "miasma":
+		u.charge -= float(Defs.MIASMA["cost"])
+		z["r"] = float(Defs.MIASMA["radius"])
+		z["t"] = float(Defs.MIASMA["time"])
+		z["healed"] = {}
+		Sfx.play_any(["combat/mist_toad_miasma", "combat/spitter_attack", "acid"], p)
+	elif spell == "fog":
 		u.charge -= float(Defs.FOG["cost"])
 		z["r"] = float(Defs.FOG["radius"])
 		z["t"] = float(Defs.FOG["time"])
@@ -7241,19 +7268,19 @@ func cast_spell(u: Unit, spell: String, p: Vector2) -> void:
 		Sfx.play_any(["combat/tesla_attack", "zap"], p)
 	zones.append(z)
 	_zone_fx(z, "in")
-	area_mark("oval", u.team, p, Vector2.ZERO, float(z["r"]), 0.0, {"storm": "storm", "fog": "fog"}.get(spell, "fog"), float(z["t"]), false, true)
+	area_mark("oval", u.team, p, Vector2.ZERO, float(z["r"]), 0.0, {"storm": "storm", "fog": "fog", "miasma": "miasma"}.get(spell, "fog"), float(z["t"]), false, true)
 	if mlog:
 		var inside := 0
 		for o in units_near(p, float(z["r"])):
 			if not o.dead and hostile(o.team, u.team):
 				inside += 1
-		mlog.add("%s cast %s (%d enemies inside)" % [mlog.who(u.team), {"storm": "a storm", "fog": "a fog bank"}.get(spell, spell), inside])
+		mlog.add("%s cast %s (%d enemies inside)" % [mlog.who(u.team), {"storm": "a storm", "fog": "a fog bank", "miasma": "miasma"}.get(spell, spell), inside])
 
 
 ## Show the zone's effect for a stage ("in", "loop", "out"); falls back to sparks when the
 ## effect art isn't there.
 func _zone_fx(z: Dictionary, stage: String) -> void:
-	var name: String = "storm_" + stage
+	var name: String = ("miasma_" if z["kind"] == "miasma" else "storm_") + stage
 	if z["kind"] == "fog":
 		_fog_fx(z, stage)
 		return
@@ -7535,6 +7562,7 @@ func _draw_tongue(a: Vector2, b: Vector2) -> void:
 func _tick_zones(delta: float) -> void:
 	if zones.is_empty():
 		return
+	var mended := {}       # (MIASMA: clouds don't stack: one cloud heals a unit per tick)
 	for z in zones:
 		z["age"] = float(z["age"]) + delta
 		var p: Vector2 = z["pos"]
@@ -7543,6 +7571,21 @@ func _tick_zones(delta: float) -> void:
 			_zone_fx(z, "loop")
 		if z["kind"] == "fog":
 			_drift_fog(z, delta)
+			continue
+		if z["kind"] == "miasma":
+			for u in units_near(p, r + 20.0):
+				if u.dead or not allied(u.team, int(z["team"])) or u.d["faction"] != "brood" or u.hp >= u.max_hp:
+					continue
+				if mended.has(u) or not in_ellipse(p, u.position, r + u.radius):
+					continue
+				var done: float = z["healed"].get(u, 0.0)
+				var cap: float = u.max_hp * float(Defs.MIASMA["cap"])
+				if done >= cap:
+					continue
+				var h := minf(float(Defs.MIASMA["hps"]) * delta, cap - done)
+				u.hp = minf(u.max_hp, u.hp + h)
+				z["healed"][u] = done + h
+				mended[u] = true
 			continue
 		if z["kind"] == "storm":
 			for u in units_near(p, r + 20.0):
@@ -8682,6 +8725,7 @@ func on_high(p: Vector2) -> bool:
 
 var _human_vis := PackedByteArray()
 var body_bars: Node2D
+var occluded_layer: OccludedLook = null
 var stun_layer: StunMark = null        # the stun marks (StunMark)
 var bodies: Array = []                   # the fallen still lying there (Unit._rest_in_peace)
 var _body_bar_t := 0.0
@@ -9232,7 +9276,7 @@ func smart_command(list: Array, p: Vector2, force_move := false, queued := false
 	var fixed: Array = us.filter(func(u: Unit) -> bool: return BroodRoot.fixed(u))
 	if not fixed.is_empty():
 		for u in fixed:
-			BroodRoot.set_rally(u, p)
+			BroodRoot.set_rally(u, p, true, "auto")      # (the Mother: on a Rootmaw or pile her WORKER rally, else her warrior rally)
 			u.queue_redraw()
 		us = us.filter(func(u: Unit) -> bool: return not BroodRoot.fixed(u))
 		if us.is_empty():
@@ -9622,6 +9666,8 @@ func set_rally(b: Building, p: Vector2, which := "auto") -> void:
 		return
 	b.rally = p
 	b.rally_target = e if e is Building and e.team == b.team and Defs.crew_cap(e.d) > 0 else null
+	if e is Building and e.team == b.team and not e.built and String(b.d.get("faction", "")) == "crown":
+		b.rally_target = e        # (THE CROWN: a building going up: new Labourers help build it, the owner 2026-10-30)
 	if e is Unit and e.team == b.team and not e.dead and e.kind != "horse":
 		b.rally_target = e        # (a unit of ours: the rally follows it, new ones follow it)
 

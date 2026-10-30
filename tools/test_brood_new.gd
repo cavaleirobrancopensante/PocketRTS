@@ -332,7 +332,8 @@ func _run() -> void:
 	p["gold"] = 0
 	var paid: bool = await wait_for(func() -> bool: return int(p["gold"]) >= 20, 40.0)
 	check(paid, "7. grubs carry food from the Rootmaw to the Mother (%d biomass)" % int(p["gold"]))
-	check(mine("grub").any(func(gr) -> bool: return gr.anim == "harvest" or gr.work == "feeding" or gr.carrying > 0), "   harvesting at its flank")
+	var at_flank: bool = await wait_for(func() -> bool: return mine("grub").any(func(gr) -> bool: return gr.anim == "harvest" or gr.work == "feeding" or gr.carrying > 0), 5.0)
+	check(at_flank, "   harvesting at its flank")          # (a moment after: they may all have just delivered together)
 	# 12. the turtle is the expansion: a Rootmaw roots only on its side's swamp (any: it need not join the Mother's)
 	var far2 := free_spot(BroodNew.MAW, q.position, 21.0, null, false)
 	var dir2: Vector2 = (far2 - q.position).normalized()
@@ -803,7 +804,7 @@ func _rooted_is_a_building(q: Unit, p: Dictionary) -> void:
 	g.consume_unit(mr)
 	# the Mother's rally goes to her eggs, an egg takes its own by right-click, the hatchling walks there
 	var qrally: Vector2 = spot_near(q.position, 10.0)
-	g.smart_command([q], qrally)
+	q.cmd_nb_rally(qrally, "army")          # (her warriors' rally: her right-clicks take turns since 0.24.1)
 	q.nb["eggs"] = 3
 	var e0: Array = mine(BroodNew.EGG)
 	var lwhy: String = q.cmd_lay("grub")
@@ -1162,7 +1163,7 @@ func _boxed(q: Unit, p: Dictionary, f: Unit) -> void:
 	var ring: Rect2 = qr.grow(3.0 * T)
 	var rally := q.position + Vector2(0, qr.size.y * 0.5 + 9.0 * T)
 	rally = g.cell_center(g.nearest_free(g.cell_of(rally), 6))
-	BroodRoot.set_rally(q, rally)
+	BroodRoot.set_rally(q, rally, true, "worker")          # (a grub: her grubs' rally, 0.24.1)
 	q.nb["eggs"] = 4
 	var e_b: Array = mine(BroodNew.EGG)
 	var lw := q.cmd_lay("grub")
@@ -1884,7 +1885,7 @@ func _research(q: Unit, p: Dictionary) -> void:
 	var why := BroodNew.lay_problem(g, q, "raptor")
 	check(why.contains("researching") and BroodNew.lay_problem(g, q, "spitter") == "", "    no Raptor eggs while he researches (%s); the Venom line still lays" % why)
 	labs = card_labels()
-	check(labs.has("STOP RESEARCH") and not labs.has("PACK HUNT"), "    STOP RESEARCH in place of his research buttons")
+	check(labs.has("STOP RESEARCH") and labs.has("PACK HUNT") and not labs.has("BIGGER CLUTCH"), "    STOP RESEARCH, and his other research kept to QUEUE (the owner, 2026-10-30 19:38)")
 	var frames := {}
 	for i in 30:
 		await physics_frame

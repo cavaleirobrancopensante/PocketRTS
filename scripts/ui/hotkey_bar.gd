@@ -261,7 +261,8 @@ func select_idle() -> void:
 
 func select_army() -> void:
 	var gm := game()
-	var a := gm.army(gm.human)
+	# (the Brood: no ROOTED creature, egg or cocoon: they are its buildings; the owner's playtest, 2026-10-30)
+	var a := gm.army(gm.human).filter(func(u: Unit) -> bool: return not (u._k_nb and (BroodRoot.fixed(u) or BroodRoot.in_cocoon(u) or u.kind == BroodNew.PILE)))
 	if a.is_empty():
 		hud.toast("No army yet.")
 		return

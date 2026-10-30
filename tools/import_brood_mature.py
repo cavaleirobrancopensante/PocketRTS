@@ -56,8 +56,11 @@ TYRANT_H = 42.0
 VENOM_SCALE = 0.8
 # with the owner's own five sheets: the east walk's first frame this long, tail to snout (the Spitter 44, the Venom Sire
 # 125: "about twice a Spitter", the concept's middle size), and its glob missile's length
-VENOM_LEN = 88.0
-VENOM_GLOB_LEN = 22.0
+# (the owner, 2026-10-30 19:33: the Venom Challenger was drawn BIGGER than the Tyrant Challenger (88 long, 2,100 px of
+# body against the Tyrant's 61 and 970); now smaller than him and bigger than a Spitter: Spitter 44 < Venom Challenger
+# 54 < Tyrant Challenger 61 < Venom Sire 125)
+VENOM_LEN = 54.0
+VENOM_GLOB_LEN = 16.0
 # concept heads for the stand-in portraits (x0, y0, x1, y1 on the sheet)
 HEADS = {"tyrant_challenger": ("young_tyrant_concept_chatgpt.png", (430, 300, 620, 490)),
          "venom_challenger": ("venom_challenger_concept_chatgpt.png", (695, 190, 875, 370))}
