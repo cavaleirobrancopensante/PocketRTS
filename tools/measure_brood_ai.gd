@@ -30,6 +30,7 @@ var _matured := 0
 var _young_seen := {}
 var _egg_rule = preload("res://tools/brood_one_egg.gd").new()
 var _earned0 := [0, 0]
+var foe_peaceful := false        # peaceful:1 the enemy computer never attacks (as tools/test_ai_brood.gd)
 
 
 func _initialize() -> void:
@@ -49,6 +50,7 @@ func _initialize() -> void:
 			"foeplan": foeplan = kv[1]
 			"tag": tag = kv[1]
 			"onegg": _egg_rule.on = kv[1] == "1"
+			"peaceful": foe_peaceful = kv[1] == "1"
 			"set":
 				for pair in kv[1].split(","):
 					var p := pair.split("=", true, 1)
@@ -70,6 +72,9 @@ func _process(delta: float) -> bool:
 			{"who": who, "faction": "brood", "colour": 0, "side": 0, "strategy": plan},
 			{"who": who, "faction": foe, "colour": 1, "side": 1, "strategy": foeplan}]})
 		res["sets"] = str(sets)
+		for a in main.game.ais:
+			if a.team == 1 and foe_peaceful:
+				a.peaceful = true
 		if not sets.is_empty():
 			for a in main.game.ais:
 				if a.team == 0 and a is AIBroodNew:
@@ -114,9 +119,10 @@ func _process(delta: float) -> bool:
 			for a in g.ais:
 				if a.team == 0 and a is AIBroodNew:
 					ai = a
-			print("       mother %s eggs %d grow_t %.0f | raptor: %s | grub: %s |%s | keep morph %d growth %d spoils-keep %d | attack_at %d attacking %s" % [q.tesla_mode, int(q.nb.get("eggs", 0)),
+			print("       mother %s eggs %d grow_t %.0f | raptor: %s | grub: %s |%s | keep morph %d growth %d spoils-keep %d | attack_at %d attacking %s | seen army %d under-armed %s alarm %s" % [q.tesla_mode, int(q.nb.get("eggs", 0)),
 				float(q.nb.get("grow_t", 0.0)), BroodNew.lay_problem(g, q, "raptor"), BroodNew.lay_problem(g, q, "grub"), fs,
-				ai._morph_keep if ai else -1, ai._nb_growth_keep(q) if ai else -1, int(ai._nb_spoils_keep(q)) if ai else -1, ai._attack_at if ai else -1, str(ai._attacking) if ai else "-"])
+				ai._morph_keep if ai else -1, ai._nb_growth_keep(q) if ai else -1, int(ai._nb_spoils_keep(q)) if ai else -1, ai._attack_at if ai else -1, str(ai._attacking) if ai else "-",
+				int(ai.seen_army) if ai else -1, str(ai._under_armed()) if ai else "-", str(ai._alarm_on()) if ai else "-"])
 	if g.clock >= secs or g.over:
 		_finish()
 		quit()

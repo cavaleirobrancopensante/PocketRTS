@@ -63,16 +63,16 @@ const PLANS := {
 	"rush": {"drone": 3.0, "sire_g": 7, "sire_t": 40.0, "grubs0": 9, "maws0": 2, "grubs": 28, "maws": [2, 120.0, 7], "grow": [330.0, 660.0],
 		"venom": 330.0, "storm": 720.0, "far": [[420.0, 1], [660.0, 2]], "wave": 10, "wave_t": 0.0, "step": 6, "pack": false,
 		"mix": "tyrant", "mature": "bank", "home_guard": 2},
-	"timing": {"drone": 6.0, "sire_g": 11, "sire_t": 120.0, "grubs0": 0, "grubs": 36, "maws": [2, 90.0, 8], "grow": [210.0, 540.0],
+	"timing": {"drone": 6.0, "sire_g": 11, "sire_t": 120.0, "grubs0": 0, "grubs": 46, "maws": [2, 90.0, 8], "grow": [210.0, 540.0],
 		"venom": 420.0, "storm": 660.0, "far": [[0.0, 1], [360.0, 2]], "eco": true, "wave": 24, "wave_t": 330.0, "step": 10, "pack": true,
 		"mix": "tyrant", "mature": "push", "home_guard": 3},
-	"balanced": {"drone": 7.0, "sire_g": 13, "sire_t": 150.0, "grubs0": 0, "grubs": 40, "maws": [2, 80.0, 10], "grow": [240.0, 480.0],
+	"balanced": {"drone": 7.0, "sire_g": 13, "sire_t": 150.0, "grubs0": 0, "grubs": 54, "maws": [2, 80.0, 10], "grow": [240.0, 480.0],
 		"venom": 360.0, "storm": 540.0, "far": [[0.0, 1], [300.0, 2], [540.0, 3]], "eco": true, "wave": 22, "wave_t": 390.0, "step": 10, "pack": true,
 		"mix": "mixed", "mature": "push", "home_guard": 3},
-	"economy": {"drone": 8.0, "sire_g": 14, "sire_t": 165.0, "grubs0": 0, "grubs": 44, "maws": [3, 70.0, 11], "grow": [200.0, 420.0],
+	"economy": {"drone": 8.0, "sire_g": 14, "sire_t": 165.0, "grubs0": 0, "grubs": 58, "maws": [2, 70.0, 11], "grow": [200.0, 420.0],
 		"venom": 420.0, "storm": 480.0, "far": [[0.0, 1], [240.0, 2], [480.0, 3]], "eco": true, "wave": 34, "wave_t": 510.0, "step": 12,
 		"pack": true, "mix": "venom", "mature": "push", "home_guard": 4},
-	"air": {"drone": 6.0, "sire_g": 11, "sire_t": 110.0, "grubs0": 0, "grubs": 36, "maws": [2, 85.0, 9], "grow": [180.0, 420.0],
+	"air": {"drone": 6.0, "sire_g": 11, "sire_t": 110.0, "grubs0": 0, "grubs": 44, "maws": [2, 85.0, 9], "grow": [180.0, 420.0],
 		"venom": 600.0, "storm": 150.0, "far": [[0.0, 1], [360.0, 2]], "eco": true, "spoils_bank": 120.0, "storm_want": 8, "wave": 18, "wave_t": 420.0, "step": 8, "pack": false,
 		"mix": "tyrant", "mature": "push", "home_guard": 3},
 }
@@ -117,6 +117,8 @@ func _make_plan() -> void:
 		plan["step"] = mini(int(plan["step"]), 4)
 		plan["edge"] = 0.3
 		plan["pack"] = false          # (Pack Hunt comes when it comes: the waves don't wait for it)
+		plan["grubs"] = mini(int(plan["grubs"]), 44)      # (brood-eco: 54 grubs earned more against the Crown, but against the
+		                                                  # Clockwork's early army the extra grubs were an army it lacked)
 	for k in over:
 		plan[k] = over[k]
 	_attack_at = int(plan["wave"])
@@ -631,6 +633,8 @@ func _nb_short() -> bool:
 				or (u.kind == "grub" and u.order == "nb_morph" and String(u.nb.get("mk", "")) == BroodNew.TURTLE)):
 			coming += int(Defs.NB["turtle_supply"])
 	var ahead := 3 + int(game.clock / 60.0)
+	if _food() >= 500:
+		ahead += 12          # (food piling up: a turtle more ahead, the eggs it buys will be laid)
 	if _eco() and game.clock > 75.0 and _nb_far_have(BroodNew.queen(game, team)) < _nb_far_wanted():
 		ahead += 2          # (the next turtle walks out to new ground: it roots later than one at home; not in the first
 		                    # minute, when every 50 food is a grub: the first turtle at 0:32 cost a minute of grubs)
@@ -671,10 +675,15 @@ var _morph_keep := 0             # food kept for the structure-unit it saves for
 
 func _nb_morphs(q: Unit) -> void:
 	_morph_keep = 0
+	var walking := 0
 	for u in game.units:
 		if u.team == team and not u.dead and u.kind == "grub" and u.order == "nb_morph":
-			_morph_keep = int(game.unit_price(team, String(u.nb.get("mk", "grub")))[0])       # (it pays when it gets there)
-			return          # (one at a time: it is on its way)
+			_morph_keep += int(game.unit_price(team, String(u.nb.get("mk", "grub")))[0])       # (it pays when it gets there)
+			walking += 1
+	# one at a time; a second only with food to spare (brood-eco: with the owner's economy the food came faster than one
+	# grub at a time could turn it into turtles, and 900+ food sat for minutes at the supply cap)
+	if walking >= 2 or (walking == 1 and _food() - _morph_keep < 400):
+		return
 	var grubs := BroodNew.count_of(game, team, "grub")
 	var maws := BroodNew.count_of(game, team, BroodNew.MAW)
 	var k := ""
@@ -704,8 +713,9 @@ func _nb_morphs(q: Unit) -> void:
 		return
 	var why := BroodRoot.morph_problem(game, team, k)
 	if why != "":
-		if why.begins_with("Not enough"):
-			_morph_keep = int(game.unit_price(team, k)[0])      # (saving for it: the eggs wait)
+		if why.begins_with("Not enough") and _food() < int(game.unit_price(team, k)[0]):
+			_morph_keep += int(game.unit_price(team, k)[0])      # (saving for it: the eggs wait; only when FOOD is what is short:
+			                                                    # food kept for a Sire whose spoils were short stalled eggs and Rootmaws)
 		return
 	if spot == null:
 		spot = _nb_spot_for(q, k, null)
@@ -718,7 +728,7 @@ func _nb_morphs(q: Unit) -> void:
 			best = u
 	if best != null:
 		best.give({"o": "nb_morph", "k": k, "p": spot})
-		_morph_keep = int(game.unit_price(team, k)[0])      # (it pays when it gets there: the eggs leave it the price)
+		_morph_keep += int(game.unit_price(team, k)[0])      # (it pays when it gets there: the eggs leave it the price)
 		if BroodNew.is_father(k):
 			say("a grub goes to grow the %s" % BroodRoot.lure_name(k))
 		elif k == BroodNew.TURTLE and (spot as Vector2).distance_to(q.position) >= float(Defs.NB["expansion_tiles"]) * Defs.TILE * 0.9:
@@ -1170,7 +1180,7 @@ func _nb_essence(q: Unit) -> void:
 	var harvesting := grubs.filter(func(u: Unit) -> bool: return u.order == "harvest")
 	if not bodies.is_empty() and _nb_threat(q) == Vector2.INF:
 		for u in grubs:
-			if harvesting.size() >= 2:
+			if harvesting.size() >= mini(5, 2 + bodies.size() / 4):        # (bodies pay double since 0.22.4 and each harvest feeds her veterancy)
 				break
 			if u.order == "gather" and u.carrying == 0 and not harvesting.has(u) and u != _scout:
 				u.cmd_harvest()

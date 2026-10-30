@@ -159,10 +159,49 @@ func _coach3() -> void:
 			if w == 1:
 				clip("first_wave", lead, 30, 6, 1.0)
 			_later.append([g.clock + 25.0, "wave%d_%s.png" % [w, _mmss(g.clock)], lead])
+	_eco_shots(q)
 	if ramp_job:
 		_ramp3(q)
 	if coach_plan == "mother":
 		_mother_rush(q)
+
+
+## The owner's economic build filmed (docs/shots/brood_eco/): the first Mound Turtle rooted on the natural, the third
+## Rootmaw rooted (the natural's far edge), the grub on watch (40 s after it goes out), each ALARM, the first Storm
+## Challenger.
+var _eco_seen := {}
+
+
+func _eco_shots(q: Unit) -> void:
+	var exps := BroodNew.expansions(g, q)
+	if not exps.is_empty() and not _eco_seen.has("natural"):
+		_eco_seen["natural"] = true
+		say("the first Mound Turtle on new ground (%d tiles out) at %s" % [int(exps[0].position.distance_to(q.position) / Defs.TILE), _mmss(g.clock)])
+		_later.append([g.clock + 4.0, "natural_turtle_%s.png" % _mmss(g.clock), exps[0]])
+	var maws: Array = mine(BroodNew.MAW).filter(func(m: Unit) -> bool: return BroodNew.rooted(m))
+	if maws.size() >= 3 and not _eco_seen.has("maw3"):
+		_eco_seen["maw3"] = true
+		var far: Unit = maws[0]
+		for m in maws:
+			if m.serial > far.serial:
+				far = m
+		say("the third Rootmaw roots %d tiles from the Mother at %s" % [int(far.position.distance_to(q.position) / Defs.TILE), _mmss(g.clock)])
+		_later.append([g.clock + 20.0, "third_rootmaw_%s.png" % _mmss(g.clock), far])
+	for n in _ai.note:
+		var key := "%d %s" % [int(n[0]), n[1]]
+		if _eco_seen.has(key):
+			continue
+		_eco_seen[key] = true
+		if String(n[1]).begins_with("sends a Grub") and _ai._scout != null:
+			_later.append([g.clock + 40.0, "watching_grub_%s.png" % _mmss(g.clock + 40.0), _ai._scout])
+		elif String(n[1]).begins_with("ALARM: an enemy"):
+			shot("alarm", _ai.alarm_at, 0.9, 60.0)
+	if not _eco_seen.has("storm_ch"):
+		var sc := mine("storm_challenger")
+		if not sc.is_empty():
+			_eco_seen["storm_ch"] = true
+			say("the first Storm Challenger at %s" % _mmss(g.clock))
+			_later.append([g.clock + 3.0, "storm_challenger_%s.png" % _mmss(g.clock), sc[0]])
 
 
 ## The coach's hand order (turtle plan): the first Mound Turtle rooted at home gets up and walks onto the ramp below

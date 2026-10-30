@@ -33,14 +33,16 @@ var natural_at := Vector2.INF         # the natural's turtle spot (the eco plans
 const MILESTONES := {
 	"xrush": {"tyrant": 45.0, "raptors8": 180.0, "attack": 190.0},
 	"rush": {"tyrant": 100.0, "scout": 90.0, "attack": 270.0},
-	"timing": {"tyrant": 150.0, "scout": 90.0, "watch": 90.0, "natural": 200.0, "maw3": 330.0, "stage2": 420.0, "far": 200.0, "income6": 360.0, "attack": 600.0},
-	"balanced": {"tyrant": 160.0, "scout": 90.0, "watch": 90.0, "natural": 200.0, "maw3": 330.0, "venom": 450.0, "stage2": 450.0, "far": 200.0, "income6": 360.0, "pack": 720.0},
-	"economy": {"tyrant": 170.0, "scout": 90.0, "watch": 90.0, "natural": 200.0, "maw3": 330.0, "far": 200.0, "venom": 450.0, "stage2": 500.0, "income6": 360.0, "research": 560.0},
-	"air": {"tyrant": 160.0, "scout": 90.0, "watch": 90.0, "natural": 200.0, "maw3": 330.0, "stage2": 380.0, "storm": 560.0, "income6": 360.0, "attack": 600.0},
+	"timing": {"tyrant": 240.0, "scout": 90.0, "watch": 90.0, "natural": 200.0, "maw3": 330.0, "stage2": 600.0, "far": 200.0, "income6": 360.0, "attack": 690.0},
+	"balanced": {"tyrant": 260.0, "scout": 90.0, "watch": 90.0, "natural": 200.0, "maw3": 330.0, "venom": 620.0, "stage2": 620.0, "far": 200.0, "income6": 360.0, "pack": 720.0},
+	"economy": {"tyrant": 270.0, "scout": 120.0, "watch": 120.0, "natural": 200.0, "maw3": 330.0, "far": 200.0, "venom": 580.0, "stage2": 600.0, "income6": 360.0, "research": 560.0},
+	"air": {"tyrant": 220.0, "scout": 90.0, "watch": 90.0, "natural": 200.0, "maw3": 300.0, "stage2": 430.0, "storm": 600.0, "income6": 360.0, "attack": 780.0},
 }
-## (measured on 0.22.0, Greenhold seed 3, with about a minute's margin: docs/ai_build_timelines.md "Brood")
+## (measured on 0.22.4 with the owner's economic build, Greenhold seed 3, with about a minute's margin:
+## docs/ai_build_timelines.md "Brood", docs/brood_eco.md: the Tyrant Sire, her stage 2 and the Venom Sire come later
+## than in 0.22.0 on purpose, the grubs first)
 ## food earned by 6:00 (the "income6" milestone, checked at its time), per profile
-const INCOME6 := {"timing": 1300, "balanced": 1300, "economy": 1300, "air": 1300}
+const INCOME6 := {"timing": 2000, "balanced": 2000, "economy": 2000, "air": 1600}
 const BANK_MAX := 900
 const BANK_FOR := 60.0
 
@@ -136,7 +138,7 @@ func _watch() -> void:
 			rm += 1
 	if rm >= 3:
 		_mark("maw3")
-	if g.clock >= 360.0 and not seen.has("income6"):
+	if g.clock >= 359.0 and not seen.has("income6"):
 		print("  food earned by 6:00: %d" % int(g.stats[0]["gold"]))
 		if int(g.stats[0]["gold"]) >= int(INCOME6.get(profile, 0)):
 			_mark("income6")

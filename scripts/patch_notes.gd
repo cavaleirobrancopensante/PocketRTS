@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.22.5", "items": [
+		"THE BROOD COMPUTER PLAYS A REAL ECONOMY (the designer's build): its first Mound Turtle goes on the NATURAL expansion in the first minute, its third Rootmaw at the natural's far edge (farther loads pay more), grubs come nonstop, and a second turtle takes the third expansion with Rootmaws round it. The Mother grows once her eggs, not her food, hold the Brood back. Against the Crown it now earns about as much as the Crown for the first ten minutes (it earned three quarters before).",
+		"A Brood grub now keeps WATCH all game: against the Crown it walks to and fro at the foot of the enemy's ramp, against the Clockwork it walks round the enemy's main. When an enemy army leaves its main the computer raises the ALARM: warriors before grubs, the army waits at the natural, grubs run from Rootmaws the enemy comes near, and a Mound Turtle roots in front of the natural. It never lets its army fall far behind the enemy army it has seen.",
+		"The Brood computer's Air rush lays Raptors and offers them up for the Storm line's spoils, and sends more grubs to harvest bodies.",
+	]},
 	{"v": "0.22.4", "items": [
 		"GRUBS CAN BE SACRIFICED: SACRIFICE (C) is on the grub's card now. A grub offered up at the Brood Mother gives 10 spoils and a whole egg back (it hatches alone, like a Brute). A grub at work can be sent: it hands over the food or the body it carries when it gets to her. A grub on its way to turn into a Rootmaw, a Mound Turtle or a Sire can't be.",
 		"SACRIFICE PAYS MORE FOR RAPTORS: a Raptor offered up gives 15 spoils (was 9): 30 for the two of one egg, 45 for the three of a Bigger Clutch egg. The other creatures are unchanged (a Spitter 16, Hatchlings 14, a Tyrant Challenger or a Mist Toad 35, a Brute or a Venom or Storm Challenger 53).",
