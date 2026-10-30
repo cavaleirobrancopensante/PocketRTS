@@ -176,6 +176,8 @@ static func capture(game: Game, cfg: Dictionary) -> Dictionary:
 				ud["rfp"] = u.refit_paid
 		if u.auto_refit:
 			ud["ar"] = true
+		if u.clutch_n > 0:
+			ud["yo"] = u.clutch_n            # (a Brood young: its egg's clutch, for SACRIFICE)
 		if u._k_nb:
 			ud["nb"] = BroodNew.unit_save(u)         # (the Brood: eggs, food, an egg's kind and incubation)
 		if u.owl_t >= 0.0:
@@ -528,6 +530,7 @@ static func restore(game: Game, d: Dictionary) -> void:
 		u.charge = float(ud["charge"])
 		u.mode = String(ud["mode"])
 		u.tesla_mode = String(ud["tm"])
+		u.clutch_n = int(ud.get("yo", 0))
 		if ud.get("nb") is Dictionary:
 			BroodNew.unit_load(u, ud["nb"])
 		u.carrying = int(ud["carry"])

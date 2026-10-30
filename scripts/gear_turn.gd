@@ -151,6 +151,6 @@ static func tick(u: Unit, want: Vector2, delta: float) -> Vector2:
 	else:
 		u.gt_w = 0.0
 	var was := u.position
-	u.position = game.resolve_terrain(u.position + v * delta, u.position, u.radius, u.team)
+	u.position = game.resolve_terrain(u.position + v * delta, u.position, u.ground_r(), u.team)
 	u.last_pos += u.position - was       # (the ride is not progress of its own: pressed into a corner it is still stuck, and repaths)
 	return want

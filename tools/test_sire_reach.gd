@@ -7,7 +7,10 @@ extends SceneTree
 ##  1. ATTACK the gate: it must come within its reach of the gate and strike it within 40 s;
 ##  2. ATTACK-MOVE past the gate (to the Crown's hall): it must reach the wall (it is in the way) and strike the gate or
 ##     a wall piece beside it.
-## Kinds: the Tyrant Sire, the Venom Sire, the Mound Turtle, a Rootmaw; the Brute and the Tyrant Challenger for reference.
+## Kinds: the uprooted Brood Mother at stages 1, 2 and 3 (0.22.1: she used to stand at the ramp's foot, docs/brood_fixes.md),
+## the Tyrant Sire, the Venom Sire, the Mound Turtle, a Rootmaw; the Brute and the Tyrant Challenger for reference.
+## Pictures of the Mother striking: xvfb-run -a godot --rendering-driver opengl3 --resolution 1000x700 --fixed-fps 30
+##   --script res://tools/test_sire_reach.gd -- shots docs/shots/brood_fixes
 ## Prints PASS / FAIL lines and "sire_reach: N failures".
 var main: Node
 var g
@@ -15,9 +18,14 @@ var t := 0.0
 var begun := false
 var started := false
 var fails := 0
+var shots := ""          # (-- shots <dir>: pictures of the Mother striking the gate, under xvfb-run)
 
 
 func _initialize() -> void:
+	var args := OS.get_cmdline_user_args()
+	if args.has("shots") and args.find("shots") + 1 < args.size():
+		shots = args[args.find("shots") + 1]
+		DirAccess.make_dir_recursive_absolute(shots)
 	main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
 
@@ -108,11 +116,15 @@ func _run() -> void:
 	for b in g.buildings:
 		if b.team == 0 and b.kind == "town_hall":
 			hall = b
-	for k in [BroodNew.FATHER, BroodNew.DILO, BroodNew.TURTLE, BroodNew.MAW, "brute", "tyrant_challenger"]:
+	for kk in [BroodNew.QUEEN, BroodNew.QUEEN + "@2", BroodNew.QUEEN + "@3", BroodNew.FATHER, BroodNew.DILO, BroodNew.TURTLE, BroodNew.MAW, "brute", "tyrant_challenger"]:
+		var k: String = kk.get_slice("@", 0)
 		for how in ["attack", "amove"]:
 			gate.hp = gate.max_hp
 			var u: Unit = g._add_unit(k, 1, _free_near(foot + dir * 300.0, flv, 34.0))
 			u.auto_work = false
+			if kk.contains("@"):
+				u.nb["stage"] = int(kk.get_slice("@", 1)) - 1     # (the Mother at her stage 2 or 3: her picture bigger, her body not)
+				BroodNew.apply_stage(u)
 			await wait(0.3)
 			var start: Vector2 = u.position
 			if how == "attack":
@@ -129,8 +141,10 @@ func _run() -> void:
 					hit = true          # (striking it, or the wall piece beside it: the way in is broken either way)
 					break
 				await physics_frame
+			if hit and shots and k == BroodNew.QUEEN:
+				await _shoot(u, gate, kk, how)
 			check(hit, "%s. %s (radius %d) %s the gate from %d px: %s (closest %d px from it, reach %d)" % [
-				"1" if how == "attack" else "2", k, int(u.radius), "ATTACK" if how == "attack" else "ATTACK-MOVE past", int(start.distance_to(gate.center())),
+				"1" if how == "attack" else "2", kk, int(u.radius), "ATTACK" if how == "attack" else "ATTACK-MOVE past", int(start.distance_to(gate.center())),
 				"strikes it" if hit else "never strikes it (order %s, target %s, phase '%s', velocity %d)" % [u.order, u.target.kind if is_instance_valid(u.target) else "none", u.phase, int(u.velocity.length())], int(best), int(u._range())])
 			if is_instance_valid(u) and not u.dead:
 				g.consume_unit(u)
@@ -163,6 +177,17 @@ func _run() -> void:
 				g.consume_unit(w)
 		await wait(0.3)
 	_end()
+
+
+## A picture of the Mother striking the gate (or the wall piece beside it): 0.5 s into her swipe.
+func _shoot(u: Unit, gate: Building, kk: String, how: String) -> void:
+	g.camera.position = u.position.lerp(gate.center(), 0.5) + Vector2(0, -30)
+	g.camera.zoom = Vector2(1.7, 1.7)
+	await wait(0.5)
+	await process_frame
+	await process_frame
+	var st := kk.get_slice("@", 1) if kk.contains("@") else "1"
+	root.get_viewport().get_texture().get_image().save_png("%s/mother_stage%s_%s_gate.png" % [shots, st, "attack" if how == "attack" else "attack_move"])
 
 
 func _end() -> void:

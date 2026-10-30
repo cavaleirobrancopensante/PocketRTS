@@ -449,22 +449,61 @@ func _run() -> void:
 	tu.cmd_uproot(true)
 	await wait(float(Defs.NB["turtle_switch"]) + 0.6)
 	check(tu.tesla_mode == "packed" and int(p["cap"]) == cap0, "    uprooted: no supply (%d)" % int(p["cap"]))
-	# 11. SACRIFICE at the Mother: she devours it
-	var r1: Unit = g._add_unit("raptor", 0, q.position + Vector2(q.radius + 30.0, 20.0))
-	var ess0: float = float(p["res2"])
+	# 11. SACRIFICE at the Mother: she devours it. The eggs it gives back are per EGG (the owner, 2026-10-30): the young
+	# of one egg together give ONE egg (two Raptors of one egg: one egg and twice the spoils; three of a BIGGER CLUTCH:
+	# one egg); a creature hatched alone (a Brute) gives a whole egg
 	q.nb["eggs"] = 2
+	q.nb["eggp"] = 0
 	q.nb["egg_t"] = -1000.0        # (no egg grows meanwhile: the count is the offering's)
+	var one_egg := [g._add_unit("raptor", 0, q.position + Vector2(q.radius + 30.0, 20.0)), g._add_unit("raptor", 0, q.position + Vector2(q.radius + 30.0, 40.0))]
+	for r in one_egg:
+		r.clutch_n = 2           # (two young of one egg, as BroodNew._hatch marks them)
+	var ess0: float = float(p["res2"])
 	var eggs_s0: int = 2
-	r1.cmd_sacrifice()
+	one_egg[0].cmd_sacrifice()
 	var ate: bool = await wait_for(func() -> bool: return float(p["res2"]) > ess0, 8.0)
-	check(ate and float(q.nb.get("devour", 0.0)) > 0.0 and BroodNew.anim(q, false) == "attack", "11. SACRIFICE at the Mother: essence %.0f -> %.0f, she devours it (a swipe)" % [ess0, float(p["res2"])])
-	check(int(q.nb.get("eggs", 0)) == eggs_s0 + 1, "    and she gets 1 egg at once (%d -> %d)" % [eggs_s0, int(q.nb.get("eggs", 0))])
+	check(ate and float(q.nb.get("devour", 0.0)) > 0.0 and BroodNew.anim(q, false) == "attack", "11. SACRIFICE at the Mother: spoils %.0f -> %.0f, she devours it (a swipe)" % [ess0, float(p["res2"])])
+	check(int(q.nb.get("eggs", 0)) == eggs_s0 and int(q.nb.get("eggp", 0)) == BroodNew.EGG_PARTS / 2, "    the first young of an egg: half an egg kept on her, no egg yet (%d eggs, %d/%d)" % [int(q.nb.get("eggs", 0)), int(q.nb.get("eggp", 0)), BroodNew.EGG_PARTS])
+	var ess_mid: float = float(p["res2"])
+	one_egg[1].cmd_sacrifice()
+	await wait_for(func() -> bool: return float(p["res2"]) > ess_mid, 8.0)
+	check(int(q.nb.get("eggs", 0)) == eggs_s0 + 1 and int(q.nb.get("eggp", 0)) == 0 and is_equal_approx(float(p["res2"]) - ess0, 2.0 * Game.sacrifice_value("raptor")),
+		"    both young of one egg: ONE egg back (%d -> %d) and twice the spoils (+%.0f, %d each)" % [eggs_s0, int(q.nb.get("eggs", 0)), float(p["res2"]) - ess0, Game.sacrifice_value("raptor")])
+	var sac_three := []
+	for i in 3:
+		var r: Unit = g._add_unit("raptor", 0, q.position + Vector2(q.radius + 30.0, 20.0 * i))
+		r.clutch_n = 3           # (a BIGGER CLUTCH egg's three)
+		sac_three.append(r)
+	var eggs_s1: int = int(q.nb.get("eggs", 0))
+	var sac_got := []
+	for r in sac_three:
+		var e0: float = float(p["res2"])
+		r.cmd_sacrifice()
+		await wait_for(func() -> bool: return float(p["res2"]) > e0, 8.0)
+		sac_got.append(int(q.nb.get("eggs", 0)) - eggs_s1)
+	check(sac_got == [0, 0, 1] and int(q.nb.get("eggp", 0)) == 0, "    three young of a BIGGER CLUTCH egg: one egg, after the third (eggs back after each: %s)" % str(sac_got))
+	var sac_egg: Unit = g._add_unit(BroodNew.EGG, 0, q.position + Vector2(0, q.radius + 90.0))
+	sac_egg.nb["k"] = "raptor"
+	sac_egg.nb["n"] = 3
+	BroodNew._hatch(g, sac_egg)
+	var sac_young: Array = g.units.filter(func(u) -> bool: return u.kind == "raptor" and u.team == 0 and u.clutch_n == 3 and u.position.distance_to(sac_egg.position) < 30.0)
+	check(sac_young.size() == 3, "    an egg of three hatches three young marked as one egg's three (%d)" % sac_young.size())
+	for u in sac_young:
+		g.consume_unit(u)
+	var sac_br: Unit = g._add_unit("brute", 0, q.position + Vector2(q.radius + 30.0, 20.0))
+	var eggs_s2: int = int(q.nb.get("eggs", 0))
+	var eb: float = float(p["res2"])
+	sac_br.cmd_sacrifice()
+	await wait_for(func() -> bool: return float(p["res2"]) > eb, 10.0)
+	check(int(q.nb.get("eggs", 0)) == eggs_s2 + 1, "    a Brute (one to an egg): a whole egg (%d -> %d)" % [eggs_s2, int(q.nb.get("eggs", 0))])
 	q.nb["eggs"] = BroodNew.eggs_max(q)
+	q.nb["eggp"] = BroodNew.EGG_PARTS / 2
 	var r2: Unit = g._add_unit("raptor", 0, q.position + Vector2(q.radius + 30.0, 20.0))
+	r2.clutch_n = 2
 	var ess1: float = float(p["res2"])
 	r2.cmd_sacrifice()
 	await wait_for(func() -> bool: return float(p["res2"]) > ess1, 8.0)
-	check(int(q.nb.get("eggs", 0)) == BroodNew.eggs_max(q), "    her clutch full: no extra egg (%d)" % int(q.nb.get("eggs", 0)))
+	check(int(q.nb.get("eggs", 0)) == BroodNew.eggs_max(q) and int(q.nb.get("eggp", 0)) == 0, "    her clutch full: the egg it makes is lost, spoils still paid (%d eggs, %d parts)" % [int(q.nb.get("eggs", 0)), int(q.nb.get("eggp", 0))])
 	q.nb["egg_t"] = 0.0
 	# 12. no rooted creature attacks (the owner, 17:14): rooted, the Mother, a Rootmaw, a turtle and the Tyrannosaur can't
 	# hit a foe beside them; uprooted, they can
@@ -499,8 +538,8 @@ func _run() -> void:
 	await wait(float(Defs.NB["egg_time"]) + 1.0)
 	check(int(q.nb.get("eggs", 0)) == 4, "    and no new eggs grow meanwhile (%d)" % int(q.nb.get("eggs", 0)))
 	var nb_grown: bool = await wait_for(func() -> bool: return BroodNew.stage(q) == 1, float(nb_stages[1]["time"]) + 2.0)
-	check(nb_grown and BroodNew.eggs_max(q) == int(nb_stages[1]["eggs"]) and q.radius > nb_r_before * 1.1 and absf(float(BroodNew.lay_rate(g, q)[1]) - float(nb_stages[1]["rate"])) < 0.001,
-		"    stage 2 after %d s: %d eggs held, laying x%.2f, body %.0f -> %.0f px" % [int(nb_stages[1]["time"]), BroodNew.eggs_max(q), float(BroodNew.lay_rate(g, q)[1]), nb_r_before, q.radius])
+	check(nb_grown and BroodNew.eggs_max(q) == int(nb_stages[1]["eggs"]) and BroodNew.drawn_r(q) > nb_r_before * 1.1 and q.radius <= BroodNew.BODY_R and absf(float(BroodNew.lay_rate(g, q)[1]) - float(nb_stages[1]["rate"])) < 0.001,
+		"    stage 2 after %d s: %d eggs held, laying x%.2f, drawn %.0f -> %.0f px, her walking body capped (%.0f, ground %.0f)" % [int(nb_stages[1]["time"]), BroodNew.eggs_max(q), float(BroodNew.lay_rate(g, q)[1]), nb_r_before, BroodNew.drawn_r(q), q.radius, q.ground_r()])
 	check(BroodNew.swamp_sources(g, 0).any(func(sw) -> bool: return absf(float(sw[1]) - float(nb_stages[1]["swamp"])) < 0.01), "    her swamp %.1f tiles" % float(nb_stages[1]["swamp"]))
 	check(BroodNew.grow_problem(g, q).contains(String(Defs.FACTIONS["brood"]["res"][1]).to_lower()), "    stage 3 needs essence: %s" % BroodNew.grow_problem(g, q))
 	p["res2"] = 200.0
@@ -1754,7 +1793,7 @@ func _research(q: Unit, p: Dictionary) -> void:
 	q.cmd_lay("raptor")
 	await wait(0.1)
 	var eg: Array = BroodNew.nest_eggs(g, f)
-	check(gl - int(p["gold"]) == 75 and eg.size() == 1 and int(eg[0].nb.get("n", 0)) == 3, "    an egg paid 75, holding 3")
+	check(gl - int(p["gold"]) == 75 and eg.size() == 1 and int(eg[0].nb.get("n", 0)) == 3, "    an egg paid 75, holding 3 (paid %d, %d in his nest, holding %s; %s)" % [gl - int(p["gold"]), eg.size(), str(eg[0].nb.get("n", 0)) if eg.size() > 0 else "-", BroodNew.lay_problem(g, q, "raptor")])
 	var h3: bool = await wait_for(func() -> bool: return mine("raptor").size() >= r0 + 3, float(Defs.UNITS["raptor"]["time"]) + 4.0)
 	check(h3 and mine("raptor").size() == r0 + 3, "    it hatches 3 Raptors (%d)" % (mine("raptor").size() - r0))
 	check(BroodMature.price(g, 0, "raptor") == [75, 10], "    maturing a Raptor still costs %s (its share of the egg the same)" % str(BroodMature.price(g, 0, "raptor")))
