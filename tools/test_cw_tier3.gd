@@ -71,9 +71,14 @@ func _run() -> void:
 	if g.gear_net.spring_for(works) == null:
 		why = g.can_train(works, N)
 		check("a Works meshing with no Mainspring refuses the Netter (it costs Tension)", why.contains("meshes with no Mainspring"), why)
-		var wsp := _spring_beside(g, works)
+		# (0.24.0: one Mainspring per Clocktower, so the Works moves to the Mainspring instead of a second one coming to it)
+		g._remove_quietly(works)
+		works = _beside(g, Defs.CW_WORKS, spring)
 		U.step(g, 0.6)
-		check("a Mainspring put beside the Works meshes with it", wsp != null and g.gear_net.spring_for(works) != null)
+		check("a Light Works put beside the Mainspring meshes with it", works != null and g.gear_net.spring_for(works) != null)
+		if works == null:
+			_end()
+			return
 	why = g.can_train(works, N)
 	check("with a working Escapement the Netter trains at a small-gear Light Works", why == "", why)
 	why = g.can_train(works, P)
@@ -87,9 +92,18 @@ func _run() -> void:
 	if g.gear_net.spring_for(heavy) == null:
 		U.step(g, 0.6)
 		check("a Heavy Works with no Mainspring stands idle", g.gear_net.needs_spring(heavy) and g.can_train(heavy, P) != "", g.can_train(heavy, P))
-		var hsp := _spring_beside(g, heavy)
+		g._remove_quietly(heavy)
+		heavy = _beside(g, Defs.CW_HEAVY, spring)
+		if heavy == null:
+			# (no room for the big ring by the first Mainspring: 0.24.0 allows one Mainspring per Clocktower, so a second
+			# Clocktower with its own Mainspring, and the Heavy Works beside that one)
+			var spring2 := _second_tower_spring(g, hall)
+			heavy = _beside(g, Defs.CW_HEAVY, spring2)
 		U.step(g, 0.6)
-		check("a Mainspring put beside the Heavy Works meshes with it", hsp != null and g.gear_net.spring_for(heavy) != null)
+		check("a Heavy Works put beside the Mainspring meshes with it", heavy != null and g.gear_net.spring_for(heavy) != null)
+		if heavy == null:
+			_end()
+			return
 	check("the Heavy Works stays on its big gear (no gear swap since 0.24.4)", heavy.gear_big and not g.has_method("swap_gear"))
 	g.players[0]["cap"] = 200          # (the game counts the supply again as it runs: room for the orders)
 	var cogs0 := int(g.players[0]["gold"])
@@ -415,6 +429,44 @@ func _spring_beside(g: Game, b: Building) -> Building:
 			g.gear_net.solve()
 			return m
 	return null
+
+
+## A finished building of `kind` whose ring meshes with the Mainspring m's, linked; null if none fits.
+func _beside(g: Game, kind: String, m: Building) -> Building:
+	if m == null:
+		return null
+	for deg in [0.0, 90.0, 180.0, -90.0, 45.0, 135.0, -45.0, -135.0, 22.0, 67.0, 112.0, 157.0, -22.0, -67.0, -112.0, -157.0]:
+		var c := GearNet.ring_spot(g, 0, kind, m, deg)
+		if c.x >= 0:
+			var b := g._add_building(kind, 0, c, true)
+			g.gear_net.solve()
+			if g.gear_net.spring_for(b) == m:
+				return b
+			g._remove_quietly(b)
+	return null
+
+
+## A second finished Clocktower of team 0 (on open ground away from the first) with a finished Mainspring meshing with it;
+## the Mainspring, or null.
+func _second_tower_spring(g: Game, hall: Building) -> Building:
+	var size: Vector2i = Defs.BUILDINGS["clocktower"]["size"]
+	var best := Vector2i(-1, -1)
+	var bd := INF
+	for y in range(2, g.H - size.y - 2):
+		for x in range(2, g.W - size.x - 2):
+			var c := Vector2i(x, y)
+			var d := Vector2(c - hall.cell).length()
+			if d < float(Defs.HALL_SPACING) + 4.0 or d >= bd:
+				continue
+			if g.placement_problem(0, "clocktower", c, true) != "" or not g.margin_free(c, size + Vector2i(8, 8)) or not g.margin_free(c - Vector2i(4, 4), size + Vector2i(8, 8)):
+				continue
+			best = c
+			bd = d
+	if best.x < 0:
+		return null
+	var tw := g._add_building("clocktower", 0, best, true)
+	g.gear_net.solve()
+	return _spring_beside(g, tw)
 
 
 ## An enemy (team 1) standing still at p.

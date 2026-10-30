@@ -925,6 +925,14 @@ func _build_card() -> Array:
 			if controls.line_from.x >= 0:
 				why = ""
 		list.append(["build", lab, func() -> void: confirm_place(), why == "", why, ""])
+		if GearNet.pickable(k):
+			# GEAR PICK (the owner, 2026-10-30: "Choose the gear size when building and only then"): the button shows the ring
+			# the ghost is on now and switches it (G); fixed once placed. Remembered per kind for the match (Game.gear_pick).
+			var gb := game.gear_big_for(game.human, k)
+			var glab := "BIG GEAR" if gb else "SMALL GEAR"
+			_tip_for[glab] = [gear_pick_title(gb), gear_pick_body(k), gear_pick_stats(k)]
+			list.append(["ab_gear_big" if gb else "ab_gear_small", glab, func() -> void: toggle_gear_pick(), true, "",
+				("+%d" % GearNet.big_extra_cost(k, true)) if gb else ""])
 		if Defs.BUILDINGS[k].get("gate", false):
 			# gates turn to match the palisade they're laid in; this is the way they face
 			# where it doesn't say (no line beside them, or lines both ways): remembered
@@ -1881,6 +1889,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 ## everything else takes the first free letter of its name.
 const FIXED_KEYS := {"MOVE": "V", "ATTACK": "A", "STOP": "S", "HOLD": "H", "PATROL": "P", "BUILD": "B", "ADVANCED": "V", "WORK": "G",
 	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "REPAIR": "R", "ROTATE": "R", "GRUBS": "F", "CANCEL": "X", "BACK": "X", "ABANDON": "X", "DEMOLISH": "Z", "MORE": "T", "PLACE": "F",
+	"SMALL GEAR": "G", "BIG GEAR": "G",      # (GEAR PICK on the placing card)
 	"CANISTER": "C", "ROUND SHOT": "C",
 	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "FOG": "F", "TONGUE": "T", "MIASMA": "Q", "HARVEST": "Q", "SACRIFICE": "C", "START": "F", "END": "F",
 	"JUMP": "E", "HIGH LEAP": "E", "MORPH TO OWL": "E", "CANCEL MORPH": "X", "TICKING OWL": "E",
@@ -2176,6 +2185,46 @@ func confirm_nb_root(queued := false) -> void:
 		controls.cancel_mode()
 
 
+## GEAR PICK: switch the ring the placing ghost is on (SMALL GEAR / BIG GEAR, key G), remembered for the kind.
+func toggle_gear_pick() -> void:
+	var k := controls.place_kind
+	if controls.mode != "place" or not GearNet.pickable(k):
+		return
+	var big := not game.gear_big_for(game.human, k)
+	game.set_gear_pick(game.human, k, big)
+	var trade := GearEcon.trade_line(k, big)
+	if big:
+		toast(Loc.t("BIG GEAR: +%d cogs, +%d s to build, a wider ring.") % [GearNet.big_extra_cost(k, true), int(GearNet.big_extra_time(k, true))]
+			+ (" " + trade if trade != "" else ""))
+	else:
+		toast(Loc.t("SMALL GEAR: its own price, a smaller ring.") + (" " + trade if trade != "" else ""))
+	_card_fresh = true
+	_redraw_t = 0.0
+
+
+func gear_pick_title(big: bool) -> String:
+	return Loc.t("Big gear (press for small)") if big else Loc.t("Small gear (press for big)")
+
+
+## The GEAR PICK button's tooltip: what each ring gives this kind, and what the big one costs.
+func gear_pick_body(k: String) -> String:
+	var s := Loc.t("Pick the ring it is built on, now and only now: it can't be changed later.")
+	var ts := GearEcon.trade_line(k, false)
+	var tb := GearEcon.trade_line(k, true)
+	if ts != "":
+		s += " " + ts
+	s += " " + (tb if tb != "" else Loc.t("Big gear: a wider ring that reaches farther."))
+	s += " " + Loc.t("The big ring costs %d cogs more, takes %d s longer to build and needs more room: it may not cut into another ring.") \
+		% [GearNet.big_extra_cost(k, true), int(GearNet.big_extra_time(k, true))]
+	return s
+
+
+func gear_pick_stats(k: String) -> String:
+	var bd: Dictionary = Defs.BUILDINGS[k]
+	return Loc.t("Small: %d cogs, %d s  ·  Big: %d cogs, %d s") % [int(bd["cost"]), int(bd["time"]),
+		int(bd["cost"]) + GearNet.big_extra_cost(k, true), int(float(bd["time"]) + GearNet.big_extra_time(k, true))]
+
+
 func confirm_place(queued := false) -> void:
 	queued = queued and Settings.pc()
 	var k := controls.place_kind
@@ -2188,9 +2237,9 @@ func confirm_place(queued := false) -> void:
 		_log_refused(k, why)
 		Sfx.announce(game.faction_of(game.human), "bad_place", 4.0)
 		return
-	if game.players[game.human]["gold"] < int(Defs.BUILDINGS[k]["cost"]):
+	if game.players[game.human]["gold"] < game.build_price(game.human, k):      # (a BIG gear's extra too: GEAR PICK)
 		toast("Not enough %s." % _res()[0].to_lower())
-		_log_refused(k, "not enough %s: it costs %d" % [_res()[0].to_lower(), int(Defs.BUILDINGS[k]["cost"])])
+		_log_refused(k, "not enough %s: it costs %d" % [_res()[0].to_lower(), game.build_price(game.human, k)])
 		return
 	if game.tension_problem(game.human, Defs.tension_cost(Defs.BUILDINGS[k])) != "":
 		toast(game.tension_problem(game.human, Defs.tension_cost(Defs.BUILDINGS[k])))
@@ -2213,7 +2262,7 @@ func confirm_place(queued := false) -> void:
 			var pc: Vector2 = c.plan_end() if queued else c.position
 			return pa.distance_to(g) < pc.distance_to(g))
 		builders = builders.slice(0, 1)
-	var b := game.place_building(game.human, k, controls.ghost_cell, builders, queued)
+	var b := game.place_building(game.human, k, controls.ghost_cell, builders, queued, 1 if game.gear_big_for(game.human, k) else 0)
 	if b:
 		Sfx.play_any(["ui/click", "click"])
 	controls.cancel_mode()
@@ -4369,6 +4418,11 @@ func _card_tip(it: Array) -> Dictionary:
 			st += "  ·  %d of %d here" % [game.econ_count(game.human, k), game.econ_limit(game.human, k)]
 		t["stats"] = st
 		t["body"] = Defs.tip(k)
+		if GearNet.pickable(k):
+			# GEAR PICK: the ring is picked while placing, and its big one's price and trade
+			var tb := GearEcon.trade_line(k, true)
+			t["body"] = Loc.t(t["body"]) + "  " + Loc.t("Placed on a SMALL or a BIG gear (G while placing; fixed once placed): the big one costs %d cogs more and takes %d s longer.") \
+				% [GearNet.big_extra_cost(k, true), int(GearNet.big_extra_time(k, true))] + (" " + tb if tb != "" else "")
 	elif lab == "WORK":
 		t["body"] = "Automatic work (glowing = on): idle workers go back to their posts by themselves. Press to switch it off, to scout or keep a builder free."
 	elif lab == "REPAIR":

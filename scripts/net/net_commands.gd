@@ -172,6 +172,12 @@ static func _apply(s: NetSession, team: int, c: Dictionary) -> String:
 			return "not yours"
 	_clean_refs(args)
 	if fn == "place_building" and args.size() >= 5:
+		if not Defs.BUILDINGS.has(String(args[1])):
+			return "bad args"
+		if args.size() >= 6:
+			# GEAR PICK: the ring the guest placed it on (checked and paid for at that size; Game.place_building)
+			args[5] = 1 if int(args[5]) == 1 else 0
+			game.set_gear_pick(team, String(args[1]), int(args[5]) == 1)
 		var why := game.placement_problem(team, String(args[1]), args[2])
 		if why != "":
 			return why
@@ -189,7 +195,7 @@ static func _build_cost_problem(game: Game, team: int, k: String) -> String:
 	if not Defs.BUILDINGS.has(k):
 		return "bad args"
 	var res: Array = Defs.FACTIONS[game.faction_of(team)]["res"]
-	if int(game.players[team]["gold"]) < int(Defs.BUILDINGS[k]["cost"]):
+	if int(game.players[team]["gold"]) < game.build_price(team, k):      # (a BIG gear's extra too: GEAR PICK)
 		return "Not enough %s." % String(res[0]).to_lower()
 	if game.tension(team) < float(Defs.tension_cost(Defs.BUILDINGS[k])):
 		return "Not enough %s." % "tension"

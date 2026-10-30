@@ -88,6 +88,27 @@ static func big_only(kind: String) -> bool:
 	return (Defs.GEAR["big_only"] as Array).has(kind)
 
 
+## GEAR PICK (the owner, 2026-10-30: "Choose the gear size when building and only then"): may a building of `kind` be
+## placed on either ring (picked on the placing ghost, fixed once placed)? Every gear-mode Clockwork building but the
+## Clocktower (its own ring) and the big-only kinds; not the Line's pieces.
+static func pickable(kind: String) -> bool:
+	if not Defs.gear_mode or not Defs.BUILDINGS.has(kind):
+		return false
+	var d: Dictionary = Defs.BUILDINGS[kind]
+	return d["faction"] == "clockwork" and kind != "clocktower" and not big_only(kind) and not d.get("line", false) \
+		and d.has("size")
+
+
+## The extra cogs and seconds a BIG ring adds to a `kind` (0 on its small ring, and for the big-only kinds: their price
+## is their own). Defs.GEAR "big_pick".
+static func big_extra_cost(kind: String, big: bool) -> int:
+	return int(Defs.GEAR["big_pick"]["cost"]) if big and pickable(kind) else 0
+
+
+static func big_extra_time(kind: String, big: bool) -> float:
+	return float(Defs.GEAR["big_pick"]["time"]) if big and pickable(kind) else 0.0
+
+
 ## SIZE SETS THE TEMPO (owner, 2026-10-27): the work-speed multiplier of a `kind` on its big (or small) ring, Defs.GEAR
 ## "tempo" [small, big]; 1 for a kind not listed (it trades by crew, by its screw, or not at all).
 static func tempo_of(kind: String, big: bool) -> float:
@@ -582,7 +603,8 @@ static func ring_spot(game: Game, t: int, kind: String, around: Building, deg: f
 	var size: Vector2i = Defs.BUILDINGS[kind]["size"]
 	var hc := b_c(around)
 	var hr := b_r(around)
-	var r := ring_r(kind, size, false)
+	var big := game.gear_big_for(t, kind)          # (GEAR PICK: the ring this side would place it on)
+	var r := ring_r(kind, size, big)
 	var want := deg_to_rad(deg)
 	var best := Vector2i(-1, -1)
 	var bs := INF
@@ -600,7 +622,7 @@ static func ring_spot(game: Game, t: int, kind: String, around: Building, deg: f
 			var score := absf(gap) + (0.0 if absf(gap) <= float(Defs.GEAR["mesh_tol"]) else 12.0) + da * 60.0
 			if score >= bs:
 				continue
-			if not level_ok(game, kind, c, false, around):
+			if not level_ok(game, kind, c, big, around):
 				continue          # (THE LEVEL RULE: on around's level, meeting it there)
 			if game.placement_problem(t, kind, c, unseen) != "" or not game.margin_free(c, size):
 				continue
@@ -813,7 +835,7 @@ func _draw() -> void:
 		_draw_turret_circles(placing == Defs.CW_TURRET and ctl.ghost_cell.x >= 0, ctl.ghost_cell if ctl else Vector2i(-1, -1))
 	# the placement ghost's ring, over the others so a clash reads
 	if placing != "" and Defs.BUILDINGS[placing]["faction"] == "clockwork":
-		draw_ghost(self, game.human, placing, ctl.ghost_cell)
+		draw_ghost(self, game.human, placing, ctl.ghost_cell, game.gear_big_for(game.human, placing))      # (at the size picked: GEAR PICK)
 	draw_set_transform(Vector2.ZERO)
 
 
@@ -1188,6 +1210,16 @@ func draw_ghost_label(ci: CanvasItem, t: int, k: String, c: Vector2i, big := fal
 	ci.draw_rect(Rect2(at + Vector2(-6, -14), Vector2(w + 12, 20)), Color(0.05, 0.05, 0.07, 0.85))
 	ci.draw_rect(Rect2(at + Vector2(-6, -14), Vector2(w + 12, 20)), col, false, 1.5)
 	ci.draw_string(font, at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, col)
+	if pickable(k):
+		# GEAR PICK: the ring it would be placed on, under the verdict (the G key, or the card's button, switches it)
+		var tag := Loc.t("BIG GEAR") if big else Loc.t("SMALL GEAR")
+		if Settings.pc():
+			tag += "  [G]"
+		var tw := font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+		var tat := centre + Vector2(-tw * 0.5, -float(size.y) * T * 0.5 - 56.0)      # (above the verdict, clear of the building)
+		var tc := Color(0.95, 0.8, 0.45) if big else Color(0.85, 0.85, 0.8)
+		ci.draw_rect(Rect2(tat + Vector2(-5, -12), Vector2(tw + 10, 16)), Color(0.05, 0.05, 0.07, 0.8))
+		ci.draw_string(font, tat, tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, tc)
 
 
 ## The ghost's verdict for kind k at cell c, translated, and its colour: [text, Color]. LINKS (with the % it would work at:

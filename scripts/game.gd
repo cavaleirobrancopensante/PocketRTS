@@ -153,6 +153,10 @@ var groups: Array = [[], [], [], [], [], [], [], [], [], []]   # control groups 
 ## Escapement and the Heavy Works' big ring by a Mainspring (AI._keep_heavy, 0.14.94). Not saved: the computer works it
 ## out again.
 var ai_keep := {}
+## GEAR PICK (the owner, 2026-10-30: "Choose the gear size when building and only then"): team -> {kind -> true for BIG},
+## the ring each side last picked for each kind while placing (GearNet.pickable kinds; small when not set). Remembered for
+## the match (kept in the autosave); a building's own ring (Building.gear_big) is fixed when it is placed.
+var gear_pick := {}
 var cam_slots: Array = [null, null, null, null, null, null, null]   # camera hotkeys F4-F10: [position, zoom] or null (kept in the autosave)
 var _hash := {}
 var _path_queue: Array = []
@@ -3215,7 +3219,7 @@ func site_failed(b: Building, why := "blocked") -> void:
 	if b.dead:
 		return
 	var t := b.team
-	var cost := int(b.d["cost"])
+	var cost := b.price()          # (a BIG gear's extra too: GEAR PICK)
 	players[t]["gold"] += cost
 	add_tension(t, float(Defs.tension_cost(b.d)))          # (and its Tension price, all of it)
 	stats[t]["spent"] -= cost
@@ -4610,7 +4614,7 @@ func placement_problem(t: int, k: String, c: Vector2i, ai := false, limits_check
 			if ai and not Defs.BUILDINGS[k].get("line", false) and _near_ramp(cc):
 				return "Keep the ramp clear."
 	if Defs.gear_mode and Defs.BUILDINGS[k]["faction"] == "clockwork" and not _gear_relax:
-		var gp := gear_net.placement_problem(t, k, c)      # (the gear ring must touch the connected field: scripts/gear.gd)
+		var gp := gear_net.placement_problem(t, k, c, gear_big_for(t, k))      # (its ring, at the size picked, must touch the connected field: scripts/gear.gd)
 		if gp != "":
 			return gp
 	if k == Defs.CW_TURRET:
@@ -4660,6 +4664,30 @@ func _pipe_in_way(t: int, c: Vector2i, size: Vector2i, by_sight: bool) -> bool:
 var _gear_relax := false             # the starting layout may skip the gear rule when no linked spot is found
 
 
+## GEAR PICK: would team t place a building of kind k on its BIG ring now (the big-only kinds always; a pickable kind as
+## last picked, small by default)?
+func gear_big_for(t: int, k: String) -> bool:
+	if GearNet.big_only(k):
+		return Defs.gear_mode
+	if not GearNet.pickable(k):
+		return false
+	return bool((gear_pick.get(t, {}) as Dictionary).get(k, false))
+
+
+## GEAR PICK: team t's ring for kind k from now on (the placing ghost's SMALL GEAR / BIG GEAR, the computer's choice).
+func set_gear_pick(t: int, k: String, big: bool) -> void:
+	if not GearNet.pickable(k):
+		return
+	if not gear_pick.has(t):
+		gear_pick[t] = {}
+	gear_pick[t][k] = big
+
+
+## The first-resource price team t pays to place kind k now: its cost, and a BIG gear's extra (GEAR PICK).
+func build_price(t: int, k: String) -> int:
+	return int(Defs.BUILDINGS[k]["cost"]) + GearNet.big_extra_cost(k, gear_big_for(t, k))
+
+
 func _near_ramp(c: Vector2i) -> bool:
 	if not in_map(c):
 		return _near_ramp_slow(c)
@@ -4685,9 +4713,15 @@ func _near_ramp_slow(c: Vector2i) -> bool:
 
 
 ## queued (Shift): the builders go to it after the orders they already have.
-func place_building(t: int, k: String, c: Vector2i, builders: Array, queued := false) -> Building:
-	if net_forward(self, "place_building", [t, k, c, builders, queued]): return null
-	if placement_problem(t, k, c) != "" or players[t]["gold"] < int(Defs.BUILDINGS[k]["cost"]):
+## big (GEAR PICK, a Clockwork building GearNet.pickable): 1 places it on its BIG ring, 0 on its small one, -1 on the ring
+## this side last picked for the kind (gear_pick). The size travels with the order online and is remembered for the kind.
+func place_building(t: int, k: String, c: Vector2i, builders: Array, queued := false, big := -1) -> Building:
+	if big < 0:
+		big = 1 if gear_big_for(t, k) else 0
+	if net_forward(self, "place_building", [t, k, c, builders, queued, big]): return null
+	set_gear_pick(t, k, big == 1)
+	var price := build_price(t, k)
+	if placement_problem(t, k, c) != "" or players[t]["gold"] < price:
 		return null
 	if tension(t) < float(Defs.tension_cost(Defs.BUILDINGS[k])):
 		return null          # (gear mode: a building's Tension price, the Clock Aviary's)
@@ -4706,11 +4740,13 @@ func place_building(t: int, k: String, c: Vector2i, builders: Array, queued := f
 		var old_gate := _own_gate_at(t, c)
 		if old_gate:
 			_remove_quietly(old_gate)
-	players[t]["gold"] -= int(Defs.BUILDINGS[k]["cost"])
+	players[t]["gold"] -= price
 	add_tension(t, -float(Defs.tension_cost(Defs.BUILDINGS[k])))
-	stats[t]["spent"] += int(Defs.BUILDINGS[k]["cost"])
+	stats[t]["spent"] += price
 	stats[t]["built"] += 1
 	var b := _add_building(k, t, c, false, true)     # a ghost until its building starts
+	if GearNet.pickable(k):
+		b.gear_big = gear_big_for(t, k)          # (GEAR PICK: its ring, fixed from now on)
 	last_placed[t] = {"at": b.center(), "t": clock, "kind": k}
 	if Defs.BUILDINGS[k]["faction"] == "clockwork":
 		b.seeded = false
@@ -9185,16 +9221,16 @@ func abandon(b: Building) -> void:
 		return
 	if b.ghost:
 		# it never began: all of it comes back (its Tension too)
-		players[b.team]["gold"] += int(b.d["cost"])
+		players[b.team]["gold"] += b.price()
 		add_tension(b.team, float(Defs.tension_cost(b.d)))
-		stats[b.team]["spent"] -= int(b.d["cost"])
+		stats[b.team]["spent"] -= b.price()
 		stats[b.team]["built"] = maxi(0, int(stats[b.team]["built"]) - 1)
 		remove_ghost(b)
 		for u in units.duplicate():
 			if u.team == b.team and not u.dead and u.order == "build" and u.order_target == b:
 				u.site_gone()
 		return
-	players[b.team]["gold"] += int(int(b.d["cost"]) * 0.75)
+	players[b.team]["gold"] += int(b.price() * 0.75)
 	add_tension(b.team, float(int(Defs.tension_cost(b.d) * 0.75)))      # (a begun building: three quarters, like the cogs)
 	b.take_damage(9999999.0, null)
 	if b.crate_obj and is_instance_valid(b.crate_obj):
@@ -9213,7 +9249,7 @@ func _takes_kept(t: int, k: String, c: Vector2i, kk: String) -> bool:
 	if Defs.gear_mode and String(Defs.BUILDINGS[k]["faction"]) == "clockwork" and String(Defs.BUILDINGS[kk]["faction"]) == "clockwork":
 		var ga := GearNet.gpos(Vector2(c) * T + Vector2(sz) * T * 0.5)
 		var gb := GearNet.gpos(Vector2(kc) * T + Vector2(ks) * T * 0.5)
-		if ga.distance_to(gb) - GearNet.ring_r(k, sz, false) - GearNet.ring_r(kk, ks, false) < -float(Defs.GEAR["overlap"]) * T:
+		if ga.distance_to(gb) - GearNet.ring_r(k, sz, gear_big_for(t, k)) - GearNet.ring_r(kk, ks, gear_big_for(t, kk)) <-float(Defs.GEAR["overlap"]) * T:
 			return true
 	return false
 
@@ -10124,7 +10160,7 @@ func _draw_overlay_all() -> void:
 		var c: Vector2i = controls.ghost_cell
 		var ok := placement_problem(human, k, c) == ""
 		if Defs.gear_mode and Defs.BUILDINGS[k]["faction"] == "clockwork":
-			gear_net.draw_ghost_label(overlay, human, k, c)
+			gear_net.draw_ghost_label(overlay, human, k, c, gear_big_for(human, k))
 		for y in size.y:
 			for x in size.x:
 				var cc := c + Vector2i(x, y)

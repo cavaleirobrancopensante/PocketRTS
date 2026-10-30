@@ -1322,6 +1322,34 @@ func _res2() -> float:
 
 
 
+## GEAR PICK: the extra posts its BIG Cog Presses have over small ones (8 Winders against 5 each), for the Winder cap.
+func _big_press_room() -> int:
+	if not Defs.gear_mode:
+		return 0
+	var extra := int(Defs.GEAR["press"]["big"]["crew"]) - int(Defs.GEAR["press"]["small"]["crew"])
+	var n := 0
+	for b in _mine(Defs.GEAR_PRESS):
+		if b.gear_big and b.lode_left() > 0.0:
+			n += extra
+	return n
+
+
+## GEAR PICK, the computer's rule (simple, on purpose): a BIG Cog Press only when the Winders to fill it already stand
+## spare (Winders beyond every working post of its presses and Mainsprings, the builder and the army's escort aside);
+## everything else on its small ring.
+func _want_big_gear(kind: String) -> bool:
+	if kind != Defs.GEAR_PRESS or not Defs.gear_mode:
+		return false
+	var posts := 0
+	for b in game.buildings:
+		if b.team == team and not b.dead and b.crew_max() > 0:
+			if b.kind == Defs.GEAR_PRESS and b.lode_left() <= 0.0:
+				continue
+			posts += b.crew_max()
+	var spare := game.workers(team).size() - posts - 1 - _escort.size()
+	return spare >= int(Defs.GEAR["press"]["big"]["crew"])
+
+
 func _workers() -> void:
 	var labs := game.workers(team)
 	var cap := 0
@@ -1340,7 +1368,7 @@ func _workers() -> void:
 	if _clock():
 		# a base is saturated at ~13 Winders (Clocktower 4, 4-5 a Boiler; gear mode since 0.24.0: two Cog Presses of 5 and a
 		# Mainspring of 3): the rest of the supply is for the army
-		want = mini(want, (13 if Defs.gear_mode else 14) * _halls().size() + extra + 2)
+		want = mini(want, (13 if Defs.gear_mode else 14) * _halls().size() + extra + 2 + _big_press_room())
 		want = mini(want, 36 if difficulty >= 3 else _lv([16, 26, 32]))
 	var worker: String = _f()["worker"]
 	var queued := 0
@@ -3539,6 +3567,16 @@ func site_failed(b: Building, why := "blocked") -> void:
 func _construct(kind: String, at := Vector2i(-1, -1)) -> void:
 	if _gold() < int(Defs.BUILDINGS[kind]["cost"]):
 		return
+	if GearNet.pickable(kind):
+		# GEAR PICK (the owner, 2026-10-30): the computer picks the ring before it looks for a spot, so the spot search and
+		# the placement check use that ring. A BIG Cog Press when it has the spare Winders to fill one and the cogs, if a
+		# spot has room for the big ring; every other kind (and a press without them, or a spot given) on its small ring.
+		var big := at.x < 0 and _want_big_gear(kind) and _gold() >= int(Defs.BUILDINGS[kind]["cost"]) + GearNet.big_extra_cost(kind, true)
+		game.set_gear_pick(team, kind, big)
+		if big and _find_spot(kind).x < 0:
+			game.set_gear_pick(team, kind, false)          # (no room for the big ring: the small one)
+		if _gold() < game.build_price(team, kind):
+			return
 	if kind != String(_f()["hall"]) and not (Defs.is_econ(kind) and ((_dry() and _busy_building(_f()["hall"])) or _bare_hall())) and _keeping() \
 			and _gold() - int(Defs.BUILDINGS[kind]["cost"]) < _hall_keep():
 		return          # (round 6: the soil is nearly spent: a Town Hall's gold stays in the bank)
