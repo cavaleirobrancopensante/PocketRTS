@@ -300,6 +300,33 @@ func _run() -> void:
 	check(g2.cam_slots[6] != null and (g2.cam_slots[6][0] as Vector2).distance_to(Vector2(2000, 1500)) < 1.0, "camera view F10 came back")
 	check(g2.cam_slots[1] != null, "camera view F5 came back")
 	SaveGame.clear()
+	# ---- a key held down fires once (the owner, 2026-10-30: a held B opened BUILD and then picked the Barracks;
+	# some browsers send repeats as fresh presses, not echoes)
+	main._to_menu()
+	await process_frame
+	await process_frame
+	var r4: Array = await _start()
+	var g4: Game = r4[1]
+	var ctl: Controls = g4.hud.controls
+	g4.set_selection([g4.labourers(0)[0]])
+	g4.hud.page = ""
+	ctl.mode = ""
+	await process_frame
+	var kb := _key(KEY_B)
+	ctl._unhandled_input(kb)
+	await process_frame
+	var page1 := String(g4.hud.page)
+	ctl._unhandled_input(_key(KEY_B))          # (the same key again, not let go: a repeat sent as a fresh press)
+	await process_frame
+	check(page1 != "" and ctl.mode != "place", "a held B opens BUILD and does not pick a building (page '%s', mode '%s')" % [page1, ctl.mode])
+	var up := _key(KEY_B)
+	up.pressed = false
+	ctl._input(up)
+	var freed := not ctl._held.has(KEY_B)
+	ctl._unhandled_input(_key(KEY_B))          # (let go, pressed again: taken as a new press)
+	await process_frame
+	check(freed and ctl._held.has(KEY_B), "let go, B counts as a new press again")
+	SaveGame.clear()
 	# ---- the Brood has no buildings: F3 (MAKE) selects the Brood Mother (the owner, 2026-10-30)
 	main._to_menu()
 	await process_frame

@@ -56,6 +56,7 @@ var _last_click_t := 0
 var _last_click_kind := ""
 # Shift-queued orders (computer only): MOVE / ATTACK / REPAIR and building placement stay
 # open while Shift is held, and close when it's let go (as in StarCraft)
+var _held := {}             # keys down now (a key fires again only after it was let go)
 var _shift_kept := false
 
 
@@ -203,6 +204,8 @@ func _unhandled_input(event: InputEvent) -> void:
 ## _unhandled_input didn't get it (_touches still has it once the event is through), ended by _touch_lost. The mouse
 ## buttons are checked every frame (_end_lost_drags).
 func _input(event: InputEvent) -> void:
+	if event is InputEventKey and not (event as InputEventKey).pressed:
+		_held.erase((event as InputEventKey).keycode)        # (let go: it may fire again)
 	if event is InputEventScreenTouch and not (event as InputEventScreenTouch).pressed and _touches.has((event as InputEventScreenTouch).index):
 		_touch_lost.call_deferred((event as InputEventScreenTouch).index)
 
@@ -276,10 +279,14 @@ func _on_input(event: InputEvent) -> void:
 				_box_from = _lmb_from
 			if _box_from != Vector2.INF:
 				_box_to = mm.position
-	elif event is InputEventKey and event.pressed and not event.is_echo():
+	elif event is InputEventKey and event.pressed and not event.is_echo() and not _held.has((event as InputEventKey).keycode):
+		_held[(event as InputEventKey).keycode] = true
 		_key(event as InputEventKey)
-	elif event is InputEventKey and event.pressed and event.is_echo() and Settings.pc() and hud \
+	elif event is InputEventKey and event.pressed and Settings.pc() and hud \
 			and not (event as InputEventKey).ctrl_pressed:
+		# (a key held down: its repeats, flagged echo or not; some browsers send repeats as fresh presses, so a key
+		# counts as new only after it was let go: the owner, 2026-10-30, a held B opened BUILD and then picked the
+		# Barracks. Only training repeats while held: HUD.hotkey's `repeat`)
 		# a train key held down repeats (as in StarCraft 2): one more in the queue each repeat
 		hud.hotkey((event as InputEventKey).keycode, true)
 	elif event is InputEventKey and not event.pressed and (event as InputEventKey).keycode == KEY_SHIFT:
@@ -372,6 +379,8 @@ func _drag(e: InputEventScreenDrag) -> void:
 
 
 func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+		_held.clear()          # (a key let go while the window had no focus sends no release)
 	if what == NOTIFICATION_WM_MOUSE_EXIT:
 		_mouse_inside = false
 		# left past an edge (to the browser's tabs, the taskbar...): keep scrolling that way

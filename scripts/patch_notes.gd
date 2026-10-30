@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.2", "items": [
+		"A key held down fires only once (training keys still repeat): holding B no longer opens BUILD and then picks the Barracks. Some browsers send a held key's repeats as fresh presses; a key now counts again only after it is let go.",
+	]},
 	{"v": "0.24.1", "items": [
 		"NO SOUNDS THROUGH THE FOG: a sound at a spot you can't see (an enemy's hammer on a building going up, gunfire, a death in the fog) is no longer heard. Your own base and your allies' are always heard; alerts and the announcer still speak; watching computers with all vision, a replay or FOG: OFF hear everything. Online, each player hears by his own vision.",
 		"THE COMPUTER (ALMOST) NEVER USES PLAIN MOVE: a computer's soldier sent to scout now goes on attack-move (a Musketeer scout was killed by one Raptor without firing back): it fires at enemies that fight back but not at every hall on its loop, turns and fights one or two it can't outrun, and walks home on attack-move (driven off, it still retreats on a plain move). A raider hunting workers attack-moves when an enemy soldier is in reach; the Brood's Raptor scout and its army gathering at the staging point attack-move too. Retreats, workers, siege set-up, wagons and horses still walk.",
