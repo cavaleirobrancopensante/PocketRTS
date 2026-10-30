@@ -3054,7 +3054,7 @@ func hidden_ghost(b: Building, t: int) -> bool:
 func _push_units_out(r: Rect2, keep: Array = []) -> void:
 	for u in units:
 		if not u.dead and not u.is_air() and not keep.has(u) and r.grow(u.radius).has_point(u.position) \
-				and not _clear_at(u.position, u.radius, u.team):
+				and not _clear_at(u.position, u.ground_r(), u.team):
 			u.position = cell_center(nearest_free(cell_of(u.position), 8))
 			note_move(u)
 			if u._k_fac == "brood" and BroodNew.on(self, u.team):

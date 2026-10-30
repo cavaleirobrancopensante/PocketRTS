@@ -455,9 +455,33 @@ static func progress(g: Game, u: Unit) -> Dictionary:
 	return {}
 
 
-## Her size follows her stage: her body (radius), and her sprite (_rooted_look).
+## HER BODY AND HER PICTURE (the owner, 2026-10-30 07:43): her picture grows with her stage (x1.0 / x1.15 / x1.3:
+## drawn_r 40 / 46 / 52); her body does not. Her radius (how units keep apart from her, her path's margin) stays at most
+## BODY_R at every stage, and the ground she walks with is smaller still (GROUND_R, below), so she goes up and down every
+## ramp at every stage. Her bigger picture keeps its own size where it is seen and felt: others reach her from her
+## drawn edge (Unit.rect), she reaches from it (Unit._range), a click anywhere on her picture picks her
+## (BroodRoot.body_hit), and her ring, shadow, bars and eggs go by drawn_r.
+const BODY_R := 40.0
+## The body the big rooting creatures (her, the Sires, the Mound Turtle) WALK THE GROUND with (Unit.ground_r): at most
+## this. Its footprint (0.6 of it each side, 29 px across) fits any lane of the narrowest ramp (2 tiles: each lane's
+## middle is 16 px from the rail), so wherever the path runs on a ramp she can stand on it.
+const GROUND_R := 24.0
+
+
+## Her drawn size as a radius: her kind's radius x her stage's scale.
+static func drawn_r(q: Unit) -> float:
+	return float(q.d["radius"]) * float(stage_def(q)["scale"])
+
+
+## The radius to draw a creature's ring, shadow and bars by: the Mother's drawn size, else its body.
+static func look_r(u: Unit) -> float:
+	return drawn_r(u) if u.kind == QUEEN else u.radius
+
+
+## Her size follows her stage: her sprite (_rooted_look) and her drawn size (drawn_r); her walking body is capped
+## (BODY_R).
 static func apply_stage(q: Unit) -> void:
-	q.radius = float(q.d["radius"]) * float(stage_def(q)["scale"])
+	q.radius = minf(drawn_r(q), BODY_R)
 	# her own picture at each stage (the owner's stage-2 and stage-3 sheets, brought to her stage-1 body by
 	# tools/import_brood_mature.py; the stage's scale below still makes her x1.15 and x1.3)
 	var a := BroodMature.stage_art(stage(q))
@@ -516,11 +540,11 @@ static func lay(g: Game, q: Unit, k: String) -> String:
 	var n := int(q.nb.get("laid", 0))
 	q.nb["laid"] = n + 1
 	var side := back.orthogonal() * float((n % 5) - 2) * 11.0
-	var p := q.position + back * (q.radius + 14.0) + side
+	var p := q.position + back * (drawn_r(q) + 14.0) + side
 	if rooted(q) or q.tesla_mode != "packed":
 		# rooted, curled round her nest facing south-east: the eggs roll out in front of the nest's rim, south-west of her
 		# middle, where they can be seen (behind her they lay under her great body)
-		p = q.position + Vector2(-34.0 + float((n % 5) - 2) * 15.0, q.radius + 16.0 + float(n % 2) * 8.0)
+		p = q.position + Vector2(-34.0 + float((n % 5) - 2) * 15.0, drawn_r(q) + 16.0 + float(n % 2) * 8.0)
 	var fk := father_of(k)
 	var fa: Unit = father(g, q.team, fk) if fk != "" else null
 	var on_top := false
@@ -596,7 +620,7 @@ static func egg_spot(g: Game, q: Unit, pref: Vector2) -> Array:
 	if egg_free(g, pref, q.team):
 		return [pref, false]
 	var rooted_q := BroodRoot.has_fp(q) and q.tesla_mode != "packed"
-	var r := BroodRoot.rect_of(q) if rooted_q else Rect2(q.position - Vector2(q.radius, q.radius), Vector2(q.radius, q.radius) * 2.0)
+	var r := BroodRoot.rect_of(q) if rooted_q else q.rect()
 	var c := r.get_center()
 	var want := (pref - c).normalized() if pref.distance_to(c) > 1.0 else Vector2.DOWN
 	if rooted_q:
@@ -723,6 +747,8 @@ static func _hatch(g: Game, e: Unit) -> void:
 		var off := Vector2.from_angle(TAU * i / maxf(1.0, n) + float(e.serial)) * (6.0 if n > 1 else 0.0)
 		var u := g._add_unit(k, t, at + off)
 		u.facing = Vector2.DOWN
+		if n > 1:
+			u.clutch_n = n          # (its share of the egg, for SACRIFICE: devour)
 		if not BroodRoot.send(g, u, rp, i) and k == "grub":     # (to the rally: the Mother's, the egg's own, or the father's for his nest)
 			var src := free_source(g, t, u.position)
 			if src:
@@ -909,6 +935,7 @@ const MOTHER_NEAR := 10.0
 
 
 static func mother_guard(g: Game, q: Unit, st: Dictionary, dt: float) -> void:
+	q.nb["leash"] = 1             # (the computer's Mother: she never chases, Unit._engage, mother_chases)
 	if not st.has("home"):
 		st["home"] = q.position
 		st["calm"] = 0.0
@@ -949,14 +976,41 @@ static func mother_guard(g: Game, q: Unit, st: Dictionary, dt: float) -> void:
 					q.cmd_deploy()
 
 
+## Does the uprooted Mother chase her target out of her reach (Unit._engage)? Only on the player's own orders: ATTACK
+## (the target she was told to hit) and ATTACK-MOVE. She stands her ground against what she picks for herself (idle, on
+## HOLD) and always on the computer's leash (mother_guard). Before 0.22.1 she never chased: sent at a gate on a ramp she
+## stood at the ramp's foot (docs/brood_fixes.md).
+static func mother_chases(q: Unit) -> bool:
+	if int(q.nb.get("leash", 0)) == 1:
+		return false
+	return (q.order == "attack" and q.target == q.order_target) or q.order == "amove"
+
+
+## SACRIFICE's egg back, in parts of an egg: EGG_PARTS make one (12: a half, a third and a quarter are whole numbers).
+const EGG_PARTS := 12
+
+
+## The parts of an egg a creature offered up gives back: its egg's share (a Raptor of a two-egg clutch 6, of a BIGGER
+## CLUTCH 4; one hatched alone, a Brute, a Challenger, 12: a whole egg).
+static func egg_share(u: Unit) -> int:
+	var n := u.clutch_n if u.clutch_n > 0 else int(Defs.UNITS[u.kind].get("spawn", 1))
+	return EGG_PARTS / clampi(n, 1, EGG_PARTS)
+
+
 ## SACRIFICE at the Mother: she turns on the creature offered up and devours it (her swipe frames).
 static func devour(q: Unit, u: Unit) -> void:
 	if q.dead:
 		return
 	q.nb["devour"] = 0.65
-	# each offering gives her one egg at once, on top of the essence (the owner, 17:20; none if her clutch is full)
-	if int(q.nb.get("eggs", 0)) < eggs_max(q):
-		q.nb["eggs"] = int(q.nb.get("eggs", 0)) + 1
+	# an offering gives her back its share of an EGG (the owner, 2026-10-30: the young of one egg together give ONE egg,
+	# not one each): egg_share parts of EGG_PARTS, kept on her ("eggp", whole numbers: deterministic and saved) until
+	# they make a whole egg, which she gets at once (none if her clutch is full: that egg is lost, as before)
+	var parts := int(q.nb.get("eggp", 0)) + egg_share(u)
+	if parts >= EGG_PARTS:
+		parts -= EGG_PARTS
+		if int(q.nb.get("eggs", 0)) < eggs_max(q):
+			q.nb["eggs"] = int(q.nb.get("eggs", 0)) + 1
+	q.nb["eggp"] = parts
 	if u.position.distance_to(q.position) > 1.0:
 		q.facing = (u.position - q.position).normalized()
 	q.frame_i = 0
@@ -1247,7 +1301,7 @@ static func push_out(g: Game, u: Unit, p: Vector2, before: Vector2) -> Vector2:
 			dl = maxf(d.length(), 0.01)
 		var out: Vector2 = w.position + d / dl * r
 		# (put back on the rim; if that is in a cliff or a building, stay where it was)
-		p = g.resolve_terrain(out, before, u.radius, u.team)
+		p = g.resolve_terrain(out, before, u.ground_r(), u.team)
 		if p.distance_to(w.position) < r - 0.5:
 			p = before
 	return p
@@ -1718,7 +1772,7 @@ static func draw(u: Unit, top: float) -> void:
 		var pg := bar_over(g, u)
 		if not pg.is_empty():      # (the father's nest and the eggs have their own)
 			var font3 := ThemeDB.fallback_font
-			var bw3 := maxf(60.0, u.radius * 2.0)
+			var bw3 := maxf(60.0, look_r(u) * 2.0)
 			var y3 := top - 26.0 if u.kind == QUEEN else top - 10.0
 			u.draw_rect(Rect2(-bw3 * 0.5, y3, bw3, 5).grow(1.0), Color(0, 0, 0, 0.7))
 			u.draw_rect(Rect2(-bw3 * 0.5, y3, bw3 * float(pg["f"]), 5), pg["col"])
@@ -1808,7 +1862,7 @@ static func unit_save(u: Unit) -> Dictionary:
 
 static func unit_load(u: Unit, d: Dictionary) -> void:
 	u.nb = d.duplicate()
-	for k in ["spot", "fert", "eggs", "laid"]:
+	for k in ["spot", "fert", "eggs", "laid", "eggp"]:
 		if u.nb.has(k):
 			u.nb[k] = int(u.nb[k])
 	u.nb["m"] = u.tesla_mode
