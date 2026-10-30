@@ -199,6 +199,18 @@ func _alarm_on() -> bool:
 	return game.clock - alarm_t < ALARM_FOR
 
 
+## THE OWNER'S BUILD, its brake: grubs nonstop, but never with an army far smaller than the enemy army its creatures saw
+## lately (the watching grub in the Clockwork's main sees it gather). In the first games of this round the Brood had 40
+## grubs and no army at 7:00, and a Clockwork army of 2,000 took its Tyrant Sire and a third of its grubs. Warriors
+## first (with 16 grubs or more) while its army is under ARMED_SHARE of what it saw (0.5 against the Clockwork, which
+## comes early; 0.3 against the others).
+func _under_armed() -> bool:
+	if not _eco() or game.clock < 150.0 or seen_army < 200.0:
+		return false
+	var share := 0.5 if _foe_is("clockwork") else 0.3
+	return _value_of(_nb_army_units()) < seen_army * share
+
+
 func _nb_observe(q: Unit) -> void:
 	if game.clock - _obs_t < 1.0:
 		return
@@ -1104,6 +1116,8 @@ func _nb_spoils_keep(q: Unit) -> float:
 		keep = maxf(keep, float(Defs.NB["stages"][2]["cost2"]))      # (only once her food is nearly there: else the spoils work meanwhile)
 	if st >= 1 and BroodNew.count_of(game, team, BroodNew.PTERO) == 0 and (seen_air >= 2 or game.clock >= float(plan["storm"]) - 30.0):
 		keep = maxf(keep, float(Defs.UNITS[BroodNew.PTERO].get("cost2", 0)))
+	if BroodNew.count_of(game, team, BroodNew.DILO) == 0 and game.clock >= float(plan["venom"]) - 45.0 and float(Defs.UNITS[BroodNew.DILO].get("cost2", 0)) > 0.0:
+		keep = maxf(keep, float(Defs.UNITS[BroodNew.DILO].get("cost2", 0)))      # (the Venom Sire's spoils, when he costs any)
 	return keep
 
 
@@ -1182,7 +1196,7 @@ func _nb_lay(q: Unit) -> void:
 	# grubs on the plan's curve ("drone": grubs a minute, from the 5 it starts with) come before warriors, unless the enemy
 	# is at the Mother or a rush is on; above the curve only with food to spare
 	var curve := 5.0 + game.clock / 60.0 * float(plan.get("drone", 4.0))
-	var danger := _nb_threat(q) != Vector2.INF or _rush_on() or _alarm_on()
+	var danger := _nb_threat(q) != Vector2.INF or _rush_on() or _alarm_on() or (_under_armed() and grubs >= 16)
 	if grubs < want_grubs and (grubs < 6 or not any_father or (grubs < curve and not danger) or food - keep >= 200):
 		k = "grub"
 	if k == "" and any_father:
