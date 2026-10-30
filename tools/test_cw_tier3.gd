@@ -194,6 +194,8 @@ func _run() -> void:
 	var p0 := jk.position
 	check("caught is not stunned (no stun stars): a net roots, 0.24.4", jk.stun_t <= 0.0 and jk.stun_left() == 0.0)
 	jk.cmd_move(jk.position + Vector2(300, 0))          # (told to go on: it cannot)
+	var turn0 := Defs.gear_turn
+	Defs.gear_turn = false        # (here: its own walk only; a turning gear band carries a netted unit round, as any unit on it)
 	step(g, 1.0)
 	check("caught, it does not move", jk.position.distance_to(p0) < 2.0, "%.1f px" % jk.position.distance_to(p0))
 	check("caught, it cannot JUMP (an ability)", Springer.ready_problem(jk) != "")
@@ -208,6 +210,7 @@ func _run() -> void:
 	check("caught, it still does not move (even with a target)", jk.position.distance_to(p0) < 2.0, "%.1f px" % jk.position.distance_to(p0))
 	check("caught, it still FIRES at a target in its reach", jk.shots > s0, "%d -> %d" % [s0, jk.shots])
 	_clear(g, [near])
+	Defs.gear_turn = turn0
 	jk.cmd_stop()
 	s0 = jk.shots
 	check("the net still holds it near the end of its time", jk.net_t > 0.0, "%.2f" % jk.net_t)

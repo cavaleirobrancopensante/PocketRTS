@@ -80,7 +80,10 @@ func _run() -> void:
 	check("run down: the card says RUN DOWN", cs.charge_text() == "RUN DOWN", cs.charge_text())
 	var foe_cs: Unit = g._add_unit("clock_soldier", 1, far + Vector2(0, 60))
 	foe_cs.wind = 0.5
-	check("an enemy's charge bar is not shown", not foe_cs.charge_bar_shown())
+	g.demo = false
+	check("playing (not watching): an enemy's charge bar is not shown", not foe_cs.charge_bar_shown())
+	check("playing: our own still is", cs.charge_bar_shown())
+	g.demo = true
 	# ---- the Springer's screw in flight: bigger, its sparks as before
 	var tgt: Unit = g._add_unit("musketeer", 1, _open_near(g, sp.position + Vector2(120, 0)))
 	tgt.max_hp = 5000.0

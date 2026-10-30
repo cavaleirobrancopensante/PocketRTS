@@ -34,4 +34,4 @@ lost). A flyer still comes down (`Unit.is_air`). No stun stars. Saves: `net_t` a
 
 Tests: tools/test_clock_charge.gd (card text, bar show/hide, the setting, the screw size, a netted Musketeer fires
 but does not move), tools/test_cw_tier3.gd (a netted Springer fires at a target in reach), tools/test_stun_mark.gd.
-Picture: docs/shots/clock_charge/.
+Pictures: docs/shots/clock_charge/ (1: bars off the field and the Springer card "Charge 44%"; 2: a group's portraits; 4: the bigger screw in flight), from tools/shot_clock_charge.gd.

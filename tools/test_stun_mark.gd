@@ -140,7 +140,8 @@ func _run() -> void:
 	check("an internal hold (0.25 s, no show) shows no stars", w.stun_t > 0.0 and w.stun_left() == 0.0 and not g.stun_layer.marked.has(w))
 	w.stun(0.2)
 	check("a stun under %.1f s shows no stars" % StunMark.MIN_SHOW, w.stun_left() == 0.0 and not g.stun_layer.marked.has(w))
-	# ---- a Netter's net: the net shows, not stars
+	# ---- a Netter's net: the net shows, not stars (and it is not a stun: no stun_t from it)
+	w.stun_t = 0.0
 	Netter.catch(w, null, 0.0)
 	await step(g, 0.1)
 	check("a netted unit is held by its net, not stunned, and shows no stars", w.net_t > 1.0 and w.stun_t <= 0.0 and w.stun_left() == 0.0 and not g.stun_layer.marked.has(w))

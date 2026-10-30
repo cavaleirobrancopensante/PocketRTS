@@ -58,19 +58,22 @@ func _open(p: Vector2) -> Vector2:
 func _run() -> void:
 	Settings.charge_bars = true
 	g.reveal = true
+	for c in g.get_children():
+		if c is CanvasLayer and (c as CanvasLayer).layer == 40:
+			c.visible = false          # (the Lab's hint text)
 	var me: int = g.human
 	var hall = null
 	for b in g.buildings:
 		if b.team == me and b.kind == g.faction_hall(me):
 			hall = b
 	# off the field: a spot well away from the base, toward the map's middle
-	var mid := Vector2(g.W, g.H) * g.T * 0.5
+	var mid: Vector2 = Vector2(Game.W, Game.H) * Game.T * 0.5
 	var off: Vector2 = hall.center().lerp(mid, 0.55)
 	var us: Array = []
 	var kinds := ["clock_soldier", "clock_soldier", Defs.SPRINGER, "clock_soldier", Defs.SPRINGER, Defs.NETTER, "clock_soldier", Defs.PENDULUM]
 	var winds := [0.85, 0.6, 0.45, 0.3, 0.75, 0.55, 0.15, 0.95]
 	for i in kinds.size():
-		var u: Unit = g._add_unit(kinds[i], me, _open(off + Vector2((i % 4) * 46 - 70, (i / 4) * 52 - 26)))
+		var u: Unit = g._add_unit(kinds[i], me, _open(off + Vector2((i % 4) * 70 - 105, (i / 4) * 80 - 40)))
 		u.auto_work = false
 		u.cmd_hold()
 		u.wind = winds[i]
@@ -82,7 +85,7 @@ func _run() -> void:
 	for i in us.size():
 		(us[i] as Unit).wind = winds[i]
 	g.camera.position = off + Vector2(0, 30)
-	g.camera.zoom = Vector2(2.2, 2.2)
+	g.camera.zoom = Vector2(1.7, 1.7)
 	g.set_selection([us[2]])
 	await _frames(6)
 	await _snap("1_bars_off_field_springer_card")
@@ -90,7 +93,7 @@ func _run() -> void:
 	await _frames(6)
 	await _snap("2_group_portraits")
 	# on the field: winding up (pale gold), one full (no bar)
-	var on: Vector2 = hall.center() + Vector2(0, 120)
+	var on: Vector2 = hall.center() + Vector2(0, 120)      # (on the gear field: in the base, partly behind buildings)
 	var ws: Array = []
 	for i in 4:
 		var u: Unit = g._add_unit("clock_soldier" if i != 1 else Defs.SPRINGER, me, _open(on + Vector2(i * 46 - 70, 0)))
@@ -107,7 +110,12 @@ func _run() -> void:
 	await _frames(6)
 	await _snap("3_winding_on_the_gear_field")
 	# the Springer's screw in flight
-	var sp: Unit = ws[1]
+	g.set_selection([])
+	await _frames(2)
+	for u in ws:
+		(u as Unit).visible = false
+		(u as Unit).position = Vector2(-3000, -3000)
+	var sp: Unit = us[4]
 	var foe: Unit = g._add_unit("musketeer", 1, _open(sp.position + Vector2(200, 0)))
 	foe.max_hp = 99999.0
 	foe.hp = 99999.0
@@ -115,10 +123,11 @@ func _run() -> void:
 	foe.hold_fire = true
 	g.set_selection([])
 	g.camera.position = sp.position + Vector2(100, -10)
-	g.camera.zoom = Vector2(3.0, 3.0)
+	g.camera.zoom = Vector2(2.4, 2.4)
 	await _frames(10)
+	sp.facing = Vector2.RIGHT
 	Springer.shoot(sp, foe, 0.0)
-	await _frames(6)
+	await _frames(8)
 	g.process_mode = Node.PROCESS_MODE_DISABLED
 	await _snap("4_springer_screw_in_flight", 0.0)
 	g.process_mode = Node.PROCESS_MODE_INHERIT
