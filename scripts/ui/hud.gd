@@ -1590,7 +1590,7 @@ func _nb_buttons(list: Array, units: Array) -> void:
 		# ONE A CLICK (the owner, 2026-10-30 19:33): a click or its key matures ONE of the selection; Ctrl+click,
 		# Ctrl+key, a right-click or a long press: ALL that can
 		_alt_for["MATURE"] = func() -> void: _mature(true)
-		list.append([mk, "MATURE", func() -> void: _mature(_ctrl_all or Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_META)), ywhy == "", ywhy, _price_chip(mp, int(mp[1]) > 0)])
+		list.append([mk, "MATURE", func() -> void: _mature(_mature_all or Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_META)), ywhy == "", ywhy, _price_chip(mp, int(mp[1]) > 0)])
 	# RALLY (point 7): rooted creatures and eggs; a right-click on the ground does the same (and never uproots)
 	if units.any(func(u: Unit) -> bool: return BroodRoot.fixed(u) and u.team == game.human):
 		_tip_for["RALLY"] = ["Rally point", "Where what comes out goes: the Mother's warriors (also those hatching in a Sire's nest: her rally comes first), an egg's own hatchling. A right-click does the same; it never uproots. The Mother's right-clicks take turns: the first sets her grubs' rally (WORKERS), the next her warriors' (RALLY), and so on; the button the next right-click sets is shown pressed."]
@@ -1622,7 +1622,7 @@ func _mature(all: bool) -> void:
 
 
 ## A Ctrl+key on the card (computer): the commands that do ALL with Ctrl (MATURE). True if used.
-var _ctrl_all := false
+var _mature_all := false
 func hotkey_ctrl(code: int) -> bool:
 	if paused or menu_open or game.over:
 		return false
@@ -1631,9 +1631,9 @@ func hotkey_ctrl(code: int) -> bool:
 		if it.size() > 6 and it[6] == letter and String(it[1]).trim_prefix("> ").trim_prefix("~ ") == "MATURE":
 			flash_card("MATURE")
 			if it[3]:
-				_ctrl_all = true
+				_mature_all = true
 				it[2].call()
-				_ctrl_all = false
+				_mature_all = false
 				Sfx.play_any(["ui/click", "click"])
 			elif it[4] != "":
 				toast(it[4])
