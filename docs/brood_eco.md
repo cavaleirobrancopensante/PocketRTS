@@ -24,6 +24,9 @@ tools/brood_one_egg.gd; it is off now that the game has it.)
 
 Pictures: docs/shots/brood_eco/.
 
+Version: shipped as 0.22.9. The games were measured on the branch while it was 0.22.5 (main's 0.22.6 to 0.22.8 only
+changed the Mother's egg line and the card's tooltips), so "0.22.5" below is that build.
+
 ## What the first games showed
 
 The first coached games (the build as written, on the 0.22.0 computer) **earned no more than before**, and one lost

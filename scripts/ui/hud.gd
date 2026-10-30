@@ -868,11 +868,13 @@ var _alt_for := {}             # card label -> its right-click / long-press acti
 var _alt_press := {}           # the card button being held on a phone: {b, t, done}
 var nb_prog := {}              # the Brood's progress shown on the card now (BroodNew.progress; tests read it)
 var _tip_for := {}             # card label -> [title, body] for its tooltip (refits)
+var _tip_fn := {}              # card label -> Callable giving its whole tooltip {title, stats, body, hint}, live (her LAYING)
 
 
 func _build_card() -> Array:
 	_alt_for = {}
 	_tip_for = {}
+	_tip_fn = {}
 	var list: Array = []   # [icon, label, cb, enabled, why, cost]
 	var units := game.selected_units()
 	var b := game.selected_building()
@@ -1447,8 +1449,9 @@ func _nb_buttons(list: Array, units: Array) -> void:
 		var lev_lab := lev.split(":")[0].to_upper()          # (short on the button: "LAYING +15%"; the levers in the tooltip)
 		var hv_pct := int(round(float(Defs.NB["hvet_rate"]) * 100.0))
 		var hv_max := int(Defs.NB["hvet_max"])
-		_tip_for[lev_lab] = ["Her laying", "%s. Four things make the Brood Mother lay faster, and they add up: her growth STAGE; every FATHER near her (as in some real lizards, the males' presence speeds the female's eggs: +%d%% each); every Mound Turtle rooted on NEW GROUND, %d tiles or more from her and from the other counted ones (their chimneys pump scent into the swamp water: she tastes new territory and lays more: +%d%% each, up to %d); and her VETERANCY: every harvest a grub brings her is 1 veterancy, +%d%% each, up to %d. Turtles at home give supply and swamp only." % [
-			lev, int(float(Defs.NB["father_rate"]) * 100.0), int(Defs.NB["expansion_tiles"]), int(float(Defs.NB["expansion_rate"]) * 100.0), int(Defs.NB["expansion_max"]), hv_pct, hv_max]]
+		# (her laying explained: the same tooltip as her egg line on the map and the EGGS chip on her card: EggTip)
+		var qq := q
+		_tip_fn[lev_lab] = func() -> Dictionary: return EggTip.tip(game, qq) if is_instance_valid(qq) else {}
 		list.append(["brood_mother", lev_lab, func() -> void: pass, false, lev, ""])
 		# HER VETERANCY FROM HARVEST (the owner, 2026-10-30 08:39): shown once she has some
 		var hv := BroodNew.hvet(q)
@@ -3443,6 +3446,9 @@ func _draw_stats(sel: Array, r: Rect2) -> void:
 	var s: Dictionary = UnitStats.of_unit(e) if e is Unit else (UnitStats.of_building(e) if e is Building else {})
 	if s.is_empty():
 		return
+	var extra := CardTips.chips(game, e)        # (its workers, its resource, the Mother's eggs: their labels' tooltips)
+	if not extra.is_empty():
+		s["chips"] = extra + (s["chips"] as Array)
 	var row := Rect2(r.position.x + 10, r.end.y - UnitStats.ROW_H - 4, r.size.x - 20, UnitStats.ROW_H)
 	_stat_rects = UnitStats.draw_row(_ci, row, s)
 
@@ -3854,6 +3860,11 @@ func _card_tip(it: Array) -> Dictionary:
 	var t := {"title": lab.capitalize(), "key": String(it[6]) if Settings.pc() and it.size() > 6 else ""}
 	var b := game.selected_building()
 	var rk := _research_of(lab)
+	if _tip_fn.has(lab):
+		var tf: Dictionary = (_tip_fn[lab] as Callable).call()
+		if not tf.is_empty():
+			tf["key"] = t["key"]
+			return tf
 	if _tip_for.has(lab):
 		t["title"] = _tip_for[lab][0]
 		t["body"] = _tip_for[lab][1]
@@ -3999,6 +4010,9 @@ func _hover_at(p: Vector2) -> Dictionary:
 	var le := WorkerLabels.at(game, wp)
 	if le:
 		return {"id": "lab:%d" % le.get_instance_id(), "delay": TIP_LABEL_DELAY, "lab": le}
+	var eq := EggTip.at(game, wp)        # (the egg line over the Brood Mother: the same delay as the worker labels)
+	if eq:
+		return {"id": "egg:%d" % eq.get_instance_id(), "delay": TIP_LABEL_DELAY, "egg": eq}
 	var e := game.entity_at(wp)
 	if e:
 		return {"id": "ent:%d" % e.get_instance_id(), "delay": TIP_WORLD_DELAY, "e": e}
@@ -4014,6 +4028,8 @@ func _tip_of(c: Dictionary) -> Dictionary:
 		return _res_tip(int(c["res"]))
 	if c.has("lab"):
 		return WorkerLabels.tip(game, c["lab"])
+	if c.has("egg"):
+		return EggTip.tip(game, c["egg"]) if is_instance_valid(c["egg"]) else {}
 	if c.has("e"):
 		return _entity_tip(c["e"])
 	if c.has("grp"):

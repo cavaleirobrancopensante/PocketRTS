@@ -29,11 +29,11 @@ Runs vary a little from game to game (random choices): read the numbers to +-20 
 
 ## What each plan is for, and how it is built
 
-### Brood (the Brood of creatures, 0.22.5: scripts/ai_brood_new.gd, docs/brood_ai.md, docs/brood_eco.md)
+### Brood (the Brood of creatures, 0.22.9: scripts/ai_brood_new.gd, docs/brood_ai.md, docs/brood_eco.md)
 The old Brood's rows (Spawning Den openings) are gone with it (0.18.0). Today's Brood has no buildings: its Tyrant Sire
 on his nest is its barracks, made from a grub's lure (150 food, 30 s since 0.22.2). Measured by
 `tools/test_ai_brood.gd -- profile:<p>` (Hard Brood against a peaceful Hard Crown on Greenhold, seed 3; 0.22.5): the
-times each milestone came. Since 0.22.5 every profile but the rushes plays the owner's economic build (docs/brood_eco.md):
+times each milestone came. Since 0.22.9 every profile but the rushes plays the owner's economic build (docs/brood_eco.md):
 the natural first, the third Rootmaw at its far edge, grubs first, the Sires and her stage 2 later on purpose.
 
 | Plan | Scout (watch) | Natural turtle | 3rd Rootmaw | Tyrant Sire | 8 Raptors | Stage 2 | Venom Sire | Storm Sire | First research | First attack | Food by 6:00 |
