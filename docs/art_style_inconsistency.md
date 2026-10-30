@@ -519,3 +519,4 @@ The stars circling over a stunned unit's head are drawn in code: one 15 px five-
 - THE SOUND (tools/audio/make_band_sounds.py): the drums are the owner's snare recordings, the fife the real fife notes (fife_sampler), but the BAGPIPES are synthesised (two drones and a reedy chanter): a real pipes recording would sound much better.
 - (owner, 2026-10-30 19:13) TO REDRAW: the Brood Mother's rearing-up frames in her nest's production (laying) animation show TWO TAILS. Add to the ChatGPT redraw list.
 - (owner, 2026-10-30 19:33) TO REDRAW: the Spitter's EAST walk has no real gait (the legs don't step one by one).
+- (owner, 2026-10-30 19:46) TO REDRAW, DEEP JOB: EXTRA WINGS on the Storm line (Hatchlings, Storm Challenger, Storm Sire): some frames have THREE wings (a ChatGPT hallucination). Go through EVERY Storm sprite strip frame by frame and list each frame with a third wing, then redraw or patch them.
