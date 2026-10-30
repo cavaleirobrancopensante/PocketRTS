@@ -27,7 +27,7 @@ Where the decisions come from: docs/idea_brood_mobile_buildings.md (the owner's 
 - Its art is the owner's sheets (walk, rooting, rooted, uprooting, death); every walk direction is drawn (the north walk squashed to 78% of its height to sit as low and wide as the south walk; the north-east sheet's odd 5th frame dropped). Its card portrait is the owner's. Three walks and the portrait came as JPEG screenshots; how they are cleaned, and the check picture (docs/shots/brood_new/turtle_quality.png, tools/turtle_quality.py), are in docs/art_style_inconsistency.md.
 - You pick a creature on her card (grubs and warriors only since 0.15.14). She lays its egg at once, rooted or walking. Walking, the egg drops behind her (the fall drawn in code). ROOTED, she lays it in her nest (the owner, 16:24, as the Town Hall's bell): her sheet brood_mother_rooted_lay_se_chatgpt.png, 6 frames lined up on the nest (it never shifts against her rooted loop) and scaled so her resting first frame covers as much as the loop's (the sheet drew her body a tenth bigger); frames 3 and 4 (her head reared high) are held longer (BroodNew.LAY_DUR, 1.26 s in all). The game's egg stays hidden until her last frame, appears exactly where that frame draws the new egg and as big (BroodNew.LAY_EGG_AT, LAY_EGG_BIG), then rolls out to the nest's rim and waits; her rooted loop has no extra egg.
 - The egg hatches after the creature's normal time. It cracks for the last 0.8 seconds, then the creature stands on the open shell while it breaks apart.
-- The Rootmaw roots on fresh ground on its side's swamp: 3,000 food in a 5-tile circle. Two rooted circles may not overlap. Old ground keeps what was left, like the old pits.
+- The Rootmaw roots on fresh ground on its side's swamp: 3,000 food in a 10-tile circle (5 until 0.24.7: see "Rootmaw ground, 0.24.7" below). Two rooted circles may not overlap. Old ground keeps what was left, like the old pits.
 - A rooted Rootmaw drinks 4 food a second from its ground into its body. It holds 300. Six stages show how full it is, each breathing: the owner's five breathing sheets (rootmaw_breath_stage*_chatgpt.png, 3 frames each) were given to the stages of the original filling row they match best (shape and share of glowing food; tools/import_brood_new.py maw_stages): "stage2" -> stage 1, "stage1" -> stage 2 (its middle frame, with a big glowing ball a thin stage can't have, left out: a 2-frame loop), "stage3" -> 3, "stage4or5" -> 4, "stage6" -> 5. Stage 6 keeps its original still frame with the code breathing. The owner: "make do with this", no more redraws.
 - Grubs take the food at its flank and carry it to the Mother. The farther, the more a trip pays, as with the old pits. Each Rootmaw takes 6 grubs, one more every 4 tiles beyond 6, up to 12.
 - The grubs have their new harvesting animation at the flank.
@@ -229,3 +229,61 @@ TESTS: tools/test_brood_new.gd section 19 (eggs lay only the young; MATURE locke
 - tools/sim_brood_new.gd plays a computer match and prints the sides every 30 seconds.
 - Pictures: docs/shots/brood_new/ (tools/shot_brood_new.gd, then python3 -I tools/brood_new_gif.py docs/shots/brood_new); docs/shots/brood_structures/ and docs/shots/brood_fixes_2/ (tools/shot_brood_structures.gd, with "fixes2" for the second).
 - tools/test_brood_new.gd section 16 (0.15.16): the grub's BUILD menu and the B key, its own text with no old Brood word (card, tooltip, BUILD, HARVEST, food, spoils, supply), the new Brood's turtle spots, the laying show 2.5-3 s with her rate unchanged, the worker count over a Rootmaw and a pile, a click on her drawn body (and a grub over her wins), the Tyrannosaur's loop till the last egg hatched, eggs on the nearest empty spot past a Tyrannosaur rooted at her front, a boxed-in Mother laying on a creature and the hatchling walking out to the rally, her GROWING bar on the map and the card, STOP GROWING, and the other progress (egg, cocoon, uprooting).
+
+## Rootmaw ground, 0.24.7 (branch brood-tune): a deliberate nerf
+
+The owner (2026-10-30): "the radius of the rootmaw exclusive zone has to be bigger, maybe 100% or even 200% bigger,
+because its easy to abuse and stack multiple rootmaws in the ground", and then: "I think it's way too strong currently":
+a NERF, each Rootmaw keeps the same 3,000 food and the same drinking rate (4 a second), nothing is paid back.
+
+**Chosen: `Defs.PIT_CLAIM` 10 tiles (2x; the circles' middles now 20 tiles apart, were 10).** 3x (15 tiles, 30 apart)
+leaves the Brood Mother only her starting Rootmaw on her own swamp on every map, and one round each turtle: too little
+room to play with. Design rule: docs/design_principles.md section 2 (the economy forces expansion and is depletable).
+
+**How many fit** (tools/study_rootmaw_fit.gd, every built-in map, greedy; "Mother" = her stage-1 swamp, 12 tiles, her
+starting Rootmaw counted; "turtle" = round a Mound Turtle on each Brood expansion site, its 10-tile swamp):
+
+| circles' middles apart | 10 (before) | 15 (1.5x) | **20 (now)** | 30 (3x) |
+|---|---|---|---|---|
+| on the Mother's swamp | 4-6 (5 on most maps) | 2-4 (3 on most) | **1-2** (2 on 11 maps, 1-2 or 1 on the rest) | 1 |
+| round one turtle | 3-4 | 2 | **1** | 1 |
+
+Home Mound Turtles spread more swamp round her, so a home with turtles can hold 1 or 2 more. Every map keeps at least 1
+Rootmaw on her swamp and 1 at every turtle site. The expansion spots shown to a Brood player (ExpansionSpots.nb_rate) now
+need room for 1 Rootmaw circle (was 2), or none would be shown.
+
+**What a base earns.** A worked Rootmaw pays about 190 food a minute (measured: 8 Rootmaws, about 1,500 a minute, in the
+before game) and holds 3,000.
+
+| a base | before | now |
+|---|---|---|
+| the Brood Mother's own swamp | ~5 Rootmaws: ~950 food/min, 15,000 food | 1-2: ~190-380 food/min, 3,000-6,000 |
+| a Mound Turtle on new ground (150 food with its grub) | 3-4: ~570-760 food/min, 9,000-12,000 | 1: ~190 food/min, 3,000 |
+| for comparison, a Crown Town Hall | 2 Farms: ~1,140 gold/min, 9,000 soil | (unchanged) |
+| a Clockwork Clocktower | 2 Cog Presses: ~860-1,200 cogs/min, 9,000 brass | (unchanged) |
+
+A Brood base now earns roughly a third of a Crown hall or a Clocktower and holds a third of its stock; the Brood makes
+up for it only by expanding more (cheap turtles: 150 for 12 supply) and with spoils.
+
+**The computer** (tools/measure_economy.gd, Greenhold seed 1, Hard Brood Balanced, PEACEFUL against an idle Crown, 15 min;
+food earned, cumulative):
+
+| | 3:00 | 6:00 | 8:00 | 10:00 | 12:00 | 15:00 | Rootmaws rooted |
+|---|---|---|---|---|---|---|---|
+| before (0.24.6) | 1,091 | 3,866 | 6,412 | 9,465 | 12,352 | 16,752 | 3 at 3:00, 5 at 6:00, 8 from 9:00 |
+| now (0.24.7, three runs) | 917-997 | 2,509-2,540 | 3,455-4,055 | 4,519-5,650 | 5,960-7,536 | 8,014-9,445 | 2 until 6:00-9:00, 3-5 after |
+| Crown Hard (docs/exhaust_economy.md, 0.24.0) | 1,140 | 3,800 | 5,700 | 9,880 | 13,300 | 19,380 | |
+| Clockwork Hard (same) | 1,892 | 4,555 | 7,544 | 10,831 | 13,077 | 17,110 | |
+
+The Brood computer earns about **45-50% less by 15:00** (from 1,500 food a minute late to 600-900); it was level with
+the Crown and Clockwork, it is now about half of them. Its army value at 15:00: 6,025 before, 4,400-4,700 now. The
+first two minutes are the same (one or two Rootmaws either way): the rush timelines are not touched.
+
+Computer changes so it copes (scripts/ai_brood_new.gd): it asks for a Rootmaw only while one has room
+(`_nb_maw_room`, checked every 5 s), so a full home no longer blocks the turtle branches; with no room it roots one more
+turtle on new ground (`_nb_far_spots(q, 40)`, up to 6, beyond the plan's 1-3 expansions); a turtle's Rootmaw spot is
+looked for out to 8.5 tiles (was 7.5). It still spends its food on its army first (a Rootmaw past the second waits for
+100 food in the bank), so it expands slowly; that, not room, is now what holds it back in the first 8 minutes.
+
+Open for the owner: is half the Crown's income the nerf he wants? A middle step, 7.5 tiles (15 apart), keeps 3 at her
+and 2 round a turtle (about two thirds of the old income at a base).

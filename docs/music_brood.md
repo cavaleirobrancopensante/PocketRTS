@@ -219,3 +219,44 @@ Every bar of every melody is checked to fill its meter exactly; a wrong bar stop
 | Ten Thousand Mouths | battle | 3:31 | -12.6 | 11.1 | -0.4 |
 | The Queen's Lullaby | calm | 3:04 | -13.4 | 5.3 | -1.4 |
 | Night over the Drowned Wood | calm | 3:22 | -13.1 | 13.8 | -1.0 |
+
+## Whose music you hear (brood-tune, 0.24.7)
+
+The owner, 2026-10-30: "brood music is not playing a good mix of brood, a lot of crown music is playing".
+
+What the picker did (scripts/music.gd `_pool`, the default setting "YOUR FACTION + A LITTLE OF THE ENEMY"): every time a
+piece was chosen, in EVERY moment (the opening, calm, skirmish and full battle), there was a 20% chance (`ENEMY_CHANCE`) of
+playing the enemy's piece for that moment instead. So a Brood player against the Crown heard a Crown piece about one
+piece in five all match long, calm music included, and the Crown's calm pieces (court and march colours) are the most
+un-Brood sound there is. The rule was the same for every faction. Nothing else mixed in: the openings (`OPEN_CALM`) and
+the roles are read per faction, and the web prefetch only chooses among the pool already picked.
+
+Now (the same rule for all three factions): the opening, calm and skirmish pieces are always your own. Only in a FULL
+battle (the fight hot enough for the battle pieces) is there a 20% chance of one of the enemy's battle pieces, the two
+armies' music meeting. "YOUR FACTION ONLY" never plays the enemy's; "EVERYTHING" and "ONLY THE TICKED PIECES" are as
+before.
+
+Measured (tools/test_music_mix.gd, 200 picks a moment, each faction against each other one): opening, calm and
+skirmish 100% own; full battle 77% to 84% own (about 80%). Before: about 80% own in every moment.
+
+### Brood pieces that may not sound Brood (not remade in this job)
+
+The second set (brood_battle_6 to _13, brood_peace_6 and _7, tools/music/brood_more.py) follows the rules above: dark
+modes, breathing tempo, the Hive Call, no fanfares. The FIRST set (tools/music/compose.py, written before those rules)
+does not always. Candidates for a redo, worst first:
+
+- **The Queen Stirs** (brood_peace_4, compose.py `brood_peace_4`; it also OPENS matches): G **dorian** (the bright minor,
+  not one of the Brood's dark modes), a square 4/4 at a steady 88 (no breathing), sections called "the anthem" and "the
+  procession": the tune is sung by the choir, then played by **horn and shawm** as a march over a parade drum
+  pattern and an even shaker (eighths), and the last section is the anthem by horn, choir and shawm with a drum fill.
+  No Hive Call. A processional anthem on horn is the Crown's language: it most likely is the piece that "doesn't feel
+  Brood". Redo: phrygian, breathing tempo, the Hive Call, throat and bone flute instead of horn, no march.
+- **Moonlit Mudflats** (brood_peace_3): C **dorian**, square 4/4 at 84, a bright, tuneful bone-flute song over log
+  arpeggios. The instruments are Brood but the mode and the singable tune make it pastoral; no Hive Call.
+- **Mist on the Brood-Mere** (brood_peace_5): B aeolian, mostly bone flute, but with an orchestral **strings** pad and the
+  big chorus: closer to the Crown's calm orchestra than the swamp. A milder case.
+- **Blood Moon Rite** (brood_battle_4) and **The Hive Unleashed** (brood_battle_5): orchestral (strings, horns section,
+  chorus) more than swamp (throat, logs); phrygian, so they stay dark, but the brass-and-strings battle sound is shared
+  with the Crown's battles. A milder case; they play only in full battles.
+- The rest of the first set (The Warm Swamp, Hunger, Spawning Pools, Teeth in the Reeds, The Swarm Rises) is throat,
+  shawm, logs, choir and dark modes: Brood enough, though none carries the Hive Call.

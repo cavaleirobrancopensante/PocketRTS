@@ -963,7 +963,7 @@ func _fixes_2(q: Unit, p: Dictionary) -> void:
 	g.exp_spots._key = "-"
 	g.exp_spots.refresh()
 	var shown: Array = g.exp_spots.shown
-	var far_ok := shown.all(func(sp) -> bool: return sp.has("tc") and BroodRoot.feet_at(BroodNew.TURTLE, sp["tc"]).distance_to(q.position) >= float(Defs.NB["expansion_tiles"]) * T and int(sp["maws"]) >= 2)
+	var far_ok := shown.all(func(sp) -> bool: return sp.has("tc") and BroodRoot.feet_at(BroodNew.TURTLE, sp["tc"]).distance_to(q.position) >= float(Defs.NB["expansion_tiles"]) * T and int(sp["maws"]) >= 1)
 	check(not shown.is_empty() and far_ok and int(shown[0]["rank"]) == 1, "    the new Brood sees its best turtle spots (%d: %s)" % [shown.size(), ", ".join(shown.map(func(sp) -> String: return "#%d %s, %d Rootmaw circles, %.0f tiles out" % [int(sp["rank"]), str(sp["tc"]), int(sp["maws"]), BroodRoot.feet_at(BroodNew.TURTLE, sp["tc"]).distance_to(q.position) / T]))])
 	if not shown.is_empty():
 		var tsp: Dictionary = shown[0]

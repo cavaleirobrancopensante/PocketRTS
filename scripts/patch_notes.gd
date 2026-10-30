@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.13", "items": [
+		"THE ROOTMAW'S GROUND IS TWICE AS WIDE: its circle is now 10 tiles round it (was 5), and two rooted circles still may not overlap, so Rootmaws stand 20 tiles apart. Each keeps the same 3,000 food and drinks at the same rate: this is a NERF to the Brood's economy (stacking 4 or 5 Rootmaws on one base was too strong). About 1 or 2 now fit on the Brood Mother's own swamp and 1 round each Mound Turtle; more swamp (turtles) means more room. The computer roots a turtle on new ground when it has no room for another Rootmaw.",
+		"MUSIC: you hear your own faction's music. With the default setting the opening, calm and skirmish pieces are always your faction's; only in a full battle is one piece in five the enemy's battle music (before, one piece in five was the enemy's in every moment, calm included). YOUR FACTION ONLY never plays the enemy's.",
+	]},
 	{"v": "0.24.12", "items": [
 		"THE UNIT PANEL AND THE COMMAND CARD STAY UP WITH NOTHING SELECTED: they are drawn empty, with your faction's name faint in the panel (watching or a replay: the player you look through). Clicks on them never go to the map. EACH FACTION HAS ITS OWN FRAMES now, behind the icons and text, selected or not: the Crown dark wood with gold crowns and fleurs-de-lis, the Clockwork riveted brass with cogs and springs, the Brood twisted rope with claws and eggs.",
 	]},
