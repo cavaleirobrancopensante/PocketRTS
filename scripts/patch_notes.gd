@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.22.0", "items": [
+		"A REAL BROOD COMPUTER: the computer now plays the Brood from a build order per plan (Extreme rush, Rush, Timing attack, Balanced, Economy, Air rush). It grows the Brood Mother on time, raises its Sires through their lures (the Storm Sire first when it sees enemy flyers), researches (Bigger Clutch early, Pack Hunt before it attacks, Battering Horns before a siege, Quick Roots later), matures its young before a push, and expands with Mound Turtles on new ground with Rootmaws round them.",
+		"It scouts with a grub (and later a Raptor) and reacts to what it sees: an early army on the move makes it hold at home, enemy flyers bring the Storm Sire, a musket wall means Spitters and Brutes instead of Raptor waves into it. It gathers its army before it attacks, pulls a losing wave back, calls a wave home when the Mother is attacked, keeps Hatchlings home unless the enemy flies, and keeps its grubs to a sensible number.",
+		"Fixed for the computer's Brood: it no longer sits on food for minutes while saving for the Mother's stage 3, and a Sire sent to a nest spot it can't reach no longer walks there forever.",
+	]},
 	{"v": "0.21.2", "items": [
 		"ART: THE GRUB'S COCOON is the designer's drawing now. A grub turning into a Rootmaw or a Mound Turtle fades into a small scaly case on the earth, the case grows to full size, glows, shakes and cracks, splits open as the creature comes out, and its empty broken shell stays on the ground a moment.",
 		"ART: THE MOULT is drawn now. A young Spitter, Raptor or Hatchling maturing turns south-east, hunches and greys, a stone-grey shell closes round it and swells, glows, shakes, cracks and splits, and the Challenger steps out grey and regains its colour; the broken shell and the shed skin stay on the ground a moment. A Hatchling comes down to the ground for it and its Storm Challenger rises out of the shell into the air.",
