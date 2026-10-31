@@ -3686,7 +3686,7 @@ func _tick_unit(delta: float) -> void:
 		_ah_t -= delta
 		if _ah_t <= 0.0:
 			_ah_t = 1.0
-			if game.find_corpse(self, float(Defs.HARVEST["range"]) * Defs.TILE) != null:
+			if game.find_corpse(self, float(Defs.HARVEST["auto_range"]) * Defs.TILE, true) != null:
 				var keep := {"o": order, "p": order_point, "pa": patrol_a, "pb": patrol_b, "q": queue.duplicate(), "at": position}
 				cmd_harvest()
 				_harvest_auto = true
@@ -3734,7 +3734,7 @@ func _tick_unit(delta: float) -> void:
 				_ah_t -= delta
 				if _ah_t <= 0.0:
 					_ah_t = 1.0
-					if game.find_corpse(self, float(Defs.HARVEST["range"]) * Defs.TILE) != null:
+					if game.find_corpse(self, float(Defs.HARVEST["auto_range"]) * Defs.TILE, true) != null:
 						cmd_harvest()
 						_harvest_auto = true
 						_ah_resume = {}          # (idle: afterwards back to work, WORK)
@@ -5753,7 +5753,8 @@ func _harvest(delta: float) -> Vector2:
 		work = ""
 		if scan_t <= 0.0:
 			scan_t = 0.8
-			_corpse = game.find_corpse(self, float(Defs.HARVEST["range"]) * Defs.TILE)
+			# (an autocast harvest: any body its side sees, as far as auto_range; a HARVEST order: the ones near it)
+			_corpse = game.find_corpse(self, float(Defs.HARVEST["auto_range"]) * Defs.TILE, true) if _harvest_auto else game.find_corpse(self, float(Defs.HARVEST["range"]) * Defs.TILE)
 			if _corpse:
 				_corpse.harvester = self
 				_request_path(_corpse.position)

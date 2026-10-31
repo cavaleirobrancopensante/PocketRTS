@@ -4,6 +4,7 @@ extends RefCounted
 ## Patch notes in pt: version -> items in the order of scripts/patch_notes.gd ('' = show the English).
 
 const N := {
+	"0.25.9": ["A COLHEITA AUTOMÁTICA VAI MAIS LONGE: uma larva com a colheita automática ligada vai a qualquer corpo que o seu lado veja (até 60 casas), não só aos que estão a 10 casas dela; o mais perto primeiro. Uma ordem COLHER dada à mão ainda pega os corpos perto dela."],
 	"0.25.8": ["AS MOLDURAS DAS FACÇÕES FICAM EM VOLTA DO PAINEL, NÃO POR CIMA: as molduras do painel da unidade e do cartão de comando são desenhadas mais finas e um pouco por fora, então a corda da Ninhada (e os enfeites dos cantos da Coroa e do Mecanismo) não passam mais por cima do retrato, da linha de atributos ou dos ícones."],
 	"0.25.7": ["RAMPAS: os meios-fios de pedra dos lados de uma rampa correm paralelos, da mesma largura de cima a baixo; a cunha de rocha que estreitava ladeira abaixo os desenhava como um funil."],
 	"0.25.6": ["CORREÇÃO: os botões do menu principal em português e espanhol: uma palavra mais longa (ESCARAMUÇA, CONFIGURAÇÕES) fazia o botão crescer por cima do vizinho. Agora o texto diminui para caber no botão (antes era medido em inglês), e um botão nunca passa do seu lugar."],

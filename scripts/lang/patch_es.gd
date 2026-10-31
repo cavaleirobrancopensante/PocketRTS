@@ -4,6 +4,7 @@ extends RefCounted
 ## Patch notes in es: version -> items in the order of scripts/patch_notes.gd ('' = show the English).
 
 const N := {
+	"0.25.9": ["LA COSECHA AUTOMÁTICA LLEGA MÁS LEJOS: una larva con la cosecha automática activada va a cualquier cuerpo que su bando vea (hasta 60 casillas), no solo a los que están a 10 casillas; el más cercano primero. Una orden COSECHAR dada a mano sigue tomando los cuerpos cercanos."],
 	"0.25.8": ["LOS MARCOS DE LAS FACCIONES QUEDAN ALREDEDOR DEL PANEL, NO ENCIMA: los marcos del panel de la unidad y de la tarjeta de órdenes se dibujan más finos y un poco por fuera, así que la cuerda de la Camada (y los adornos de las esquinas de la Corona y del Mecanismo) ya no pasan por encima del retrato, la fila de atributos ni los iconos."],
 	"0.25.7": ["RAMPAS: los bordillos de piedra a los lados de una rampa corren paralelos, del mismo ancho de arriba abajo; la cuña de roca que se estrechaba cuesta abajo los dibujaba como un embudo."],
 	"0.25.6": ["CORRECCIÓN: los botones del menú principal en portugués y español: una palabra más larga (ESCARAMUZA, CONFIGURACIÓN) hacía crecer el botón encima de su vecino. Ahora el texto se encoge para caber en su botón (antes se medía en inglés), y un botón nunca pasa de su sitio."],

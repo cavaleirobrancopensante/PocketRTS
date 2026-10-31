@@ -3578,7 +3578,9 @@ static func body_supply(u: Unit) -> int:
 
 
 ## The nearest unclaimed body within reach of a grub.
-func find_corpse(g: Unit, r: float) -> Unit:
+## (seen: the body must lie where its side sees now; HARVEST autocast looks at every body its side can see, the owner
+## 2026-10-31, not only those within the harvest range)
+func find_corpse(g: Unit, r: float, seen := false) -> Unit:
 	var best: Unit = null
 	var bd := r
 	for c in corpses:
@@ -3592,7 +3594,7 @@ func find_corpse(g: Unit, r: float) -> Unit:
 		if rv != null and is_instance_valid(rv) and not rv.dead and rv.order == "revive" and rv._body == c:
 			continue
 		var dd: float = c.position.distance_to(g.position)
-		if dd < bd:
+		if dd < bd and (not seen or is_visible_to(g.team, c.position)):
 			bd = dd
 			best = c
 	return best

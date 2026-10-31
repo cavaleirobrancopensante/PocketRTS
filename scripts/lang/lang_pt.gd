@@ -2378,7 +2378,7 @@ const T := {
 	"Where her new grubs go (drawn gold): on a Rootmaw or a food pile they start gathering there. Her right-clicks take turns: the first sets this one, the next her warriors' rally (green), and so on; the button the next right-click sets is shown pressed. Without it, a new grub finds work by itself.": "Para onde vão as novas larvas dela (em dourado): num Bocarraiz ou num monte de comida, começam a coletar ali. Os cliques direitos nela se alternam: o primeiro define este, o seguinte o ponto dos guerreiros (verde), e assim por diante; o botão que o próximo clique direito define aparece pressionado. Sem ele, uma larva nova acha trabalho sozinha.",
 	"Tap where her new grubs go to work.": "Toque onde as novas larvas dela vão trabalhar.",
 	"Ground": "Chão",
-	"Automatic harvest on: an idle grub harvests the bodies near it by itself, then goes back to work.": "Colheita automática ligada: uma larva parada colhe sozinha os corpos perto dela e depois volta ao trabalho.",
+	"Automatic harvest on: an idle grub goes by itself to any body your side can see, harvests it, then goes back to work.": "Colheita automática ligada: uma larva parada vai sozinha a qualquer corpo que o seu lado veja, colhe-o e depois volta ao trabalho.",
 	"Automatic harvest off.": "Colheita automática desligada.",
 	"A click (or its key) matures ONE of them; Ctrl+click (Ctrl+its key), a right-click or a long press matures ALL that can.": "Um clique (ou a tecla dele) amadurece UM deles; Ctrl+clique (Ctrl+a tecla), um clique direito ou um toque longo amadurece TODOS que puderem.",
 	"%d food in the ground": "%d de comida no chão",

@@ -1893,7 +1893,7 @@ const HORSE_REGEN := 0.5          # hp a second: horses heal by themselves (they
 ## his horse 16).
 ## take: the seconds a grub takes to wrap a Musketeer-sized body (`ref` health); bigger bodies take a little longer, x the
 ## square root of their health over `ref`, from `take_min` to `take_max` (Game.harvest_time: a Raptor 0.9 s, a Brute 2.2).
-const HARVEST := {"range": 10, "take": 1.2, "per_supply": 4.0, "per_kill": 2.0, "kill_cap": 100.0, "ref": 70.0, "take_min": 0.8, "take_max": 3.0}
+const HARVEST := {"range": 10, "auto_range": 60, "take": 1.2, "per_supply": 4.0, "per_kill": 2.0, "kill_cap": 100.0, "ref": 70.0, "take_min": 0.8, "take_max": 3.0}
 ## BODIES ROT (owner, 2026-10-27): a body has the health its unit had in life (a rider's adds his horse's: it lies with him)
 ## and loses it at one speed for every body, `base` health a second, which doubles every `double` seconds it has lain
 ## (smoothly: base x 2^(seconds since death / double)). At 0 it is gone. Damage (ground attack, Defs.GROUND, and area shots

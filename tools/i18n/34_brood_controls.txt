@@ -20,9 +20,9 @@ es Toca dónde irán a trabajar sus nuevas larvas.
 pt Chão
 es Suelo
 
-> Automatic harvest on: an idle grub harvests the bodies near it by itself, then goes back to work.
-pt Colheita automática ligada: uma larva parada colhe sozinha os corpos perto dela e depois volta ao trabalho.
-es Cosecha automática activada: una larva ociosa cosecha sola los cuerpos cercanos y luego vuelve al trabajo.
+> Automatic harvest on: an idle grub goes by itself to any body your side can see, harvests it, then goes back to work.
+pt Colheita automática ligada: uma larva parada vai sozinha a qualquer corpo que o seu lado veja, colhe-o e depois volta ao trabalho.
+es Cosecha automática activada: una larva ociosa va sola a cualquier cuerpo que tu bando vea, lo cosecha y luego vuelve al trabajo.
 
 > Automatic harvest off.
 pt Colheita automática desligada.

@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.25.9", "items": [
+		"HARVEST AUTOCAST REACHES FARTHER: a grub with automatic harvest on goes to any body its side can see (up to 60 tiles), not only those within 10 tiles of it; the nearest first. A HARVEST order given by hand still takes the bodies near it.",
+	]},
 	{"v": "0.25.8", "items": [
 		"THE FACTION FRAMES SIT ROUND THE PANEL, NOT OVER IT: the unit panel's and the command card's frames are drawn thinner and a little outside them, so the Brood's rope (and the Crown's and Clockwork's corner ornaments) no longer run over the portrait, the stats row or the icons.",
 	]},

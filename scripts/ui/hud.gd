@@ -1115,7 +1115,7 @@ func _build_card() -> Array:
 					for u in game.selected_units():
 						if u.kind == "grub":
 							game.net_set(u, "auto_harvest", not auto_h)
-					toast("Automatic harvest on: an idle grub harvests the bodies near it by itself, then goes back to work." if not auto_h else "Automatic harvest off.")
+					toast("Automatic harvest on: an idle grub goes by itself to any body your side can see, harvests it, then goes back to work." if not auto_h else "Automatic harvest off.")
 				list.append(["ab_harvest", ("~ " if auto_h else "") + "HARVEST", func() -> void:
 					for u in game.selected_units():
 						if u.kind == "grub":
