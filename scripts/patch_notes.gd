@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.25", "items": [
+		"THE COMMAND CARD'S KEYS STAY PUT: a command's letter no longer depends on which other buttons are showing. Each kind of selection gets its letters once, over every command it can ever have (all its research, rooted and uprooted, armoured soldiers, CANCEL, the refits...), and keeps them all match: starting, queueing or finishing a research, rooting or uprooting, a button greying out never moves another command's letter. STOP keeps S everywhere it can appear, so a research is never S on a card that can show STOP.",
+		"STOP RESEARCH is X (a Sire's or the Brood Mother's), STOP GROWING is Z: before, starting a research could hand its S to STOP RESEARCH, so pressing S again to queue the next one cancelled it. Pressing a research's key again queues the next of its line (MATCHLOCK, then FLINTLOCK, on the same F) or, if there is none, just says it is already being researched: the key never falls through to another command (such as STOP).",
+	]},
 	{"v": "0.24.24", "items": [
 		"THE BROOD'S SWAMP SPREADS AT A WALK: a newly rooted Mound Turtle's swamp (and the Brood Mother's) grows out from it 1 tile a second up to its full size, drawn growing; when it gets up or dies, the swamp only it held shrinks back just as fast (swamp another source still covers stays). A Rootmaw roots only where the swamp has already reached. Saves and online games keep how far it has spread.",
 		"NO SWAMP, NO ROOTMAW: a rooted Rootmaw needs swamp under it, as it does to root. When its swamp goes (its Mound Turtle got up or died, or the Mother walked off and her swamp shrank back), it stops feeding and uproots by itself, keeping its food, with an alert: \"A Rootmaw lost its swamp and uprooted.\" Its ground keeps the food left in it.",

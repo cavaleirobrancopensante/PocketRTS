@@ -1,0 +1,9 @@
+# 0.24.22 stable card keys (scripts/ui/hud.gd _hidden_key_note)
+
+> %s: researched, or already researching.
+pt %s: já pesquisado, ou em pesquisa.
+es %s: ya investigado, o en investigación.
+
+> %s: not now.
+pt %s: agora não.
+es %s: ahora no.

@@ -2426,6 +2426,8 @@ const T := {
 	"A Rootmaw lost its swamp and uprooted.": "Un Bocarraíz perdió su pantano y se desarraigó.",
 	"Version %s": "Versión %s",
 	"This game was made with the help of AI": "Este juego se hizo con la ayuda de IA",
+	"%s: researched, or already researching.": "%s: ya investigado, o en investigación.",
+	"%s: not now.": "%s: ahora no.",
 	"WHERE ARE YOU PLAYING?": "¿DÓNDE ESTÁS JUGANDO?",
 	"YOU CAN CHANGE THIS LATER IN SETTINGS.": "PUEDES CAMBIARLO MÁS TARDE EN AJUSTES.",
 	"FITS MAP": "DEL MAPA",
