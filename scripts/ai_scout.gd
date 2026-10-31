@@ -288,6 +288,22 @@ func _follow() -> void:
 	if unit.order == "attack" and unit.target is Building and not unit.target.dead:
 		return
 	var wp: Vector2 = _wps[_wp_i]
+	# A soldier scout harasses on its loop (owner, 2026-10-31: "pushed and scouted and tried to harass the worker
+	# line"): a worker in reach is attacked; a rooted creature its attack-move took up is walked past (ai_harass.gd).
+	if not unit.is_worker() and unit.has_attack():
+		var prey := ai.hz().pick_prey(unit)
+		if prey != null and prey.position.distance_to(unit.position) < 6.0 * Defs.TILE:
+			if unit.order != "attack" or unit.order_target != prey:
+				unit.cmd_attack(prey)
+			_stuck = 0.0
+			return
+		if (unit.order == "attack" and AIHarass.is_static(unit.order_target)) or (unit.target != null and AIHarass.is_static(unit.target) and not (unit.target is Building)):
+			_pass_until = game.clock + 4.0
+			_go(unit, wp)
+			return
+		if unit.order == "attack" and unit.order_target is Unit and (unit.order_target.dead or (unit.order_target as Unit).is_worker()):
+			_go(unit, wp)          # (its prey dead or out of reach: on with the loop)
+			return
 	# on past a point before standing on it (it must never idle: the workers' code takes idlers)
 	if unit.position.distance_to(wp) < 110.0:
 		_wp_i += 1
@@ -315,8 +331,11 @@ func _follow() -> void:
 ## marked "ai_scout" so it fires only at enemies that fight back (Unit._pick_target), not at
 ## every hall and worker on its loop; a worker scout (no fighter) still walks, and both keep the
 ## flee logic (_avoid: backing out of a guarded spot is a plain move).
+var _pass_until := 0.0          # a soldier scout walks (plain move) past a rooted creature until then
+
+
 func _go(u: Unit, p: Vector2) -> void:
-	if u.is_worker():
+	if u.is_worker() or game.clock < _pass_until:
 		u.cmd_move(p)
 		return
 	u.set_meta("ai_scout", true)
@@ -624,6 +643,8 @@ func _threats() -> Array:
 			continue
 		if not e.has_attack() or e.kind == "horse" or not e.can_hit(unit):
 			continue
+		if AIHarass.is_static(e):
+			continue             # (a rooted Mound Turtle or Rootmaw does not chase: walked past, never fought; ai_harass.gd)
 		if e != unit.last_hitter and not game.is_visible_to(ai.team, e.position):
 			continue
 		var rng := float(e.d["range"])

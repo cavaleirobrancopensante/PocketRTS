@@ -58,6 +58,15 @@ var scout: AIScout = null       # scouts the enemy first and picks the plan from
 ## AI round 5 (scripts/ai_round5.gd, docs/ai_round5.md): the Crown against the Clockwork, the Clockwork against Horsemen.
 const AIRound5 := preload("res://scripts/ai_round5.gd")
 var r5 = AIRound5.new(self)      # (made with the AI: tests that build one by hand get it too)
+## The harass (scripts/ai_harass.gd, docs/ai_harass.md): a small party out in the enemy's land hunts workers and walks
+## past structures and rooted Brood creatures; made on first use (hz()).
+var harass: AIHarass = null
+
+
+func hz() -> AIHarass:
+	if harass == null:
+		harass = AIHarass.new(self)
+	return harass
 ## Round 6 (docs/ai_round6.md) on; `-- r6:off` on the command line plays the computer as before (0.14.100), for study games.
 var r6 := not OS.get_cmdline_user_args().has("r6:off")
 ## (study switches: `r6:crownonly` the Crown's part only (opening, tech spot, expansion, farmers) plus the hall-spot rules;
@@ -2823,15 +2832,16 @@ func _raid() -> void:
 	for o in game.units_near(c, 260.0):
 		if game.hostile(o.team, team) and not o.dead and not o.is_worker() and o.kind != "grub":
 			danger += int(o.d["supply"])
-	if hp < 0.45 or danger >= 6:
-		_raid_home = 12.0
+	var hz_ := hz()
+	if hp < 0.45 or danger >= 6 or hz_.outmatched(_raiders, hz_.defenders_near(c, _raiders)):
+		_raid_home = 12.0          # (a Sire, the Mother on her feet, or more than the party: it pulls back, then comes again)
 	if _raid_home > 0.0:
 		_raid_home -= 1.0
 		for u in _raiders:
 			if u.position.distance_to(home) > 200.0:
 				u.cmd_move(home + Vector2(randf_range(-60, 60), randf_range(-60, 60)))
 		return
-	var best := _prey_spot(c)
+	var best := hz_.work_line(c)
 	for u in _raiders:
 		_hunt(u, best)
 
@@ -2874,8 +2884,9 @@ func _prey_spot(from: Vector2) -> Vector2:
 ## An enemy that fights back, seen, within the unit's reach and a little more.
 func _fighter_near(u: Unit) -> bool:
 	for o in game.units_near(u.position, float(u.d["range"]) + u.radius + 3.0 * Defs.TILE):
-		if Game.fights_back(o) and not o.off_field and game.hostile(o.team, team) and u.can_hit(o) and game.is_visible_to(team, o.position):
-			return true
+		if Game.fights_back(o) and not o.off_field and game.hostile(o.team, team) and u.can_hit(o) and game.is_visible_to(team, o.position) \
+				and not AIHarass.is_static(o):
+			return true          # (a rooted Mound Turtle or Rootmaw does not chase: ridden past)
 	return false
 
 
@@ -2894,15 +2905,16 @@ func _hunt(u: Unit, prey: Vector2) -> void:
 			w = o
 	w = _party_prey(u, w)
 	var tgt = u.target if u.target != null and is_instance_valid(u.target) and not u.target.dead else null
-	var fighting: bool = tgt is Unit and not (tgt as Unit).is_worker() and (tgt as Unit).kind != "horse"
+	# (a rooted Brood creature, a Mound Turtle or a Rootmaw, is a structure: ridden past like a building, ai_harass.gd)
+	var fighting: bool = tgt is Unit and not (tgt as Unit).is_worker() and (tgt as Unit).kind != "horse" and not AIHarass.is_static(tgt)
 	if w and not fighting:
 		if u.order != "attack" or u.order_target == null or not is_instance_valid(u.order_target) or u.order_target.dead or not (u.order_target is Unit and (u.order_target as Unit).is_worker()):
 			u.cmd_attack(w)
 		return
-	if fighting or (u.order == "attack" and u.order_target is Unit):
+	if fighting or (u.order == "attack" and u.order_target is Unit and not AIHarass.is_static(u.order_target)):
 		return                           # (soldiers: the fight goes on; a worker: run him down)
 	var far := u.position.distance_to(prey) > 5.0 * T
-	if far and (tgt is Building or u.order == "idle" or u.order_point.distance_to(prey) > 160.0 or u.order == "attack"):
+	if far and (tgt is Building or AIHarass.is_static(tgt) or u.order == "idle" or u.order_point.distance_to(prey) > 160.0 or u.order == "attack"):
 		# (a plain ride past the buildings on the way, but never with its back to a soldier: with one
 		# in reach it goes on attack-move and fights him; the computer (almost) never uses plain MOVE)
 		u.cmd_move(prey + Vector2(randf_range(-30, 30), randf_range(-30, 30)), _fighter_near(u))
@@ -4072,6 +4084,11 @@ func _tend_wagon() -> void:
 
 func _army() -> void:
 	var army: Array = game.army(team).filter(func(u: Unit) -> bool: return not _raiders.has(u) and not _on_errand(u) and u.kind != "powder_wagon" and u.kind != Defs.GREAT_WINDER_KIND and u.order != "sacrifice")      # (a Great Winder walks behind it: _great_winder_follow)
+	# (the harass, scripts/ai_harass.gd: a soldier out alone far from home hunts the workers, never stands at a turtle)
+	var harass_ := hz()
+	harass_.adopt_strays(army)
+	harass_.tick()
+	army = army.filter(func(u: Unit) -> bool: return not harass_.has(u))
 	if _clock():
 		r5.tick(army)                   # (round 5: the guards by the Winders and the ramp post against riders)
 		army = army.filter(func(u: Unit) -> bool: return not r5.busy(u))

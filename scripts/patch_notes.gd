@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.27", "items": [
+		"THE COMPUTER HARASSES THE WORKERS: a computer's soldier out alone in the enemy's land (a Clock Soldier that chased a scout out of its base, the Crown's raiding Horsemen, a soldier scout) no longer stops to hit a ROOTED Brood creature (a Mound Turtle, a Rootmaw) or a building: it walks past them and goes for the workers (grubs, Labourers, Winders), the ones standing still first, and keeps walking to the worker line. A Sire, the Brood Mother on her feet or a stronger force makes it pull back, then it comes again; hurt or out too long, it goes home. A big army attack still hits whatever it meets.",
+	]},
 	{"v": "0.24.26", "items": [
 		"THE UNIT CARD SAYS IT SHORT: the selection panel's line under the health now gives a short description of the unit or building, one line (\"Builds, repairs, works Farms and Mills, and hauls. Weak in a fight.\"), instead of the long text cut off in the middle. Rest the mouse on its PORTRAIT (a long press on a phone) for the full text and its numbers: health, attack, armour, speed, sight, supply and what it costs.",
 		"OLD TEXTS FIXED: the Labourer's card no longer says he mines gold (the gold mines are long gone); the Clocktower's text no longer speaks of batteries, Boilers and coal (it holds brass and spring life, and allows 2 Cog Presses and 1 Mainspring); the Mist Toad's text and energy line name its third spell, MIASMA.",
