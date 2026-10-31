@@ -78,7 +78,7 @@ func _run() -> void:
 	# ---- THE TENSION RULE at the Works: the Springer costs Tension, so it is made only where a Mainspring meshes
 	if g.gear_net.spring_for(works) == null:
 		var wn := g.can_train(works, Defs.SPRINGER)
-		check("a Movement Works meshing with no Mainspring refuses the Springer", wn.contains("meshes with no Mainspring"), wn)
+		check("a Movement Works meshing with no Mainspring refuses the Springer", wn.contains("no Mainspring in its gear network"), wn)
 		var w2 := _works_beside(g, spring)
 		check("a Movement Works was put meshing with the Mainspring", w2 != null and g.gear_net.spring_for(w2) != null)
 		if w2 == null:

@@ -14,8 +14,8 @@ extends RefCounted
 ## TENSION, a full resource. Mainsprings wind it into one pool. Every finished Mainspring STORES some (Defs.GEAR mainspring:
 ## small gear 200, big gear 400): winding stops when the pool holds what the Mainsprings store together (tension_cap); a
 ## refund may go over it, nothing unwinds. Buildings may cost Tension (a BUILDINGS `tension` price: the Clock Aviary).
-## THE TENSION RULE: anything that costs Tension is made only at a building whose ring meshes with a Mainspring's ring (one
-## hop; an idler between them counts): the Escapement and the Clock Aviary work only so (Defs.TENSION_USERS: idle otherwise,
+## THE TENSION RULE: anything that costs Tension is made only at a building with a Mainspring in its gear network (any
+## chain of meshed rings: Tension flows through the whole network, GearNet.solve, since 2026-10-31): the Escapement and the Clock Aviary work only so (Defs.TENSION_USERS: idle otherwise,
 ## NEEDS MAINSPRING), and a Light Works makes Springers and Netters only so (the Heavy Works is a Tension user) (its Clock Soldiers need nothing):
 ## spend_problem.
 
@@ -174,14 +174,14 @@ static func spends_tension(kind: String) -> bool:
 	return false
 
 
-## THE TENSION RULE at a building: "" when it may make things that cost Tension (its ring meshes with a Mainspring's), else
-## the refusal (the study tool looks for "meshes with no Mainspring").
+## THE TENSION RULE at a building: "" when it may make things that cost Tension (a Mainspring in its gear network), else
+## the refusal (the study tool looks for "no Mainspring in its gear network").
 static func spend_problem(game: Game, b: Building) -> String:
 	if not Defs.gear_mode or not game.gear_net.enforce or b.d["faction"] != "clockwork":
 		return ""
 	if game.gear_net.spring_for(b) != null:
 		return ""
-	return "This %s meshes with no Mainspring: anything that costs Tension is made only where a Mainspring's ring meshes with the building's." % String(b.d["name"])
+	return "This %s has no Mainspring in its gear network: anything that costs Tension is made only at a building a Mainspring feeds through the network." % String(b.d["name"])
 
 
 ## ---- what the player reads
@@ -263,8 +263,8 @@ static func card_info(b: Building) -> String:
 		return ""
 	if Defs.TENSION_USERS.has(b.kind):
 		if net.needs_spring(b):
-			return Loc.t("NEEDS MAINSPRING: its ring meshes with no Mainspring, so it stands idle. Build a Mainspring right beside it.")
-		return Loc.t("Working: its ring meshes with a Mainspring.")
+			return Loc.t("NEEDS MAINSPRING: no Mainspring in its gear network, so it stands idle. Build a Mainspring anywhere in the network.")
+		return Loc.t("Working: a Mainspring feeds it through the gear network.")
 	if spends_tension(b.kind):
 		var names: Array = []
 		for u in b.d.get("trains", []):
@@ -272,8 +272,8 @@ static func card_info(b: Building) -> String:
 				names.append(Loc.t(String(Defs.UNITS[u]["name"])))
 		var what := ", ".join(names)
 		if net.spring_for(b) != null:
-			return Loc.t("Meshes with a Mainspring: it can make what costs Tension (%s).") % what
-		return Loc.t("No Mainspring meshes with it: no %s until a Mainspring's ring meshes with its ring (they cost Tension).") % what
+			return Loc.t("Fed by a Mainspring through the gear network: it can make what costs Tension (%s).") % what
+		return Loc.t("No Mainspring in its gear network: no %s until one stands anywhere in the network (they cost Tension).") % what
 	return ""
 
 
@@ -281,8 +281,8 @@ static func card_info(b: Building) -> String:
 static func spring_tip(b: Building) -> Dictionary:
 	if b == null or not is_instance_valid(b) or b.dead:
 		return {}
-	var body := Loc.t("A Mainspring's ring meshes with this building's, so it is fed Tension: it can work and make what costs Tension. Without a Mainspring beside it, it could not.")
-	return {"title": Loc.t("Fed by a Mainspring"), "body": body}
+	var body := Loc.t("A Mainspring stands in this building's gear network, so it is fed Tension through the meshed rings: it can work and make what costs Tension. Without a Mainspring in the network, it could not.")
+	return {"title": Loc.t("Fed by a Mainspring through the gear network"), "body": body}
 
 
 ## SIZE SETS THE TEMPO (owner, 2026-10-27): what a `kind` on its ring trades, in one line for its card ("Small gear: works
@@ -496,21 +496,27 @@ static func ghost_note(net: GearNet, t: int, kind: String, c: Vector2i, big := f
 	return out
 
 
-## The connected buildings a Mainspring placed at cell c would feed: those whose ring it would touch and that make things
-## costing Tension (spends_tension) but mesh with no Mainspring yet are listed first, then the others.
+## The connected buildings a Mainspring placed at cell c would feed: those that make things costing Tension (spends_tension)
+## in every gear network its ring would join (Tension flows through the whole network); the ones with no Mainspring in
+## their network yet are listed first, then the others.
 static func would_feed(net: GearNet, t: int, c: Vector2i, big := false) -> Array:
 	var size: Vector2i = Defs.BUILDINGS["mainspring"]["size"]
 	var g := GearNet.gpos(Vector2(c) * Defs.TILE + Vector2(size) * Defs.TILE * 0.5)
 	var r := GearNet.ring_r("mainspring", size, big)
 	var slack := float(Defs.GEAR["slack"]) * Defs.TILE
+	var nets := {}
+	for b in net.linked:
+		if not is_instance_valid(b) or b.dead or b.team != t or not net.net_of.has(b):
+			continue
+		if g.distance_to(GearNet.b_c(b)) - r - GearNet.b_r(b) <= slack and GearNet.level_ok(net.game, "mainspring", c, big, b):
+			nets[net.net_of[b]] = true
 	var fresh: Array = []
 	var more: Array = []
 	for b in net.linked:
-		if not is_instance_valid(b) or b.dead or b.team != t or not spends_tension(b.kind):
+		if not is_instance_valid(b) or b.dead or b.team != t or not spends_tension(b.kind) or not nets.has(net.net_of.get(b, -1)):
 			continue
-		if g.distance_to(GearNet.b_c(b)) - r - GearNet.b_r(b) <= slack and GearNet.level_ok(net.game, "mainspring", c, big, b):
-			if net.spring_for(b) == null:
-				fresh.append(b)
-			else:
-				more.append(b)
+		if net.spring_for(b) == null:
+			fresh.append(b)
+		else:
+			more.append(b)
 	return fresh + more

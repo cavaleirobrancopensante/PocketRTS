@@ -25,10 +25,13 @@ extends Node2D
 ## NO LINK: OTHER LEVEL.
 ##
 ## THE TENSION RULE (Defs.TENSION_USERS, the Escapement): a building that uses Tension works only while it is connected AND
-## its ring meshes directly with a Mainspring's ring (one hop, within the link gap: an idler between them counts). Such a
-## building is linked last in the connection tree, hung on that Mainspring when there is one (so the drawn mesh and its
-## idler run between the two); spring_of holds its Mainspring. Without one it is idle (speed_mult 0) and shows NEEDS
-## MAINSPRING; the placement ghost says so too.
+## its gear network (any chain of meshed rings, net_of) holds a Mainspring. TENSION FLOWS THROUGH THE WHOLE NETWORK (owner
+## and a friend, 2026-10-31: "just connect it to the town"): the Mainspring may stand anywhere in it, and a town whose two
+## Clocktowers' networks touch shares it. The distance along the chain weakens nothing for the Tension rule (the ring's
+## DRIVE, GearEcon, still counts rings from the nearest Clocktower or Mainspring, as before). A Tension user is linked last
+## in the connection tree, hung on a Mainspring its ring meshes with when there is one (so the drawn mesh and its idler run
+## between the two); spring_of holds the nearest Mainspring of its network. Without one it is idle (speed_mult 0) and
+## shows NEEDS MAINSPRING; the placement ghost says so too.
 
 const T := Defs.TILE
 const FY := Game.FIELD_Y
@@ -43,7 +46,8 @@ var ang := {}                    # Building -> its gear's angle now
 var version := 0                 # bumped when the connected set changes
 var idler_of := {}               # Building -> {"pos": gear space, "n": teeth, "r": pitch radius} between it and its parent
 var idler_ang := {}              # Building -> the angle of its idler now
-var spring_of := {}              # a connected building (not a Mainspring) -> the Mainspring its ring meshes with (Tension rule)
+var spring_of := {}              # a connected building (not a Mainspring) -> the nearest Mainspring in its gear network (Tension rule)
+var net_of := {}                 # a connected building -> its gear network's id (rings meshed in any chain; rebuilt by solve)
 var drive_of := {}               # a connected building -> rings from the nearest driver, a Clocktower or Mainspring (GearEcon)
 var _field := {}                 # team -> [[centre in gear space, radius px]] of the connected rings
 var _sig := -1
@@ -299,7 +303,7 @@ func is_linked(b: Building) -> bool:
 
 
 ## Work speed of a Clockwork building: 0 while unconnected (or while its gear is being swapped, or, using Tension, while
-## its ring meshes with no Mainspring), else its DRIVE share (GearEcon: 1 meshing with a Clocktower or Mainspring, less
+## its gear network holds no Mainspring), else its DRIVE share (GearEcon: 1 meshing with a Clocktower or Mainspring, less
 ## farther out; always 1 for the Clocktower, supply and the turret).
 func speed_mult(b: Building) -> float:
 	if not enforce or not Defs.gear_mode or b.d["faction"] != "clockwork" or not b.built or b.dead:
@@ -310,13 +314,14 @@ func speed_mult(b: Building) -> float:
 	return GearEcon.work_mult(self, b) * tempo(b) if linked.has(b) else 0.0
 
 
-## A Tension user's Mainspring (its ring meshing with this one's), null when it has none (or is not connected).
+## A connected building's Mainspring (the nearest in its gear network), null when the network has none (or it is not
+## connected).
 func spring_for(b: Building) -> Building:
 	var m = spring_of.get(b)
 	return m if m != null and is_instance_valid(m) and not m.dead else null
 
 
-## A finished Clockwork building that uses Tension and is connected but meshes with no Mainspring: idle.
+## A finished Clockwork building that uses Tension and is connected but has no Mainspring in its gear network: idle.
 func needs_spring(b: Building) -> bool:
 	return enforce and Defs.gear_mode and Defs.TENSION_USERS.has(b.kind) and b.built and not b.dead and linked.has(b) and spring_for(b) == null
 
@@ -339,6 +344,7 @@ func solve() -> void:
 	order = []
 	_field = {}
 	spring_of = {}
+	net_of = {}
 	drive_of = {}
 	bands = []
 	_band_grid = {}
@@ -398,17 +404,57 @@ func solve() -> void:
 			parent_of[list[j]] = list[par]
 			q.append(j)
 		deferred.clear()
-	# the Tension rule: each connected building's Mainspring (its parent, or one hanging on it): a Tension user works only
-	# with one, and anything that costs Tension is made only at a building that has one (GearEcon.spend_problem)
+	# the Tension rule (TENSION FLOWS THROUGH THE NETWORK, 2026-10-31): each connected building's Mainspring is the
+	# nearest one (fewest rings, any chain of meshed rings) in its own gear network: a Tension user works only with one,
+	# and anything that costs Tension is made only at a building that has one (GearEcon.spend_problem). A ring meshing
+	# directly with a Mainspring takes that one (its parent first). net_of: each connected building's network id (two
+	# Clocktowers whose rings touch share one).
 	spring_of = {}
-	for j in q:
+	net_of = {}
+	var nid := 0
+	for s0 in q:
+		if net_of.has(list[s0]):
+			continue
+		net_of[list[s0]] = nid
+		var cq: Array = [s0]
+		var ci := 0
+		while ci < cq.size():
+			var a2: int = cq[ci]
+			ci += 1
+			for j in q:
+				if not net_of.has(list[j]) and list[j].team == list[a2].team and touch.call(a2, j):
+					net_of[list[j]] = nid
+					cq.append(j)
+		nid += 1
+	var sq: Array = []              # (a search outwards from every Mainspring at once: the nearest one wins)
+	for k in q:
+		if list[k].kind == "mainspring":
+			spring_of[list[k]] = list[k]
+			sq.append(k)
+	for j in q:          # (a ring meshing with a Mainspring takes it: its parent first)
 		if list[j].kind == "mainspring":
 			continue
-		for k in q:
-			if list[k].kind == "mainspring" and list[k].team == list[j].team and touch.call(k, j):
+		for k in sq:
+			if list[k].team == list[j].team and touch.call(k, j):
 				spring_of[list[j]] = list[k]
 				if parent_of.get(list[j]) == list[k]:
 					break
+	var si := 0
+	var front: Array = []
+	for j in q:
+		if spring_of.has(list[j]) and list[j].kind != "mainspring":
+			front.append(j)
+	sq = front
+	while si < sq.size():
+		var a3: int = sq[si]
+		si += 1
+		for j in q:
+			if not spring_of.has(list[j]) and list[j].team == list[a3].team and touch.call(a3, j):
+				spring_of[list[j]] = spring_of[list[a3]]
+				sq.append(j)
+	for k in q:
+		if list[k].kind == "mainspring":
+			spring_of.erase(list[k])
 	drive_of = GearEcon.drive_steps(list, linked, touch)      # (the efficiency: rings from a Clocktower or Mainspring)
 	idler_of = {}
 	for i in q:
@@ -649,7 +695,7 @@ func placement_problem(t: int, k: String, c: Vector2i, big := false) -> String:
 
 ## {"state": "ok" | "clash" | "turret" | "far" | "tower", "with": the building it clashes with (a "turret": the Ratchet
 ## Turret whose circle a new turret's would overlap), or the linked one its ring would hang on}; a Tension user (Defs.TENSION_USERS) that links also gets "spring": the finished Mainspring its ring would mesh with
-## (null: none, it would stand idle) and hangs on that one when it is linked.
+## through the gear network (null: none, it would stand idle; one meshing directly is preferred, and it hangs on that one).
 func candidate(t: int, k: String, c: Vector2i, big := false) -> Dictionary:
 	if not enforce or not Defs.gear_mode or Defs.BUILDINGS[k]["faction"] != "clockwork" or k == "clocktower":
 		return {"state": "ok" if k != "clocktower" else "tower"}
@@ -669,6 +715,7 @@ func candidate(t: int, k: String, c: Vector2i, big := false) -> Dictionary:
 	var spring: Building = null
 	var sbest := INF
 	var across := false             # (a linked ring in reach, but on the other level: THE LEVEL RULE)
+	var net_spring: Building = null  # (a Mainspring in the network of a linked ring it would mesh with: Tension flows through)
 	for b in game.buildings:
 		if not is_instance_valid(b) or b.dead or b.team != t or b.d["faction"] != "clockwork":
 			continue
@@ -684,6 +731,8 @@ func candidate(t: int, k: String, c: Vector2i, big := false) -> Dictionary:
 		if linked.has(b) and gap < best:
 			touch = b
 			best = gap
+		if tension and net_spring == null and linked.has(b):
+			net_spring = b if b.kind == "mainspring" else spring_for(b)
 		if tension and b.kind == "mainspring" and b.built and not b.ghost and gap < sbest:
 			spring = b
 			sbest = gap
@@ -695,19 +744,20 @@ func candidate(t: int, k: String, c: Vector2i, big := false) -> Dictionary:
 		return {"state": "far", "level": across}
 	var out := {"state": "ok", "with": touch}
 	if tension:
-		out["spring"] = spring
+		out["spring"] = spring if spring != null else net_spring
 		if spring != null and linked.has(spring):
 			out["with"] = spring        # (the ghost turns meshed with the Mainspring: that is the mesh that counts)
 	return out
 
 
-## "" when a Tension user placed at c would mesh with a Mainspring (or the kind needs none), else why it would stand idle.
+## "" when a Tension user placed at c would join a gear network with a Mainspring (or the kind needs none), else why it
+## would stand idle.
 func spring_problem(t: int, k: String, c: Vector2i, big := false) -> String:
 	if not Defs.TENSION_USERS.has(k) or not enforce or not Defs.gear_mode:
 		return ""
 	var st := candidate(t, k, c, big)
 	if st["state"] == "ok" and st.get("spring") == null:
-		return "Its ring meshes with no Mainspring: it will stand idle. Place it right beside a Mainspring."
+		return "No Mainspring in its gear network: it will stand idle. Link it to a network that has a Mainspring."
 	return ""
 
 
@@ -975,10 +1025,10 @@ func _draw_top() -> void:
 		_badge(font, b.rect().get_center() + Vector2(0, -b.rect().size.y * 0.5 - 14.0), txt, col)
 
 
-## THE SPRING MARK (owner, 2026-10-27): a little brass coil over a building fed by a Mainspring (its ring meshes with one:
+## THE SPRING MARK (owner, 2026-10-27): a little brass coil over a building fed by a Mainspring (through the gear network:
 ## it may make what costs Tension). Code-drawn: docs/art_style_inconsistency.md.
-## THE SPRING MARK (the little gold coil at a building's top right corner): a Mainspring's ring meshes with this building's,
-## so it gets Tension: a Tension user works, and what costs Tension can be made here (GearEcon.spend_problem). Shown only
+## THE SPRING MARK (the little gold coil at a building's top right corner): a Mainspring stands in this building's gear
+## network, so it gets Tension: a Tension user works, and what costs Tension can be made here (GearEcon.spend_problem). Shown only
 ## on the buildings that use or spend Tension (GearEcon.spends_tension: the Light and Heavy Works, the Escapement, the
 ## Clock Aviary...): a Cog Press or a Regulator by a Mainspring gets nothing from it, so it shows none (owner, 2026-10-30:
 ## "what does that mean?"). Hovering it (or a long press on a phone) explains it: GearEcon.spring_tip.
@@ -1110,7 +1160,7 @@ static func _teeth_arc(ci: CanvasItem, g: Vector2, r: float, phi: float, col: Co
 
 ## THE GEAR VIEW (owner, 2026-10-27): over the rings, the whole network. The drivers (Clocktowers, Mainsprings) glow bright
 ## gold; every other ring is washed by how well it works (full green, 90% yellow, 80% orange, 70% red-orange; idle or
-## unlinked red); each Mainspring's REACH (where a ring must reach to mesh with it, for the Tension rule) is outlined dashed.
+## unlinked red); each Mainspring's ring is outlined dashed (its Tension flows through its whole network).
 ## The controlled side's buildings (or everyone's when watching).
 func _draw_view() -> void:
 	var me := game.controlled_team()
@@ -1234,14 +1284,14 @@ func ghost_text(t: int, k: String, c: Vector2i, big := false) -> Array:
 	# (a refusal, or a building that would stand idle, reads red: one line, the reason; owner 2026-10-27)
 	var col := ghost_colour("clash") if state == "far" or state == "clash" or state == "turret" else ghost_colour(state)
 	if state == "ok" and Defs.TENSION_USERS.has(k):
-		# a Tension user: it links, but works only meshed with a Mainspring
+		# a Tension user: it links, but works only with a Mainspring in its gear network
 		if st.get("spring") == null:
 			label = "NEEDS MAINSPRING"
 			col = ghost_colour("clash")
 		else:
-			label = "MESHES MAINSPRING"
+			label = "TENSION FED"
 	elif state == "ok" and st.get("spring") != null:
-		label = "MESHES MAINSPRING"        # (a Light Works: its Springers may be made here)
+		label = "TENSION FED"        # (a Light Works: its Springers may be made here)
 	label = Loc.t(label)
 	if state == "ok" and not (Defs.TENSION_USERS.has(k) and st.get("spring") == null):
 		label += GearEcon.ghost_note(self, t, k, c, big)     # (its efficiency before it is placed; what a Mainspring feeds)

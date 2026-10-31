@@ -178,11 +178,11 @@ func _run() -> void:
 		works2 = null          # (it happened to mesh with the Mainspring: no test of the refusal there)
 	if works2 != null:
 		var why := g.can_train(works2, Defs.SPRINGER)
-		check("a Works meshing with no Mainspring refuses the Springer", why.contains("meshes with no Mainspring"), why)
+		check("a Works meshing with no Mainspring refuses the Springer", why.contains("no Mainspring in its gear network"), why)
 		check("but trains Clock Soldiers", g.can_train(works2, "clock_soldier") == "", g.can_train(works2, "clock_soldier"))
 		check("its card says why", GearEcon.card_info(works2).contains("No Mainspring"), GearEcon.card_info(works2))
 	check("the Works by the Mainspring trains the Springer", g.can_train(works, Defs.SPRINGER) == "", g.can_train(works, Defs.SPRINGER))
-	check("its card says it may", GearEcon.card_info(works).contains("Meshes with a Mainspring"), GearEcon.card_info(works))
+	check("its card says it may", GearEcon.card_info(works).contains("Fed by a Mainspring"), GearEcon.card_info(works))
 	# the Clock Aviary: a Tension user
 	check("the Clock Aviary costs 150 cogs + 50 Tension", int(Defs.BUILDINGS[Defs.CW_AIR]["cost"]) == 150 and Defs.tension_cost(Defs.BUILDINGS[Defs.CW_AIR]) == 50)
 	var av_far := U.put(g, 0, Defs.CW_AIR, hall.cell + Vector2i(6, -6))

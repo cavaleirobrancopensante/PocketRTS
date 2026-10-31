@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.25.0", "items": [
+		"TENSION FLOWS THROUGH THE WHOLE GEAR NETWORK (Clockwork): a building that uses or spends Tension (the Escapement, the Clock Aviary, the Heavy Works, a Light Works for its Springers and Netters) no longer has to mesh right beside a Mainspring. It is fed when a Mainspring stands anywhere in its gear network, through any chain of meshed rings, so the Mainspring can stand anywhere in your town and nothing has to be demolished to move it. Two Clocktowers whose networks touch share their Mainsprings. Still 1 Mainspring per Clocktower, with its Winders, spring life and 5% floor; a fatigued Mainspring still feeds its network, a destroyed one feeds nothing. The ghost says TENSION FED or NEEDS MAINSPRING, the spring mark reads 'Fed by a Mainspring through the gear network', and the help and descriptions say so.",
+	]},
 	{"v": "0.24.34", "items": [
 		"GROUP KEYS AS IN STARCRAFT 2: Shift+number ADDS the selection to that group; Alt+number sets the group and takes those units out of every other group (Shift+Alt+number adds them and takes them out); Ctrl+number sets it, the number selects it, as before. The group buttons take the same modifiers on a click. (Shift+number used to add the group to the selection.)",
 	]},

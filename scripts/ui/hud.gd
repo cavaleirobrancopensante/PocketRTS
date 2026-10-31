@@ -3701,9 +3701,9 @@ func _draw_panel(font: Font) -> void:
 					" · ore spent: a quarter" if ol <= 0.0 else (" · ore running low" if ol < Defs.SOIL_LOW else "")]
 			if bb.kind == Defs.CW_TECH and bb.built and not bb.dead and Defs.gear_mode:
 				if game.gear_net.needs_spring(bb):
-					info = "NEEDS MAINSPRING: its ring meshes with no Mainspring, so it stands idle (no research, no Springers). Build a Mainspring right beside it."
+					info = "NEEDS MAINSPRING: no Mainspring in its gear network, so it stands idle (no research, no Springers). Build a Mainspring anywhere in the network."
 				elif game.gear_net.speed_mult(bb) > 0.0:
-					info = "Working: its ring meshes with a Mainspring. Springers and Netters can be made at a Light Works whose ring meshes with a Mainspring, Pendulums and Spring Ballistas at a Heavy Works%s." % ("" if game.has_tech(bb.team, "high_leap") else "; HIGH LEAP can be researched here")
+					info = "Working: a Mainspring feeds it through the gear network. Springers and Netters can be made at a Light Works fed the same way, Pendulums and Spring Ballistas at a Heavy Works%s." % ("" if game.has_tech(bb.team, "high_leap") else "; HIGH LEAP can be researched here")
 			if Defs.gear_mode and bb.built and not bb.dead and (e.team == game.human or game.demo):
 				var gi := GearEcon.card_info(bb)        # (the Tension rule and the store: scripts/gear_econ.gd)
 				if gi != "":
@@ -4842,7 +4842,7 @@ func _res_tip(i: int) -> Dictionary:
 		if Defs.gear_mode and i == 0:
 			return {"title": "Cogs: %d" % int(pl["gold"]), "body": Loc.t("The Clockwork's money: everything is bought with cogs. Winders winding a Cog Press press them out of its Clocktower's brass; the Clocktower takes them in at once. A Clocktower's brass runs out, and spent brass pays nothing: build a new Clocktower by fresh brass.") + "\n" + _crew_line(Defs.GEAR_PRESS) + "\n" + _income_line(rates.x)}
 		if Defs.gear_mode and i == 1:
-			return {"title": Loc.t("Tension: %d of %d") % [int(float(pl.get("tension", 0.0))), int(GearEcon.tension_cap(game, game.human))], "body": Loc.t("The Clockwork's second resource, wound by Winders cranking a Mainspring. Each Mainspring stores 200 Tension (big gear: 400): winding stops when you hold what your Mainsprings store. It pays for the strong things: the Springer, the Swift, the Netter, the Pendulum, the Spring Ballista, the Clock Aviary and the research. Anything that costs Tension is made only at a building whose gear ring meshes with a Mainspring's: the Escapement, the Clock Aviary, the Heavy Works, and a Light Works for its Springers and Netters.") + "\n" + Loc.t("Each Clocktower's SPRING LIFE runs down as its Mainspring winds: it winds less and less, and only %d%% once spent (the Mainspring is FATIGUED). A new Clocktower brings full strength back.") % int(round(Defs.TENSION_FLOOR * 100.0)) + "\n" + _crew_line("mainspring") + "\n" + _income_line(game.tension_rate(game.human))}
+			return {"title": Loc.t("Tension: %d of %d") % [int(float(pl.get("tension", 0.0))), int(GearEcon.tension_cap(game, game.human))], "body": Loc.t("The Clockwork's second resource, wound by Winders cranking a Mainspring. Each Mainspring stores 200 Tension (big gear: 400): winding stops when you hold what your Mainsprings store. It pays for the strong things: the Springer, the Swift, the Netter, the Pendulum, the Spring Ballista, the Clock Aviary and the research. Anything that costs Tension is made only at a building with a Mainspring in its gear network (Tension flows through every meshed ring): the Escapement, the Clock Aviary, the Heavy Works, and a Light Works for its Springers and Netters.") + "\n" + Loc.t("Each Clocktower's SPRING LIFE runs down as its Mainspring winds: it winds less and less, and only %d%% once spent (the Mainspring is FATIGUED). A new Clocktower brings full strength back.") % int(round(Defs.TENSION_FLOOR * 100.0)) + "\n" + _crew_line("mainspring") + "\n" + _income_line(game.tension_rate(game.human))}
 		if i != 2:
 			return {}
 	if i == 3:

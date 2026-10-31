@@ -993,7 +993,7 @@ const UNITS := {
 		"name": "Springer", "hp": 90, "armor": 1, "speed": 70, "cost": 100, "tension": 25, "time": 25.0, "supply": 2,
 		"sight": 8, "range": 170, "damage": 10, "cooldown": 0.95, "aim": 0.11, "radius": 12, "from": "movement_works",
 		"requires": "escapement", "anti_air": true, "faction": "clockwork",
-		"about": "A jack-in-the-box on a coil spring: it hops about and shoots spinning screws from its drill arm, at the ground and up at flyers. JUMP: a short crouch, then a leap of up to 5 tiles (10 s to wind the spring again); flat or down any time, UP onto high ground once HIGH LEAP is researched and you can see the spot. It cannot shoot in the air. Costs Tension. Made at a Light Works whose gear ring meshes with a Mainspring's, once an Escapement works.",
+		"about": "A jack-in-the-box on a coil spring: it hops about and shoots spinning screws from its drill arm, at the ground and up at flyers. JUMP: a short crouch, then a leap of up to 5 tiles (10 s to wind the spring again); flat or down any time, UP onto high ground once HIGH LEAP is researched and you can see the spot. It cannot shoot in the air. Costs Tension. Made at a Light Works whose gear network has a Mainspring, once an Escapement works.",
 	},
 	# THE AIR (gear mode; Defs.CW_AIR): the SWIFT (id cuckoo), an air-to-air flyer from the Clock Aviary, and the TICKING OWL
 	# each Swift can be morphed into (Defs.OWL_MORPH). Guesses (design_principles 1): the Swift is the Skywing's match in
@@ -1048,7 +1048,7 @@ const UNITS := {
 		"name": "Netter", "hp": 120, "armor": 1, "speed": 54, "cost": 125, "tension": 50, "time": 28.0, "supply": 2,
 		"sight": 9, "range": 180, "damage": 4, "cooldown": 14.0, "aim": 0.11, "radius": 16, "from": "movement_works",
 		"requires": "escapement", "anti_air": true, "faction": "clockwork",
-		"about": "A low iron drum on four short legs with a spring cannon on top: it fires a weighted chain NET at one enemy, which then cannot move or use abilities for 4 s (it can still attack what is in its reach); a flyer it catches comes down to the ground for that time, where anything can hit it. By itself it picks the most dangerous enemy in reach that is not caught already (right-click one to choose). A long reload, and weak itself: keep it behind the line. Made at a Light Works whose gear ring meshes with a Mainspring's, once an Escapement works. Costs Tension.",
+		"about": "A low iron drum on four short legs with a spring cannon on top: it fires a weighted chain NET at one enemy, which then cannot move or use abilities for 4 s (it can still attack what is in its reach); a flyer it catches comes down to the ground for that time, where anything can hit it. By itself it picks the most dangerous enemy in reach that is not caught already (right-click one to choose). A long reload, and weak itself: keep it behind the line. Made at a Light Works whose gear network has a Mainspring, once an Escapement works. Costs Tension.",
 	},
 	# TIER 2 (gear mode; Defs.BALLISTA, scripts/ballista.gd, docs/ballista.md): the SPRING BALLISTA, the owner's unit
 	# (2026-10-27): against ARMOUR and BUILDINGS. Guesses (design_principles 1): a heavy screw bolt, 45 damage (x1.75 on an
@@ -1391,7 +1391,7 @@ const BUILDINGS := {
 	"movement_works": {
 		"name": "Light Works", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(4, 3),
 		"supply": 0, "sight": 7, "trains": ["clock_soldier", "springer", "netter"], "faction": "clockwork",
-		"about": "The Clockwork's barracks for the light machines: a long hall that assembles Clock Soldiers on a hanging line, and Springers and Netters once an Escapement works and a Mainspring's gear ring meshes with its ring (they cost Tension). On its SMALL gear it trains 15% faster, on its BIG gear 15% slower. It researches SHIELD WALL (the Clock Soldiers' SHIELD FORWARD; Tension too). Must stay linked to the gear field.",
+		"about": "The Clockwork's barracks for the light machines: a long hall that assembles Clock Soldiers on a hanging line, and Springers and Netters once an Escapement works and its gear network has a Mainspring (they cost Tension). On its SMALL gear it trains 15% faster, on its BIG gear 15% slower. It researches SHIELD WALL (the Clock Soldiers' SHIELD FORWARD; Tension too). Must stay linked to the gear field.",
 	},
 	# THE HEAVY WORKS (gear mode, owner 2026-10-27; docs/gear_rules.md): the heavy machines' yard, a gantry crane over an open
 	# bay where the machine in training is assembled (drawn by HeavyWorks, scripts/heavy_works.gd). Only on its BIG ring
@@ -1400,14 +1400,14 @@ const BUILDINGS := {
 	"heavy_works": {
 		"name": "Heavy Works", "hp": 1100, "armor": 2, "cost": 175, "time": 45.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 7, "trains": ["pendulum", "ballista", "great_winder"], "requires": "escapement", "faction": "clockwork",
-		"about": "The yard of the heavy machines: under its gantry crane it assembles Pendulums, Spring Ballistas and Great Winders, and you can watch each one rise in the bay. It sits on a BIG gear only (slow and strong: the heavy torque), and everything it makes costs Tension, so its gear ring must mesh with a Mainspring's ring, else it stands idle (NEEDS MAINSPRING). Needs a working Escapement.",
+		"about": "The yard of the heavy machines: under its gantry crane it assembles Pendulums, Spring Ballistas and Great Winders, and you can watch each one rise in the bay. It sits on a BIG gear only (slow and strong: the heavy torque), and everything it makes costs Tension, so it needs a Mainspring anywhere in its gear network (Tension flows through every meshed ring), else it stands idle (NEEDS MAINSPRING). Needs a working Escapement.",
 	},
 	# TIER 2 (gear mode): the tech building, like a Cybernetics Core. A Tension user (Defs.TENSION_USERS): it works only while
 	# its ring meshes with a Mainspring's. Numbers are guesses: the Light Works' price and health.
 	"escapement": {
 		"name": "Escapement", "hp": 1000, "armor": 2, "cost": 150, "time": 40.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 7, "trains": [], "requires": "movement_works", "faction": "clockwork",
-		"about": "The Clockwork's tech building: it unlocks the Springer and holds the Tension research (HIGH LEAP). It uses Tension, so its gear ring must mesh with a Mainspring's ring (right beside it; an idler between them counts), and it must stay linked to the gear field: else it stands idle (NEEDS MAINSPRING). Needs a Light Works.",
+		"about": "The Clockwork's tech building: it unlocks the Springer and holds the Tension research (HIGH LEAP). It uses Tension, so it needs a Mainspring anywhere in its gear network (Tension flows through every meshed ring), and it must stay linked to the gear field: else it stands idle (NEEDS MAINSPRING). Needs a Light Works.",
 	},
 	# THE AIR (gear mode): the CLOCK AVIARY (id cuckoo_house), the flyers' building (like a Stargate). A tall narrow 2x2 tower
 	# on its gear ring; it needs an ACTIVE Escapement to be placed (Game.requirement_text), and everything it makes costs
@@ -1416,7 +1416,7 @@ const BUILDINGS := {
 	"cuckoo_house": {
 		"name": "Clock Aviary", "hp": 900, "armor": 2, "cost": 150, "tension": 50, "time": 45.0, "size": Vector2i(2, 2),
 		"supply": 0, "sight": 7, "trains": ["cuckoo"], "requires": "escapement", "faction": "clockwork",
-		"about": "A tall clock tower whose little doors open for brass birds to fly out. It makes the Swift, the Clockwork's flyer, and researches TICKING OWL (then every Swift can be rebuilt into a Ticking Owl). Costs Tension. Needs a working Escapement to be built; everything it makes costs Tension, so its gear ring must mesh with a Mainspring's ring, else it stands idle (NEEDS MAINSPRING).",
+		"about": "A tall clock tower whose little doors open for brass birds to fly out. It makes the Swift, the Clockwork's flyer, and researches TICKING OWL (then every Swift can be rebuilt into a Ticking Owl). Costs Tension. Needs a working Escapement to be built; everything it makes costs Tension, so it needs a Mainspring anywhere in its gear network, else it stands idle (NEEDS MAINSPRING).",
 	},
 	"regulator": {
 		"name": "Regulator", "hp": 500, "armor": 2, "cost": 100, "time": 20.0, "size": Vector2i(2, 2),
@@ -1483,7 +1483,7 @@ const BUILDINGS := {
 	"mainspring": {
 		"name": "Mainspring", "hp": 800, "armor": 2, "cost": 140, "time": 35.0, "size": Vector2i(3, 3),
 		"supply": 0, "sight": 6, "trains": [], "crew": 3, "faction": "clockwork",
-		"about": "Winds TENSION, the Clockwork's second resource: nothing by itself, more for every Winder cranking it (SMALL gear: up to 3; BIG gear: up to 6, more in all at 5 or 6). It draws its Clocktower's SPRING LIFE (1,320 Tension): it winds less as that runs down, and spent, the spring is FATIGUED (it has taken a set) and winds at 5%: expand to a new Clocktower for full strength. 1 per Clocktower. Each Mainspring stores 200 Tension (big: 400): winding stops when you hold what your Mainsprings store. It also DRIVES the rings that mesh with it, like the Clocktower. Anything that costs Tension is made only where a Mainspring's ring meshes: the Escapement, the Clock Aviary, the Heavy Works, and a Light Works for its Springers and Netters. Must stay linked to the gear field.",
+		"about": "Winds TENSION, the Clockwork's second resource: nothing by itself, more for every Winder cranking it (SMALL gear: up to 3; BIG gear: up to 6, more in all at 5 or 6). It draws its Clocktower's SPRING LIFE (1,320 Tension): it winds less as that runs down, and spent, the spring is FATIGUED (it has taken a set) and winds at 5%: expand to a new Clocktower for full strength. 1 per Clocktower. Each Mainspring stores 200 Tension (big: 400): winding stops when you hold what your Mainsprings store. It also DRIVES the rings that mesh with it, like the Clocktower. Its Tension flows through the whole gear network, so it may stand anywhere in your town: every building linked to it by any chain of rings is fed (two Clocktowers whose networks touch share it). Anything that costs Tension is made only at a building so fed: the Escapement, the Clock Aviary, the Heavy Works, and a Light Works for its Springers and Netters. Must stay linked to the gear field.",
 	},
 	"capacitor_works": {
 		"name": "Capacitor Works", "hp": 900, "armor": 2, "cost": 250, "time": 50.0, "size": Vector2i(2, 2),
@@ -2329,7 +2329,7 @@ const SHORT := {
 	"regulator": "10 more supply for the machine.",
 	"ratchet_turret": "Static defence: fires screws at ground and air alike.",
 	"cog_press": "Winders wind it for COGS from its Clocktower's brass.",
-	"mainspring": "Winders crank it for TENSION; it drives the rings that mesh with it.",
+	"mainspring": "Winders crank it for TENSION; it feeds its whole gear network.",
 }
 const SHORT_ARMOURED := {
 	"musketeer": "Armoured Musketeer: +1 armour, +20 health. Volleys and bayonet.",
