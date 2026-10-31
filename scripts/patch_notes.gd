@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.19", "items": [
+		"THE MAIN MENU OVER THE WHOLE PAINTING: the battle painting now covers the whole screen, with no wooden bar. The title and a column of buttons sit in the top-left corner, over the painting's dark storm sky (on a wide phone, two columns of buttons under a smaller title); the language flags are in the top-right corner and the version small in the bottom-right. The buttons work as before: PLAY, LEARN and WORKSHOP open their choices in the same place, and BACK, Esc or the back button return.",
+	]},
 	{"v": "0.24.18", "items": [
 		"THE MAIN MENU'S PAINTING, WIDENED: more of the Crown's pikes and muskets on the left and more Clockwork columns on the right, so the painting fills the whole screen above the bar, edge to edge, on computers and phones.",
 	]},

@@ -330,15 +330,19 @@ func show_crash(report: String) -> void:
 	row.add_child(ok)
 
 
-## THE MAIN MENU (the owner, 2026-10-31): the painting fills the screen above ONE slim wooden bar along the bottom:
-## the title on the left, one row of buttons in the middle, the flags and the version on the right. The row has
-## levels (menu_level): "top" (CONTINUE, PLAY, LEARN, WORKSHOP, SETTINGS), "play", "learn", "workshop"; a page
-## opened from a level comes back to it (its BACK calls show_menu()). Esc and the phone's or browser's back go
-## back one level (_set_back).
+## THE MAIN MENU (the owner, 2026-10-31): the painting covers the whole screen; the title and, under it, a column of
+## buttons sit top-left over the painting's empty storm sky (on a short wide screen, e.g. a phone, two columns);
+## the flags top-right, the version small in the bottom-right corner. The column has levels (menu_level): "top"
+## (CONTINUE, PLAY, LEARN, WORKSHOP, SETTINGS), "play", "learn", "workshop"; a page opened from a level comes
+## back to it (its BACK calls show_menu()). Esc and the phone's or browser's back go back one level (_set_back).
 var menu_level := "top"
-var _menu_row: HBoxContainer
+var _menu_row: GridContainer
 ## The button Esc / the phone's back / the browser's back presses on this page (null: none, e.g. the top row).
 var _esc_button: Button
+## The menu column's title (its height decides one or two columns of buttons).
+var _menu_title: Label
+## How far down the screen the menu column may reach (the sky ends about there on the painting's left).
+const MENU_SKY := 0.6
 
 
 func show_menu(level := "") -> void:
@@ -349,60 +353,54 @@ func show_menu(level := "") -> void:
 		Music.me.menu()
 	var root := _page()
 	var pc := Settings.pc()
-	var bar := VBoxContainer.new()
-	bar.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	bar.offset_left = 14
-	bar.offset_right = -14
-	bar.offset_bottom = -7
-	bar.add_theme_constant_override("separation", 2)
-	root.add_child(bar)
-	# the painting fills everything above the bar (MenuBackdrop.band); the backdrop draws the bar's wood
-	var bd: MenuBackdrop = _backdrop
-	var fit_band := func() -> void:
-		if is_instance_valid(bd) and is_instance_valid(bar):
-			var top := bar.get_global_rect().position.y - 7.0 - bd.global_position.y
-			bd.set_band(Rect2(Vector2.ZERO, Vector2(bd.size.x, top)))
-	bar.resized.connect(fit_band)
-	bar.item_rect_changed.connect(fit_band)
+	_backdrop.sky = true          # (the painting over the whole screen, darkened a little behind the column)
+	var col := VBoxContainer.new()
+	col.position = Vector2(28, 20)
+	col.add_theme_constant_override("separation", 10)
+	root.add_child(col)
+	# the title, outlined and shadowed so it reads on the clouds
+	var title := UiStyle.heading(GameName.heading(), GameName.heading_size(44 if pc else 40), UiStyle.TRIM)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	title.add_theme_constant_override("outline_size", 8)
+	title.add_theme_color_override("font_outline_color", Color(0.05, 0.04, 0.03, 0.9))
+	title.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.75))
+	title.add_theme_constant_override("shadow_offset_x", 2)
+	title.add_theme_constant_override("shadow_offset_y", 4)
+	title.add_theme_constant_override("shadow_outline_size", 10)
+	col.add_child(title)
+	_menu_title = title
+	_menu_row = GridContainer.new()
+	_menu_row.add_theme_constant_override("h_separation", 10)
+	_menu_row.add_theme_constant_override("v_separation", 8 if pc else 10)
+	col.add_child(_menu_row)
 	var save := SaveGame.peek()
 	if not save.is_empty() and SaveGame.old_brood(save):
-		# (a match kept from before 0.18.0 with the old Brood in it: it can't go on; said once, plainly, on the bar)
-		var old := UiStyle.text(Loc.t("Your saved match can't be continued.") + " " + Loc.t(Defs.OLD_BROOD_NOTE), 15, Color(1, 0.85, 0.6), HORIZONTAL_ALIGNMENT_CENTER)
+		# (a match kept from before 0.18.0 with the old Brood in it: it can't go on; said once, plainly, under the column)
+		var old := UiStyle.text(Loc.t("Your saved match can't be continued.") + " " + Loc.t(Defs.OLD_BROOD_NOTE), 15, Color(1, 0.85, 0.6))
 		old.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		bar.add_child(old)
-	var line := HBoxContainer.new()
-	line.add_theme_constant_override("separation", 12)
-	bar.add_child(line)
-	# left: the title, about half the old size
-	var title := UiStyle.heading(GameName.heading(), GameName.heading_size(40 if pc else 44), UiStyle.TRIM)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	title.custom_minimum_size = Vector2(170 if pc else 210, 0)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	title.add_theme_constant_override("outline_size", 6)
-	title.add_theme_color_override("font_outline_color", Color(0.05, 0.04, 0.03, 0.85))
-	line.add_child(title)
-	# middle: the row of buttons (its level)
-	_menu_row = HBoxContainer.new()
-	_menu_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	_menu_row.add_theme_constant_override("separation", 8 if pc else 10)
-	_menu_row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	line.add_child(_menu_row)
-	# right: the flags, the version under them
-	var rt := VBoxContainer.new()
-	rt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rt.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	rt.add_theme_constant_override("separation", 1)
-	line.add_child(rt)
+		old.custom_minimum_size = Vector2(320, 0)
+		old.add_theme_constant_override("outline_size", 5)
+		old.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+		col.add_child(old)
+	# top-right: the flags, small
 	var flags := _flag_row(Vector2(30, 20) if pc else Vector2(40, 27), show_menu)
 	flags.alignment = BoxContainer.ALIGNMENT_END
 	flags.add_theme_constant_override("separation", 4)
-	rt.add_child(flags)
+	flags.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	flags.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	flags.offset_right = -14
+	flags.offset_top = 12
+	root.add_child(flags)
+	# bottom-right corner: the version, small
 	var ver := UiStyle.text("v%s  ·  %s" % [version, Loc.t("playing on computer") if pc else Loc.t("playing on mobile")], 12 if pc else 14, Color(1, 0.96, 0.85, 0.8), HORIZONTAL_ALIGNMENT_RIGHT)
-	rt.add_child(ver)
+	ver.add_theme_constant_override("outline_size", 4)
+	ver.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
+	ver.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	ver.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	ver.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	ver.offset_right = -12
+	ver.offset_bottom = -6
+	root.add_child(ver)
 	_fill_menu_row(save, false)
 
 
@@ -446,6 +444,14 @@ func _fill_menu_row(save: Dictionary, fade := true) -> void:
 				["WORKSHOP", swap.bind("workshop"), 160.0, ""],
 				["SETTINGS", func() -> void: show_settings(), 150.0, ""]])
 	_set_back(null)
+	# one column when it fits in the sky (the top MENU_SKY of the screen) under the title, else two (a short wide phone)
+	var sep := float(_menu_row.get_theme_constant("v_separation"))
+	var vh := get_viewport().get_visible_rect().size.y
+	var room := vh * MENU_SKY - 20.0 - 10.0 - _title_height(pc)
+	var n := items.size()
+	var cols := 1 if n * h + (n - 1) * sep <= room else 2
+	_menu_row.columns = cols
+	var bw := (300.0 if pc else 320.0) if cols == 1 else (230.0 if pc else 250.0)
 	for it in items:
 		var kind: String = it[3]
 		var t: String = it[0]
@@ -453,7 +459,7 @@ func _fill_menu_row(save: Dictionary, fade := true) -> void:
 		var b := _button(_ctx(t), cb if cb.is_valid() else func() -> void: pass)
 		if "|" in t:
 			b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED   # (its text is already translated)
-		b.custom_minimum_size = Vector2(float(it[2]) * (1.0 if pc else 1.1), h)
+		b.custom_minimum_size = Vector2(bw, h)
 		match kind:
 			"primary":
 				UiStyle.primary(b)
@@ -482,6 +488,23 @@ func _fill_menu_row(save: Dictionary, fade := true) -> void:
 	if fade:
 		_menu_row.modulate.a = 0.0
 		create_tween().tween_property(_menu_row, "modulate:a", 1.0, 0.12)
+
+
+## The menu title's height at its width (the column's): its size shrinks on a phone whose sky is short.
+func _title_height(pc: bool) -> float:
+	if not is_instance_valid(_menu_title):
+		return 0.0
+	var w := 330.0 if pc else 360.0
+	var big := 60 if pc else 52
+	var room := get_viewport().get_visible_rect().size.y * MENU_SKY
+	if not pc and room < 470.0:
+		big = 44        # (a wide phone: a smaller title, the buttons in two columns under it)
+	var sz := GameName.heading_size(big)
+	_menu_title.add_theme_font_size_override("font_size", sz)
+	_menu_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_menu_title.custom_minimum_size = Vector2(w, 0)
+	var f: Font = _menu_title.get_theme_font("font")
+	return f.get_multiline_string_size(_menu_title.text, HORIZONTAL_ALIGNMENT_LEFT, w, sz).y
 
 
 ## A key with a context after "|" ("PLAY|main menu": PLAY is also the music player's, translated otherwise):
@@ -1853,14 +1876,13 @@ class MenuBackdrop extends Control:
 	## THE BATTLE PAINTING (the owner's oil painting, 2026-10-31): one fixed picture, no panning; the old
 	## triptych only when it is missing
 	var _battle: Texture2D = null
-	## THE MAIN MENU'S FRAME (the owner, 2026-10-31): the screen above the bottom bar, in this control's space
-	## (_draw_framed); the bar's wood is drawn below it. Unset (size 0): the painting covers the screen (the other pages).
-	var band := Rect2()
-
-	func set_band(r: Rect2) -> void:
-		if r != band:
-			band = r
+	## THE MAIN MENU (the owner, 2026-10-31): the painting covers the screen, a soft dark glow in its top-left
+	## sky behind the menu column (_draw_sky). Off: the other pages (the painting under a darker shade).
+	var sky := false:
+		set(v):
+			sky = v
 			queue_redraw()
+	var _glow: GradientTexture2D
 
 	func _ready() -> void:
 		var bp := "res://assets/menu/battle.jpg"
@@ -1891,13 +1913,13 @@ class MenuBackdrop extends Control:
 		draw_rect(Rect2(Vector2.ZERO, size), UiStyle.BG)
 		if _battle != null:
 			var ts := _battle.get_size()
-			if band.size.y > 40.0:
-				_draw_framed(ts)
-				return
 			# fixed, covering the screen, centred (cut at the sides or top and bottom as the screen's shape needs)
 			var sc := maxf(size.x / ts.x, size.y / ts.y)
 			var src_size := size / sc
 			draw_texture_rect_region(_battle, Rect2(Vector2.ZERO, size), Rect2((ts - src_size) * 0.5, src_size))
+			if sky:
+				_draw_sky()
+				return
 			_shade(false)
 			return
 		var n := _art.size()
@@ -1920,31 +1942,27 @@ class MenuBackdrop extends Control:
 			_cover(_art[focus], Rect2(Vector2.ZERO, size), t * 0.04, 1.0 + 0.06 * f, f)
 		_shade()
 
-	## The main menu: the painting in the band (the screen above the bottom bar), scaled to the band's height: never
-	## cut at the top or bottom. Wider than the band (e.g. a 21:9 painting): it fills the band, its left and right
-	## edges trimmed evenly. Narrower (a 16:9 painting on a wide screen): whole, centred, the painting's own colours
-	## (dimmed, stretched) in the side strips. The wooden bar is drawn below the band.
-	func _draw_framed(ts: Vector2) -> void:
-		var sc := band.size.y / ts.y
-		var w := ts.x * sc
-		if w >= band.size.x - 1.0:
-			var src_w := band.size.x / sc
-			draw_texture_rect_region(_battle, band, Rect2(Vector2((ts.x - src_w) * 0.5, 0), Vector2(src_w, ts.y)))
-		else:
-			# the sides: the painting again, covering the band, dark
-			var cs := maxf(band.size.x / ts.x, band.size.y / ts.y)
-			var src := band.size / cs
-			draw_texture_rect_region(_battle, band, Rect2((ts - src) * 0.5, src), Color(0.28, 0.25, 0.22))
-			var pr := Rect2(Vector2(band.get_center().x - w * 0.5, band.position.y), Vector2(w, band.size.y))
-			draw_texture_rect(_battle, pr, false)
-			draw_line(Vector2(pr.position.x - 1, pr.position.y), Vector2(pr.position.x - 1, pr.end.y), Color(0.79, 0.64, 0.29, 0.8), 2.0)
-			draw_line(Vector2(pr.end.x + 1, pr.position.y), Vector2(pr.end.x + 1, pr.end.y), Color(0.79, 0.64, 0.29, 0.8), 2.0)
-		# the bar: the HUD's wooden panel (or the plain panel), a little over the band's edge
-		var bot := Rect2(Vector2(-4, band.end.y - 4), Vector2(size.x + 8, size.y - band.end.y + 8))
-		if PanelArt.box("crown", "panel") != null:
-			PanelArt.draw(self, bot, "crown", "panel")
-		else:
-			UiStyle.draw_panel(self, bot, Color(0, 0, 0, 0), 1.0)
+	## The main menu: a soft dark glow from the top-left corner (behind the title and the buttons), a light one in
+	## the bottom-right corner (behind the version) and a faint one top-right (the flags).
+	func _draw_sky() -> void:
+		if _glow == null:
+			var g := Gradient.new()
+			g.offsets = PackedFloat32Array([0.0, 0.45, 1.0])
+			g.colors = PackedColorArray([Color(0.03, 0.02, 0.02, 0.62), Color(0.03, 0.02, 0.02, 0.38), Color(0.03, 0.02, 0.02, 0.0)])
+			_glow = GradientTexture2D.new()
+			_glow.gradient = g
+			_glow.fill = GradientTexture2D.FILL_RADIAL
+			_glow.fill_from = Vector2(0.0, 0.0)
+			_glow.fill_to = Vector2(1.0, 0.0)
+			_glow.width = 256
+			_glow.height = 256
+		var r := Rect2(Vector2.ZERO, Vector2(maxf(size.x * 0.5, 560.0), maxf(size.y * 0.85, 520.0)))
+		draw_texture_rect(_glow, r, false)
+		draw_set_transform(size, 0.0, Vector2(-1, -1))           # (mirrored into the bottom-right corner)
+		draw_texture_rect(_glow, Rect2(0, 0, 360, 90), false, Color(1, 1, 1, 0.8))
+		draw_set_transform(Vector2(size.x, 0), 0.0, Vector2(-1, 1))  # (the top-right corner)
+		draw_texture_rect(_glow, Rect2(0, 0, 260, 70), false, Color(1, 1, 1, 0.6))
+		draw_set_transform(Vector2.ZERO)
 
 	## The dark band behind the menu column and the vignettes over the picture.
 	func _shade(band := true) -> void:

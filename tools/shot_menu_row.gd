@@ -1,5 +1,5 @@
 extends SceneTree
-## The main menu's row levels as pictures (docs/shots/main_menu/):
+## The main menu's column levels as pictures (docs/shots/main_menu/, kept there as jpg):
 ##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 --script res://tools/shot_menu_row.gd -- <outdir> [pc|mobile] [prefix] [lang] [cont]
 ## (cont: a pretend saved match, to see the widest top row with CONTINUE)
 ## writes <prefix>top.png and <prefix>play.png (a phone: --resolution 2400x1080 ... -- <outdir> mobile phone_).
