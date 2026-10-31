@@ -400,6 +400,14 @@ func show_menu() -> void:
 			menu_buttons[id] = b
 			_menu_grid.add_child(b)
 	# top-right: the flags, small
+	# A NEW VERSION (the Windows program and the Android app; scripts/update_check.gd): asked once a run, the box comes
+	# up when the answer is in
+	if UpdateCheck.show_box(version):
+		_update_box(root)
+	else:
+		UpdateCheck.ask(self, func() -> void:
+			if UpdateCheck.show_box(version) and is_instance_valid(root) and root.is_inside_tree() and game == null:
+				_update_box(root))
 	var flags := _flag_row(Vector2(30, 20) if pc else Vector2(40, 27), show_menu)
 	flags.alignment = BoxContainer.ALIGNMENT_END
 	flags.add_theme_constant_override("separation", 4)
@@ -1906,6 +1914,40 @@ func _flag_row(sz: Vector2, reload: Callable) -> HBoxContainer:
 	for c in Loc.LANGS:
 		row.add_child(_flag_button(c, sz, reload))
 	return row
+
+
+## The new-version box over the main menu: what's out, DOWNLOAD (opens the site's file in the browser) and LATER.
+func _update_box(root: Control) -> void:
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.add_child(c)
+	var p := PanelContainer.new()
+	p.custom_minimum_size = Vector2(440, 0)
+	c.add_child(p)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 12)
+	p.add_child(v)
+	var h := UiStyle.heading(Loc.t("A NEW VERSION IS OUT"), 30, UiStyle.TRIM)
+	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(h)
+	var t := UiStyle.text(Loc.t("Version %s is out (you have %s). Download it and replace this copy to update.") % [UpdateCheck.latest, version], 18, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	t.custom_minimum_size = Vector2(400, 0)
+	v.add_child(t)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 12)
+	v.add_child(row)
+	var dl := _button("DOWNLOAD", func() -> void:
+		OS.shell_open(UpdateCheck.download_url()))
+	UiStyle.primary(dl)
+	dl.custom_minimum_size = Vector2(180, 50)
+	row.add_child(dl)
+	var later := _button("LATER", func() -> void:
+		UpdateCheck.dismissed = true
+		c.queue_free())
+	later.custom_minimum_size = Vector2(140, 50)
+	row.add_child(later)
 
 
 ## The three flags in the top-right corner of a menu page.

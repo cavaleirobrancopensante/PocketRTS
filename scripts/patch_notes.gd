@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.32", "items": [
+		"A NEW VERSION BOX: the Windows program and the Android app check the site once a run; when a newer version is out, the main menu says so, with DOWNLOAD (opens the new file in your browser) and LATER. The browser version is always the newest, so it never asks.",
+		"The Windows program is on the site: https://holdfastrts.github.io/Holdfast/Holdfast_windows.zip (rebuilt on every update, like the Android app).",
+		"The Android app may now use the internet (for this check and for online play).",
+	]},
 	{"v": "0.24.31", "items": [
 		"THE CROWN'S RAIDERS DON'T WAIT AT A ROOTMAW: Horsemen raiding the Brood who have killed every grub in sight no longer stand hitting the rooted Rootmaw or Mound Turtle the grubs worked at; they wait beside it for the next grub (they still fight any armed creature that comes).",
 	]},

@@ -55,6 +55,7 @@ jobs:
           ~/godot/godot --headless --import || true
           GODOT=~/godot/godot tools/web/build_web.sh | tee build_web.log | grep -v "savepack\|Storing File"
           version=$(sed -n 's/^config\/version="\(.*\)"/\1/p' project.godot)
+          echo "{\"version\": \"$version\"}" > build/web/version.json    # (the programs' new-version box: scripts/update_check.gd)
           echo "Built version $version ($(git rev-parse --short HEAD))" >> "$GITHUB_STEP_SUMMARY"
           { echo '```'; sed -n '/^web build:/,$p' build_web.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 

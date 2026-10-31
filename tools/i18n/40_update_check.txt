@@ -1,0 +1,17 @@
+# 0.24.32: the new-version box on the main menu (the Windows program and the Android app)
+
+> A NEW VERSION IS OUT
+pt UMA NOVA VERSÃO SAIU
+es HAY UNA NUEVA VERSIÓN
+
+> Version %s is out (you have %s). Download it and replace this copy to update.
+pt A versão %s saiu (você tem a %s). Baixe-a e substitua esta cópia para atualizar.
+es Ha salido la versión %s (tienes la %s). Descárgala y reemplaza esta copia para actualizar.
+
+> DOWNLOAD
+pt BAIXAR
+es DESCARGAR
+
+> LATER
+pt DEPOIS
+es MÁS TARDE
