@@ -802,21 +802,7 @@ func _draw_production(font: Font) -> void:
 	var blocks: Array = []
 	var h := 8.0
 	for t in teams:
-		var items: Array = []           # [icon, progress 0..1 or -1, colour]
-		for b in game.buildings:
-			if b.team != t or b.dead:
-				continue
-			if not b.built:
-				items.append([b.kind, b.progress, Color(0.95, 0.75, 0.3)])
-				continue
-			var shq := NetPredict.shown_queue(game, b)
-			var q: Array = shq[0]
-			for i in q.size():
-				var res := Building.is_research(q[i])
-				var f := -1.0
-				if i == 0:
-					f = float(shq[2]) / Building.entry_time(q[i])
-				items.append([_research_icon(String(q[i]).substr(1)) if res else (_queue_icon(b, i) if i < b.queue.size() else String(q[i])), f, Color(0.75, 0.55, 1.0) if res else Color(0.4, 0.75, 1.0)])
+		var items := prod_items(t)
 		var rows := maxi(1, int(ceil(items.size() / float(PER))))
 		blocks.append([t, items])
 		h += 22 + rows * (SZ + 10)
@@ -839,6 +825,44 @@ func _draw_production(font: Font) -> void:
 				_ci.draw_rect(Rect2(r.position.x, r.end.y + 2, SZ, 4), Color(0, 0, 0, 0.5))
 				_ci.draw_rect(Rect2(r.position.x, r.end.y + 2, SZ * clampf(float(it[1]), 0.0, 1.0), 4), it[2])
 		y += maxi(1, int(ceil(items.size() / float(PER)))) * (SZ + 10)
+
+
+## The PRODUCTION list of side t (watching computers): [icon, progress 0..1 or -1 (waiting), colour] each.
+func prod_items(t: int) -> Array:
+	var items: Array = []           # [icon, progress 0..1 or -1, colour]
+	for b in game.buildings:
+		if b.team != t or b.dead:
+			continue
+		if not b.built:
+			items.append([b.kind, b.progress, Color(0.95, 0.75, 0.3)])
+			continue
+		var shq := NetPredict.shown_queue(game, b)
+		var q: Array = shq[0]
+		for i in q.size():
+			var res := Building.is_research(q[i])
+			var f := -1.0
+			if i == 0:
+				f = float(shq[2]) / Building.entry_time(q[i])
+			items.append([_research_icon(String(q[i]).substr(1)) if res else (_queue_icon(b, i) if i < b.queue.size() else String(q[i])), f, Color(0.75, 0.55, 1.0) if res else Color(0.4, 0.75, 1.0)])
+	if BroodNew.on(game, t):
+		# THE BROOD has no buildings (the owner, 2026-10-31: its PRODUCTION list was empty): its eggs hatching, its
+		# young moulting into their mature forms, and the research of its Sires and Mother (and what waits after it)
+		for u in game.units:
+			if u.team != t or u.dead:
+				continue
+			if u.kind == BroodNew.EGG:
+				var yk := String(u.nb.get("k", "grub"))
+				items.append([yk, clampf(float(u.nb.get("t", 0.0)) / maxf(BroodNew.egg_time(yk), 0.1), 0.0, 1.0), Color(0.6, 0.9, 0.35)])
+			elif u.moult_t >= 0.0 and BroodMature.mature_of(u.kind) != "":
+				items.append([BroodMature.mature_of(u.kind), BroodMature.frac(u), Color(0.95, 0.75, 0.3)])
+			if BroodResearch.busy(u):
+				var rp := BroodResearch.progress(u)
+				if Defs.RESEARCH.has(BroodResearch.current(u)):
+					items.append([_research_icon(BroodResearch.current(u)), float(rp.get("f", 0.0)), Color(0.75, 0.55, 1.0)])
+				for rk in BroodResearch.queued(u):
+					if Defs.RESEARCH.has(rk):
+						items.append([_research_icon(rk), -1.0, Color(0.75, 0.55, 1.0)])
+	return items
 
 
 ## Watching computers: the VIEW button under the clock; its list opens below it.

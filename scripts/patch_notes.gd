@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.22", "items": [
+		"WATCHING COMPUTERS: the PRODUCTION list shows the Brood too (it has no buildings, so it was empty): its eggs hatching, its young moulting into their mature forms, and its Sires' and Mother's research, with what waits after it.",
+	]},
 	{"v": "0.24.21", "items": [
 		"THE MAIN MENU'S BOTTOM LINE: \"Version 0.24.21\" (click it to read the patch notes; their BACK returns to the main menu) and \"This game was made with the help of AI\".",
 	]},
