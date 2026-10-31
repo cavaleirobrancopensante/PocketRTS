@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.16", "items": [
+		"THE MAIN MENU'S PAINTING IS SHOWN WHOLE: the title sits on a wooden bar above it and the buttons on one below, so nothing covers the picture; on a wide screen its sides are filled with the painting's own colours, dimmed.",
+	]},
 	{"v": "0.24.15", "items": [
 		"THE MAIN MENU'S NEW PICTURE: one still oil painting of the three armies clashing (the Crown's volley and charge, the Brood pouring down the hill under its Mother, the Clockwork marching in brass), in place of the three panning faction pictures.",
 	]},

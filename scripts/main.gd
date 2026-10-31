@@ -354,6 +354,14 @@ func show_menu() -> void:
 	sp.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(sp)
+	# the painting fills the room between the title and the buttons, whole (MenuBackdrop.band)
+	var bd: MenuBackdrop = _backdrop
+	var fit_band := func() -> void:
+		if is_instance_valid(bd) and is_instance_valid(sp):
+			var gr := sp.get_global_rect()
+			bd.set_band(Rect2(Vector2(0, gr.position.y - 2 - bd.global_position.y), Vector2(bd.size.x, gr.size.y + 4)))
+	sp.resized.connect(fit_band)
+	sp.item_rect_changed.connect(fit_band)
 	var save := SaveGame.peek()
 	if not save.is_empty() and SaveGame.old_brood(save):
 		# (a match kept from before 0.18.0 with the old Brood in it: it can't go on; said once, plainly)
@@ -1719,6 +1727,15 @@ class MenuBackdrop extends Control:
 	## THE BATTLE PAINTING (the owner's oil painting, 2026-10-31): one fixed picture, no panning; the old
 	## triptych only when it is missing
 	var _battle: Texture2D = null
+	## THE MAIN MENU'S FRAME (the owner, 2026-10-31: "the painting stays all visible"): the band between the title and
+	## the buttons, in this control's space; the painting fits whole inside it, the title and the buttons sit on wooden
+	## bars above and below (the HUD's panel art). Unset (size 0): the painting covers the screen (the other pages).
+	var band := Rect2()
+
+	func set_band(r: Rect2) -> void:
+		if r != band:
+			band = r
+			queue_redraw()
 
 	func _ready() -> void:
 		var bp := "res://assets/menu/battle.jpg"
@@ -1748,8 +1765,11 @@ class MenuBackdrop extends Control:
 	func _draw() -> void:
 		draw_rect(Rect2(Vector2.ZERO, size), UiStyle.BG)
 		if _battle != null:
-			# fixed, covering the screen, centred (cut at the sides or top and bottom as the screen's shape needs)
 			var ts := _battle.get_size()
+			if band.size.y > 40.0:
+				_draw_framed(ts)
+				return
+			# fixed, covering the screen, centred (cut at the sides or top and bottom as the screen's shape needs)
 			var sc := maxf(size.x / ts.x, size.y / ts.y)
 			var src_size := size / sc
 			draw_texture_rect_region(_battle, Rect2(Vector2.ZERO, size), Rect2((ts - src_size) * 0.5, src_size))
@@ -1774,6 +1794,27 @@ class MenuBackdrop extends Control:
 		if f > 0.0:
 			_cover(_art[focus], Rect2(Vector2.ZERO, size), t * 0.04, 1.0 + 0.06 * f, f)
 		_shade()
+
+	## The main menu: the whole painting in the band, wooden bars above and below, the painting's own colours
+	## (dimmed, stretched) at its sides when the band is wider than the painting.
+	func _draw_framed(ts: Vector2) -> void:
+		# the sides: the painting again, covering the band, dark
+		var sc := maxf(band.size.x / ts.x, band.size.y / ts.y)
+		var src := band.size / sc
+		draw_texture_rect_region(_battle, band, Rect2((ts - src) * 0.5, src), Color(0.28, 0.25, 0.22))
+		# the painting, whole, centred in the band
+		var fit := minf(band.size.x / ts.x, band.size.y / ts.y)
+		var pr := Rect2(band.get_center() - ts * fit * 0.5, ts * fit)
+		draw_texture_rect(_battle, pr, false)
+		draw_rect(pr.grow(1), Color(0.79, 0.64, 0.29, 0.8), false, 2.0)
+		# the bars: the HUD's wooden panel (or the plain panel), each a little over the band's edge
+		var top := Rect2(Vector2(-4, -4), Vector2(size.x + 8, band.position.y + 8))
+		var bot := Rect2(Vector2(-4, band.end.y - 4), Vector2(size.x + 8, size.y - band.end.y + 8))
+		for r in [top, bot]:
+			if PanelArt.box("crown", "panel") != null:
+				PanelArt.draw(self, r, "crown", "panel")
+			else:
+				UiStyle.draw_panel(self, r, Color(0, 0, 0, 0), 1.0)
 
 	## The dark band behind the menu column and the vignettes over the picture.
 	func _shade(band := true) -> void:
