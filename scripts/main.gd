@@ -161,6 +161,7 @@ func _ready() -> void:
 ## A fresh full-screen menu page over the animated backdrop.
 func _page() -> Control:
 	_clear_ui()
+	_esc_button = null
 	_backdrop = MenuBackdrop.new()
 	_backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -329,87 +330,205 @@ func show_crash(report: String) -> void:
 	row.add_child(ok)
 
 
-func show_menu() -> void:
+## THE MAIN MENU (the owner, 2026-10-31): the painting fills the screen above ONE slim wooden bar along the bottom:
+## the title on the left, one row of buttons in the middle, the flags and the version on the right. The row has
+## levels (menu_level): "top" (CONTINUE, PLAY, LEARN, WORKSHOP, SETTINGS), "play", "learn", "workshop"; a page
+## opened from a level comes back to it (its BACK calls show_menu()). Esc and the phone's or browser's back go
+## back one level (_set_back).
+var menu_level := "top"
+var _menu_row: HBoxContainer
+## The button Esc / the phone's back / the browser's back presses on this page (null: none, e.g. the top row).
+var _esc_button: Button
+
+
+func show_menu(level := "") -> void:
 	sandbox_lobby = false        # (the main menu's SKIRMISH is never the sandbox)
+	if level != "":
+		menu_level = level
 	if Music.me:
 		Music.me.menu()
 	var root := _page()
-	# the title on top, the buttons along the bottom: the landscapes stay in view
-	var v := VBoxContainer.new()
-	v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	v.offset_left = 24
-	v.offset_right = -24
-	v.offset_top = 18
-	v.offset_bottom = -16
-	v.add_theme_constant_override("separation", 10)
-	root.add_child(v)
-	var title := UiStyle.heading(GameName.heading(), GameName.heading_size(72), UiStyle.TRIM)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_constant_override("outline_size", 12)
-	title.add_theme_color_override("font_outline_color", Color(0.05, 0.04, 0.03, 0.85))
-	title.add_theme_constant_override("shadow_offset_y", 4)
-	title.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.6))
-	v.add_child(title)
-	var sp := Control.new()
-	sp.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	v.add_child(sp)
-	# the painting fills the room between the title and the buttons, whole (MenuBackdrop.band)
+	var pc := Settings.pc()
+	var bar := VBoxContainer.new()
+	bar.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	bar.offset_left = 14
+	bar.offset_right = -14
+	bar.offset_bottom = -7
+	bar.add_theme_constant_override("separation", 2)
+	root.add_child(bar)
+	# the painting fills everything above the bar (MenuBackdrop.band); the backdrop draws the bar's wood
 	var bd: MenuBackdrop = _backdrop
 	var fit_band := func() -> void:
-		if is_instance_valid(bd) and is_instance_valid(sp):
-			var gr := sp.get_global_rect()
-			bd.set_band(Rect2(Vector2(0, gr.position.y - 2 - bd.global_position.y), Vector2(bd.size.x, gr.size.y + 4)))
-	sp.resized.connect(fit_band)
-	sp.item_rect_changed.connect(fit_band)
+		if is_instance_valid(bd) and is_instance_valid(bar):
+			var top := bar.get_global_rect().position.y - 7.0 - bd.global_position.y
+			bd.set_band(Rect2(Vector2.ZERO, Vector2(bd.size.x, top)))
+	bar.resized.connect(fit_band)
+	bar.item_rect_changed.connect(fit_band)
 	var save := SaveGame.peek()
 	if not save.is_empty() and SaveGame.old_brood(save):
-		# (a match kept from before 0.18.0 with the old Brood in it: it can't go on; said once, plainly)
-		var old := UiStyle.text(Loc.t("Your saved match can't be continued.") + " " + Loc.t(Defs.OLD_BROOD_NOTE), 20, Color(1, 0.85, 0.6), HORIZONTAL_ALIGNMENT_CENTER)
+		# (a match kept from before 0.18.0 with the old Brood in it: it can't go on; said once, plainly, on the bar)
+		var old := UiStyle.text(Loc.t("Your saved match can't be continued.") + " " + Loc.t(Defs.OLD_BROOD_NOTE), 15, Color(1, 0.85, 0.6), HORIZONTAL_ALIGNMENT_CENTER)
 		old.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		old.custom_minimum_size = Vector2(560, 0)
-		var orow := HBoxContainer.new()
-		orow.alignment = BoxContainer.ALIGNMENT_CENTER
-		orow.add_child(old)
-		v.add_child(orow)
-	elif not save.is_empty() and save.get("version", "") == version:
-		var facs: Array = []
-		for sl in save["cfg"]["slots"]:
-			facs.append(Loc.t(Defs.base_faction(String(sl["faction"])).capitalize()))
-		var secs := int(save["clock"])
-		var cont := _button(Loc.t("CONTINUE  (%s, %d:%02d)") % [Loc.t(" vs ").join(facs), secs / 60, secs % 60], func() -> void:
-			var cfg: Dictionary = save["cfg"].duplicate(true)
-			cfg["resume"] = save
-			start(cfg))
-		UiStyle.primary(cont, Color("#2f6a8a"))
-		cont.custom_minimum_size = Vector2(420, 54)
-		var crow := HBoxContainer.new()
-		crow.alignment = BoxContainer.ALIGNMENT_CENTER
-		crow.add_child(cont)
-		v.add_child(crow)
-	# two rows (the owner, 2026-10-27: one row got crowded): the ways to play on top, SKIRMISH in the middle;
-	# the rest below
-	var rows := [[["ONLINE", func() -> void: show_online()], ["SKIRMISH", func() -> void: show_skirmish()], ["REPLAYS", func() -> void: show_replays()]],
-		[["HOW TO PLAY", func() -> void: show_help()], ["EDITOR", func() -> void: show_editor_menu()], ["MATCH LOGS", func() -> void: show_logs()], ["SETTINGS", func() -> void: show_settings()]]]
-	for items in rows:
-		var row := HBoxContainer.new()
-		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		row.add_theme_constant_override("separation", 10)
-		v.add_child(row)
-		for it in items:
-			var b := _button(it[0], it[1])
-			if it[0] == "SKIRMISH":
+		bar.add_child(old)
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 12)
+	bar.add_child(line)
+	# left: the title, about half the old size
+	var title := UiStyle.heading(GameName.heading(), GameName.heading_size(40 if pc else 44), UiStyle.TRIM)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title.custom_minimum_size = Vector2(170 if pc else 210, 0)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	title.add_theme_constant_override("outline_size", 6)
+	title.add_theme_color_override("font_outline_color", Color(0.05, 0.04, 0.03, 0.85))
+	line.add_child(title)
+	# middle: the row of buttons (its level)
+	_menu_row = HBoxContainer.new()
+	_menu_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_menu_row.add_theme_constant_override("separation", 8 if pc else 10)
+	_menu_row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	line.add_child(_menu_row)
+	# right: the flags, the version under them
+	var rt := VBoxContainer.new()
+	rt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rt.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	rt.add_theme_constant_override("separation", 1)
+	line.add_child(rt)
+	var flags := _flag_row(Vector2(30, 20) if pc else Vector2(40, 27), show_menu)
+	flags.alignment = BoxContainer.ALIGNMENT_END
+	flags.add_theme_constant_override("separation", 4)
+	rt.add_child(flags)
+	var ver := UiStyle.text("v%s  ·  %s" % [version, Loc.t("playing on computer") if pc else Loc.t("playing on mobile")], 12 if pc else 14, Color(1, 0.96, 0.85, 0.8), HORIZONTAL_ALIGNMENT_RIGHT)
+	rt.add_child(ver)
+	_fill_menu_row(save, false)
+
+
+## The buttons of one level of the main menu's row (menu_level); `fade`: a short fade-in when the row swaps.
+func _fill_menu_row(save: Dictionary, fade := true) -> void:
+	if not is_instance_valid(_menu_row):
+		return
+	for c in _menu_row.get_children():
+		_menu_row.remove_child(c)
+		c.queue_free()
+	var pc := Settings.pc()
+	var h := 52.0 if pc else 62.0
+	var swap := func(lv: String) -> void:
+		menu_level = lv
+		_fill_menu_row(save)
+	var items: Array = []        # [text, callable, width, kind]
+	match menu_level:
+		"play":
+			items = [["SKIRMISH", func() -> void: show_skirmish(), 190.0, "primary"],
+				["ONLINE", func() -> void: show_online(), 150.0, ""],
+				["CAMPAIGN", Callable(), 160.0, "later"],
+				["BACK", swap.bind("top"), 120.0, "back"]]
+		"learn":
+			# (room here for a tutorial later)
+			items = [["HOW TO PLAY", func() -> void: show_help(), 200.0, "primary"],
+				["BACK", swap.bind("top"), 120.0, "back"]]
+		"workshop":
+			items = [["EDITOR", func() -> void: show_editor_menu(), 150.0, ""],
+				["REPLAYS", func() -> void: show_replays(), 150.0, ""],
+				["MATCH LOGS", func() -> void: show_logs(), 180.0, ""],
+				["BACK", swap.bind("top"), 120.0, "back"]]
+		_:
+			menu_level = "top"
+			if not save.is_empty() and not SaveGame.old_brood(save) and save.get("version", "") == version:
+				items.append(["CONTINUE", func() -> void:
+					var cfg: Dictionary = save["cfg"].duplicate(true)
+					cfg["resume"] = save
+					start(cfg), 0.0, "continue"])
+			items.append_array([["PLAY|main menu", swap.bind("play"), 170.0, "primary"],
+				["LEARN", swap.bind("learn"), 130.0, ""],
+				["WORKSHOP", swap.bind("workshop"), 160.0, ""],
+				["SETTINGS", func() -> void: show_settings(), 150.0, ""]])
+	_set_back(null)
+	for it in items:
+		var kind: String = it[3]
+		var t: String = it[0]
+		var cb: Callable = it[1]
+		var b := _button(_ctx(t), cb if cb.is_valid() else func() -> void: pass)
+		if "|" in t:
+			b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED   # (its text is already translated)
+		b.custom_minimum_size = Vector2(float(it[2]) * (1.0 if pc else 1.1), h)
+		match kind:
+			"primary":
 				UiStyle.primary(b)
-				b.custom_minimum_size = Vector2(260, 64)
-				b.add_theme_font_size_override("font_size", 28)
-			else:
-				b.custom_minimum_size = Vector2(170, 54)
-			row.add_child(b)
-	_corner_flags(root, show_menu)
-	var ver := UiStyle.text("v%s  ·  %s" % [version, Loc.t("playing on computer") if Settings.pc() else Loc.t("playing on mobile")], 22, Color(1, 0.96, 0.85, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
-	ver.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	ver.add_theme_constant_override("outline_size", 5)
-	v.add_child(ver)
+				b.add_theme_font_size_override("font_size", 26 if pc else 28)
+			"continue":
+				# CONTINUE with the factions and the time, on two lines to stay slim
+				var facs: Array = []
+				for sl in save["cfg"]["slots"]:
+					facs.append(Loc.t(Defs.base_faction(String(sl["faction"])).capitalize()))
+				var secs := int(save["clock"])
+				b.text = Loc.t("CONTINUE  (%s, %d:%02d)") % [Loc.t(" vs ").join(facs), secs / 60, secs % 60]
+				b.text = b.text.replace("  (", "\n(")
+				b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+				b.add_theme_font_size_override("font_size", 15 if pc else 17)
+				UiStyle.primary(b, Color("#2f6a8a"))
+				b.add_theme_font_override("font", UiStyle.bold_font())
+			"later":
+				b.disabled = true
+				b.text = Loc.t("CAMPAIGN") + "\n" + Loc.t("coming later")
+				b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+				b.add_theme_font_size_override("font_size", 16 if pc else 18)
+				b.tooltip_text = "The campaign is coming later."
+			"back":
+				_set_back(b)
+		_menu_row.add_child(b)
+	if fade:
+		_menu_row.modulate.a = 0.0
+		create_tween().tween_property(_menu_row, "modulate:a", 1.0, 0.12)
+
+
+## A key with a context after "|" ("PLAY|main menu": PLAY is also the music player's, translated otherwise):
+## its translation, or the English before the "|".
+static func _ctx(key: String) -> String:
+	if not "|" in key:
+		return key
+	var r := Loc.t(key)
+	return key.get_slice("|", 0) if r == key else r
+
+
+## The button Esc, the phone's back and the browser's back press on this page (null: none).
+func _set_back(b: Button) -> void:
+	_esc_button = b
+	if b != null and OS.has_feature("web"):
+		_web_back_guard()
+
+
+## Esc / back: press this page's BACK (menus only, never in a match). True when there was one.
+func menu_back() -> bool:
+	if game != null or not is_instance_valid(_esc_button) or not _esc_button.is_visible_in_tree() or _esc_button.disabled:
+		return false
+	_esc_button.pressed.emit()
+	return true
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and (event as InputEventKey).keycode == KEY_ESCAPE:
+		if menu_back():
+			get_viewport().set_input_as_handled()
+
+
+## The browser's back button: while a menu page has a BACK, one history entry of ours sits on top (pushed once);
+## the browser's back takes it off (popstate) and the game goes back a level instead of leaving the page.
+var _web_back_cb: JavaScriptObject
+
+func _web_back_guard() -> void:
+	if _web_back_cb == null:
+		_web_back_cb = JavaScriptBridge.create_callback(_on_web_back)
+		var w := JavaScriptBridge.get_interface("window")
+		w.hfBackCb = _web_back_cb
+		JavaScriptBridge.eval("window.addEventListener('popstate', function () { window.hfGuard = false; if (window.hfBackCb) window.hfBackCb(); });", true)
+	JavaScriptBridge.eval("if (!window.hfGuard) { try { history.pushState({hf: 1}, ''); window.hfGuard = true; } catch (x) {} }", true)
+
+
+func _on_web_back(_args: Array) -> void:
+	menu_back.call_deferred()
 
 
 ## ONLINE: host a game or join one by room code (ui/multiplayer_menu.gd).
@@ -479,6 +598,7 @@ func show_logs() -> void:
 			b.text = "COPIED!")
 		row.add_child(b)
 	var back := _button("BACK", func() -> void: show_menu())
+	_set_back(back)
 	back.custom_minimum_size = Vector2(200, 54)
 	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	v.add_child(back)
@@ -580,6 +700,7 @@ func show_editor_menu() -> void:
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		v.add_child(l)
 	var back := _button("BACK", func() -> void: show_menu())
+	_set_back(back)
 	v.add_child(back)
 
 
@@ -642,7 +763,9 @@ func show_settings() -> void:
 	outer.add_theme_constant_override("separation", 7)
 	p.add_child(outer)
 	outer.add_child(UiStyle.heading("SETTINGS", 40, UiStyle.TRIM))
-	outer.add_child(_button("BACK", func() -> void: show_menu()))
+	var top_back := _button("BACK", func() -> void: show_menu())
+	_set_back(top_back)
+	outer.add_child(top_back)
 	var scr := ScrollContainer.new()
 	scr.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	outer.add_child(scr)
@@ -843,6 +966,7 @@ func show_patch_notes() -> void:
 			t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # (one line each ran far off the screen)
 			list.add_child(t)
 	var back := _button("BACK", func() -> void: show_settings())
+	_set_back(back)
 	v.add_child(back)
 
 
@@ -1074,6 +1198,7 @@ func show_help(section := "BASICS") -> void:
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(l)
 	var back := _button("BACK", func() -> void: show_menu())
+	_set_back(back)
 	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	back.custom_minimum_size.x = 220
 	v.add_child(back)
@@ -1243,6 +1368,7 @@ func show_skirmish() -> void:
 			show_editor_menu()
 		else:
 			show_menu())
+	_set_back(back)
 	back.custom_minimum_size = Vector2(200, 60)
 	row.add_child(back)
 	var problem := _lobby_problem()
@@ -1727,9 +1853,8 @@ class MenuBackdrop extends Control:
 	## THE BATTLE PAINTING (the owner's oil painting, 2026-10-31): one fixed picture, no panning; the old
 	## triptych only when it is missing
 	var _battle: Texture2D = null
-	## THE MAIN MENU'S FRAME (the owner, 2026-10-31: "the painting stays all visible"): the band between the title and
-	## the buttons, in this control's space; the painting fits whole inside it, the title and the buttons sit on wooden
-	## bars above and below (the HUD's panel art). Unset (size 0): the painting covers the screen (the other pages).
+	## THE MAIN MENU'S FRAME (the owner, 2026-10-31): the screen above the bottom bar, in this control's space
+	## (_draw_framed); the bar's wood is drawn below it. Unset (size 0): the painting covers the screen (the other pages).
 	var band := Rect2()
 
 	func set_band(r: Rect2) -> void:
@@ -1795,26 +1920,31 @@ class MenuBackdrop extends Control:
 			_cover(_art[focus], Rect2(Vector2.ZERO, size), t * 0.04, 1.0 + 0.06 * f, f)
 		_shade()
 
-	## The main menu: the whole painting in the band, wooden bars above and below, the painting's own colours
-	## (dimmed, stretched) at its sides when the band is wider than the painting.
+	## The main menu: the painting in the band (the screen above the bottom bar), scaled to the band's height: never
+	## cut at the top or bottom. Wider than the band (e.g. a 21:9 painting): it fills the band, its left and right
+	## edges trimmed evenly. Narrower (a 16:9 painting on a wide screen): whole, centred, the painting's own colours
+	## (dimmed, stretched) in the side strips. The wooden bar is drawn below the band.
 	func _draw_framed(ts: Vector2) -> void:
-		# the sides: the painting again, covering the band, dark
-		var sc := maxf(band.size.x / ts.x, band.size.y / ts.y)
-		var src := band.size / sc
-		draw_texture_rect_region(_battle, band, Rect2((ts - src) * 0.5, src), Color(0.28, 0.25, 0.22))
-		# the painting, whole, centred in the band
-		var fit := minf(band.size.x / ts.x, band.size.y / ts.y)
-		var pr := Rect2(band.get_center() - ts * fit * 0.5, ts * fit)
-		draw_texture_rect(_battle, pr, false)
-		draw_rect(pr.grow(1), Color(0.79, 0.64, 0.29, 0.8), false, 2.0)
-		# the bars: the HUD's wooden panel (or the plain panel), each a little over the band's edge
-		var top := Rect2(Vector2(-4, -4), Vector2(size.x + 8, band.position.y + 8))
+		var sc := band.size.y / ts.y
+		var w := ts.x * sc
+		if w >= band.size.x - 1.0:
+			var src_w := band.size.x / sc
+			draw_texture_rect_region(_battle, band, Rect2(Vector2((ts.x - src_w) * 0.5, 0), Vector2(src_w, ts.y)))
+		else:
+			# the sides: the painting again, covering the band, dark
+			var cs := maxf(band.size.x / ts.x, band.size.y / ts.y)
+			var src := band.size / cs
+			draw_texture_rect_region(_battle, band, Rect2((ts - src) * 0.5, src), Color(0.28, 0.25, 0.22))
+			var pr := Rect2(Vector2(band.get_center().x - w * 0.5, band.position.y), Vector2(w, band.size.y))
+			draw_texture_rect(_battle, pr, false)
+			draw_line(Vector2(pr.position.x - 1, pr.position.y), Vector2(pr.position.x - 1, pr.end.y), Color(0.79, 0.64, 0.29, 0.8), 2.0)
+			draw_line(Vector2(pr.end.x + 1, pr.position.y), Vector2(pr.end.x + 1, pr.end.y), Color(0.79, 0.64, 0.29, 0.8), 2.0)
+		# the bar: the HUD's wooden panel (or the plain panel), a little over the band's edge
 		var bot := Rect2(Vector2(-4, band.end.y - 4), Vector2(size.x + 8, size.y - band.end.y + 8))
-		for r in [top, bot]:
-			if PanelArt.box("crown", "panel") != null:
-				PanelArt.draw(self, r, "crown", "panel")
-			else:
-				UiStyle.draw_panel(self, r, Color(0, 0, 0, 0), 1.0)
+		if PanelArt.box("crown", "panel") != null:
+			PanelArt.draw(self, bot, "crown", "panel")
+		else:
+			UiStyle.draw_panel(self, bot, Color(0, 0, 0, 0), 1.0)
 
 	## The dark band behind the menu column and the vignettes over the picture.
 	func _shade(band := true) -> void:
@@ -2075,6 +2205,13 @@ func _save_done(pt: int) -> void:
 
 
 func _notification(what: int) -> void:
+	# the phone's back (project setting quit_on_go_back is off): back one menu level; on the top row, or in a
+	# match, the app closes as before
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		if not menu_back():
+			_autosave()
+			get_tree().quit()
+		return
 	if what in [NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_WM_CLOSE_REQUEST, NOTIFICATION_WM_WINDOW_FOCUS_OUT]:
 		_autosave()
 	# closed or sent to the background on purpose: not a crash (back in front: running again)
@@ -2375,7 +2512,7 @@ func _to_menu() -> void:
 	if net_lobby:
 		net_lobby.dispose()
 		net_lobby = null
-	show_menu()
+	show_menu("top")       # (the top row: CONTINUE is there)
 
 
 func _on_end(winner: int) -> void:

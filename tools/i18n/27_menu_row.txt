@@ -1,0 +1,25 @@
+# 0.24.17: the main menu's one row (CONTINUE, PLAY, LEARN, WORKSHOP, SETTINGS) and its levels
+
+> PLAY|main menu
+pt JOGAR
+es JUGAR
+
+> LEARN
+pt APRENDER
+es APRENDER
+
+> WORKSHOP
+pt OFICINA
+es TALLER
+
+> CAMPAIGN
+pt CAMPANHA
+es CAMPAÑA
+
+> coming later
+pt em breve
+es próximamente
+
+> The campaign is coming later.
+pt A campanha chega mais tarde.
+es La campaña llegará más adelante.

@@ -121,6 +121,7 @@ func _draw_entry() -> void:
 	jrow.add_child(join)
 	v.add_child(jrow)
 	var back: Button = main._button("BACK", func() -> void: main.show_menu())
+	main._set_back(back)
 	back.custom_minimum_size = Vector2(240, 58)
 	_box.add_child(back)
 

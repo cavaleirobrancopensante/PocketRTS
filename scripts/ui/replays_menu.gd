@@ -35,6 +35,7 @@ func build() -> void:
 	top.add_theme_constant_override("separation", 10)
 	v.add_child(top)
 	var back: Button = main._button("BACK", func() -> void: main.show_menu())
+	main._set_back(back)
 	back.custom_minimum_size = Vector2(160, 50)
 	top.add_child(back)
 	var imp: Button = main._button("IMPORT", func() -> void: _import())

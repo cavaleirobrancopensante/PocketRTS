@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.17", "items": [
+		"THE MAIN MENU HAS ONE SLIM BAR: the painting fills the screen above a single wooden bar along the bottom, with the title on its left, one row of buttons in the middle and the language flags and version on its right. The row: CONTINUE (when you have a saved match), PLAY, LEARN, WORKSHOP and SETTINGS. PLAY opens SKIRMISH, ONLINE and CAMPAIGN (coming later) in the same place; LEARN opens HOW TO PLAY; WORKSHOP opens EDITOR, REPLAYS and MATCH LOGS. BACK, Esc, and the phone's or browser's back button go back one step, and a page you leave brings you back to the row you opened it from.",
+	]},
 	{"v": "0.24.16", "items": [
 		"THE MAIN MENU'S PAINTING IS SHOWN WHOLE: the title sits on a wooden bar above it and the buttons on one below, so nothing covers the picture; on a wide screen its sides are filled with the painting's own colours, dimmed.",
 	]},
