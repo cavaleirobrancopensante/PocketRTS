@@ -153,6 +153,18 @@ func _save_soon() -> void:
 		_save_t = 0.6
 
 
+## "music", "sound" or "ambience" switched off (the small mute button beside its volume bar).
+func is_muted(which: String) -> bool:
+	return not (music_on if which == "music" else (sound_on if which == "sound" else amb_on))
+
+
+func toggle_mute(which: String) -> void:
+	match which:
+		"music": toggle_music()
+		"sound": toggle_sound()
+		_: toggle_ambience()
+
+
 func toggle_music() -> void:
 	music_on = not music_on
 	_apply()

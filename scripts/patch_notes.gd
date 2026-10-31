@@ -4,6 +4,12 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.33", "items": [
+		"SETTINGS IN TABS: the Settings page is split into GAMEPLAY (language, device, command keys or one-finger drag, layout and hotkeys, tooltips, build grid, replays kept, online relay), DISPLAY (full screen, interface size, minimap solidity, powder smoke, area marks, expansion spots, charge bars), SOUND, EXPERIMENTAL (turning gears, marching band, Clockwork lab) and OTHER (patch notes, animation viewer, reset settings). The tab you pick stays picked until you close the game.",
+		"FULL SCREEN ON A COMPUTER: a FULL SCREEN switch in Settings > DISPLAY; the Windows program also switches with F11 or Alt+Enter and starts the way you left it. In a browser the switch works from the click (F11 still works too).",
+		"SMALL MUTE BUTTONS: music, sound and ambience each have a small speaker button beside their volume bar instead of the big ON / OFF buttons; the match menu's volume bars have one too.",
+		"RESET SETTINGS (Settings > OTHER, press twice): every choice back to how it starts, except the language, the device, the sound and the online relay.",
+	]},
 	{"v": "0.24.32", "items": [
 		"A NEW VERSION BOX: the Windows program and the Android app check the site once a run; when a newer version is out, the main menu says so, with DOWNLOAD (opens the new file in your browser) and LATER. The browser version is always the newest, so it never asks.",
 		"The Windows program is on the site: https://holdfastrts.github.io/Holdfast/Holdfast_windows.zip (rebuilt on every update, like the Android app).",

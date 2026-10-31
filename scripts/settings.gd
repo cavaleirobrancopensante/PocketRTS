@@ -6,7 +6,8 @@ const PATH := "user://settings.cfg"
 
 static var device := ""
 static var drag_mode := "box"        # mobile: "box" = drag selects, "pan" = drag moves the view
-static var fullscreen := true         # web: play full screen (Esc no longer leaves it in Chrome/Edge)
+static var fullscreen := true         # web on a phone: play full screen (Esc no longer leaves it in Chrome/Edge)
+static var window_full := false       # computer: FULL SCREEN (Settings > DISPLAY, F11, Alt+Enter): the window fills the screen (apply_window)
 static var ui_size := 0               # 0 = automatic, else a percentage (100-200)
 static var grid_keys := false         # computer: command card keys by position (QWER / ASDF / ZXCV) instead of by name
 static var tooltips := true           # hover tooltips (computer) and the "?" help button (phone)
@@ -35,6 +36,7 @@ static func load_all() -> void:
 		drag_mode = cfg.get_value("input", "drag_mode", "box")
 		ui_size = cfg.get_value("input", "ui_size", 0)
 		fullscreen = cfg.get_value("input", "fullscreen", true)
+		window_full = bool(cfg.get_value("display", "fullscreen", false))
 		grid_keys = cfg.get_value("input", "grid_keys", false)
 		tooltips = cfg.get_value("input", "tooltips", true)
 		build_grid = cfg.get_value("input", "build_grid", true)
@@ -62,6 +64,7 @@ static func save_all() -> void:
 	cfg.set_value("input", "drag_mode", drag_mode)
 	cfg.set_value("input", "ui_size", ui_size)
 	cfg.set_value("input", "fullscreen", fullscreen)
+	cfg.set_value("display", "fullscreen", window_full)
 	cfg.set_value("input", "grid_keys", grid_keys)
 	cfg.set_value("input", "tooltips", tooltips)
 	cfg.set_value("input", "build_grid", build_grid)
@@ -100,6 +103,52 @@ static func powder_smoke_level() -> int:
 	if powder_smoke >= 0:
 		return powder_smoke
 	return POWDER_SMOKE_DEFAULT
+
+
+## Settings > OTHER > RESET SETTINGS: every choice back to how it starts, except the device,
+## the language, the online relay and the sound (it has its own mute buttons and bars).
+static func reset() -> void:
+	ui_size = 0
+	grid_keys = false
+	tooltips = true
+	build_grid = true
+	area_marks = true
+	powder_smoke = -1
+	expansion_spots = true
+	charge_bars = true
+	gear_turn = true
+	marching_band = false
+	mini_alpha = 0.6
+	cw_lab = false
+	replays_keep = 30
+	drag_mode = "box"
+	save_all()
+
+
+## The game can switch its window to full screen here (the desktop program, or a browser on a
+## computer, where it has to come from a click). Not the Android app (always full screen).
+static func can_window_full() -> bool:
+	return OS.has_feature("pc") or (OS.has_feature("web") and pc())
+
+
+## Is the window full screen now? (The browser's Esc can leave it without the game knowing.)
+static func window_is_full() -> bool:
+	if not can_window_full() or DisplayServer.get_name() == "headless":
+		return window_full
+	var now := DisplayServer.window_get_mode()
+	return now == DisplayServer.WINDOW_MODE_FULLSCREEN or now == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN
+
+
+## Puts the window in full screen or a window as window_full says (the desktop program at start,
+## and the FULL SCREEN toggle; on the web only from inside a click).
+static func apply_window() -> void:
+	if not can_window_full() or DisplayServer.get_name() == "headless":
+		return
+	var want := DisplayServer.WINDOW_MODE_FULLSCREEN if window_full else DisplayServer.WINDOW_MODE_WINDOWED
+	var now := DisplayServer.window_get_mode()
+	var is_full := now == DisplayServer.WINDOW_MODE_FULLSCREEN or now == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN
+	if is_full != window_full:
+		DisplayServer.window_set_mode(want)
 
 
 static func pc() -> bool:

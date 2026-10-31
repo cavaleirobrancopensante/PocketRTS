@@ -136,6 +136,8 @@ func _ready() -> void:
 	add_child(ui_layer)
 	_make_rotate_overlay()
 	Settings.load_all()
+	if not OS.has_feature("web"):
+		Settings.apply_window()       # (the desktop program starts full screen if it was left so; a browser needs a click)
 	_load_lobby()
 	if OS.has_feature("web"):
 		# F11 is the browser's: stop the engine swallowing it (it then did nothing in the game tab).
@@ -829,167 +831,238 @@ func show_map_editor(name := "", data := {}) -> void:
 		show_skirmish())
 
 
-func show_settings() -> void:
+## The Settings tabs, one shown at a time (the last one picked is kept for the session).
+const SETTINGS_TABS := ["GAMEPLAY", "DISPLAY", "SOUND", "EXPERIMENTAL", "OTHER"]
+var settings_tab := "GAMEPLAY"
+var _settings_root: Control           # the open Settings page (F11 rebuilds it so FULL SCREEN shows the change)
+var _reset_armed := false             # RESET SETTINGS pressed once: the next press resets
+
+
+func show_settings(tab := "") -> void:
+	if tab != "":
+		settings_tab = tab
+	if not SETTINGS_TABS.has(settings_tab):
+		settings_tab = "GAMEPLAY"
 	var root := _page()
+	_settings_root = root
 	var c := CenterContainer.new()
 	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.add_child(c)
 	var p := PanelContainer.new()
-	p.custom_minimum_size.x = 520
+	p.custom_minimum_size.x = 640
 	c.add_child(p)
-	# the list scrolls when it's taller than the screen (a phone in a browser: FULL SCREEN too);
-	# the heading and BACK stay pinned above it so BACK is always on screen
+	# the tab's list scrolls when it's taller than the screen (a phone in a browser: FULL SCREEN too);
+	# the heading, the tabs and BACK stay pinned above it so BACK is always on screen
 	var outer := VBoxContainer.new()
 	outer.add_theme_constant_override("separation", 7)
 	p.add_child(outer)
-	outer.add_child(UiStyle.heading("SETTINGS", 40, UiStyle.TRIM))
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 12)
+	outer.add_child(top)
+	var head := UiStyle.heading("SETTINGS", 36, UiStyle.TRIM)
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(head)
 	var top_back := _button("BACK", func() -> void: show_menu())
+	top_back.custom_minimum_size = Vector2(150, 46)
 	_set_back(top_back)
-	outer.add_child(top_back)
+	top.add_child(top_back)
+	var tabs := HBoxContainer.new()
+	tabs.name = "Tabs"
+	tabs.add_theme_constant_override("separation", 4)
+	outer.add_child(tabs)
+	for t in SETTINGS_TABS:
+		var tb := Button.new()
+		tb.name = "Tab_" + t
+		tb.text = t
+		tb.custom_minimum_size = Vector2(0, 44)
+		tb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tb.add_theme_font_size_override("font_size", 15)
+		if t == settings_tab:
+			UiStyle.chosen(tb)
+		var tt: String = t
+		tb.pressed.connect(func() -> void:
+			_web_fullscreen()
+			Sfx.play_any(["ui/click", "click"])
+			_reset_armed = false
+			show_settings(tt))
+		tabs.add_child(tb)
 	var scr := ScrollContainer.new()
 	scr.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	outer.add_child(scr)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 7)
+	v.name = "Rows"
+	v.add_theme_constant_override("separation", 6)
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scr.add_child(v)
+	for row in settings_rows(settings_tab):
+		v.add_child(row)
 	(func() -> void:
 		if is_instance_valid(scr):
-			scr.custom_minimum_size.y = minf(v.get_combined_minimum_size().y, get_viewport().get_visible_rect().size.y - 190.0)).call_deferred()
-	var lh := HBoxContainer.new()
-	lh.add_theme_constant_override("separation", 12)
-	var ll := UiStyle.text("LANGUAGE", 20, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT, true)
-	ll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lh.add_child(ll)
-	lh.add_child(_flag_row(Vector2(46, 31), show_settings))
-	v.add_child(lh)
-	v.add_child(_toggle_row("MUSIC", func() -> bool: return Music.me.music_on, func() -> void: Music.me.toggle_music()))
-	v.add_child(_volume_row("MUSIC LEVEL", "music"))
-	v.add_child(_toggle_row("SOUND", func() -> bool: return Music.me.sound_on, func() -> void: Music.me.toggle_sound()))
-	v.add_child(_volume_row("SOUND LEVEL", "sound"))
-	v.add_child(_toggle_row("AMBIENCE", func() -> bool: return Music.me.amb_on, func() -> void: Music.me.toggle_ambience()))
-	v.add_child(_volume_row("AMBIENCE LEVEL", "ambience"))
-	var mm := HBoxContainer.new()
-	mm.add_theme_constant_override("separation", 12)
-	var mml := UiStyle.text("MINIMAP SOLIDITY", 20, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT, true)
-	mml.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	mm.add_child(mml)
-	var mms := HSlider.new()
-	mms.min_value = 0.2
-	mms.max_value = 1.0
-	mms.step = 0.05
-	mms.value = Settings.mini_alpha
-	mms.custom_minimum_size = Vector2(190, 50)
-	mms.value_changed.connect(func(x: float) -> void:
-		Settings.mini_alpha = x
-		Settings.save_all())
-	mm.add_child(mms)
-	v.add_child(mm)
-	v.add_child(_button("MUSIC PLAYER", func() -> void: show_music()))
-	v.add_child(_button("PATCH NOTES", func() -> void: show_patch_notes()))
-	v.add_child(_button("ANIMATION VIEWER", func() -> void: show_anim_viewer()))
-	v.add_child(_button("INTERFACE LAYOUT & HOTKEYS", func() -> void: show_layout()))
-	var dev := _button(Loc.t("PLAYING ON: %s") % (Loc.t("COMPUTER") if Settings.pc() else Loc.t("MOBILE")), func() -> void: show_device())
-	var sizes := [0, 100, 125, 150, 175, 200]
-	var sz_text := Loc.t("AUTO (%d%%)") % int(Settings.ui_scale_now() * 100) if Settings.ui_size == 0 else "%d%%" % Settings.ui_size
-	var sh := HBoxContainer.new()
-	var sl := UiStyle.text("IN-GAME INTERFACE SIZE", 20, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT, true)
-	sl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	sh.add_child(sl)
-	var szb := _button(sz_text, func() -> void:
-		Settings.ui_size = sizes[(sizes.find(Settings.ui_size) + 1) % sizes.size()]
-		Settings.save_all()
-		show_settings())
-	szb.custom_minimum_size = Vector2(190, 50)
-	sh.add_child(szb)
-	v.add_child(sh)
-	v.add_child(dev)
-	if OS.has_feature("web") and not Settings.pc():
-		v.add_child(_toggle_row("FULL SCREEN", func() -> bool: return Settings.fullscreen, func() -> void:
-			Settings.fullscreen = not Settings.fullscreen
-			Settings.save_all()
-			if Settings.fullscreen:
-				_went_fullscreen = false
-				_web_fullscreen()
+			scr.custom_minimum_size.y = minf(v.get_combined_minimum_size().y, get_viewport().get_visible_rect().size.y - 170.0)).call_deferred()
+
+
+## The rows of one Settings tab. Every row that holds a setting is tagged with its id
+## (meta "setting"): tools/test_settings_tabs.gd checks each one shows in exactly one tab.
+func settings_rows(tab: String) -> Array:
+	var rows: Array = []
+	var redo := func() -> void: show_settings()
+	match tab:
+		"GAMEPLAY":
+			var lh := _row("LANGUAGE")
+			lh.add_child(_flag_row(Vector2(42, 28), redo))
+			rows.append(_tag(lh, "language"))
+			rows.append(_tag(_choice_row("PLAYING ON", Loc.t("COMPUTER") if Settings.pc() else Loc.t("MOBILE"), func() -> void: show_device()), "device"))
+			if Settings.pc():
+				rows.append(_tag(_toggle_row("COMMAND KEYS", func() -> bool: return Settings.grid_keys, func() -> void:
+					Settings.grid_keys = not Settings.grid_keys
+					Settings.save_all(), "GRID (QWER/ASDF/ZXCV)", "BY NAME"), "grid_keys"))
 			else:
-				_web_leave_fullscreen(), "ON", "OFF"))
-	if Settings.pc():
-		v.add_child(_toggle_row("COMMAND KEYS", func() -> bool: return Settings.grid_keys, func() -> void:
-			Settings.grid_keys = not Settings.grid_keys
-			Settings.save_all(), "GRID (QWER/ASDF/ZXCV)", "BY NAME"))
-	v.add_child(_toggle_row("TOOLTIPS", func() -> bool: return Settings.tooltips, func() -> void:
-		Settings.tooltips = not Settings.tooltips
-		Settings.save_all()))
-	v.add_child(_toggle_row("CLOCKWORK LAB", func() -> bool: return Settings.cw_lab, func() -> void:
-		Settings.cw_lab = not Settings.cw_lab
-		Settings.save_all()))
-	var kh := HBoxContainer.new()
-	kh.add_theme_constant_override("separation", 12)
-	var kl := UiStyle.text("REPLAYS KEPT", 20, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT, true)
-	kl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	kh.add_child(kl)
-	var keeps := [10, 20, 30, 50, 100]
-	var kb := _button(Loc.t("NEWEST %d") % Settings.replays_keep, func() -> void:
-		var i := keeps.find(Settings.replays_keep)
-		Settings.replays_keep = keeps[(i + 1) % keeps.size()]
-		Settings.save_all()
-		show_settings())
-	kb.custom_minimum_size = Vector2(190, 50)
-	kh.add_child(kb)
-	v.add_child(kh)
-	v.add_child(_toggle_row("BUILD GRID", func() -> bool: return Settings.build_grid, func() -> void:
-		Settings.build_grid = not Settings.build_grid
-		Settings.save_all()))
-	v.add_child(_toggle_row("AREA MARKS", func() -> bool: return Settings.area_marks, func() -> void:
-		Settings.area_marks = not Settings.area_marks
-		Settings.save_all()))
-	var ph := HBoxContainer.new()
-	ph.add_theme_constant_override("separation", 12)
-	var phl := UiStyle.text("POWDER SMOKE", 20, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT, true)
-	phl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	ph.add_child(phl)
-	var smoke_names := ["OFF", "LIGHT", "FULL", "THICK (experiment)"]
-	var pb := _button(smoke_names[Settings.powder_smoke_level()], func() -> void:
-		Settings.powder_smoke = (Settings.powder_smoke_level() + 1) % 4     # (off, light, full, thick; it applies from the next match)
-		Settings.save_all()
-		show_settings())
-	pb.custom_minimum_size = Vector2(260, 50)
-	ph.add_child(pb)
-	v.add_child(ph)
-	v.add_child(_toggle_row("TURNING GEARS (experiment)", func() -> bool: return Settings.gear_turn, func() -> void:
-		Settings.gear_turn = not Settings.gear_turn       # (from the next match: a match keeps the rule it started with)
-		Settings.save_all()))
-	v.add_child(_toggle_row("MARCHING BAND (experiment)", func() -> bool: return Settings.marching_band, func() -> void:
-		Settings.marching_band = not Settings.marching_band       # (the Crown's band at the Barracks: from the next match)
-		Settings.save_all()))
-	v.add_child(_toggle_row("SHOW EXPANSION SPOTS", func() -> bool: return Settings.expansion_spots, func() -> void:
-		Settings.expansion_spots = not Settings.expansion_spots
-		Settings.save_all()))
-	v.add_child(_toggle_row("SHOW CHARGE BARS", func() -> bool: return Settings.charge_bars, func() -> void:
-		Settings.charge_bars = not Settings.charge_bars       # (the thin charge bar over own Clockwork units)
-		Settings.save_all()))
-	if not Settings.pc():
-		v.add_child(_toggle_row("ONE-FINGER DRAG", func() -> bool: return Settings.drag_mode == "box", func() -> void:
-			Settings.drag_mode = "pan" if Settings.drag_mode == "box" else "box"
-			Settings.save_all(), "BOX-SELECTS", "MOVES THE VIEW"))
-	var rh := HBoxContainer.new()
-	rh.add_theme_constant_override("separation", 12)
-	var rhl := UiStyle.text("ONLINE RELAY ADDRESS", 20, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT, true)
-	rhl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rh.add_child(rhl)
-	var rhe := LineEdit.new()
-	rhe.text = Settings.relay_url
-	rhe.placeholder_text = "wss://pocketrts-relay.salgarellius-rts.workers.dev"
-	rhe.custom_minimum_size = Vector2(250, 50)
-	rhe.text_changed.connect(func(x: String) -> void:
-		Settings.relay_url = x.strip_edges()
-		Settings.save_all())
-	UiStyle.touch_text(rhe, "ONLINE RELAY ADDRESS")
-	rh.add_child(rhe)
-	v.add_child(rh)
-	v.add_child(_gap(4))
-	var back := _button("BACK", func() -> void: show_menu())
-	v.add_child(back)
+				rows.append(_tag(_toggle_row("ONE-FINGER DRAG", func() -> bool: return Settings.drag_mode == "box", func() -> void:
+					Settings.drag_mode = "pan" if Settings.drag_mode == "box" else "box"
+					Settings.save_all(), "BOX-SELECTS", "MOVES THE VIEW"), "drag_mode"))
+			rows.append(_tag(_choice_row("INTERFACE LAYOUT & HOTKEYS", "OPEN", func() -> void: show_layout()), "layout"))
+			rows.append(_tag(_toggle_row("TOOLTIPS", func() -> bool: return Settings.tooltips, func() -> void:
+				Settings.tooltips = not Settings.tooltips
+				Settings.save_all()), "tooltips"))
+			rows.append(_tag(_toggle_row("BUILD GRID", func() -> bool: return Settings.build_grid, func() -> void:
+				Settings.build_grid = not Settings.build_grid
+				Settings.save_all()), "build_grid"))
+			var keeps := [10, 20, 30, 50, 100]
+			rows.append(_tag(_choice_row("REPLAYS KEPT", Loc.t("NEWEST %d") % Settings.replays_keep, func() -> void:
+				var i := keeps.find(Settings.replays_keep)
+				Settings.replays_keep = keeps[(i + 1) % keeps.size()]
+				Settings.save_all()
+				show_settings()), "replays_keep"))
+			var rh := _row("ONLINE RELAY ADDRESS")
+			var rhe := LineEdit.new()
+			rhe.text = Settings.relay_url
+			rhe.placeholder_text = "wss://pocketrts-relay.salgarellius-rts.workers.dev"
+			rhe.custom_minimum_size = Vector2(260, 44)
+			rhe.text_changed.connect(func(x: String) -> void:
+				Settings.relay_url = x.strip_edges()
+				Settings.save_all())
+			UiStyle.touch_text(rhe, "ONLINE RELAY ADDRESS")
+			rh.add_child(rhe)
+			rows.append(_tag(rh, "relay_url"))
+		"DISPLAY":
+			if Settings.can_window_full():
+				rows.append(_tag(_toggle_row("FULL SCREEN", func() -> bool: return Settings.window_is_full(), func() -> void: toggle_window_full()), "window_full"))
+				rows.append(_hint("F11 or Alt+Enter also switches it." if not OS.has_feature("web") else "F11 also works (the browser's own full screen)."))
+			elif OS.has_feature("web"):
+				rows.append(_tag(_toggle_row("FULL SCREEN", func() -> bool: return Settings.fullscreen, func() -> void:
+					Settings.fullscreen = not Settings.fullscreen
+					Settings.save_all()
+					if Settings.fullscreen:
+						_went_fullscreen = false
+						_web_fullscreen()
+					else:
+						_web_leave_fullscreen()), "fullscreen"))
+			var sizes := [0, 100, 125, 150, 175, 200]
+			var sz_text := Loc.t("AUTO (%d%%)") % int(Settings.ui_scale_now() * 100) if Settings.ui_size == 0 else "%d%%" % Settings.ui_size
+			rows.append(_tag(_choice_row("IN-GAME INTERFACE SIZE", sz_text, func() -> void:
+				Settings.ui_size = sizes[(sizes.find(Settings.ui_size) + 1) % sizes.size()]
+				Settings.save_all()
+				show_settings()), "ui_size"))
+			var mm := _row("MINIMAP SOLIDITY")
+			var mms := HSlider.new()
+			mms.min_value = 0.2
+			mms.max_value = 1.0
+			mms.step = 0.05
+			mms.value = Settings.mini_alpha
+			mms.custom_minimum_size = Vector2(220, 44)
+			mms.value_changed.connect(func(x: float) -> void:
+				Settings.mini_alpha = x
+				Settings.save_all())
+			mm.add_child(mms)
+			rows.append(_tag(mm, "mini_alpha"))
+			var smoke_names := ["OFF", "LIGHT", "FULL", "THICK (experiment)"]
+			rows.append(_tag(_choice_row("POWDER SMOKE", smoke_names[Settings.powder_smoke_level()], func() -> void:
+				Settings.powder_smoke = (Settings.powder_smoke_level() + 1) % 4     # (off, light, full, thick; it applies from the next match)
+				Settings.save_all()
+				show_settings()), "powder_smoke"))
+			rows.append(_tag(_toggle_row("AREA MARKS", func() -> bool: return Settings.area_marks, func() -> void:
+				Settings.area_marks = not Settings.area_marks
+				Settings.save_all()), "area_marks"))
+			rows.append(_tag(_toggle_row("SHOW EXPANSION SPOTS", func() -> bool: return Settings.expansion_spots, func() -> void:
+				Settings.expansion_spots = not Settings.expansion_spots
+				Settings.save_all()), "expansion_spots"))
+			rows.append(_tag(_toggle_row("SHOW CHARGE BARS", func() -> bool: return Settings.charge_bars, func() -> void:
+				Settings.charge_bars = not Settings.charge_bars       # (the thin charge bar over own Clockwork units)
+				Settings.save_all()), "charge_bars"))
+		"SOUND":
+			rows.append(_tag(_volume_row("MUSIC", "music"), "music"))
+			rows.append(_tag(_volume_row("SOUND", "sound"), "sound"))
+			rows.append(_tag(_volume_row("AMBIENCE", "ambience"), "ambience"))
+			rows.append(_hint("The speaker beside a bar mutes it."))
+			rows.append(_tag(_choice_row("MUSIC PLAYER", "OPEN", func() -> void: show_music()), "music_player"))
+		"EXPERIMENTAL":
+			rows.append(_hint("Experiments being tried out. They apply from the next match."))
+			rows.append(_tag(_toggle_row("TURNING GEARS (experiment)", func() -> bool: return Settings.gear_turn, func() -> void:
+				Settings.gear_turn = not Settings.gear_turn       # (from the next match: a match keeps the rule it started with)
+				Settings.save_all()), "gear_turn"))
+			rows.append(_tag(_toggle_row("MARCHING BAND (experiment)", func() -> bool: return Settings.marching_band, func() -> void:
+				Settings.marching_band = not Settings.marching_band       # (the Crown's band at the Barracks: from the next match)
+				Settings.save_all()), "marching_band"))
+			rows.append(_tag(_toggle_row("CLOCKWORK LAB", func() -> bool: return Settings.cw_lab, func() -> void:
+				Settings.cw_lab = not Settings.cw_lab
+				Settings.save_all()), "cw_lab"))
+		"OTHER":
+			rows.append(_tag(_choice_row("PATCH NOTES", "OPEN", func() -> void: show_patch_notes()), "patch_notes"))
+			rows.append(_tag(_choice_row("ANIMATION VIEWER", "OPEN", func() -> void: show_anim_viewer()), "anim_viewer"))
+			rows.append(_tag(_choice_row("RESET SETTINGS", "PRESS AGAIN TO RESET" if _reset_armed else "RESET", func() -> void:
+				if _reset_armed:
+					_reset_armed = false
+					Settings.reset()
+				else:
+					_reset_armed = true
+				show_settings()), "reset"))
+			rows.append(_hint("Back to the starting choices; the language, device, sound and relay stay."))
+			rows.append(_hint(Loc.t("Version %s") % version))
+	return rows
+
+
+func _tag(row: Control, id: String) -> Control:
+	row.set_meta("setting", id)
+	return row
+
+
+## A Settings row: the label on the left; the caller adds the control on the right.
+func _row(title: String) -> HBoxContainer:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 10)
+	var l := UiStyle.text(title, 19, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT, true)
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	h.add_child(l)
+	return h
+
+
+## A row whose button steps through choices or opens a page.
+func _choice_row(title: String, value: String, cb: Callable) -> HBoxContainer:
+	var h := _row(title)
+	var b := _button(value, cb)
+	b.custom_minimum_size = Vector2(220, 44)
+	b.add_theme_font_size_override("font_size", 17)
+	b.clip_text = true
+	h.add_child(b)
+	return h
+
+
+## A short muted line under a row.
+func _hint(t: String) -> Label:
+	var l := UiStyle.text(t, 14, UiStyle.MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size.x = 560
+	return l
+
+
+## FULL SCREEN on a computer (Settings > DISPLAY, F11 or Alt+Enter in the desktop program).
+## On the web it runs inside the click's handler (the browser allows full screen only then).
+func toggle_window_full() -> void:
+	Settings.window_full = not Settings.window_is_full()
+	Settings.save_all()
+	Settings.apply_window()
 
 
 ## Every unit animation, looped at the game's frame rate (Settings).
@@ -1204,19 +1277,33 @@ func _track_row(stem: String, title: String, mood: String) -> Control:
 	return h
 
 
+## A volume bar with a small mute button (a speaker) at its left.
 func _volume_row(title: String, which: String) -> Control:
-	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 12)
-	var l := UiStyle.text(title, 20, UiStyle.TEXT, HORIZONTAL_ALIGNMENT_LEFT, true)
-	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	h.add_child(l)
+	var h := _row(title)
+	var mb := Button.new()
+	mb.name = "Mute"
+	mb.custom_minimum_size = Vector2(44, 44)
+	mb.tooltip_text = Loc.t("Mute / unmute")
+	var ic := SpeakerIcon.new()
+	ic.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 8)
+	mb.add_child(ic)
 	var sl := HSlider.new()
 	sl.min_value = 0.0
 	sl.max_value = 1.0
 	sl.step = 0.05
 	sl.value = Music.me.get_volume(which)
-	sl.custom_minimum_size = Vector2(190, 50)
+	sl.custom_minimum_size = Vector2(220, 44)
 	sl.value_changed.connect(func(v: float) -> void: Music.me.set_volume(which, v))
+	var refresh := func() -> void:
+		ic.muted = Music.me.is_muted(which)
+		ic.queue_redraw()
+		sl.modulate.a = 0.45 if ic.muted else 1.0
+	refresh.call()
+	mb.pressed.connect(func() -> void:
+		Music.me.toggle_mute(which)
+		Sfx.play_any(["ui/toggle", "ui/click", "click"])
+		refresh.call())
+	h.add_child(mb)
 	h.add_child(sl)
 	return h
 
@@ -1228,7 +1315,9 @@ func _toggle_row(title: String, get_on: Callable, flip: Callable, on_text := "ON
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(l)
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(190, 50)
+	b.custom_minimum_size = Vector2(220, 44)
+	b.add_theme_font_size_override("font_size", 17)
+	b.clip_text = true
 	var refresh := func() -> void:
 		var on: bool = get_on.call()
 		b.text = on_text if on else off_text
@@ -2781,6 +2870,15 @@ func _web_leave_fullscreen() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# the desktop program: F11 or Alt+Enter switches full screen (in a browser F11 is the browser's own)
+	if event is InputEventKey and event.pressed and not event.echo and not OS.has_feature("web") and Settings.can_window_full():
+		var ke := event as InputEventKey
+		if ke.keycode == KEY_F11 or (ke.alt_pressed and ke.keycode in [KEY_ENTER, KEY_KP_ENTER]):
+			get_viewport().set_input_as_handled()
+			toggle_window_full()
+			if is_instance_valid(_settings_root) and _settings_root.is_inside_tree() and settings_tab == "DISPLAY":
+				show_settings()
+			return
 	# APM: every click, tap and key press while you play (not while paused, watching or over)
 	if game and not game.over and not game.demo and not game.edit_mode and not get_tree().paused:
 		if (event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE]) \

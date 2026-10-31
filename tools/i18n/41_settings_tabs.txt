@@ -1,0 +1,57 @@
+# 0.24.33: the Settings page in tabs (scripts/main.gd show_settings / settings_rows), FULL SCREEN on a computer, small mute buttons
+
+> GAMEPLAY
+pt JOGO
+es JUEGO
+
+> DISPLAY
+pt TELA
+es PANTALLA
+
+> EXPERIMENTAL
+pt EXPERIMENTAL
+es EXPERIMENTAL
+
+> OTHER
+pt OUTROS
+es OTROS
+
+> PLAYING ON
+pt JOGANDO NO
+es JUGANDO EN
+
+> OPEN
+pt ABRIR
+es ABRIR
+
+> RESET SETTINGS
+pt REDEFINIR CONFIGURAÇÕES
+es RESTABLECER AJUSTES
+
+> PRESS AGAIN TO RESET
+pt TOQUE DE NOVO PARA REDEFINIR
+es PULSA OTRA VEZ PARA RESTABLECER
+
+> Mute / unmute
+pt Silenciar / ativar som
+es Silenciar / activar sonido
+
+> F11 or Alt+Enter also switches it.
+pt F11 ou Alt+Enter também alternam.
+es F11 o Alt+Intro también lo cambian.
+
+> F11 also works (the browser's own full screen).
+pt F11 também funciona (a tela cheia do próprio navegador).
+es F11 también funciona (la pantalla completa del propio navegador).
+
+> The speaker beside a bar mutes it.
+pt O alto-falante ao lado de uma barra a silencia.
+es El altavoz junto a una barra la silencia.
+
+> Experiments being tried out. They apply from the next match.
+pt Experimentos em teste. Valem a partir da próxima partida.
+es Experimentos en prueba. Se aplican desde la próxima partida.
+
+> Back to the starting choices; the language, device, sound and relay stay.
+pt Volta às escolhas iniciais; o idioma, o aparelho, o som e o relay ficam.
+es Vuelve a las opciones iniciales; el idioma, el dispositivo, el sonido y el relay se mantienen.

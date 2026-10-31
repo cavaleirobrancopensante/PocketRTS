@@ -707,7 +707,11 @@ func _use_button(b: Dictionary) -> void:
 func _menu_press(p: Vector2) -> void:
 	for b in _menu_buttons():
 		if (b["rect"] as Rect2).has_point(p):
-			if b.has("slider"):
+			if _mute_rect(b).has_point(p):
+				Music.me.toggle_mute(b["slider"])
+				Sfx.play_any(["ui/toggle", "ui/click", "click"])
+				_redraw_t = 0.0
+			elif b.has("slider"):
 				_slide(b, p)
 			elif b.get("enabled", true):
 				b["cb"].call()
@@ -2730,10 +2734,29 @@ func _slider_set(which: String, v: float) -> void:
 		Music.me.set_volume(which, v)
 
 
+## The small mute button at the right end of a pause-menu volume bar (music, sound, ambience; not the minimap).
+func _mute_rect(b: Dictionary) -> Rect2:
+	if String(b.get("slider", "")) in ["", "minimap"]:
+		return Rect2()
+	var r: Rect2 = b["rect"]
+	var h := minf(r.size.y - 8.0, 40.0)
+	return Rect2(r.end.x - h - 6.0, r.get_center().y - h * 0.5, h, h)
+
+
+## The bar's span inside the button (left of the mute button when there is one).
+func _bar_span(b: Dictionary) -> Vector2:
+	var r: Rect2 = b["rect"]
+	var mr := _mute_rect(b)
+	var right := (mr.position.x - 10.0) if mr.size.x > 0.0 else r.end.x - 14.0
+	return Vector2(r.position.x + 14.0, right - r.position.x - 14.0)
+
+
 ## A pause-menu volume bar: where you press along it is the level (drag to slide).
 func _slide(b: Dictionary, p: Vector2) -> void:
-	var r: Rect2 = b["rect"]
-	_slider_set(b["slider"], snappedf((p.x - r.position.x - 14.0) / (r.size.x - 28.0), 0.05))
+	if _mute_rect(b).has_point(p):
+		return
+	var sp := _bar_span(b)
+	_slider_set(b["slider"], snappedf((p.x - sp.x) / sp.y, 0.05))
 	_redraw_t = 0.0
 
 
@@ -3228,17 +3251,26 @@ func _draw_pause() -> void:
 			var r: Rect2 = b["rect"]
 			var on: bool = b.get("enabled", true)
 			UiStyle.draw_button(_ci, r, r.has_point(hv) and on, false, on, 0.45)
+			var tx := r.get_center().x
 			if b.has("slider"):
 				var vv: float = _slider_value(b["slider"])
-				_ci.draw_rect(Rect2(r.position.x + 14, r.end.y - 11, (r.size.x - 28) * vv, 4), UiStyle.TRIM)
-				_ci.draw_rect(Rect2(r.position.x + 14 + (r.size.x - 28) * vv - 2, r.end.y - 14, 4, 10), UiStyle.TEXT)
+				var sp := _bar_span(b)
+				var mr := _mute_rect(b)
+				var muted := mr.size.x > 0.0 and Music.me.is_muted(b["slider"])
+				_ci.draw_rect(Rect2(sp.x, r.end.y - 11, sp.y, 4), Color(0, 0, 0, 0.35))
+				_ci.draw_rect(Rect2(sp.x, r.end.y - 11, sp.y * vv, 4), Color(UiStyle.TRIM, 0.4) if muted else UiStyle.TRIM)
+				_ci.draw_rect(Rect2(sp.x + sp.y * vv - 2, r.end.y - 14, 4, 10), UiStyle.TEXT)
+				if mr.size.x > 0.0:
+					UiStyle.draw_button(_ci, mr, mr.has_point(hv), false, true, 0.6)
+					SpeakerIcon.draw_icon(_ci, mr.grow(-5.0), muted, UiStyle.TEXT)
+					tx = sp.x + sp.y * 0.5
 			var col: Color = UiStyle.BAD if b.get("bad", false) else UiStyle.TEXT
 			if not on:
 				col = Color(col, 0.45)
 			var ty := r.get_center().y + 8.0
 			if b.has("slider"):
 				ty = minf(ty, r.end.y - 15.0)     # above its bar on a short button (the bar ran through the words)
-			_text(UiStyle.bold_font(), Vector2(r.get_center().x, ty), b["label"], 21, col, 1)
+			_text(UiStyle.bold_font(), Vector2(tx, ty), b["label"], 21, col, 1)
 		if _music_shown():
 			music.layout(_music_panel_rect())
 			music.draw(self, _ci, hv)
