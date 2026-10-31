@@ -199,7 +199,23 @@ func _paths() -> void:
 								ok = false
 				if ok and m and m.position.distance_to(BroodRoot.feet_at(BroodNew.MAW, mc)) < 6.0 * T:
 					ok = false
+				# (since 0.24.24 a Rootmaw feeds only on swamp, and uproots off it: a Mound Turtle rooted 4 tiles
+				# beyond it, its swamp spread, as tools/test_brood_fix3.gd does)
+				var tc := Vector2i(-1, -1)
 				if ok:
+					tc = BroodRoot.cell_for(BroodNew.TURTLE, BroodRoot.feet_at(BroodNew.MAW, mc) + dir.rotated(a) * 4.5 * T)
+					for yy in 3:
+						for xx in 3:
+							var cc := tc + Vector2i(xx, yy)
+							if not g.in_map(cc) or g.solid[g.idx(cc)] != 0:
+								ok = false
+				if ok:
+					var tu := rooted(BroodNew.TURTLE, tc)
+					tu.nb["swr"] = BroodNew.swamp_full(tu)        # (its swamp spread already: it grows 1 tile a second)
+					g.swamp_dirty = true
+					await wait(1.0)
+					if not g.on_swamp(0, BroodRoot.feet_at(BroodNew.MAW, mc)):
+						print("  (no swamp at the Rootmaw spot %s: swr %s)" % [mc, tu.nb.get("swr", -1)])
 					if m == null:
 						m = rooted(BroodNew.MAW, mc)
 					else:
