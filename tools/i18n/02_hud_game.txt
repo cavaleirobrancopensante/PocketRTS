@@ -898,9 +898,9 @@ es Desarraigando...
 pt Miasma pronto em %ds.
 es Miasma listo en %ds.
 
-> Energy %d / %d (FOG %d, TONGUE %d) · fills %s
-pt Energia %d / %d (NEBLINA %d, LÍNGUA %d) · enche %s
-es Energía %d / %d (NIEBLA %d, LENGUA %d) · se llena %s
+> Energy %d / %d (FOG %d, TONGUE %d, MIASMA %d) · fills %s
+pt Energia %d / %d (NEBLINA %d, LÍNGUA %d, MIASMA %d) · enche %s
+es Energía %d / %d (NIEBLA %d, LENGUA %d, MIASMA %d) · se llena %s
 
 > twice as fast on swamp (now)
 pt duas vezes mais rápido no pântano (agora)

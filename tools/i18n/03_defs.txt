@@ -2,9 +2,9 @@
 pt Operário
 es Peón
 
-> Mines gold and builds. Weak in a fight.
-pt Extrai ouro e constrói. Fraco em combate.
-es Extrae oro y construye. Débil en combate.
+> Builds and repairs (buildings and the guns and wagons), and works the Farms and the Powder Mills. Right-clicked onto a Town Hall he becomes a hauler: he leads horses to the Barracks and Foundry and carries powder kegs to the Wagons. MOUNT a horse and he rides as a Messenger. Weak in a fight.
+pt Constrói e conserta (construções, canhões e carroças) e trabalha nas Fazendas e nos Moinhos de Pólvora. Com o botão direito sobre uma Prefeitura ele vira carregador: leva cavalos ao Quartel e à Fundição e carrega barris de pólvora para as Carroças. MONTE um cavalo e ele cavalga como Mensageiro. Fraco em combate.
+es Construye y repara (edificios, cañones y carros) y trabaja en las Granjas y los Molinos de Pólvora. Con clic derecho sobre un Ayuntamiento se vuelve porteador: lleva caballos al Cuartel y a la Fundición y carga barriles de pólvora a los Carros. MONTA un caballo y cabalga como Mensajero. Débil en combate.
 
 > Musketeer
 pt Mosqueteiro
@@ -218,9 +218,9 @@ es Volando, caza a otros voladores con salvas de púas (no alcanza el suelo). AT
 pt Sapo da Névoa
 es Sapo de la Niebla
 
-> Slow, fragile swamp caster with only a weak lick. Its energy (fills over time, faster on swamp) pays for two spells. FOG lays a swamp fog bank: shots fired from or into it miss half the time, and units inside see only 2 tiles. TONGUE marks one enemy for 3 s (they see the crosshair), then drags it to the Toad's feet, a flyer too (through the air, to just over the Toad); heavy engines, field guns and mortars, the Brood Mother and the fathers are only staggered (stunned 2.5 s).
-pt Conjurador de pântano lento e frágil, com só uma lambida fraca. Sua energia (enche com o tempo, mais rápido no pântano) paga dois feitiços. NEBLINA cria um banco de névoa de pântano: tiros disparados de ou para dentro dele erram metade das vezes, e unidades dentro enxergam só 2 casas. LÍNGUA marca um inimigo por 3 s (ele vê a mira) e depois o arrasta até os pés do Sapo, um voador também (pelo ar, até logo acima do Sapo); máquinas pesadas, canhões de campanha e morteiros, a Mãe da Ninhada e os pais só cambaleiam (atordoados 2,5 s).
-es Lanzador de pantano lento y frágil, con solo un lametón débil. Su energía (se llena con el tiempo, más rápido en el pantano) paga dos hechizos. NIEBLA crea un banco de niebla de pantano: los disparos desde o hacia ella fallan la mitad de las veces, y las unidades dentro ven solo 2 casillas. LENGUA marca a un enemigo durante 3 s (ve la mira) y luego lo arrastra hasta los pies del Sapo, también a un volador (por el aire, hasta justo encima del Sapo); las máquinas pesadas, los cañones de campaña y los morteros, la Madre de la Nidada y los padres solo se tambalean (aturdidos 2,5 s).
+> Slow, fragile swamp caster with only a weak lick. Its energy (fills over time, faster on swamp) pays for three spells. FOG lays a swamp fog bank: shots fired from or into it miss half the time, and units inside see only 2 tiles. TONGUE marks one enemy for 3 s (they see the crosshair), then drags it to the Toad's feet, a flyer too (through the air, to just over the Toad); heavy engines, field guns and mortars, the Brood Mother and the fathers are only staggered (stunned 2.5 s). MIASMA lays a green cloud for 8 s: the Brood inside heal up to 30% of their health.
+pt Conjurador de pântano lento e frágil, com só uma lambida fraca. Sua energia (enche com o tempo, mais rápido no pântano) paga três feitiços. NEBLINA cria um banco de névoa de pântano: tiros disparados de ou para dentro dele erram metade das vezes, e unidades dentro enxergam só 2 casas. LÍNGUA marca um inimigo por 3 s (ele vê a mira) e depois o arrasta até os pés do Sapo, um voador também (pelo ar, até logo acima do Sapo); máquinas pesadas, canhões de campanha e morteiros, a Mãe da Ninhada e os pais só cambaleiam (atordoados 2,5 s). MIASMA cria uma nuvem verde por 8 s: a Ninhada dentro dela se cura até 30% da vida.
+es Lanzador de pantano lento y frágil, con solo un lametón débil. Su energía (se llena con el tiempo, más rápido en el pantano) paga tres hechizos. NIEBLA crea un banco de niebla de pantano: los disparos desde o hacia ella fallan la mitad de las veces, y las unidades dentro ven solo 2 casillas. LENGUA marca a un enemigo durante 3 s (ve la mira) y luego lo arrastra hasta los pies del Sapo, también a un volador (por el aire, hasta justo encima del Sapo); las máquinas pesadas, los cañones de campaña y los morteros, la Madre de la Nidada y los padres solo se tambalean (aturdidos 2,5 s). MIASMA crea una nube verde durante 8 s: la Nidada dentro de ella se cura hasta un 30% de su vida.
 
 > Ornithopter
 pt Ornitóptero
@@ -730,9 +730,9 @@ es Saco de ácido flotante: escupe desde lejos hasta que se acaba el gas. Con RE
 pt Voando, caça voadores com espinhos. POUSE-a para morder unidades terrestres (aí qualquer coisa pode atingi-la). Aposentada: não é mais posta.
 es Volando, caza voladores con púas. ATERRÍZALA para morder a unidades terrestres (entonces cualquier cosa puede golpearla). Retirada: ya no se pone.
 
-> Swamp caster. FOG makes shots miss half the time; TONGUE drags an enemy to its feet. Weak in a fight.
-pt Conjurador de pântano. NEBLINA faz os tiros errarem metade das vezes; LÍNGUA arrasta um inimigo até seus pés. Fraco em combate.
-es Lanzador de pantano. NIEBLA hace que los disparos fallen la mitad de las veces; LENGUA arrastra a un enemigo hasta sus pies. Débil en combate.
+> Swamp caster. FOG makes shots miss half the time; TONGUE drags an enemy to its feet; MIASMA heals the Brood in its cloud. Weak in a fight.
+pt Conjurador de pântano. NEBLINA faz os tiros errarem metade das vezes; LÍNGUA arrasta um inimigo até seus pés; MIASMA cura a Ninhada na sua nuvem. Fraco em combate.
+es Lanzador de pantano. NIEBLA hace que los disparos fallen la mitad de las veces; LENGUA arrastra a un enemigo hasta sus pies; MIASMA cura a la Nidada en su nube. Débil en combate.
 
 > Trains Labourers. Allows 2 Farms and 1 Powder Mill nearby; its soil and saltpetre run out in time.
 pt Treina Operários. Permite 2 Fazendas e 1 Moinho de Pólvora por perto; seu solo e salitre acabam com o tempo.

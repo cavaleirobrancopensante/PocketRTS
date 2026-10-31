@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.26", "items": [
+		"THE UNIT CARD SAYS IT SHORT: the selection panel's line under the health now gives a short description of the unit or building, one line (\"Builds, repairs, works Farms and Mills, and hauls. Weak in a fight.\"), instead of the long text cut off in the middle. Rest the mouse on its PORTRAIT (a long press on a phone) for the full text and its numbers: health, attack, armour, speed, sight, supply and what it costs.",
+		"OLD TEXTS FIXED: the Labourer's card no longer says he mines gold (the gold mines are long gone); the Clocktower's text no longer speaks of batteries, Boilers and coal (it holds brass and spring life, and allows 2 Cog Presses and 1 Mainspring); the Mist Toad's text and energy line name its third spell, MIASMA.",
+	]},
 	{"v": "0.24.25", "items": [
 		"THE COMMAND CARD'S KEYS STAY PUT: a command's letter no longer depends on which other buttons are showing. Each kind of selection gets its letters once, over every command it can ever have (all its research, rooted and uprooted, armoured soldiers, CANCEL, the refits...), and keeps them all match: starting, queueing or finishing a research, rooting or uprooting, a button greying out never moves another command's letter. STOP keeps S everywhere it can appear, so a research is never S on a card that can show STOP.",
 		"STOP RESEARCH is X (a Sire's or the Brood Mother's), STOP GROWING is Z: before, starting a research could hand its S to STOP RESEARCH, so pressing S again to queue the next one cancelled it. Pressing a research's key again queues the next of its line (MATCHLOCK, then FLINTLOCK, on the same F) or, if there is none, just says it is already being researched: the key never falls through to another command (such as STOP).",

@@ -1,0 +1,267 @@
+# THE CARD'S ONE LINE (Defs.SHORT, Defs.SHORT_ARMOURED; the owner, 2026-10-31): at most Defs.SHORT_MAX characters
+# in every language (tools/test_card_text.gd). The full text is the portrait's tooltip.
+
+> Builds, repairs, works Farms and Mills, and hauls. Weak in a fight.
+pt Constrói, conserta, trabalha em Fazendas e Moinhos e carrega. Fraco em combate.
+es Construye, repara, trabaja en Granjas y Molinos y acarrea. Débil en combate.
+
+> Line infantry: volleys at range, the bayonet up close. Hits flyers.
+pt Infantaria de linha: salvas à distância, baioneta de perto. Acerta voadores.
+es Infantería de línea: descargas de lejos, bayoneta de cerca. Alcanza voladores.
+
+> Field gun: unlimber it to fire round shot or canister. Needs a horse.
+pt Canhão de campanha: desengate para atirar bala ou metralha. Precisa de cavalo.
+es Cañón de campaña: desengánchalo para tirar bala o metralla. Necesita caballo.
+
+> Siege mortar: deploy it to lob shells over walls, 5 to 11 tiles.
+pt Morteiro de cerco: instale-o para lançar granadas sobre muralhas, a 5–11 casas.
+es Mortero de asedio: despliégalo y lanza granadas sobre muros, a 5–11 casillas.
+
+> Carries powder: soldiers near it refill. Blows up when destroyed.
+pt Leva pólvora: soldados perto dela recarregam. Explode se destruída.
+es Lleva pólvora: los soldados cerca se recargan. Explota si lo destruyen.
+
+> Fast horseman: one pistol shot, then the sabre. Reloads on foot.
+pt Cavaleiro rápido: um tiro de pistola, depois o sabre. Recarrega a pé.
+es Jinete rápido: un tiro de pistola, luego el sable. Recarga a pie.
+
+> Lead it, ride it or harness it to a gun or wagon. Can be stolen.
+pt Leve-o, monte-o ou atrele-o a um canhão ou carroça. Pode ser roubado.
+es Guíalo, móntalo o engánchalo a un cañón o carro. Lo pueden robar.
+
+> A Labourer on a horse: a fast, unarmed scout.
+pt Um Operário a cavalo: um batedor rápido e desarmado.
+es Un Peón a caballo: un explorador rápido y desarmado.
+
+> A Musketeer on a horse: rides fast, dismounts to fire.
+pt Um Mosqueteiro a cavalo: cavalga rápido, desmonta para atirar.
+es Un Mosquetero a caballo: cabalga rápido, desmonta para disparar.
+
+> A Horseman on foot: pistol and sabre. MOUNT a horse to ride.
+pt Um Cavaleiro a pé: pistola e sabre. MONTE um cavalo para cavalgar.
+es Un Jinete a pie: pistola y sable. MONTA un caballo para cabalgar.
+
+> Carries 4 men over anything; Musketeers aboard shoot farther.
+pt Leva 4 homens por cima de tudo; Mosqueteiros a bordo atiram mais longe.
+es Lleva 4 hombres por encima de todo; los Mosqueteros a bordo tiran más lejos.
+
+> Plays small buffs to your soldiers within 5 tiles. Unarmed.
+pt Toca pequenos bônus para seus soldados a até 5 casas. Desarmada.
+es Toca pequeñas mejoras a tus soldados a 5 casillas. Desarmada.
+
+> Bandages the wounded and raises fallen soldiers. One per Church.
+pt Enfaixa os feridos e levanta soldados caídos. Um por Igreja.
+es Venda a los heridos y levanta a los soldados caídos. Uno por Iglesia.
+
+> A Missionary on a horse: fast and unarmed; gets off to heal.
+pt Um Missionário a cavalo: rápido e desarmado; desmonta para curar.
+es Un Misionero a caballo: rápido y desarmado; desmonta para curar.
+
+> Carries food to the Brood Mother; BUILD turns it into a rooting creature.
+pt Leva comida à Mãe da Ninhada; CONSTRUIR a torna uma criatura que enraíza.
+es Lleva comida a la Madre; CONSTRUIR la vuelve una criatura que arraiga.
+
+> Fast, flimsy claws. Two hatch from each egg.
+pt Garras rápidas e frágeis. Nascem dois de cada ovo.
+es Garras rápidas y frágiles. Nacen dos de cada huevo.
+
+> Spits acid at ground units: it burns and strips armour.
+pt Cospe ácido em unidades no chão: queima e tira armadura.
+es Escupe ácido a unidades en tierra: quema y quita armadura.
+
+> Huge horned tank: charges, knocks back and batters down walls.
+pt Tanque enorme com chifres: investe, derruba e arrebenta muralhas.
+es Tanque enorme con cuernos: embiste, derriba y destroza muros.
+
+> Cheap, fast little flyers that bite only flyers.
+pt Voadores pequenos, baratos e rápidos que só mordem voadores.
+es Voladores pequeños, baratos y rápidos que solo muerden voladores.
+
+> Swamp caster: FOG, TONGUE and MIASMA. Weak in a fight.
+pt Conjurador de pântano: NEBLINA, LÍNGUA e MIASMA. Fraco em combate.
+es Lanzador de pantano: NIEBLA, LENGUA y MIASMA. Débil en combate.
+
+> Retired flyer: hunts flyers; LAND it to bite on the ground.
+pt Voador aposentado: caça voadores; POUSE-o para morder no chão.
+es Volador retirado: caza voladores; ATERRÍZALO para morder en tierra.
+
+> The heart of the Brood: she lays every egg. If she dies, you lose.
+pt O coração da Ninhada: ela põe todos os ovos. Se ela morrer, você perde.
+es El corazón de la Nidada: pone todos los huevos. Si muere, pierdes.
+
+> Roots on your swamp and drinks the ground; grubs carry its food.
+pt Enraíza no seu pântano e bebe o chão; larvas levam sua comida.
+es Arraiga en tu pantano y bebe el suelo; las larvas llevan su comida.
+
+> Rooted: 12 supply, new swamp and a living wall. Uprooted it walks.
+pt Enraizada: 12 de suprimento, pântano novo e uma muralha viva. Solta, anda.
+es Arraigada: 12 de suministro, pantano nuevo y un muro vivo. Suelta, camina.
+
+> A father: rooted by the Mother, he fathers Raptors and Brutes.
+pt Um pai: enraizado junto à Mãe, gera Raptores e Brutamontes.
+es Un padre: arraigado junto a la Madre, engendra Raptores y Brutos.
+
+> A father: rooted by the Mother, he fathers Spitters and Mist Toads.
+pt Um pai: enraizado junto à Mãe, gera Cuspidores e Sapos da Névoa.
+es Un padre: arraigado junto a la Madre, engendra Escupidores y Sapos de la Niebla.
+
+> A flying father: landed by the Mother, he fathers Hatchlings.
+pt Um pai voador: pousado junto à Mãe, gera Filhotes.
+es Un padre volador: posado junto a la Madre, engendra Crías.
+
+> A matured Raptor: a medium all-round biter.
+pt Um Raptor amadurecido: um mordedor médio para tudo.
+es Un Raptor maduro: un mordedor medio para todo.
+
+> A matured Spitter: heavier venom with a small splash; hits flyers.
+pt Um Cuspidor amadurecido: veneno mais pesado, com respingo; acerta voadores.
+es Un Escupidor maduro: veneno más pesado, con salpicadura; alcanza voladores.
+
+> A matured Hatchling: swoops to bite flyers and ground alike.
+pt Um Filhote amadurecido: mergulha para morder voadores e o chão.
+es Una Cría madura: se lanza a morder voladores y tierra por igual.
+
+> One of the Mother's eggs: a warrior's waits for its father's breath.
+pt Um dos ovos da Mãe: o de um guerreiro espera o sopro do pai.
+es Uno de los huevos de la Madre: el de un guerrero espera el aliento del padre.
+
+> Spilled food: grubs carry it to the Brood Mother. It rots slowly.
+pt Comida derramada: larvas a levam à Mãe da Ninhada. Apodrece devagar.
+es Comida derramada: las larvas la llevan a la Madre. Se pudre despacio.
+
+> The worker: winds Cog Presses and Mainsprings, builds and repairs.
+pt O trabalhador: enrola Prensas e Molas Reais, constrói e conserta.
+es El trabajador: da cuerda a Prensas y Muelles Reales, construye y repara.
+
+> Front-line soldier: clock-hand sword and shield. Quick but light.
+pt Soldado de linha de frente: espada de ponteiro e escudo. Rápido, mas leve.
+es Soldado de primera línea: espada de manecilla y escudo. Rápido pero ligero.
+
+> Shoots screws at ground and air; JUMPS up to 5 tiles.
+pt Atira parafusos no chão e no ar; SALTA até 5 casas.
+es Dispara tornillos a tierra y aire; SALTA hasta 5 casillas.
+
+> Fast brass bird that hunts flyers; can MORPH TO OWL.
+pt Pássaro de latão rápido que caça voadores; pode VIRAR CORUJA.
+es Pájaro de latón rápido que caza voladores; puede CONVERTIRSE EN BÚHO.
+
+> Swoops on units and bombs buildings. Cannot hit flyers.
+pt Mergulha sobre unidades e bombardeia construções. Não acerta voadores.
+es Se lanza sobre unidades y bombardea edificios. No alcanza voladores.
+
+> Slow and tough: its blades cut every ground enemy in its arc.
+pt Lento e resistente: suas lâminas cortam todo inimigo no chão em seu arco.
+es Lento y duro: sus cuchillas cortan a todo enemigo en tierra en su arco.
+
+> Nets one enemy for 4 s: it can't move or use abilities.
+pt Prende um inimigo na rede por 4 s: ele não anda nem usa habilidades.
+es Atrapa a un enemigo en la red 4 s: no puede moverse ni usar habilidades.
+
+> Bolt thrower: its screw goes through the target into those behind.
+pt Lança-virotes: seu parafuso atravessa o alvo e acerta os de trás.
+es Lanzavirotes: su tornillo atraviesa el objetivo y alcanza a los de detrás.
+
+> Winds and mends the army near it; sweeps wrecks into cogs.
+pt Enrola e conserta o exército por perto; varre destroços em engrenagens.
+es Da cuerda y repara al ejército cercano; barre restos y los vuelve engranajes.
+
+> Trains Labourers and haulers. Allows 2 Farms and 1 Powder Mill.
+pt Treina Operários e carregadores. Permite 2 Fazendas e 1 Moinho de Pólvora.
+es Entrena Peones y porteadores. Permite 2 Granjas y 1 Molino de Pólvora.
+
+> Houses 8 more supply. The first unlocks the Barracks and palisade.
+pt Abriga mais 8 de suprimento. O primeiro libera o Quartel e a paliçada.
+es Aloja 8 más de suministro. La primera desbloquea el Cuartel y la empalizada.
+
+> Wooden palisade: blocks the way. Lay it in a line.
+pt Paliçada de madeira: bloqueia o caminho. Coloque-a em linha.
+es Empalizada de madera: bloquea el paso. Colócala en línea.
+
+> A palisade piece that opens for your side only.
+pt Um trecho de paliçada que abre só para o seu lado.
+es Un tramo de empalizada que solo se abre para tu bando.
+
+> Trains Musketeers, Horsemen, Officers and Dragoons. Refits soldiers.
+pt Treina Mosqueteiros, Cavaleiros, Oficiais e Dragões. Reequipa soldados.
+es Entrena Mosqueteros, Jinetes, Oficiales y Dragones. Reequipa soldados.
+
+> The Crown's research: armour, locks, bayonet, guns and the charge.
+pt As pesquisas da Coroa: armadura, fechos, baioneta, canhões e a carga.
+es Investigación de la Corona: armadura, llaves, bayoneta, cañones y la carga.
+
+> Casts cannons and mortars, rigs balloons, builds powder wagons.
+pt Funde canhões e morteiros, arma balões, constrói carroças de pólvora.
+es Funde cañones y morteros, arma globos, construye carros de pólvora.
+
+> Labourers grow gold here: a 380-gold harvest about every 40 s.
+pt Operários cultivam ouro aqui: uma colheita de 380 de ouro a cada ~40 s.
+es Los Peones cultivan oro aquí: una cosecha de 380 de oro cada ~40 s.
+
+> Labourers grind saltpetre into powder. Soldiers refill nearby.
+pt Operários moem salitre em pólvora. Soldados recarregam por perto.
+es Los Peones muelen salitre en pólvora. Los soldados se recargan cerca.
+
+> Sells horses (40 gold) for cavalry, guns and wagons.
+pt Vende cavalos (40 de ouro) para cavalaria, canhões e carroças.
+es Vende caballos (40 de oro) para caballería, cañones y carros.
+
+> Builds Winders and takes in cogs; its gear ring drives the field.
+pt Cria Enroladores e recebe engrenagens; seu anel move o campo.
+es Construye Dadores de cuerda y recibe engranajes; su anillo mueve el campo.
+
+> Makes Clock Soldiers; Springers and Netters with a Mainspring.
+pt Faz Soldados-Relógio; Saltadores e Lança-Redes com uma Mola Real.
+es Hace Soldados Reloj; Saltadores y Lanzarredes con un Muelle Real.
+
+> Makes Pendulums, Spring Ballistas and Great Winders.
+pt Faz Pêndulos, Balistas de Mola e Grandes Enroladores.
+es Hace Péndulos, Balistas de Resorte y Grandes Dadores de Cuerda.
+
+> The tech building: unlocks the Springer, researches HIGH LEAP.
+pt A construção de tecnologia: libera o Saltador, pesquisa PULO ALTO.
+es El edificio de tecnología: desbloquea el Saltador, investiga SALTO ALTO.
+
+> Makes Swifts and researches TICKING OWL.
+pt Faz Cucos e pesquisa CORUJA TIQUE-TAQUE.
+es Hace Cucos e investiga BÚHO TICTAC.
+
+> 10 more supply for the machine.
+pt Mais 10 de suprimento para a máquina.
+es 10 más de suministro para la máquina.
+
+> Static defence: fires screws at ground and air alike.
+pt Defesa fixa: atira parafusos no chão e no ar.
+es Defensa fija: dispara tornillos a tierra y aire por igual.
+
+> Winders wind it for COGS from its Clocktower's brass.
+pt Enroladores a enrolam por ENGRENAGENS, do latão da sua Torre do Relógio.
+es Los Dadores de cuerda la giran por ENGRANAJES, del latón de su Torre del Reloj.
+
+> Winders crank it for TENSION; it drives the rings that mesh with it.
+pt Enroladores giram sua manivela por TENSÃO; ela move os anéis que engrenam nela.
+es Los Dadores de cuerda la giran por TENSIÓN; mueve los anillos que engranan.
+
+> Armoured Musketeer: +1 armour, +20 health. Volleys and bayonet.
+pt Mosqueteiro de armadura: +1 armadura, +20 de vida. Salvas e baioneta.
+es Mosquetero con armadura: +1 armadura, +20 de salud. Descargas y bayoneta.
+
+> Armoured Horseman: +1 armour, +30 health. Pistol and sabre.
+pt Cavaleiro de armadura: +1 armadura, +30 de vida. Pistola e sabre.
+es Jinete con armadura: +1 armadura, +30 de salud. Pistola y sable.
+
+> A Guardsman on a horse: rides fast, dismounts to fire.
+pt Um Guarda a cavalo: cavalga rápido, desmonta para atirar.
+es Un Guardia a caballo: cabalga rápido, desmonta para disparar.
+
+> A Cuirassier on foot: pistol and sabre. MOUNT a horse to ride.
+pt Um Couraceiro a pé: pistola e sabre. MONTE um cavalo para cavalgar.
+es Un Coracero a pie: pistola y sable. MONTA un caballo para cabalgar.
+
+# the portrait's tooltip
+> Costs %s
+pt Custa %s
+es Cuesta %s
+
+> tension
+pt tensão
+es tensión

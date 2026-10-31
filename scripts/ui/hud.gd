@@ -3386,6 +3386,7 @@ func _draw_groups(font: Font) -> void:
 func _draw_panel(font: Font) -> void:
 	_queue_rects = []
 	_stat_rects = []
+	_portrait_one = {}
 	var r := panel_rect()
 	var fac := PanelArt.faction_for(game)
 	if game.over and not game.map_view:
@@ -3399,6 +3400,7 @@ func _draw_panel(font: Font) -> void:
 		var e: Entity = sel[0]
 		var icon := _unit_icon(e)
 		var pr := Rect2(r.position + Vector2(10, 10), Vector2(68, 68))
+		_portrait_one = {"rect": pr, "e": e}        # (its tooltip: the full text and the stats, _portrait_tip)
 		UiStyle.draw_button(_ci, pr.grow(2), false, false)
 		if icon:
 			_ci.draw_texture_rect(icon, pr, false)
@@ -3415,7 +3417,7 @@ func _draw_panel(font: Font) -> void:
 			var tags: Array = (e as Unit).d.get("tags", [])
 			if not tags.is_empty():
 				name += "  ·  " + " ".join(tags.map(func(x: String) -> String: return x.capitalize()))
-			info = (e as Unit).d["about"]
+			info = Defs.short_of((e as Unit).kind, (e as Unit).armoured)      # (the card's one line; the full text: the portrait's tooltip)
 			var uu := e as Unit
 			if Defs.HARNESSED.has(uu.kind) and uu.harnessed:
 				# its team of horses (and what the extra ones add)
@@ -3494,7 +3496,7 @@ func _draw_panel(font: Font) -> void:
 			elif uu.kind == "labourer" and uu.is_hauler():
 				info = uu.hauler_text()
 			elif uu.kind == "mist_toad":
-				info = "Energy %d / %d (FOG %d, TONGUE %d) · fills %s" % [int(uu.charge), int(Defs.TOAD["max"]), int(Defs.FOG["cost"]), int(Defs.TONGUE["cost"]),
+				info = "Energy %d / %d (FOG %d, TONGUE %d, MIASMA %d) · fills %s" % [int(uu.charge), int(Defs.TOAD["max"]), int(Defs.FOG["cost"]), int(Defs.TONGUE["cost"]), int(Defs.MIASMA["cost"]),
 					"twice as fast on swamp (now)" if game.on_swamp(uu.team, uu.position) else "faster on swamp"]
 				if uu.tongue_stage == "windup":
 					info = "Aiming its tongue: %.1f s (don't move it!)" % uu.tongue_t
@@ -3554,7 +3556,7 @@ func _draw_panel(font: Font) -> void:
 					info += " · %d/%d aboard" % [aboard, int(Defs.DROPSHIP["capacity"])]
 			elif uu.kind == "skywing":
 				info = {"air": "Flying: hunts flyers with spines. LAND to fight on the ground.", "to_land": "Looking for open ground to land on...",
-					"landing": "Landing...", "ground": "Landed: walks and bites ground units; anything can hit it. TAKE OFF to fly.", "lifting": "Taking off..."}.get(uu.sky, uu.d["about"])
+					"landing": "Landing...", "ground": "Landed: walks and bites ground units; anything can hit it. TAKE OFF to fly.", "lifting": "Taking off..."}.get(uu.sky, info)
 			elif uu.kind == "ornithopter" and (uu.topter_bat != "" or uu.courier):
 				info = ("Carrying a %s battery: OVERLOAD a construct with it, or it winds one up on COURIER." % uu.topter_bat) if uu.topter_bat != "" else "Courier: fetching batteries for constructs that run down."
 			elif uu.kind == "windup_soldier" and uu.powered_down():
@@ -3599,7 +3601,7 @@ func _draw_panel(font: Font) -> void:
 				info = (kt if kt != "" else ("Plain musket" if Defs.MUSKETS.has(uu.kind) else "No armour")) + "  ·  " + info
 		elif e is Building:
 			name = (e as Building).d["name"]
-			info = (e as Building).d["about"]
+			info = Defs.short_of((e as Building).kind)      # (the card's one line; the full text: the portrait's tooltip)
 			var bb := e as Building
 			if not bb.seeded and bb.crate != "":
 				info = {"tower": "Waiting for its crate: a Winder fetches it from a Clocktower.",
@@ -3920,9 +3922,48 @@ func _draw_panel(font: Font) -> void:
 			if is_instance_valid(qb) and not qb.dead:
 				game.cancel_train_at(qb, qi)})
 	_stat_buttons()
+	if not _portrait_one.is_empty() and not Settings.pc():
+		# phone: a long press on the portrait (or a tap) shows its full text, as a tapped stat does
+		var pe: Entity = _portrait_one["e"]
+		var pat: Vector2 = (_portrait_one["rect"] as Rect2).get_center()
+		var ptf := func() -> void:
+			_tip = _portrait_tip(pe)
+			_tip_at = pat
+			_tip_ms = Time.get_ticks_msec()
+		_buttons_extra.append({"rect": _portrait_one["rect"], "enabled": true, "alt": ptf, "cb": ptf})
 
 
 var _portraits: Array = []
+var _portrait_one := {}        # the single selection's portrait: {rect, e} (hover it: the full text, _portrait_tip)
+
+
+## THE PORTRAIT'S TOOLTIP (the owner, 2026-10-31): the card shows one short line (Defs.short_of); resting the mouse on
+## the portrait (a long press on a phone) shows the full "about" text and the stats: health, what it costs, and the
+## stats row's numbers.
+func _portrait_tip(e: Entity) -> Dictionary:
+	if e == null or not is_instance_valid(e) or e.dead or not (e is Unit or e is Building):
+		return {}
+	var armoured := e is Unit and (e as Unit).armoured
+	var name := Loc.t(String(e.d["name"]))
+	var bits: Array = [Loc.t("%d / %d health") % [int(ceil(e.hp)), int(e.max_hp)]]
+	var s: Dictionary = UnitStats.of_unit(e) if e is Unit else UnitStats.of_building(e)
+	for c in s.get("chips", []):
+		var ct := String((c as Dictionary).get("text", ""))
+		if ct != "" and String(c.get("icon", "")) != "health":
+			bits.append(Loc.t(String(c.get("title", ""))) + " " + ct)
+	var cost := int(e.d.get("cost", 0))
+	if cost > 0:
+		var fac := String(e.d.get("faction", "crown"))
+		var res: Array = Defs.res_names(fac if Defs.FACTIONS.has(fac) else "crown")
+		var cs := "%d %s" % [cost, Loc.t(String(res[0]).to_lower())]
+		var c2 := int(e.d.get("cost2", 0)) + Defs.tension_cost(e.d)
+		if c2 > 0:
+			cs += " + %d %s" % [c2, Loc.t(String(res[1]).to_lower())]
+		bits.append(Loc.t("Costs %s") % cs)
+	var body := Defs.about_of(e.kind, armoured)
+	if e is Unit and BroodRoot.is_lure(e) and not BroodRoot.sire_come(e):
+		name = Loc.t(BroodRoot.lure_name((e as Unit).kind))
+	return {"title": name, "stats": "  ·  ".join(bits), "body": Loc.t(body)}
 var _stat_rects: Array = []      # the stats row's chips on the card: [[rect, chip, text]] (UnitStats.layout)
 
 
@@ -4858,6 +4899,8 @@ func _hover_at(p: Vector2) -> Dictionary:
 	for sr in _stat_rects:
 		if (sr[0] as Rect2).has_point(p):
 			return {"id": "stat:%s:%s" % [sr[1].get("icon", ""), sr[1].get("title", "")], "delay": TIP_CARD_DELAY, "stat": sr[1]}
+	if not _portrait_one.is_empty() and (_portrait_one["rect"] as Rect2).has_point(p) and is_instance_valid(_portrait_one["e"]):
+		return {"id": "por:%d" % (_portrait_one["e"] as Entity).get_instance_id(), "delay": TIP_CARD_DELAY, "por": _portrait_one["e"]}
 	if _hud_has(p):
 		return {}
 	var wp: Vector2 = controls.to_world(p * ui_scale)
@@ -4881,6 +4924,8 @@ func _tip_of(c: Dictionary) -> Dictionary:
 		return _card_tip(c["item"])
 	if c.has("stat"):
 		return UnitStats.tip(c["stat"])
+	if c.has("por"):
+		return _portrait_tip(c["por"])
 	if c.has("res"):
 		return _res_tip(int(c["res"]))
 	if c.has("lab"):
