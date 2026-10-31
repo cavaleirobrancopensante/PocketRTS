@@ -3940,7 +3940,7 @@ func _tick_unit(delta: float) -> void:
 			extra += BroodNew.draw_key(self) * 1000
 		if kind == "mist_toad":
 			extra += ToadHop.draw_key(self) * 1000000     # (its shadow goes with the hopping body)
-		var key := Vector4i(int(selected) + (2 if carrying > 0 else 0) + (4 if cross_t > 0.0 else 0) + (8 if work == "feeding" else 0) + (16 if carry_empty else 0) + (32 if cocoon > 0 else 0) + kills * 64,
+		var key := Vector4i(Settings.health_bars * 536870912 + int(selected) + (2 if carrying > 0 else 0) + (4 if cross_t > 0.0 else 0) + (8 if work == "feeding" else 0) + (16 if carry_empty else 0) + (32 if cocoon > 0 else 0) + kills * 64,
 			int(hp), int(wind * 40.0) + (int(carry_t * 4.0) * 100 if carrying > 0 else 0) + (5000 if charge_winding() else 0) + (10000 if Settings.charge_bars else 0) if _k_fac == "clockwork" else int(powder * 2.0) + (1000 if supplying else 0),
 			int(max_hp) + extra + (int(reload_frac() * 16.0) + 17 * int(tesla_t * 4.0) + 850 * TESLA_MODES.find(tesla_mode)) * 10000 if has_attack() else int(max_hp) + extra)
 		if key != _draw_key:
@@ -7663,13 +7663,12 @@ func bar_top(lifted := 0.0) -> float:
 
 ## The thin CHARGE bar (SHOW CHARGE BARS): amber, draining as the spring runs down; on the gear field (being wound) it
 ## turns pale gold and fills, and it is gone once full (charge_bar_shown). Redrawn only through _draw_key (wind in 1/40s).
-func _draw_charge_bar(y: float, bw: float) -> void:
+func _draw_charge_bar(y: float, bw: float) -> float:
 	if not charge_bar_shown():
-		return
+		return y
 	var f := clampf(wind, 0.0, 1.0)
 	var col := Color(1.0, 0.92, 0.55) if charge_winding() else (CHARGE_BAR if f > 0.2 else Color(0.95, 0.35, 0.2))
-	draw_rect(Rect2(-bw * 0.5, y, bw, 2).grow(0.5), Color(0, 0, 0, 0.6))
-	draw_rect(Rect2(-bw * 0.5, y, bw * f, 2), col)
+	return draw_sub_bar(y, bw, f, col)
 
 
 ## The amber Clockwork charge (the bar over the unit and on its card).
@@ -7717,9 +7716,10 @@ func _draw_unit() -> void:
 	if haul_t >= 0.0 and kind == "balloon" and _haul_node == null:
 		_draw_haul(self)
 	var top := bar_top(lifted)
-	var bw := radius * 2.4
+	var bw := maxf(radius * 2.0, 16.0)       # (THE BARS, 0.25.2: narrower and thinner, Entity.draw_health)
+	var sy := top                            # (the secondary bars: flush under the health bar, or where it would be)
 	if kind != BroodNew.PILE:
-		draw_health(top, bw, true)
+		sy = draw_health(top, bw, true)
 	if _k_nb:
 		BroodNew.draw(self, top)
 	if owl_t >= 0.0:
@@ -7737,15 +7737,11 @@ func _draw_unit() -> void:
 			show = true
 		elif deploys() and tesla_mode != "deployed":
 			show = false
-		var gy := top + 5.0 if hp < max_hp else top + 1.0
 		if show:
-			var ry := gy
-			draw_rect(Rect2(-bw * 0.5, ry, bw, 2).grow(0.5), Color(0, 0, 0, 0.6))
-			draw_rect(Rect2(-bw * 0.5, ry, bw * clampf(rf, 0.0, 1.0), 2), rcol)
-			gy += 3.5
-		_draw_charge_bar(gy, bw)
+			sy = draw_sub_bar(sy, bw, rf, rcol)
+		sy = _draw_charge_bar(sy, bw)
 	else:
-		_draw_charge_bar(top + 5.0 if hp < max_hp else top + 1.0, bw)
+		sy = _draw_charge_bar(sy, bw)
 	if work == "feeding":
 		return
 	if topter_bat != "":
@@ -7785,14 +7781,13 @@ func _draw_unit() -> void:
 	if kind == "powder_wagon" and team == game.human:
 		# the powder it carries: a little horn and a thin bar (amber; red when empty)
 		var pw := bw
-		var ph := 3.0 if kind == "powder_wagon" else 1.0
-		var py := top + 5.0 if kind == "powder_wagon" else top + 8.5
+		var ph := SUB_H
+		var py := sy
 		var pf := clampf(powder / _pmax, 0.0, 1.0)
-		draw_rect(Rect2(-pw * 0.5, py, pw, ph).grow(0.5), Color(0, 0, 0, 0.65))
 		if powder >= 1.0:
-			draw_rect(Rect2(-pw * 0.5, py, pw * pf, ph), Color(0.95, 0.68, 0.22))
+			draw_sub_bar(py, pw, pf, Color(0.95, 0.68, 0.22))
 		else:
-			draw_rect(Rect2(-pw * 0.5, py, pw, ph), Color(0.75, 0.15, 0.12))     # empty: all red
+			draw_sub_bar(py, pw, 1.0, Color(0.75, 0.15, 0.12))     # empty: all red
 		var hx := -pw * 0.5 - 6.0
 		draw_colored_polygon(PackedVector2Array([Vector2(hx, py - 2), Vector2(hx + 4, py - 1), Vector2(hx + 4, py + ph + 1), Vector2(hx + 1, py + ph)]), Color(0.86, 0.78, 0.6))
 		if kind == "powder_wagon" and supplying:

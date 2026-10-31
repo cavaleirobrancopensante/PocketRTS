@@ -4,6 +4,12 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.25.4", "items": [
+		"THINNER BARS, IN BOXES (StarCraft 2 style): the health bar over units and buildings is thinner (3 px, a building's 4) with a thin dark outline, and cut into BOXES: 25 health a box up to 300 health, 50 up to 800, 100 up to 2,000, 250 above (bigger boxes when they would be too narrow to read). The bars are a little narrower too. The reload, charge (wind) and powder bars are 2 px, flush under the health bar, shown only when not full, never more than two.",
+		"HEALTH BARS setting (Settings, DISPLAY): DAMAGED OR SELECTED (the default: a bar over a hurt or selected unit or building) or ALWAYS.",
+		"WILL CONNECT: while you place a Clockwork building, every building whose ring would mesh with the ghost's ring is outlined with a link line to it, and an OFF (unlinked) building that the new one would bring onto the gear field glows teal, with its link line and a WILL CONNECT mark over it (off buildings meshing in a chain behind it too).",
+		"SILHOUETTES ONLY WHEN REALLY HIDDEN: a unit is drawn as a silhouette only when it stands behind a building or a big creature AND that picture's solid pixels really lie over it (not its empty corners, not the gear rings or floor plates on the ground), and only the covered part of the unit is drawn as a silhouette. Winders working at a Cog Press no longer show one.",
+	]},
 	{"v": "0.25.3", "items": [
 		"ONLINE: A GUEST'S MATURED UNITS COME OUT OF THEIR COCOONS: a Raptor maturing into a Tyrant Challenger (and every other moult) stayed a grey shell on the guest's screen for good once the host finished it, so the guest was commanding cocoons. Now the shell splits, the Challenger steps out with its own art and the empty shell and skin are left behind, as on the host. A Swift turning into a Ticking Owl shows its puff of smoke too.",
 		"ONLINE: THE GUEST SEES THE ANIMATIONS THE HOST'S GAME PLAYS: the Mist Toad hops (it slid along crouched), a Springer's jump plays its crouch, arc and landing (it glided), and the moult, a Swift's morph, rooting and uprooting, a cocoon, an egg hatching and the Brood Mother laying run smoothly between the host's updates instead of stuttering over a slow line, with their sounds.",

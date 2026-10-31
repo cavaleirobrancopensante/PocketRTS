@@ -150,17 +150,63 @@ func _process_flash(delta: float) -> void:
 			_mat.set_shader_parameter("flash", 0.7 if flash > 0.0 else 0.0)
 
 
-## always: units show theirs all the time; buildings only when hurt or selected.
-func draw_health(top: float, width: float, always := false) -> void:
-	# only once hurt (until healed to full): no bars over healthy units and buildings
-	if hp >= max_hp:
-		return
+## THE BARS, StarCraft 2 style (the owner's playtest, 2026-10-31: "too cluttered... smaller, all the bars thinner... boxes
+## that show how much health a unit has"; docs/bars_ghost_sil.md): the health bar is BAR_H px (a building's BAR_H_BIG)
+## with a 1 px dark outline, cut into boxes of hp_box() health by thin dark gaps; the secondary bars (reload, charge,
+## powder) are SUB_H px, flush under it (draw_sub_bar), never more than two.
+const BAR_H := 3.0
+const BAR_H_BIG := 4.0            # (a bar wider than BAR_BIG_W: buildings)
+const BAR_BIG_W := 60.0
+const SUB_H := 2.0
+const BAR_EDGE := Color(0.0, 0.0, 0.0, 0.8)
+
+
+## Health in one box of the bar: 25 up to 300 max health, 50 to 800, 100 to 2,000, 250 above; doubled until a box is at
+## least 3 px wide on a bar `w` px wide, so the boxes stay readable.
+static func hp_box(mhp: float, w: float) -> float:
+	var box := 25.0 if mhp <= 300.0 else (50.0 if mhp <= 800.0 else (100.0 if mhp <= 2000.0 else 250.0))
+	while mhp > 0.0 and w * box / mhp < 3.0:
+		box *= 2.0
+	return box
+
+
+## Is the health bar drawn now? Hurt, or selected, or always (Settings HEALTH BARS: ALWAYS).
+func health_bar_shown() -> bool:
+	return hp < max_hp or selected or Settings.health_bars == 1
+
+
+## The health bar (when health_bar_shown); `always` is kept for the callers (unused). Returns where the secondary bars
+## go: flush under the drawn bar, or `top` itself when no bar was drawn.
+func draw_health(top: float, width: float, always := false) -> float:
+	if not health_bar_shown():
+		return top
 	var w := width
-	var r := Rect2(-w * 0.5, top, w, 4)
-	draw_rect(r.grow(1), Color(0, 0, 0, 0.7))
-	var f := hp / max_hp
+	var h := BAR_H_BIG if w > BAR_BIG_W else BAR_H
+	var r := Rect2(-w * 0.5, top, w, h)
+	draw_rect(r.grow(1), BAR_EDGE)
+	var f := clampf(hp / max_hp, 0.0, 1.0)
 	var col := Color(0.3, 0.9, 0.3) if f > 0.5 else (Color(0.95, 0.8, 0.2) if f > 0.25 else Color(0.95, 0.3, 0.2))
-	draw_rect(Rect2(r.position, Vector2(w * f, 4)), col)
+	draw_rect(Rect2(r.position, Vector2(w * f, h)), col)
+	# the boxes: a thin dark gap every hp_box() health
+	var box := hp_box(max_hp, w)
+	var n := int(ceil(max_hp / box))
+	if n > 1:
+		var pts := PackedVector2Array()
+		for k in range(1, n):
+			var x := -w * 0.5 + w * float(k) * box / max_hp
+			pts.append(Vector2(x, top))
+			pts.append(Vector2(x, top + h))
+		draw_multiline(pts, BAR_EDGE, 1.0)
 	if acid_t > 0.0:
 		# (above the bar: under it units show their reload)
 		draw_rect(Rect2(r.position + Vector2(0, -3), Vector2(w, 2)), Color(0.75, 0.95, 0.2))
+	return top + h + 1.0
+
+
+## A thin secondary bar (reload, charge, powder) at y, `w` wide, filled to f: SUB_H px with a 1 px outline that it shares
+## with the bar above it. Returns the y for the next one.
+func draw_sub_bar(y: float, w: float, f: float, col: Color) -> float:
+	var r := Rect2(-w * 0.5, y, w, SUB_H)
+	draw_rect(r.grow(1), BAR_EDGE)
+	draw_rect(Rect2(r.position, Vector2(w * clampf(f, 0.0, 1.0), SUB_H)), col)
+	return y + SUB_H + 1.0

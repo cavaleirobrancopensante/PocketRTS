@@ -1,0 +1,16 @@
+# 0.25.2: thinner segmented bars and the HEALTH BARS setting; WILL CONNECT on the placement ghost (docs/bars_ghost_sil.md)
+> HEALTH BARS
+pt BARRAS DE VIDA
+es BARRAS DE VIDA
+
+> DAMAGED OR SELECTED
+pt FERIDOS OU SELECIONADOS
+es HERIDOS O SELECCIONADOS
+
+> ALWAYS
+pt SEMPRE
+es SIEMPRE
+
+> WILL CONNECT
+pt VAI LIGAR
+es SE CONECTARÁ
