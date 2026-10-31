@@ -1,0 +1,8 @@
+# 0.25.8: SETTINGS in the match MENU (main.gd open_match_settings)
+> (next match)
+pt (próxima partida)
+es (próxima partida)
+
+> Patch notes, the animation viewer and RESET SETTINGS are in the main menu's Settings.
+pt As notas de atualização, o visualizador de animações e REDEFINIR CONFIGURAÇÕES estão nas Configurações do menu principal.
+es Las notas de la versión, el visor de animaciones y RESTABLECER AJUSTES están en los Ajustes del menú principal.

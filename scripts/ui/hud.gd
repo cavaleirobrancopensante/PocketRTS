@@ -4,6 +4,8 @@ extends Control
 ## that land on its panels before the map sees them.
 
 signal quit_requested
+signal settings_requested          # the match MENU's SETTINGS (main.gd open_match_settings: the Settings page over the match)
+signal settings_back               # Esc while that page is open: back to the match MENU
 
 const CARD_BTN := 52.0           # mobile: 4 x 3 (x1.5 interface scale: 78 px, still a thumb's width)
 const CARD_BTN_PC := 60.0        # computer: 4 x 3 with letter hotkeys
@@ -525,6 +527,13 @@ func _input(event: InputEvent) -> void:
 
 
 func _on_input(event: InputEvent) -> void:
+	if settings_open:
+		# the Settings page over the match takes every click and key (its own controls); Esc closes it
+		if event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo \
+				and (event as InputEventKey).keycode == KEY_ESCAPE:
+			settings_back.emit()
+			get_viewport().set_input_as_handled()
+		return
 	if game == null or (game.over and not game.map_view):
 		return
 	if event is InputEventKey and _chat_input(event as InputEventKey):
@@ -2070,6 +2079,7 @@ func _with_keys(items: Array, first := 0, stable := true) -> Array:
 			items[i].append(GRID_KEYS[j] if j >= 0 and j < GRID_KEYS.size() else "")
 		return items
 	if not stable:
+		_keys_mother = false
 		var got := _assign_keys(items, {})
 		for i in items.size():
 			items[i].append(got.get(i, ""))
@@ -2080,6 +2090,7 @@ func _with_keys(items: Array, first := 0, stable := true) -> Array:
 		_key_memo = {}
 	var sk := _sel_key()
 	_card_memo_key = sk
+	_keys_mother = _mother_only()
 	if not _key_memo.has(sk):
 		var full: Array = _full_items()
 		var ids := _ids_of(full)
@@ -2183,6 +2194,24 @@ var _key_sig := ""             # the player's own keys the memory was made with
 var _card_memo_key := ""       # the shown card's _sel_key
 var _full_card := false        # _build_card is listing EVERY command the selection can ever show (for its letters)
 var _res_ids := {}             # "<icon>|<label>" of a research (or refit) button -> the research its chain starts with
+
+
+## THE MOTHER'S S (the owner, 2026-10-31: "I want the standard worker hotkey for brood to be S"): on a card of the Brood
+## Mother alone (rooted or not, any research) GRUB takes S, StarCraft's worker key, and STOP takes G (the letter GRUB
+## had), kept the same uprooted and rooted. A selection mixing her with other units is an army card: STOP keeps S there.
+const MOTHER_KEYS := {"GRUB": "S", "STOP": "G"}
+var _keys_mother := false      # the letters being worked out are for a card of the Brood Mother alone
+
+
+func _mother_only() -> bool:
+	var any := false
+	for e in game.selection:
+		if not is_instance_valid(e) or e.dead:
+			continue
+		if e is Building or e.kind != BroodNew.QUEEN:
+			return false
+		any = true
+	return any and page == ""
 
 
 ## The kind of selection the letters are kept for: the faction, the page, the mode and the kinds selected (a site apart
@@ -2296,6 +2325,8 @@ func _assign_keys(items: Array, used: Dictionary) -> Dictionary:
 			var k := ""
 			if step == 0:
 				k = own if own != "" else (String(FIXED_KEYS[lab]) if MUST_KEYS.has(lab) else "")
+				if own == "" and _keys_mother and MOTHER_KEYS.has(lab) and (lab != "GRUB" or String(items[i][0]) == "grub"):
+					k = String(MOTHER_KEYS[lab])          # (the Mother alone: GRUB S, STOP G)
 			else:
 				# (the first row's commands keep their usual letters too: ROOT D on the uprooted Mother, not the Mist Toad's)
 				var must := i < 4 and FIXED_KEYS.has(lab) and not CARD_LAST.has(lab)
@@ -2580,6 +2611,7 @@ func _confirm_line(k: String, queued := false) -> void:
 ## at most, then a 3-2-1). While paused, with the menu closed, a small panel says so (online: who) with RESUME.
 
 var menu_open := false
+var settings_open := false          # the Settings page is open over the match (main.gd): the HUD takes no input meanwhile
 var _confirm := ""                  # the menu asks first: "surrender" or "quit"
 var music := MenuMusic.new()
 const MENU_W := 320.0
@@ -2623,6 +2655,7 @@ func _menu_list() -> Array:
 		{"label": "SOUND", "slider": "sound", "cb": func() -> void: pass},
 		{"label": "AMBIENCE", "slider": "ambience", "cb": func() -> void: pass},
 		{"label": "MINIMAP", "slider": "minimap", "cb": func() -> void: pass},
+		{"label": "SETTINGS", "cb": func() -> void: settings_requested.emit()},      # (the whole Settings page over the match)
 		{"label": "SURRENDER", "bad": true, "cb": func() -> void:
 			_confirm = "surrender"
 			_sig.erase("pause")},

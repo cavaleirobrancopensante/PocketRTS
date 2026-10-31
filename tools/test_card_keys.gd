@@ -199,6 +199,7 @@ func _sweep(g: Game, f: String) -> void:
 		q.nb["stage"] = 1
 		BroodNew.apply_stage(q)
 		_card(g, f, "the Brood Mother rooted at stage 2 (no research)")
+		await _mother_keys(g, q, tech0)
 		await _scroll_checks(g, q)
 
 
@@ -206,6 +207,39 @@ func check(ok: bool, what: String) -> void:
 	print(("PASS  " if ok else "FAIL  ") + what)
 	if not ok:
 		fails += 1
+
+
+## THE MOTHER'S S (the owner, 2026-10-31): alone, rooted or uprooted, with no research or all of it, GRUB is S and
+## STOP (shown uprooted) is G; with a Raptor in the selection (an army card) STOP keeps S.
+func _mother_keys(g: Game, q: Unit, tech0: Dictionary) -> void:
+	var mode: String = q.tesla_mode
+	for all_r in [false, true]:
+		g.players[0]["tech"] = tech0.duplicate()
+		if all_r:
+			for rk in Defs.RESEARCH:
+				g.players[0]["tech"][rk] = true
+		for m in ["deployed", "packed"]:
+			q.tesla_mode = m
+			g.set_selection([q])
+			var r := _rec(g)
+			var what := "the Mother alone %s%s" % ["rooted" if m == "deployed" else "uprooted", " (all research)" if all_r else ""]
+			check(r.has("GRUB") and r["GRUB"][0] == "S", "%s: GRUB is S (%s)" % [what, r.get("GRUB", ["-"])[0]])
+			if m == "packed":
+				check(r.has("STOP") and r["STOP"][0] == "G", "%s: STOP is G (%s)" % [what, r.get("STOP", ["-"])[0]])
+			else:
+				check(not r.has("STOP"), "%s: no STOP on her card" % what)
+	g.players[0]["tech"] = tech0.duplicate()
+	q.tesla_mode = "packed"
+	var rap: Unit = g._add_unit("raptor", 0, q.position + Vector2(60, 60)) if Defs.UNITS.has("raptor") else null
+	await physics_frame
+	if rap != null:
+		g.set_selection([q, rap])
+		var r2 := _rec(g)
+		check(r2.has("STOP") and r2["STOP"][0] == "S", "the Mother with a Raptor: STOP keeps S (%s)" % r2.get("STOP", ["-"])[0])
+		g.consume_unit(rap)
+		await physics_frame
+	q.tesla_mode = mode
+	g.set_selection([q])
 
 
 ## The Mother's long card: Raptors keep R, RALLY works by its key while scrolled out of view; the

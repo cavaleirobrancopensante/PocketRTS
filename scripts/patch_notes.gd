@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.25.8", "items": [
+		"THE BROOD MOTHER'S GRUB IS S, StarCraft's worker key: on her card alone (rooted or uprooted, with any research) GRUB is S and STOP is G. A selection mixing her with other creatures is an army card: STOP keeps S there.",
+		"SETTINGS IN A MATCH: the match MENU has a SETTINGS button that opens the same Settings page as the main menu (GAMEPLAY, DISPLAY, SOUND, EXPERIMENTAL, OTHER) over the match: change the hotkeys and layout, the command keys, the interface size, the health and charge bars, the expansion spots, the powder smoke, full screen or the volumes, and they apply in the match. A single-player match is paused meanwhile; online the match keeps running. What only a new match picks up (the experiments, PLAYING ON) is dimmed with \"(next match)\"; RESET SETTINGS, the animation viewer and the patch notes stay in the main menu. BACK or Esc returns to the match MENU.",
+	]},
 	{"v": "0.25.7", "items": [
 		"RAMPS: the stone kerbs down a ramp's sides run parallel, the same width from top to bottom; the rock wedge that narrowed down the slope drew them as a funnel.",
 	]},
