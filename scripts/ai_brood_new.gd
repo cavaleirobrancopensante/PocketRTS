@@ -769,7 +769,7 @@ func _nb_morphs(q: Unit) -> void:
 			say("a grub goes to root a Mound Turtle on new ground, %d tiles out" % int((spot as Vector2).distance_to(q.position) / Defs.TILE))
 
 
-## Room for one more Rootmaw (0.24.7: its 10-tile circles leave 2 or 3 round her and one round each turtle; with none
+## Room for one more Rootmaw (0.24.7: its 8-tile circles leave 2 or 3 round her and one round each turtle; with none
 ## free the next branch (a turtle on new ground) gets its turn instead of the morph waiting for a spot for ever).
 ## Checked at most every 5 s.
 var _room_t := -99.0

@@ -1605,7 +1605,7 @@ func _nb_buttons(list: Array, units: Array) -> void:
 		if not packed.is_empty() or _full_card:
 			# ROOT like BUILD (point 8): the ghost of its rooted footprint; it walks there and roots on that spot
 			var rk: String = (packed[0] if not packed.is_empty() else rooters[0]).kind
-			_tip_for["ROOT"] = ["Root", "Pick where it roots (a ghost on the grid, as a building's): it walks there and roots on that spot. Rooted it is a building: armour and a quarter less damage, its footprint blocks the way, it takes no move orders (UPROOT gets it up). A Rootmaw roots only on your swamp, its 10-tile circle clear of another's; a Mound Turtle gives 12 supply and swamp and can close a ramp; a father (the Tyrant Sire, the Venom Sire, the Storm Sire, who lands) nests within %d tiles of the Mother. No rooted creature attacks." % int(Defs.NB["father_r"])]
+			_tip_for["ROOT"] = ["Root", "Pick where it roots (a ghost on the grid, as a building's): it walks there and roots on that spot. Rooted it is a building: armour and a quarter less damage, its footprint blocks the way, it takes no move orders (UPROOT gets it up). A Rootmaw roots only on your swamp, its 8-tile circle clear of another's; a Mound Turtle gives 12 supply and swamp and can close a ramp; a father (the Tyrant Sire, the Venom Sire, the Storm Sire, who lands) nests within %d tiles of the Mother. No rooted creature attacks." % int(Defs.NB["father_r"])]
 			list.insert(mini(3, list.size()), ["ab_nb_root", "ROOT", func() -> void:
 				controls.begin_nb_root(rk, false)
 				toast("Pick where it roots."), true, "", ""])

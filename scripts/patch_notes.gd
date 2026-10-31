@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.25.5", "items": [
+		"THE ROOTMAW'S CIRCLE, A LITTLE SMALLER: 8 tiles round it (was 10), so Rootmaws stand 16 tiles apart: about two fit at the Brood Mother's base. The 10-tile circle was too harsh on the Brood's economy; each Rootmaw still holds 3,000 food.",
+	]},
 	{"v": "0.25.4", "items": [
 		"THINNER BARS, IN BOXES (StarCraft 2 style): the health bar over units and buildings is thinner (3 px, a building's 4) with a thin dark outline, and cut into BOXES: 25 health a box up to 300 health, 50 up to 800, 100 up to 2,000, 250 above (bigger boxes when they would be too narrow to read). The bars are a little narrower too. The reload, charge (wind) and powder bars are 2 px, flush under the health bar, shown only when not full, never more than two.",
 		"HEALTH BARS setting (Settings, DISPLAY): DAMAGED OR SELECTED (the default: a bar over a hurt or selected unit or building) or ALWAYS.",
