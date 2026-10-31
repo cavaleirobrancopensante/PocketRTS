@@ -66,7 +66,19 @@ func _start(fac: String) -> void:
 	turtle.cmd_deploy()
 	await wait(float(Defs.NB["turtle_switch"]) + 1.0)
 	# (the Rootmaw on the turtle's swamp, behind it and to one side: the new ground's worker line)
-	maw = g._add_unit(BroodNew.MAW, 1, _root_spot(BroodNew.MAW, turtle.position - dir * 6.0 * T + side * 5.0 * T, true))
+	# (since 0.24.24 the swamp spreads 1 tile a second from the rooted turtle: wait until it reaches the spot)
+	var want := turtle.position - dir * 6.0 * T + side * 5.0 * T
+	var ms := Vector2.INF
+	var t_end := g.clock + 20.0
+	while g.clock < t_end:
+		ms = _root_spot(BroodNew.MAW, want, true, true)
+		if ms != Vector2.INF:
+			break
+		await wait(0.5)
+	if ms == Vector2.INF:
+		ms = want
+	await wait(0.5)
+	maw = g._add_unit(BroodNew.MAW, 1, ms)
 	maw.cmd_deploy()
 	await wait(float(Defs.NB["turtle_switch"]) + 1.0)
 	check(BroodNew.rooted(maw) and BroodNew.rooted(turtle), "(set-up) the Rootmaw and the Mound Turtle are rooted (%s, %s)" % [maw.tesla_mode, turtle.tesla_mode])
@@ -79,13 +91,13 @@ func _start(fac: String) -> void:
 
 
 ## A spot near p where a `k` of the Brood's may root (BroodRoot.place_problem).
-func _root_spot(k: String, p: Vector2, swamp: bool) -> Vector2:
+func _root_spot(k: String, p: Vector2, swamp: bool, strict := false) -> Vector2:
 	for r in [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0]:
 		for i in 16:
 			var sp: Vector2 = BroodRoot.snap(k, p + Vector2.from_angle(TAU * i / 16.0) * r * T)
 			if BroodRoot.place_problem(g, 1, k, sp, null, false, 1.0, swamp) == "":
 				return sp
-	return p
+	return Vector2.INF if strict else p
 
 
 func _free(p: Vector2) -> Vector2:
@@ -135,7 +147,21 @@ func _watch(party: Array, secs: float) -> Dictionary:
 
 
 func _sire_at(u: Unit) -> Unit:
-	var s: Unit = g._add_unit(BroodNew.FATHER, 1, _free(u.position + (q.position - u.position).normalized() * 160.0))
+	# (from open ground: the first of a few directions, the Mother's side first, with a clear straight walk to it; the
+	# rooted Rootmaw and turtle footprints would send it round)
+	var to_q := (q.position - u.position).normalized()
+	var at := _free(u.position + to_q * 160.0)
+	for d in [to_q, to_q.rotated(0.8), to_q.rotated(-0.8), to_q.orthogonal(), -to_q.orthogonal(), to_q.rotated(2.3), to_q.rotated(-2.3)]:
+		var p: Vector2 = u.position + d * 160.0
+		var clear := true
+		for k in range(1, 11):
+			if not g._walkable(g.cell_of(u.position.lerp(p, k / 10.0))):
+				clear = false
+				break
+		if clear:
+			at = p
+			break
+	var s: Unit = g._add_unit(BroodNew.FATHER, 1, at)
 	s.cmd_attack(u)
 	return s
 
@@ -196,7 +222,7 @@ func _case_raid() -> void:
 		return
 	var c: Vector2 = (alive[0].position + alive[1].position) * 0.5
 	var s := _sire_at(alive[0])
-	await wait(6.0)
+	await _watch(alive + [s], 6.0)
 	var c2: Vector2 = (alive[0].position + alive[1].position) * 0.5
 	var home := g.center_of_team(0)
 	check(c2.distance_to(home) < c.distance_to(home) - 60.0, "[raid] a Tyrant Sire comes: the riders ride home (%.0f -> %.0f px from home)" % [c.distance_to(home), c2.distance_to(home)])
@@ -205,6 +231,10 @@ func _case_raid() -> void:
 
 
 func _run() -> void:
+	if OS.get_cmdline_user_args().has("raid"):
+		await _case_raid()
+		quit(1 if fails > 0 else 0)
+		return
 	await _case_one("clockwork", "clock_soldier")
 	if OS.get_cmdline_user_args().has("clock"):
 		quit(0)

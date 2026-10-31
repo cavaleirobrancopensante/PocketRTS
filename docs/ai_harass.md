@@ -34,6 +34,8 @@ map; the grub got away and the next thing in reach was the rooted turtle. Nothin
 - Orders are given every army think (about once a second): attack orders on chosen workers, plain moves past the rest.
 - **The Crown's raid** (AI._raid, AI._hunt) goes to the same worker line, rides past rooted creatures as it rode past
   buildings, and rides home from a Sire or the Mother on her feet, or from armed units worth more than the party.
+  With every grub in sight killed it waits beside the Rootmaw for the next one (plain move; attack-move only with an
+  armed enemy near), never hitting the Rootmaw or turtle (0.24.28: on main it stood 31% of the time on the turtle).
 - **The scouts.** The scout no longer counts a rooted creature as a threat, so it no longer stops to fight one or backs
   off from one. A soldier scout (AIScout) or the Brood's Raptor scout bites a worker within 6 tiles on its loop and walks
   past rooted creatures.
@@ -48,6 +50,9 @@ rooted Rootmaw behind it.
   again.
 - [horse] The same with one Crown Horseman.
 - [raid] The Crown's raiding party (two Horsemen in AI._raid): grubs hurt, the turtle left alone, a Sire rides them home.
+
+Since 0.24.24 (brood-fix3) the swamp spreads 1 tile a second from a rooted turtle, so the test waits for it to reach
+the Rootmaw's spot before rooting the Rootmaw; the Sire comes over open ground (a clear straight walk to the harasser).
 
 ## Open
 

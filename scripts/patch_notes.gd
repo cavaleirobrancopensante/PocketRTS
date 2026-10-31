@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.31", "items": [
+		"THE CROWN'S RAIDERS DON'T WAIT AT A ROOTMAW: Horsemen raiding the Brood who have killed every grub in sight no longer stand hitting the rooted Rootmaw or Mound Turtle the grubs worked at; they wait beside it for the next grub (they still fight any armed creature that comes).",
+	]},
 	{"v": "0.24.30", "items": [
 		"Developer tests only: the selection panel, command key and HUD frame tests now play as on a computer whatever the saved settings say (a settings file without a device made them run as on a phone). Nothing changes in the game.",
 	]},
