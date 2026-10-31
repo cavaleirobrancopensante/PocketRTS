@@ -54,6 +54,7 @@ func _redraw(hud) -> void:
 
 
 func _run() -> void:
+	Settings.load_all()       # (main loads the shared settings file at start: read it first, or its device wins over ours)
 	Settings.device = "pc"
 	var shots := DisplayServer.get_name() != "headless"
 	for fac in (["crown"] if OS.get_cmdline_user_args().has("quick") else ["crown", "clockwork", "brood"]):

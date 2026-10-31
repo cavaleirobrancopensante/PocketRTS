@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.27", "items": [
+		"Developer tests only: the selection panel, command key and HUD frame tests now play as on a computer whatever the saved settings say (a settings file without a device made them run as on a phone). Nothing changes in the game.",
+	]},
 	{"v": "0.24.26", "items": [
 		"THE UNIT CARD SAYS IT SHORT: the selection panel's line under the health now gives a short description of the unit or building, one line (\"Builds, repairs, works Farms and Mills, and hauls. Weak in a fight.\"), instead of the long text cut off in the middle. Rest the mouse on its PORTRAIT (a long press on a phone) for the full text and its numbers: health, attack, armour, speed, sight, supply and what it costs.",
 		"OLD TEXTS FIXED: the Labourer's card no longer says he mines gold (the gold mines are long gone); the Clocktower's text no longer speaks of batteries, Boilers and coal (it holds brass and spring life, and allows 2 Cog Presses and 1 Mainspring); the Mist Toad's text and energy line name its third spell, MIASMA.",
