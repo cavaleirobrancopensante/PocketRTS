@@ -2885,6 +2885,14 @@ func find_patient(m: Unit, r: float) -> Unit:
 	return best
 
 
+## A finished building of kind `k` of side t (or an ally's) within `tiles` of p.
+func near_own_kind(t: int, p: Vector2, k: String, tiles: float) -> bool:
+	for b in buildings:
+		if b.kind == k and not b.dead and not b.ghost and b.built and (b.team == t or allied(b.team, t)) and b.edge_distance(p) < tiles * T:
+			return true
+	return false
+
+
 func near_enemy_building(t: int, p: Vector2, tiles: float) -> bool:
 	for b in buildings:
 		if hostile(t, b.team) and not b.dead and not b.ghost and b.edge_distance(p) < tiles * T:

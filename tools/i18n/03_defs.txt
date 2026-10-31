@@ -194,17 +194,17 @@ es Lanzador de rayos frágil. TORMENTA aturde todo lo que hay dentro durante 2,5
 pt Missionário
 es Misionero
 
-> Bandages wounded soldiers back to full health, and by himself raises fallen Crown soldiers from their bodies (6 s): back at half health under the cross for 30 s. One who falls again under the cross is gone for good. Can't be hurt unless near enemy buildings. One per Church. MOUNT a horse to ride as a Mounted Missionary.
-pt Enfaixa soldados feridos até a vida cheia e, sozinho, reergue soldados da Coroa caídos a partir de seus corpos (6 s): voltam com metade da vida, sob a cruz por 30 s. Quem cai de novo sob a cruz está perdido para sempre. Não pode ser ferido, a menos que esteja perto de prédios inimigos. Um por Igreja. MONTAR um cavalo para cavalgar como Missionário Montado.
-es Venda a los soldados heridos hasta la salud completa y, por sí mismo, levanta a soldados caídos de la Corona a partir de sus cuerpos (6 s): vuelven con la mitad de salud, bajo la cruz durante 30 s. El que cae de nuevo bajo la cruz se pierde para siempre. No puede ser herido salvo cerca de edificios enemigos. Uno por Iglesia. MONTA un caballo para cabalgar como Misionero Montado.
+> Bandages wounded soldiers back to full health, and by himself raises fallen Crown soldiers from their bodies (6 s): back at half health under the cross for 30 s. One who falls again under the cross is gone for good. Can't be hurt within 20 tiles of one of your Churches (unless near enemy buildings); away from them he can be killed. One per Church. MOUNT a horse to ride as a Mounted Missionary.
+pt Enfaixa soldados feridos até a vida cheia e, sozinho, reergue soldados da Coroa caídos a partir de seus corpos (6 s): voltam com metade da vida, sob a cruz por 30 s. Quem cai de novo sob a cruz está perdido para sempre. Não pode ser ferido a até 20 casas de uma das suas Igrejas (a menos que esteja perto de prédios inimigos); longe delas pode ser morto. Um por Igreja. MONTAR um cavalo para cavalgar como Missionário Montado.
+es Venda a los soldados heridos hasta la salud completa y, por sí mismo, levanta a soldados caídos de la Corona a partir de sus cuerpos (6 s): vuelven con la mitad de salud, bajo la cruz durante 30 s. El que cae de nuevo bajo la cruz se pierde para siempre. No puede ser herido a menos de 20 casillas de una de tus Iglesias (salvo cerca de edificios enemigos); lejos de ellas puede morir. Uno por Iglesia. MONTA un caballo para cabalgar como Misionero Montado.
 
 > Mounted Missionary
 pt Missionário Montado
 es Misionero Montado
 
-> A Missionary on a horse: as fast as a Messenger, unarmed. He gets off to bandage the wounded (and back on after); to raise the fallen he gets off by himself (and stays on foot). Can't be hurt unless near enemy buildings.
-pt Um Missionário a cavalo: tão rápido quanto um Mensageiro, desarmado. Desmonta para enfaixar os feridos (e monta de novo depois); para reerguer os caídos desmonta sozinho (e fica a pé). Não pode ser ferido, a menos que esteja perto de prédios inimigos.
-es Un Misionero a caballo: tan rápido como un Mensajero, desarmado. Se apea para vendar a los heridos (y vuelve a montar después); para levantar a los caídos se apea solo (y se queda a pie). No puede ser herido salvo cerca de edificios enemigos.
+> A Missionary on a horse: as fast as a Messenger, unarmed. He gets off to bandage the wounded (and back on after); to raise the fallen he gets off by himself (and stays on foot). Can't be hurt within 20 tiles of one of your Churches (unless near enemy buildings); away from them he can be killed.
+pt Um Missionário a cavalo: tão rápido quanto um Mensageiro, desarmado. Desmonta para enfaixar os feridos (e monta de novo depois); para reerguer os caídos desmonta sozinho (e fica a pé). Não pode ser ferido a até 20 casas de uma das suas Igrejas (a menos que esteja perto de prédios inimigos); longe delas pode ser morto.
+es Un Misionero a caballo: tan rápido como un Mensajero, desarmado. Se apea para vendar a los heridos (y vuelve a montar después); para levantar a los caídos se apea solo (y se queda a pie). No puede ser herido a menos de 20 casillas de una de tus Iglesias (salvo cerca de edificios enemigos); lejos de ellas puede morir.
 
 > Skywing
 pt Asa-do-Céu

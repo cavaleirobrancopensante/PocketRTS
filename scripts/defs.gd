@@ -822,6 +822,7 @@ const SPLITS := {
 const BANDAGE_TIME := 4.0
 const CROSS_TIME := 5.0           # after bandaging, that soldier can't be bandaged again yet
 const MISSIONARY_DANGER := 8      # tiles from an enemy building where he can be hurt
+const MISSIONARY_SAFE := 20       # tiles from one of his side's Churches inside which he can't be hurt (elsewhere he can)
 # Tesla Cart
 const TESLA_SWITCH := 3.0         # seconds to deploy or pack
 const TESLA_FIELD := 6            # tiles
@@ -1143,7 +1144,7 @@ const UNITS := {
 		"name": "Missionary", "hp": 60, "armor": 0, "speed": 62, "cost": 125, "time": 20.0, "supply": 1,
 		"sight": 8, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 10, "from": "church",
 		"medic": true, "per": "church", "faction": "crown",
-		"about": "Bandages wounded soldiers back to full health, and by himself raises fallen Crown soldiers from their bodies (6 s): back at half health under the cross for 30 s. One who falls again under the cross is gone for good. Can't be hurt unless near enemy buildings. One per Church. MOUNT a horse to ride as a Mounted Missionary.",
+		"about": "Bandages wounded soldiers back to full health, and by himself raises fallen Crown soldiers from their bodies (6 s): back at half health under the cross for 30 s. One who falls again under the cross is gone for good. Can't be hurt within 20 tiles of one of your Churches (unless near enemy buildings); away from them he can be killed. One per Church. MOUNT a horse to ride as a Mounted Missionary.",
 	},
 	# the Missionary on a horse (MOUNT / DISMOUNT: Defs.MOUNTS)
 	"mounted_missionary": {
@@ -1151,7 +1152,7 @@ const UNITS := {
 		"name": "Mounted Missionary", "hp": 60, "armor": 0, "speed": 124, "cost": 125, "time": 1.0, "supply": 1,
 		"sight": 9, "range": 0, "damage": 0, "cooldown": 1.0, "radius": 13, "from": "",
 		"medic": true, "mounted": true, "faction": "crown",
-		"about": "A Missionary on a horse: as fast as a Messenger, unarmed. He gets off to bandage the wounded (and back on after); to raise the fallen he gets off by himself (and stays on foot). Can't be hurt unless near enemy buildings.",
+		"about": "A Missionary on a horse: as fast as a Messenger, unarmed. He gets off to bandage the wounded (and back on after); to raise the fallen he gets off by himself (and stays on foot). Can't be hurt within 20 tiles of one of your Churches (unless near enemy buildings); away from them he can be killed.",
 	},
 	"skywing": {
 		"tags": ["light"],

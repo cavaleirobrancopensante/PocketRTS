@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.25.16", "items": [
+		"THE MISSIONARY CAN BE KILLED AWAY FROM HIS CHURCH: he is untouchable only within 20 tiles of one of your Churches (and never near enemy buildings, as before). Before, he could not be hurt anywhere except near enemy buildings, so he strolled untouched through a Brood base, which has none.",
+	]},
 	{"v": "0.25.15", "items": [
 		"A rooted Mound Turtle is drawn in the middle of its 3x3 ground, no longer sitting in its bottom row.",
 	]},
