@@ -4,6 +4,7 @@ extends RefCounted
 ## Patch notes in es: version -> items in the order of scripts/patch_notes.gd ('' = show the English).
 
 const N := {
+	"0.25.18": ["LOS PUNTOS DE REUNIÓN DE LA MADRE DE LA CAMADA LLEVAN NOMBRE: TRABAJADORES bajo el punto dorado (sus larvas) y EJÉRCITO bajo la bandera verde (sus guerreros)."],
 	"0.25.17": ["SACRIFICAR HUEVOS: selecciona huevos y pulsa SACRIFICAR (C): cuando eclosionen, sus crías irán directas a la Madre de la Camada para ser devoradas, sin pasar por el punto de reunión. El botón muestra el botín que darán las crías."],
 	"0.25.16": ["EL MISIONERO PUEDE MORIR LEJOS DE SU IGLESIA: solo es intocable a menos de 20 casillas de una de tus Iglesias (y nunca cerca de edificios enemigos, como antes). Antes no podía ser herido en ningún sitio salvo cerca de edificios enemigos, así que paseaba intocado por una base de la Camada, que no tiene edificios."],
 	"0.25.15": ["Una Tortuga Montículo enraizada se dibuja en el centro de su suelo de 3x3, ya no sentada en la fila de abajo."],

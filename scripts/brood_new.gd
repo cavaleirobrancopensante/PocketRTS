@@ -1892,6 +1892,16 @@ static func clock_text(t: float, short: bool) -> String:
 
 ## Over the creature (Unit._draw_unit, its own space): the Mother's eggs, a Rootmaw's food and ground, an egg's
 ## incubation, the father's reach when picked.
+## The word at one of the Mother's rally points (the owner, 2026-10-31): WORKERS (gold) or ARMY (green), under the dot.
+static func _rally_label(u: Unit, at: Vector2, word: String, col: Color) -> void:
+	var font := ThemeDB.fallback_font
+	var t := Loc.t(word)
+	var w := font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	var p := at + Vector2(-w * 0.5, 20)
+	u.draw_string_outline(font, p, t, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 4, Color(0, 0, 0, 0.85))
+	u.draw_string(font, p, t, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
+
+
 static func draw(u: Unit, top: float) -> void:
 	var g := u.game
 	var mine := u.team == g.human or g.demo or g.spectating()
@@ -1927,6 +1937,7 @@ static func draw(u: Unit, top: float) -> void:
 			# her WORKER rally (gold, as a Hive's worker rally)
 			u.draw_dashed_line(Vector2(0, -12), wp - u.position, Color(1, 0.85, 0.3, 0.6), 2.0, 6.0)
 			u.draw_circle(wp - u.position, 4.5, Color(1, 0.85, 0.3, 0.95))
+			_rally_label(u, wp - u.position, "WORKERS", Color(1, 0.85, 0.3))
 	if u.selected and mine and (BroodRoot.fixed(u)):
 		var rp := BroodRoot.rally_of(u)
 		if u.kind == EGG and bool(u.nb.get("nest", false)) and not u.nb.has("ro"):
@@ -1937,6 +1948,8 @@ static func draw(u: Unit, top: float) -> void:
 			u.draw_circle(rp - u.position, 4.5, Color(0.4, 1, 0.4, 0.95))
 			u.draw_line(rp - u.position, rp - u.position + Vector2(0, -18), Color(0.4, 1, 0.4, 0.95), 2.0)
 			u.draw_colored_polygon(PackedVector2Array([rp - u.position + Vector2(0, -18), rp - u.position + Vector2(11, -14), rp - u.position + Vector2(0, -10)]), Color(0.4, 1, 0.4, 0.95))
+			if u.kind == QUEEN:
+				_rally_label(u, rp - u.position, "ARMY", Color(0.4, 1, 0.4))
 	if ROOTERS.has(u.kind) and not u.nb.has("coc"):
 		# her GROWING (as a hall's upgrade: a violet bar and its label), ROOTING / UPROOTING: a bar over it; RESEARCHING
 		# only to its own side and allies (an enemy sees only his loop: the owner, 20:09)

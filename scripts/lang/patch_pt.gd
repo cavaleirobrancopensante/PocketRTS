@@ -4,6 +4,7 @@ extends RefCounted
 ## Patch notes in pt: version -> items in the order of scripts/patch_notes.gd ('' = show the English).
 
 const N := {
+	"0.25.18": ["OS PONTOS DE REUNIÃO DA MÃE DA NINHADA TÊM NOME: TRABALHADORES sob o ponto dourado (as larvas) e EXÉRCITO sob a bandeira verde (os guerreiros)."],
 	"0.25.17": ["SACRIFICAR OVOS: selecione ovos e aperte SACRIFICAR (C): quando eclodirem, os filhotes vão direto à Mãe da Ninhada para serem devorados, sem passar pelo ponto de reunião. O botão mostra os espólios que os filhotes darão."],
 	"0.25.16": ["O MISSIONÁRIO PODE SER MORTO LONGE DA IGREJA: ele só é intocável a até 20 casas de uma das suas Igrejas (e nunca perto de prédios inimigos, como antes). Antes ele não podia ser ferido em lugar nenhum, exceto perto de prédios inimigos, então passeava intocado por uma base da Ninhada, que não tem prédios."],
 	"0.25.15": ["Uma Tartaruga-Montículo enraizada é desenhada no meio do seu chão de 3x3, não mais sentada na fileira de baixo."],

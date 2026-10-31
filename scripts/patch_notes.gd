@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.25.18", "items": [
+		"THE BROOD MOTHER'S RALLY POINTS ARE LABELLED: WORKERS under the gold point (her grubs) and ARMY under the green flag (her warriors).",
+	]},
 	{"v": "0.25.17", "items": [
 		"SACRIFICE ON EGGS: select eggs and press SACRIFICE (C): as they hatch, their young go straight to the Brood Mother to be devoured, with no rally on the way. The button shows the spoils the eggs' young will give.",
 	]},
