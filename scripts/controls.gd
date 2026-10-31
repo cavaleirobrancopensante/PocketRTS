@@ -670,8 +670,9 @@ func _move_ghost(screen: Vector2) -> void:
 
 
 ## shift: a computer's Shift-click (MOVE, ATTACK, PATROL, REPAIR and ATTACK GROUND queue the order); taps never.
-func _tap(screen: Vector2, is_mouse: bool, shift := false) -> void:
-	var raw := to_world(screen)
+## (world: a point given on the map itself, e.g. a click on the minimap: used instead of the screen point)
+func _tap(screen: Vector2, is_mouse: bool, shift := false, world := Vector2.INF) -> void:
+	var raw := to_world(screen) if world == Vector2.INF else world
 	var p := game.on_map(raw)       # (the view may reach past the map edge: orders stay on it)
 	var units := game.selected_units()
 	if mode == "move" or mode == "attack" or mode == "patrol":

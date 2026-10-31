@@ -760,6 +760,14 @@ func _minimap_to(p: Vector2) -> void:
 		game.bombard_order(game.selected_units(), w, Settings.pc() and Input.is_key_pressed(KEY_SHIFT))
 		controls.cancel_mode()
 		return
+	# any other order waiting for a point (PATROL, RALLY, ATTACK GROUND, a spell...; the owner, 2026-10-31: PATROL on
+	# the minimap moved the view instead): the minimap's point is the click on the map. (Placing a building or a
+	# root ghost needs the real ground under the cursor: those keep the view move.)
+	if controls.mode != "" and not controls.mode in ["place", "lay_line", "nb_root"]:
+		controls._tap(Vector2.ZERO, true, Settings.pc() and Input.is_key_pressed(KEY_SHIFT), w)
+		if controls.mode != "":
+			controls.cancel_mode()     # (closed even with Shift, as MOVE: a drag on the minimap would queue a flood)
+		return
 	_jump(w)
 
 

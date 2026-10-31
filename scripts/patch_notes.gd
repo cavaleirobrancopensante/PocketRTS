@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.25.11", "items": [
+		"ORDERS ON THE MINIMAP: PATROL (and every other order waiting for a point: rally points, ATTACK GROUND, spells) can be given by clicking the minimap, with Shift to queue it, as MOVE and ATTACK could; it used to move the view instead.",
+	]},
 	{"v": "0.25.10", "items": [
 		"F2 (ARMY) PRESSED TWICE: the camera goes to where most of your army stands (its biggest clump), as a group's number does when pressed twice. F3 (MAKE) twice goes to your production buildings.",
 	]},

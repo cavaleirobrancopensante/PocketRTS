@@ -71,6 +71,15 @@ func _run() -> void:
 	g.hud.bar.key(f2)
 	await process_frame
 	check(once.distance_to(Vector2(200, 200)) < 1.0 and g.camera.position.distance_to(Vector2(2020, 1520)) < 300.0, "F2 once selects; twice: the camera goes to the army (%s)" % str(g.camera.position))
+	# PATROL on the minimap: the order is given at the minimap's point (not a view move)
+	var pu: Unit = g._add_unit("musketeer", g.human, Vector2(600, 600))
+	g.set_selection([pu])
+	g.hud.controls.mode = "patrol"
+	var m: Rect2 = g.hud.mini_rect()
+	var cam0: Vector2 = g.camera.position
+	g.hud._minimap_to(m.position + m.size * 0.75)
+	var want := Vector2(0.75, 0.75) * Vector2(Game.W, Game.H) * Game.T
+	check((pu.order == "patrol" or pu.patrol_b != Vector2.INF) and g.camera.position == cam0 and pu.order_point.distance_to(want) < 200.0, "PATROL on the minimap patrols there (order %s, to %s; want %s)" % [pu.order, str(pu.order_point), str(want)])
 	main._to_menu()
 	print("ALL OK" if fails == 0 else "SOME FAILED (%d)" % fails)
 	quit(1 if fails else 0)
