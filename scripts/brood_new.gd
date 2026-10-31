@@ -158,6 +158,7 @@ static func start(g: Game, t: int, cell: Vector2i) -> void:
 	q.nb["eggs"] = int(Defs.NB["start_eggs"])
 	var spot := BroodRoot.snap(MAW, _maw_start_spot(g, c))      # (before her footprint is taken: her cell's region is looked at)
 	_start_rooting(g, q)
+	q.nb["swr"] = swamp_full(q)        # (her swamp is there in full once she has rooted at the start: her Rootmaw is on it)
 	var m := g._add_unit(MAW, t, spot)
 	m.facing = SE
 	m.nb["food"] = float(Defs.NB["start_food"])       # (the first loads are ready: the grubs start at once)
@@ -248,11 +249,57 @@ static func swamp_sources(g: Game, t: int) -> Array:
 	for u in g.units:
 		if u.team != t or u.dead or not rooted(u):
 			continue
-		if u.kind == QUEEN:
-			out.append([u.position / Defs.TILE, float(stage_def(u)["swamp"])])
-		elif u.kind == TURTLE:
-			out.append([u.position / Defs.TILE, float(Defs.NB["turtle_swamp"])])
+		if u.kind == QUEEN or u.kind == TURTLE:
+			out.append([u.position / Defs.TILE, minf(swamp_full(u), float(u.nb.get("swr", 0.0)))])
 	return out
+
+
+## THE SWAMP SPREADS AT A WALK (the owner's playtest, 2026-10-31: "it should spread at a speed, 1 tile a second"): a
+## swamp source's full radius in tiles (the Mother's stage, a Mound Turtle's), and nb "swr" the radius it has reached.
+static func swamp_full(u: Unit) -> float:
+	return float(stage_def(u)["swamp"]) if u.kind == QUEEN else float(Defs.NB["turtle_swamp"])
+
+
+## Swamp is spreading toward p: within the full radius of a rooted Mother or Mound Turtle of side t, not reached yet
+## (the computer picks a Rootmaw's spot there; a grub sent to morph there waits for it: BroodRoot.morph_tick).
+static func swamp_coming(g: Game, t: int, p: Vector2) -> bool:
+	for u in g.units:
+		if u.team != t or u.dead or not (u.kind == QUEEN or u.kind == TURTLE) or not rooted(u):
+			continue
+		var d: Vector2 = (p - u.position) / Defs.TILE
+		var full := swamp_full(u) - 0.6
+		if d.x * d.x + d.y * 1.15 * d.y * 1.15 <= full * full and float(u.nb.get("swr", 0.0)) < swamp_full(u):
+			return true
+	return false
+
+
+## Every swamp step (Game.SWAMP_STEP, 1 s; on the host): each rooted Mother and Mound Turtle's swamp grows `step` tiles
+## out toward its full radius. One newly rooted starts from the swamp already round it (rooted again where its own or
+## another's swamp still lies, it does not start from nothing); one up (uprooting, dead) has none (its swamp recedes:
+## Game._update_swamp). True if any changed.
+static func swamp_grow(g: Game, step: float) -> bool:
+	var changed := false
+	for u in g.units:
+		if not (u.kind == QUEEN or u.kind == TURTLE) or not on(g, u.team):
+			continue
+		if u.dead or u.tesla_mode == "packing" or u.tesla_mode == "packed":
+			if u.nb.has("swr"):
+				u.nb.erase("swr")
+				changed = true
+			continue
+		if not rooted(u):
+			continue           # (still rooting, or in its cocoon: its swamp starts once it is rooted)
+		var full := swamp_full(u)
+		if not u.nb.has("swr"):
+			u.nb["swr"] = g.swamp_cover(u.team, u.position / Defs.TILE, full)
+			changed = true
+		elif float(u.nb["swr"]) < full:
+			u.nb["swr"] = minf(full, float(u.nb["swr"]) + step)
+			changed = true
+		elif float(u.nb["swr"]) > full:
+			u.nb["swr"] = full
+			changed = true
+	return changed
 
 
 ## A Rootmaw roots and feeds on ANY swamp of its side (the owner, 13:40): the Mother's, a turtle's far away (a hidden
@@ -745,8 +792,6 @@ static func _hatch(g: Game, e: Unit) -> void:
 	var at := e.position
 	e.nb["out"] = 0.0          # (the shell stays a moment under the creature: egg_tick lets it go)
 	e.z_index = -1
-	e.selected = false
-	g.selection.erase(e)
 	var n := int(e.nb.get("n", Defs.UNITS[k].get("spawn", 1)))      # (2 young, 3 if laid with BIGGER CLUTCH)
 	var rp := BroodRoot.hatch_rally(g, e)
 	# hatched inside or among its side's rooted creatures (the father's nest, an egg laid on a creature when she was
@@ -758,10 +803,14 @@ static func _hatch(g: Game, e: Unit) -> void:
 	if t == g.human:
 		Sfx.play_any(["brood/hatch", "hatch"], at)
 		Sfx.voice(k, "select")
+	var young: Array = []
 	for i in n:
 		var off := Vector2.from_angle(TAU * i / maxf(1.0, n) + float(e.serial)) * (6.0 if n > 1 else 0.0)
 		var u := g._add_unit(k, t, at + off)
 		u.facing = Vector2.DOWN
+		young.append(u)
+		if e.net_id != 0:
+			u.nb["hof"] = e.net_id         # (online: the guest hands its selection of the egg on to them too, NetSnapshot)
 		if n > 1:
 			u.clutch_n = n          # (its share of the egg, for SACRIFICE: devour)
 		if not BroodRoot.send(g, u, rp, i) and k == "grub":     # (to the rally: the Mother's, the egg's own, or the father's for his nest)
@@ -769,6 +818,9 @@ static func _hatch(g: Game, e: Unit) -> void:
 			if src:
 				u.cmd_gather(src)
 		BroodRoot.start_pass(g, u)
+	g.hand_on(e, young)          # (a selected egg: its young are selected now, and join its control groups)
+	e.selected = false
+	g.selection.erase(e)
 	recount(g, t)
 
 
@@ -1209,6 +1261,16 @@ static func tick(g: Game, u: Unit, delta: float) -> void:
 			if float(u.nb["wet_t"]) <= 0.0:
 				u.nb["wet_t"] = 0.5
 				u.nb["dry"] = not on_swamp(g, u.team, u.position)      # (off the swamp: it stops feeding)
+				# NO SWAMP, NO ROOTS (the owner's playtest, 2026-10-31): a rooted Rootmaw whose swamp is gone (its turtle up or
+				# dead, the swamp receded) uproots by itself, keeping its food (as HAUL); its ground keeps what is left
+				# (Game.nb_spots). DRY_GRACE: the swamp is worked out once a second, so a moment's gap is not a loss.
+				if rooted(u) and bool(u.nb["dry"]):
+					u.nb["dry_t"] = float(u.nb.get("dry_t", 0.0)) + 0.5
+					if float(u.nb["dry_t"]) >= DRY_GRACE:
+						u.nb.erase("dry_t")
+						_lost_swamp(g, u)
+				else:
+					u.nb.erase("dry_t")
 			if rooted(u) and u.nb.has("spot") and not bool(u.nb.get("dry", false)):
 				var id := int(u.nb["spot"])
 				if g.nb_spots.has(id):
@@ -1222,6 +1284,18 @@ static func tick(g: Game, u: Unit, delta: float) -> void:
 				u.speed *= float(Defs.NB["haul_speed"])        # HAUL: full and slow
 		FATHER, DILO, PTERO:
 			father_tick(g, u, delta)
+
+
+const DRY_GRACE := 2.0
+
+
+static func _lost_swamp(g: Game, u: Unit) -> void:
+	uproot(u, false)
+	if g.mlog:
+		g.mlog.add("%s: a Rootmaw lost its swamp and uprooted" % g.mlog.who(u.team))
+	if u.team == g.human and not g.demo and g.hud:
+		g.hud.toast("A Rootmaw lost its swamp and uprooted.", false)
+		g._ping(u.position, Color(1.0, 0.55, 0.3))
 
 
 ## A Rootmaw's ground running low or spent: it warns for itself (the owner, 21:28: the Brood's alerts in its own
@@ -1955,6 +2029,10 @@ static func unit_load(u: Unit, d: Dictionary) -> void:
 			u.nb[k] = int(u.nb[k])
 	if u.kind == QUEEN:
 		apply_stage(u)
+	if u.nb.has("swr"):
+		u.nb["swr"] = float(u.nb["swr"])
+	elif (u.kind == QUEEN or u.kind == TURTLE) and rooted(u):
+		u.nb["swr"] = swamp_full(u)         # (an older save: its swamp was there in full)
 	set_sky(u)          # (a Pterodactyl landed on his nest is on the ground)
 	if u.kind == EGG and not u.nb.has("out"):
 		u.z_index = EGG_Z
@@ -1974,7 +2052,12 @@ static func save(g: Game) -> Dictionary:
 	for id in g.nb_spots:
 		var s: Dictionary = g.nb_spots[id]
 		spots.append([int(id), (s["p"] as Vector2).x, (s["p"] as Vector2).y, float(s["left"]), int(s.get("maw", 0))])
-	return {"spots": spots, "next": g.nb_spot_next}
+	# the swamp as it lies (a receding one keeps receding after a load; the growing radii are each source's nb "swr")
+	var sw := []
+	for t in g.swamp.size():
+		var grid: PackedByteArray = g.swamp[t]
+		sw.append(Marshalls.raw_to_base64(grid.compress(FileAccess.COMPRESSION_DEFLATE)) if grid.find(1) >= 0 else "")
+	return {"spots": spots, "next": g.nb_spot_next, "swamp": sw}
 
 
 static func load(g: Game, d: Dictionary) -> void:
@@ -1982,4 +2065,11 @@ static func load(g: Game, d: Dictionary) -> void:
 	for s in d.get("spots", []):
 		g.nb_spots[int(s[0])] = {"p": Vector2(float(s[1]), float(s[2])), "left": float(s[3]), "maw": int(s[4])}
 	g.nb_spot_next = int(d.get("next", 0))
+	var sw: Array = d.get("swamp", []) if d.get("swamp") is Array else []
+	for t in mini(sw.size(), g.swamp.size()):
+		if String(sw[t]) == "":
+			continue
+		var grid: PackedByteArray = Marshalls.base64_to_raw(String(sw[t])).decompress(Game.W * Game.H, FileAccess.COMPRESSION_DEFLATE)
+		if grid.size() == Game.W * Game.H:
+			g.swamp[t] = grid
 	g.nb_queen.clear()

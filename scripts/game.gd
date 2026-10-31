@@ -5074,6 +5074,56 @@ static func sacrifice_value(kind: String) -> int:
 	return maxi(1, int(round(float(d["cost"]) / maxf(1.0, float(d.get("spawn", 1))) * Defs.SACRIFICE)))
 
 
+## THE BROOD: `old` turned into `news` (an egg hatched, a grub became its cocoon; the owner's playtest, 2026-10-31): if
+## it was selected they are now (the rest of the selection stays), and they join every control group it was in.
+func hand_on(old: Unit, news: Array) -> void:
+	var was := selection.has(old)
+	if was:
+		selection.erase(old)
+		old.selected = false
+		for n in news:
+			if is_instance_valid(n) and not n.dead and not selection.has(n):
+				n.selected = true
+				selection.append(n)
+	for grp in groups:
+		if grp.has(old):
+			grp.erase(old)
+			for n in news:
+				if not grp.has(n):
+					grp.append(n)
+	if was and hud:
+		hud._card_fresh = true
+
+
+## The same on an online guest, one young at a time as each one's row comes (`id`: the egg's net id; what the egg
+## had is remembered for its other young).
+var _hand_memo := {}
+
+func hand_on_net(old, id: int, u: Unit) -> void:
+	if not _hand_memo.has(id):
+		if not is_instance_valid(old):
+			return
+		var gi: Array = []
+		for i in groups.size():
+			if groups[i].has(old):
+				gi.append(i)
+		_hand_memo[id] = [selection.has(old), gi]
+	var m: Array = _hand_memo[id]
+	if is_instance_valid(old):
+		selection.erase(old)
+		old.selected = false
+		for grp in groups:
+			grp.erase(old)
+	if bool(m[0]) and not selection.has(u):
+		u.selected = true
+		selection.append(u)
+		if hud:
+			hud._card_fresh = true
+	for i in m[1]:
+		if not groups[i].has(u):
+			groups[i].append(u)
+
+
 ## A Brood creature that reached the Brood Mother on SACRIFICE: offered up for spoils.
 func sacrifice(u: Unit, pen: Entity) -> void:
 	var ess := sacrifice_value(u.kind)
@@ -5147,6 +5197,42 @@ func on_swamp(t: int, p: Vector2) -> bool:
 	return swamp[t][idx(cell_of(p))] == 1
 
 
+## THE SWAMP SPREADS AT A WALK (the owner, 2026-10-31): it is worked out once every SWAMP_STEP s, growing one tile out
+## from each rooted source (BroodNew.swamp_grow) and receding one ring where no source holds it any more.
+const SWAMP_STEP := 1.0
+
+
+## Once a swamp step (the host; a guest's swamp follows the radii it is sent: NetPuppet).
+func _tick_swamp(delta: float) -> void:
+	_swamp_t -= delta
+	if _swamp_t > 0.0:
+		return
+	_swamp_t = SWAMP_STEP
+	if brood_in_match() and BroodNew.swamp_grow(self, SWAMP_STEP):
+		swamp_dirty = true
+	if swamp_dirty:
+		_update_swamp()
+
+
+## How far out (tiles, up to `full`) the swamp of side t already lies all round centre c (tiles): a source rooted on
+## swamp that is still there starts its own from that radius.
+func swamp_cover(t: int, c: Vector2, full: float) -> float:
+	var g: PackedByteArray = swamp[t]
+	var r := 0.0
+	while r < full:
+		var nr := minf(full, r + 1.0)
+		for y in range(int(c.y - nr) - 1, int(c.y + nr) + 2):
+			for x in range(int(c.x - nr) - 1, int(c.x + nr) + 2):
+				if x < 0 or y < 0 or x >= W or y >= H or water[y * W + x] == 1:
+					continue
+				var dx: float = (x + 0.5 - c.x)
+				var dy: float = (y + 0.5 - c.y) * 1.15
+				if dx * dx + dy * dy <= nr * nr and g[y * W + x] != 1:
+					return r
+		r = nr
+	return r
+
+
 func _update_swamp() -> void:
 	swamp_dirty = false
 	for t in n_players():
@@ -5166,8 +5252,8 @@ func _update_swamp() -> void:
 						var ndy: float = (y + 0.5 - nc.y) * 1.15
 						if ndx * ndx + ndy * ndy <= nr * nr:
 							g[y * W + x] = 1
-		# Swamp that lost its building does not vanish at once: it retreats one ring of tiles every swamp
-		# update (every half second), the outermost unsupported tiles first
+		# Swamp that lost its source does not vanish at once: it retreats one ring of tiles every swamp
+		# update (every SWAMP_STEP: 1 tile a second, as it grows), the outermost unsupported tiles first
 		# (nothing to do where the grid came out as it was, as for every side without swamp:
 		# the whole-map loop ran for every player every half second)
 		for i in (W * H if old != g else 0):
@@ -8925,10 +9011,7 @@ func _tick_game(delta: float) -> void:
 			budget -= 1
 	Prof.add("game/paths", pt)
 	_tick_zones(delta)
-	_swamp_t -= delta
-	if swamp_dirty and _swamp_t <= 0.0:
-		_swamp_t = 0.5
-		_update_swamp()
+	_tick_swamp(delta)
 	_vis_t -= delta
 	if _vis_t <= 0.0:
 		_vis_t = 0.25

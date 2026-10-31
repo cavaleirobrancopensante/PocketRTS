@@ -1,0 +1,5 @@
+# 0.24.21: the owner's Brood playtest of 2026-10-31 (brood-fix3): a Rootmaw off its swamp uproots by itself
+
+> A Rootmaw lost its swamp and uprooted.
+pt Um Bocarraiz perdeu seu pântano e se desenraizou.
+es Un Bocarraíz perdió su pantano y se desarraigó.

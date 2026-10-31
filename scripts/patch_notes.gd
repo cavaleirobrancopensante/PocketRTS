@@ -4,6 +4,13 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.21", "items": [
+		"THE BROOD'S SWAMP SPREADS AT A WALK: a newly rooted Mound Turtle's swamp (and the Brood Mother's) grows out from it 1 tile a second up to its full size, drawn growing; when it gets up or dies, the swamp only it held shrinks back just as fast (swamp another source still covers stays). A Rootmaw roots only where the swamp has already reached. Saves and online games keep how far it has spread.",
+		"NO SWAMP, NO ROOTMAW: a rooted Rootmaw needs swamp under it, as it does to root. When its swamp goes (its Mound Turtle got up or died, or the Mother walked off and her swamp shrank back), it stops feeding and uproots by itself, keeping its food, with an alert: \"A Rootmaw lost its swamp and uprooted.\" Its ground keeps the food left in it.",
+		"A HATCHING EGG KEEPS YOUR SELECTION: a selected egg that hatches hands the selection to its young (all 2 or 3 of a clutch), and they join its control groups; the rest of the selection stays. The same for a grub turning into a Rootmaw, Mound Turtle or Sire: its cocoon is selected in its place. Online too.",
+		"ORDERS WHILE UPROOTING: a creature pulling up its roots now also takes ROOT (pick the spot as usual, Shift to queue it), besides right-clicks, Shift+right-clicks and MOVE: e.g. Shift-queue \"move there, then ROOT there\"; it carries them out once it is up.",
+		"HARVEST AUTOCAST ON PATROL: a grub with HARVEST on that is patrolling, holding or attack-moving breaks off for a body near it, harvests it, delivers it to the Mother and goes back to what it was doing: the same patrol between the same two points, its hold spot, its attack-move.",
+	]},
 	{"v": "0.24.20", "items": [
 		"THE MAIN MENU IS ONE FLAT GRID (the owner's drawn layout): the title on one line across the top-left, and under it three rows of buttons, all in the painting's empty sky so none of the battle is covered: CAMPAIGN (coming later), SKIRMISH and ONLINE; HOW TO PLAY, REPLAYS and EDITOR; then CONTINUE (only when you have a saved match), SETTINGS and EXIT. No more PLAY, LEARN or WORKSHOP steps: every page is one tap away and its BACK returns here. EXIT saves and closes the game (not in a browser, where there is no EXIT). MATCH LOGS is now a button on the REPLAYS page.",
 	]},

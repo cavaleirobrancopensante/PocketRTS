@@ -1562,7 +1562,7 @@ func _nb_buttons(list: Array, units: Array) -> void:
 		list.append([c0.kind, clab, func() -> void: toast(ctip), true, "", ""])
 	var rooters := units.filter(func(u: Unit) -> bool: return BroodNew.ROOTERS.has(u.kind) and u.team == game.human and not BroodRoot.in_cocoon(u))
 	if not rooters.is_empty():
-		var packed := rooters.filter(func(u: Unit) -> bool: return u.tesla_mode == "packed")
+		var packed := rooters.filter(func(u: Unit) -> bool: return u.tesla_mode in ["packed", "packing"])     # (uprooting: ROOT may be given now, it is carried out once up)
 		if not packed.is_empty():
 			# ROOT like BUILD (point 8): the ghost of its rooted footprint; it walks there and roots on that spot
 			var rk: String = packed[0].kind

@@ -562,6 +562,8 @@ static func _unit_row(s: NetSession, row: Array) -> Unit:
 		u._set_anim(u._anim_name(), true)
 	u.max_hp = row[o + 16]
 	u.cooldown = 1.0 if bool(row[o + UNIT_PROPS.size()]) else 0.0
+	if fresh and u.nb.has("hof"):
+		g.hand_on_net(s.by_id.get(int(u.nb["hof"])), int(u.nb["hof"]), u)     # (hatched from an egg we had selected)
 	u.queue_redraw()
 	return u
 
@@ -613,6 +615,8 @@ static func _set_unit_vals(u: Unit, row: Array, o: int) -> void:
 	u.ride_n = row[o + 44]
 	if row.size() > o + 45 and row[o + 45] is Dictionary:
 		var keep_fe = u.nb.get("fe")
+		if u.nb.get("swr") != (row[o + 45] as Dictionary).get("swr"):
+			u.game.swamp_dirty = true          # (a swamp source's radius grew, or it rooted or got up: the swamp follows)
 		u.nb = row[o + 45]
 		if keep_fe != null:
 			u.nb["fe"] = keep_fe

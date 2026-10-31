@@ -171,13 +171,13 @@ func nb_actor() -> Unit:
 	for u in game.selected_units():
 		if u.team != game.human or u.dead:
 			continue
-		var ok: bool = (u.kind == "grub" and u.order != "nb_morph") if nb_morph else (u.kind == place_kind and u.tesla_mode == "packed" and u.order != "nb_root")
+		var ok: bool = (u.kind == "grub" and u.order != "nb_morph") if nb_morph else (u.kind == place_kind and u.tesla_mode in ["packed", "packing"] and u.order != "nb_root")
 		if ok and (best == null or u.position.distance_squared_to(at) < best.position.distance_squared_to(at)):
 			best = u
 	if best == null:
 		# (Shift-queued: every one has a plan already: the nearest of them takes another)
 		for u in game.selected_units():
-			var ok2: bool = u.kind == "grub" if nb_morph else (u.kind == place_kind and u.tesla_mode == "packed")
+			var ok2: bool = u.kind == "grub" if nb_morph else (u.kind == place_kind and u.tesla_mode in ["packed", "packing"])
 			if ok2 and u.team == game.human and (best == null or u.position.distance_squared_to(at) < best.position.distance_squared_to(at)):
 				best = u
 	return best
