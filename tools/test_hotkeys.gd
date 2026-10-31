@@ -274,7 +274,7 @@ func _run() -> void:
 	var fake: Array = []
 	for i in 16:
 		fake.append(["move", "CMD%d" % i, func() -> void: pass, true, "", ""])
-	var kf: Array = hud._with_keys(fake)
+	var kf: Array = hud._with_keys(fake, 0, false)
 	var kset := {}
 	for it in kf:
 		kset[String(it[6])] = true

@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.22", "items": [
+		"THE COMMAND CARD'S KEYS STAY PUT: a command's letter no longer depends on which other buttons are showing. Each kind of selection gets its letters once, over every command it can ever have (all its research, rooted and uprooted, armoured soldiers, CANCEL, the refits...), and keeps them all match: starting, queueing or finishing a research, rooting or uprooting, a button greying out never moves another command's letter. STOP keeps S everywhere it can appear, so a research is never S on a card that can show STOP.",
+		"STOP RESEARCH is X (a Sire's or the Brood Mother's), STOP GROWING is Z: before, starting a research could hand its S to STOP RESEARCH, so pressing S again to queue the next one cancelled it. Pressing a research's key again queues the next of its line (MATCHLOCK, then FLINTLOCK, on the same F) or, if there is none, just says it is already being researched: the key never falls through to another command (such as STOP).",
+	]},
 	{"v": "0.24.21", "items": [
 		"THE MAIN MENU'S BOTTOM LINE: \"Version 0.24.21\" (click it to read the patch notes; their BACK returns to the main menu) and \"This game was made with the help of AI\".",
 	]},

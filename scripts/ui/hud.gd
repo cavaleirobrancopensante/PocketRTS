@@ -980,7 +980,8 @@ func _build_card() -> Array:
 					_nb_build_page(list)
 					return list
 				page = ""
-			if units.all(func(u: Unit) -> bool: return BroodRoot.fixed(u)):
+			# (listing every command for the letters: a creature that can uproot has the walking card's too; an egg never)
+			if units.all(func(u: Unit) -> bool: return BroodRoot.fixed(u)) and not (_full_card and units.any(func(u: Unit) -> bool: return BroodNew.ROOTERS.has(u.kind))):
 				# ROOTED = A BUILDING (the owner, 19:19): no MOVE, ATTACK, STOP, HOLD, PATROL; only its own commands
 				_nb_buttons(list, units)
 				return list
@@ -1176,7 +1177,7 @@ func _build_card() -> Array:
 					if w != "":
 						toast(w), twhy == "", twhy, str(Defs.TRAINS[tk]["cost"])])
 		# (a soldier with a light and an armoured version: two buttons once Armour is researched)
-		for k in Defs.train_keys(b.d["trains"], game.has_tech(game.human, "armour")):
+		for k in Defs.train_keys(b.d["trains"], game.has_tech(game.human, "armour") or _full_card):
 			var kk: String = k
 			var why := game.can_train(b, k)
 			for sb in game.selected_buildings():
@@ -1200,16 +1201,24 @@ func _build_card() -> Array:
 			list.append(["rally", "WORKERS", func() -> void: controls.mode = "rally_worker", true, "", ""])
 		elif not b.d["trains"].is_empty():
 			list.append(["rally", "RALLY", func() -> void: controls.mode = "rally", true, "", ""])
-		if not b.queue.is_empty():
+		if not b.queue.is_empty() or (_full_card and (not (b.d["trains"] as Array).is_empty() or _has_research_at(b.kind))):
 			list.append(["cancel", "CANCEL", func() -> void:
 				var last: String = b.queue.back() if not b.queue.is_empty() else ""
 				game.cancel_train(b)
 				if Building.is_research(last):
 					toast("%s research cancelled: paid back." % Defs.RESEARCH[last.substr(1)]["name"]), true, "", ""])
-		if Defs.REFIT_AT.has(b.kind) and game.has_refits(game.human):
+		if Defs.REFIT_AT.has(b.kind) and (game.has_refits(game.human) or _full_card):
 			# (once there's something to refit with)
 			_auto_refit_button(list, game.selected_buildings().filter(func(x: Building) -> bool: return Defs.REFIT_AT.has(x.kind) and x.built))
 	return list
+
+
+## Does a building of this kind research anything?
+static func _has_research_at(kind: String) -> bool:
+	for rk in Defs.RESEARCH:
+		if String(Defs.RESEARCH[rk]["at"]) == kind:
+			return true
+	return false
 
 
 ## The research buttons of a finished building (what it can still research).
@@ -1218,12 +1227,14 @@ func _research_buttons(list: Array, b: Building, group: Array = []) -> void:
 		var rkk: String = rk
 		var info: Dictionary = Defs.RESEARCH[rk]
 		# done, or already in a queue (it shows there, with its progress): no button
-		if info["at"] != b.kind or game.has_tech(game.human, rk) or game.researching(game.human, rk):
+		if info["at"] != b.kind:
+			continue
+		if not _full_card and (game.has_tech(game.human, rk) or game.researching(game.human, rk)):
 			continue
 		# a chain (the musket locks): only the next one shows, once the one before is
 		# done or queued
 		var rreq: String = info.get("requires", "")
-		if rreq != "" and not game.has_tech(game.human, rreq) and not game.researching(game.human, rreq):
+		if rreq != "" and not _full_card and not game.has_tech(game.human, rreq) and not game.researching(game.human, rreq):
 			continue
 		# (several of the same kind selected: it goes to the one that can start it with the shortest queue)
 		var at: Building = b
@@ -1498,19 +1509,20 @@ func _nb_buttons(list: Array, units: Array) -> void:
 		# GROW (her next stage) and what raises her laying (the levers: her stage, fathers near her, expansions)
 		var st := BroodNew.stage(q)
 		var stages: Array = Defs.NB["stages"]
-		if float(q.nb.get("grow_t", 0.0)) > 0.0:
+		if float(q.nb.get("grow_t", 0.0)) > 0.0 or _full_card:
 			# growing: STOP GROWING, as a hall's STOP UPGRADE (all of it paid back); her bar is in the card's corner
 			_tip_for["STOP GROWING"] = ["Stop growing", "Stop her growing: all of its price is paid back."]
 			list.append(["cancel", "STOP GROWING", func() -> void:
 				for u in game.selected_units():
 					if u.kind == BroodNew.QUEEN and u.team == game.human:
 						u.cmd_grow_stop(), true, "", ""])
-		elif st < stages.size() - 1:
-			var nx: Dictionary = stages[st + 1]
+		if (st < stages.size() - 1 and float(q.nb.get("grow_t", 0.0)) <= 0.0) or _full_card:
+			var nx: Dictionary = stages[mini(st + 1, stages.size() - 1)]
 			var gwhy := BroodNew.grow_problem(game, q)
-			_tip_for["GROW"] = ["Grow (stage %d)" % (st + 2), "She grows bigger: up to %d eggs, laying %d%% faster (stage x%.1f), but a bigger, slower target with a wider swamp. Rooted only; %d s, and she lays no eggs meanwhile (uprooting stops it and pays it back). %s" % [
-				int(nx["eggs"]), int(round((float(nx["rate"]) / float(stages[st]["rate"]) - 1.0) * 100.0)), float(nx["rate"]), int(nx["time"]),
-				Loc.t("Unlocks: %s.") % BroodNew.unlocks_text(st + 1)]]
+			if st < stages.size() - 1:
+				_tip_for["GROW"] = ["Grow (stage %d)" % (st + 2), "She grows bigger: up to %d eggs, laying %d%% faster (stage x%.1f), but a bigger, slower target with a wider swamp. Rooted only; %d s, and she lays no eggs meanwhile (uprooting stops it and pays it back). %s" % [
+					int(nx["eggs"]), int(round((float(nx["rate"]) / float(stages[st]["rate"]) - 1.0) * 100.0)), float(nx["rate"]), int(nx["time"]),
+					Loc.t("Unlocks: %s.") % BroodNew.unlocks_text(st + 1)]]
 			list.append(["broodmound", "GROW", func() -> void:
 				for u in game.selected_units():
 					if u.kind == BroodNew.QUEEN and u.team == game.human:
@@ -1527,7 +1539,7 @@ func _nb_buttons(list: Array, units: Array) -> void:
 		list.append(["brood_mother", lev_lab, func() -> void: pass, false, lev, ""])
 		# HER VETERANCY FROM HARVEST (the owner, 2026-10-30 08:39): shown once she has some
 		var hv := BroodNew.hvet(q)
-		if hv > 0:
+		if hv > 0 or _full_card:
 			var hv_lab := Loc.t("VETERANCY %d · EGGS +%d%%") % [hv, hv * hv_pct]
 			_tip_for[hv_lab] = ["Her veterancy", "Every harvest a grub delivers to the Brood Mother (a body of either side, wrapped on the field) gives her 1 veterancy: she lays %d%% faster for each, up to %d (+%d%%). She has %d. It adds to her other levers." % [hv_pct, hv_max, hv_max * hv_pct, hv]]
 			list.append(["ab_harvest", hv_lab, func() -> void: pass, false, Loc.t("Her laying is +%d%% from harvests.") % (hv * hv_pct), ""])
@@ -1563,20 +1575,20 @@ func _nb_buttons(list: Array, units: Array) -> void:
 	var rooters := units.filter(func(u: Unit) -> bool: return BroodNew.ROOTERS.has(u.kind) and u.team == game.human and not BroodRoot.in_cocoon(u))
 	if not rooters.is_empty():
 		var packed := rooters.filter(func(u: Unit) -> bool: return u.tesla_mode == "packed")
-		if not packed.is_empty():
+		if not packed.is_empty() or _full_card:
 			# ROOT like BUILD (point 8): the ghost of its rooted footprint; it walks there and roots on that spot
-			var rk: String = packed[0].kind
+			var rk: String = (packed[0] if not packed.is_empty() else rooters[0]).kind
 			_tip_for["ROOT"] = ["Root", "Pick where it roots (a ghost on the grid, as a building's): it walks there and roots on that spot. Rooted it is a building: armour and a quarter less damage, its footprint blocks the way, it takes no move orders (UPROOT gets it up). A Rootmaw roots only on your swamp, its 10-tile circle clear of another's; a Mound Turtle gives 12 supply and swamp and can close a ramp; a father (the Tyrant Sire, the Venom Sire, the Storm Sire, who lands) nests within %d tiles of the Mother. No rooted creature attacks." % int(Defs.NB["father_r"])]
 			list.insert(mini(3, list.size()), ["ab_nb_root", "ROOT", func() -> void:
 				controls.begin_nb_root(rk, false)
 				toast("Pick where it roots."), true, "", ""])
-		if rooters.any(func(u: Unit) -> bool: return u.tesla_mode == "deployed"):
+		if rooters.any(func(u: Unit) -> bool: return u.tesla_mode == "deployed") or _full_card:
 			_tip_for["UPROOT"] = ["Uproot", "Pull up the roots and walk: a unit again (its footprint freed). A Rootmaw spills its food as a pile on the ground (grubs still collect it; it rots slowly) and walks off thin and quick."]
 			list.insert(mini(3, list.size()), ["ab_uproot", "UPROOT", func() -> void:
 				for u in game.selected_units():
 					if BroodNew.ROOTERS.has(u.kind) and u.tesla_mode == "deployed":
 						u.cmd_uproot(true), true, "", ""])
-			if rooters.any(func(u: Unit) -> bool: return u.kind == BroodNew.MAW and u.tesla_mode == "deployed"):
+			if rooters.any(func(u: Unit) -> bool: return u.kind == BroodNew.MAW and (u.tesla_mode == "deployed" or _full_card)):
 				_tip_for["HAUL"] = ["Haul", "Uproot the Rootmaw full: it walks at half speed carrying its food and keeps it when it roots again. Killed while hauling, all of it bursts out as a pile."]
 				list.insert(mini(4, list.size()), ["ab_haul", "HAUL", func() -> void:
 					for u in game.selected_units():
@@ -1610,9 +1622,9 @@ func _nb_buttons(list: Array, units: Array) -> void:
 		_alt_for["MATURE"] = func() -> void: _mature(true)
 		list.append([mk, "MATURE", func() -> void: _mature(_mature_all or Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_META)), ywhy == "", ywhy, _price_chip(mp, int(mp[1]) > 0)])
 	# RALLY (point 7): rooted creatures and eggs; a right-click on the ground does the same (and never uproots)
-	if units.any(func(u: Unit) -> bool: return BroodRoot.fixed(u) and u.team == game.human):
+	if units.any(func(u: Unit) -> bool: return u.team == game.human and (BroodRoot.fixed(u) or (_full_card and (BroodNew.ROOTERS.has(u.kind) or u.kind == BroodNew.EGG)))):
 		_tip_for["RALLY"] = ["Rally point", "Where what comes out goes: the Mother's warriors (also those hatching in a Sire's nest: her rally comes first), an egg's own hatchling. A right-click does the same; it never uproots. The Mother's right-clicks take turns: the first sets her grubs' rally (WORKERS), the next her warriors' (RALLY), and so on; the button the next right-click sets is shown pressed."]
-		var qsel: Array = units.filter(func(u: Unit) -> bool: return u.kind == BroodNew.QUEEN and BroodRoot.fixed(u) and u.team == game.human)
+		var qsel: Array = units.filter(func(u: Unit) -> bool: return u.kind == BroodNew.QUEEN and (BroodRoot.fixed(u) or _full_card) and u.team == game.human)
 		var nxt := BroodRoot.rally_next(qsel[0]) if not qsel.is_empty() else ""
 		list.append(["rally", ("> " if nxt == "army" else "") + "RALLY", func() -> void:
 			controls.mode = "nb_rally"
@@ -1665,19 +1677,20 @@ func hotkey_ctrl(code: int) -> bool:
 func _nb_research_buttons(list: Array, units: Array) -> void:
 	var by_kind := {}
 	for u in units:
-		if u.team == game.human and not u.dead and BroodNew.rooted(u) and not BroodResearch.keys_at(u.kind).is_empty() and not by_kind.has(u.kind):
+		if u.team == game.human and not u.dead and (BroodNew.rooted(u) or _full_card) and not BroodResearch.keys_at(u.kind).is_empty() and not by_kind.has(u.kind):
 			by_kind[u.kind] = u
 	for kd in by_kind:
 		var ru: Unit = by_kind[kd]
-		if BroodResearch.busy(ru):
+		if BroodResearch.busy(ru) or _full_card:
 			var cur := BroodResearch.current(ru)
-			_tip_for["STOP RESEARCH"] = ["Stop research", Loc.t("Stop researching %s: all of its price is paid back.") % Loc.t(String(Defs.RESEARCH[cur]["name"]))]
+			if cur != "":
+				_tip_for["STOP RESEARCH"] = ["Stop research", Loc.t("Stop researching %s: all of its price is paid back.") % Loc.t(String(Defs.RESEARCH[cur]["name"]))]
 			list.append(["cancel", "STOP RESEARCH", func() -> void:
 				if is_instance_valid(ru) and not ru.dead:
 					ru.cmd_nb_research_stop(), true, "", ""])
 		# (busy: the others stay, to QUEUE as at a building; the queue's icons are on the card, a click cancels one)
 		for key in BroodResearch.keys_at(kd):
-			if game.has_tech(game.human, key) or BroodResearch.in_hand(game, game.human, key):
+			if not _full_card and (game.has_tech(game.human, key) or BroodResearch.in_hand(game, game.human, key)):
 				continue          # (done, in hand or queued: no button, as a building's research)
 			var kk: String = key
 			var info: Dictionary = Defs.RESEARCH[key]
@@ -1890,6 +1903,7 @@ func _ability_buttons(list: Array, units: Array) -> void:
 const FIXED_KEYS := {"MOVE": "V", "ATTACK": "A", "STOP": "S", "HOLD": "H", "PATROL": "P", "BUILD": "B", "ADVANCED": "V", "WORK": "G",
 	"DEPLOY": "D", "PACK": "D", "RALLY": "R", "REPAIR": "R", "ROTATE": "R", "GRUBS": "F", "CANCEL": "X", "BACK": "X", "ABANDON": "X", "DEMOLISH": "Z", "MORE": "T", "PLACE": "F",
 	"SMALL GEAR": "G", "BIG GEAR": "G",      # (GEAR PICK on the placing card)
+	"STOP RESEARCH": "X", "STOP GROWING": "Z",      # (never S: the research keys stay put, 0.24.22)
 	"CANISTER": "C", "ROUND SHOT": "C",
 	"UNLIMBER": "D", "LIMBER": "D", "ROOT": "D", "UPROOT": "D", "STORM": "T", "FOG": "F", "TONGUE": "T", "MIASMA": "Q", "HARVEST": "Q", "SACRIFICE": "C", "START": "F", "END": "F",
 	"JUMP": "E", "HIGH LEAP": "E", "MORPH TO OWL": "E", "CANCEL MORPH": "X", "TICKING OWL": "E",
@@ -1931,7 +1945,7 @@ func _mixed_card(bs: Array) -> Array:
 	var built := bs.filter(func(x: Building) -> bool: return x.built)
 	var kinds: Array = []
 	for sb in built:
-		for k in Defs.train_keys(sb.d["trains"], game.has_tech(game.human, "armour")):
+		for k in Defs.train_keys(sb.d["trains"], game.has_tech(game.human, "armour") or _full_card):
 			if not kinds.has(k):
 				kinds.append(k)
 	for k in kinds:
@@ -1967,7 +1981,7 @@ func _mixed_card(bs: Array) -> Array:
 	if built.any(func(x: Building) -> bool: return not (x.d["trains"] as Array).is_empty()):
 		list.append(["rally", "RALLY", func() -> void: controls.mode = "rally", true, "", ""])
 	var busy := built.filter(func(x: Building) -> bool: return not x.queue.is_empty())
-	if not busy.is_empty():
+	if not busy.is_empty() or _full_card:
 		list.append(["cancel", "CANCEL", func() -> void:
 			var best: Building = null
 			for x in game.selected_mixed():
@@ -1976,7 +1990,7 @@ func _mixed_card(bs: Array) -> Array:
 			if best:
 				game.cancel_train(best), true, "", ""])
 	var refitters := built.filter(func(x: Building) -> bool: return Defs.REFIT_AT.has(x.kind))
-	if not refitters.is_empty() and game.has_refits(game.human):
+	if not refitters.is_empty() and (game.has_refits(game.human) or _full_card):
 		_auto_refit_button(list, refitters)
 	if bs.any(func(x: Building) -> bool: return not x.built):
 		list.append(["stop", "ABANDON", func() -> void:
@@ -2013,31 +2027,255 @@ const ALL_KEYS := "QWERTASDFGZXCVBYUIOPHJKLNM"
 ## the must-have commands first, then units and buildings (a letter of their name), then the other
 ## commands' usual keys, then a letter of the label; within a step the earlier button (the card
 ## puts the most used first) keeps the letter. Same card, same letters.
+## STABLE KEYS (the owner, 2026-10-31: "the command card should never or almost never change the hotkeys midmatch";
+## starting a research made S STOP RESEARCH and the next S press cancelled it): the letters are worked out ONCE per
+## kind of selection (its kinds, the page, the mode) over EVERY command that selection can ever show (_full_card: all
+## its research, both rooted and uprooted, armoured soldiers, CANCEL, STOP RESEARCH, the toggles' twins...), and kept
+## (_key_memo). A button that comes, goes or greys never moves another command's letter. A command never foreseen
+## gets a letter left free when it first shows, and keeps it.
 ## `first`: with grid keys, the first button shown (the keys are the shown places).
-func _with_keys(items: Array, first := 0) -> Array:
+## `stable` false: the letters of these items alone (no memory; the tests' made-up lists).
+func _with_keys(items: Array, first := 0, stable := true) -> Array:
 	# computer, grid keys: the key is the button's place on the 4 x 3 card, under the left hand
 	if Settings.pc() and Settings.grid_keys:
 		for i in items.size():
 			var j := i - first
 			items[i].append(GRID_KEYS[j] if j >= 0 and j < GRID_KEYS.size() else "")
 		return items
-	var used := {}
+	if not stable:
+		var got := _assign_keys(items, {})
+		for i in items.size():
+			items[i].append(got.get(i, ""))
+		return items
+	var ksig := str(UiLayout.data().get("keys", {}))
+	if ksig != _key_sig:
+		_key_sig = ksig          # (the player rebound a key: everything again)
+		_key_memo = {}
+	var sk := _sel_key()
+	_card_memo_key = sk
+	if not _key_memo.has(sk):
+		var full: Array = _full_items()
+		var ids := _ids_of(full)
+		ids.append_array(_ids_of(items))          # (each list numbers its own repeats: "<id>#2")
+		full.append_array(items)
+		var uniq: Array = []
+		var seen := {}
+		for i in full.size():
+			if not seen.has(ids[i]):
+				seen[ids[i]] = true
+				uniq.append(full[i])
+		var got := _assign_keys(uniq, {})
+		var uids: Array = []
+		seen = {}
+		for i in full.size():
+			if not seen.has(ids[i]):
+				seen[ids[i]] = true
+				uids.append(ids[i])
+		var memo := {}
+		var labs := {}
+		for i in uniq.size():
+			memo[uids[i]] = String(got.get(i, ""))
+			labs[uids[i]] = card_label(uniq[i])
+		_key_memo[sk] = {"keys": memo, "labs": labs}
+	var m: Dictionary = _key_memo[sk]
+	var keys: Dictionary = m["keys"]
+	var vids := _ids_of(items)
+	var shown := {}
+	for id in vids:
+		shown[id] = true
+	# never foreseen: a letter left free (a toggle's twin may share its letter while the other is not shown)
+	var fresh: Array = []
+	var fresh_i: Array = []
+	for i in items.size():
+		if not keys.has(vids[i]) and not fresh_i.any(func(j: int) -> bool: return vids[j] == vids[i]):
+			fresh.append(items[i])
+			fresh_i.append(i)
+	if not fresh.is_empty():
+		var used := {}
+		for id in keys:
+			if String(keys[id]) != "" and shown.has(id):
+				used[String(keys[id])] = true
+		var hidden := {}
+		for id in keys:
+			if String(keys[id]) != "" and not shown.has(id):
+				hidden[String(keys[id])] = true
+		var pre := {}
+		for n in fresh.size():
+			var fk := String(FIXED_KEYS.get(card_label(fresh[n]), ""))
+			if fk != "" and hidden.has(fk) and not used.has(fk):
+				pre[n] = fk
+				used[fk] = true
+		for k in hidden:
+			used[k] = true
+		var rest: Array = []
+		var rest_n: Array = []
+		for n in fresh.size():
+			if not pre.has(n):
+				rest.append(fresh[n])
+				rest_n.append(n)
+		var got := _assign_keys(rest, used)
+		for r in rest.size():
+			pre[rest_n[r]] = String(got.get(r, ""))
+		for n in fresh.size():
+			keys[vids[fresh_i[n]]] = pre[n]
+			m["labs"][vids[fresh_i[n]]] = card_label(fresh[n])
+	# the letters shown; two shown with one letter (twins both up after all): the command whose usual key it is keeps it
+	var out := {}
+	var owner := {}
+	for i in items.size():
+		var k := String(keys.get(vids[i], ""))
+		if k == "":
+			continue
+		if owner.has(k):
+			var j: int = owner[k]
+			if String(FIXED_KEYS.get(card_label(items[i]), "")) == k and String(FIXED_KEYS.get(card_label(items[j]), "")) != k:
+				out.erase(j)
+				owner[k] = i
+				out[i] = k
+			continue
+		owner[k] = i
+		out[i] = k
+	var all_used := {}
+	for id in keys:
+		if String(keys[id]) != "":
+			all_used[String(keys[id])] = true
+	for i in items.size():
+		if not out.has(i) and String(keys.get(vids[i], "")) != "":
+			for ch in ALL_KEYS:
+				if not all_used.has(ch) and not owner.has(ch):
+					out[i] = ch
+					owner[ch] = i
+					break
+	for i in items.size():
+		items[i].append(out.get(i, ""))
+	return items
+
+
+var _key_memo := {}            # selection kind (_sel_key) -> {"keys": {stable id: letter}, "labs": {stable id: label}}
+var _key_sig := ""             # the player's own keys the memory was made with
+var _card_memo_key := ""       # the shown card's _sel_key
+var _full_card := false        # _build_card is listing EVERY command the selection can ever show (for its letters)
+var _res_ids := {}             # "<icon>|<label>" of a research (or refit) button -> the research its chain starts with
+
+
+## The kind of selection the letters are kept for: the faction, the page, the mode and the kinds selected (a site apart
+## from its finished building). Not its state: rooted or not, researching or not, the same letters.
+func _sel_key() -> String:
+	var ks := {}
+	for e in game.selection:
+		if not is_instance_valid(e) or e.dead:
+			continue
+		if e is Building:
+			ks["b:" + String(e.kind) + ("" if e.built else "~")] = true
+		else:
+			ks["u:" + String(e.kind)] = true
+	var arr: Array = ks.keys()
+	arr.sort()
+	var pk := controls.place_kind if controls.mode in ["place", "nb_root"] else ""
+	return "%s|%s|%s|%s|%s" % [game.faction_of(game.human), page, controls.mode, pk, ",".join(arr)]
+
+
+## A card item's id for its kept letter: a research by its chain (MATCHLOCK, FLINTLOCK and CAPLOCK show one at a time:
+## one letter, so pressing it again queues the next), a toggle by its twin (LIMBER / UNLIMBER), a label without its
+## numbers (VETERANCY 3), else key_id. Two items with one id: the second is "<id>#2".
+func _ids_of(items: Array) -> Array:
+	if _res_ids.is_empty():
+		for rk in Defs.RESEARCH:
+			var root: String = rk
+			var guard := 0
+			while guard < 8 and Defs.RESEARCH[root].get("requires", "") is String and Defs.RESEARCH.has(String(Defs.RESEARCH[root].get("requires", ""))):
+				root = String(Defs.RESEARCH[root]["requires"])
+				guard += 1
+			var lab := Defs.research_label(rk)
+			_res_ids[String(Defs.RESEARCH[rk].get("icon", "")) + "|" + lab] = root
+			_res_ids[_research_icon(rk) + "|" + lab] = root
+	var out: Array = []
+	var n := {}
+	for it in items:
+		var lab := card_label(it)
+		var id := ""
+		var rk := String(it[0]) + "|" + lab
+		if _res_ids.has(rk):
+			id = "R:" + String(_res_ids[rk])
+		elif KEY_TWIN.has(lab):
+			id = String(KEY_TWIN[lab])
+		else:
+			id = key_id(it)
+			if id == lab:
+				var plain := ""
+				for ch in lab:
+					plain += "#" if ch >= "0" and ch <= "9" else ch
+				id = plain
+		if n.has(id) and not id.begins_with("R:"):
+			n[id] = int(n[id]) + 1
+			id = "%s#%d" % [id, int(n[id])]
+		else:
+			n[id] = 1
+		out.append(id)
+	return out
+
+
+## Toggles that never show together: one letter between the two (the id of the first).
+const KEY_TWIN := {"UPROOT": "ROOT", "UNLIMBER": "LIMBER", "PACK": "DEPLOY", "TAKE OFF": "LAND", "ROUND SHOT": "CANISTER", "UNLOCK": "LOCK",
+	"END": "START", "BIG GEAR": "SMALL GEAR"}
+
+
+## Every command this selection can ever show (only for its letters: the callbacks are never called): the card built
+## with _full_card, then the commands that come with research or a state not listed there.
+func _full_items() -> Array:
+	var keep := [_alt_for, _tip_for, _tip_fn]
+	_full_card = true
+	var all: Array = []
+	all = _build_card()
+	_full_card = false
+	_alt_for = keep[0]
+	_tip_for = keep[1]
+	_tip_fn = keep[2]
+	all = card_order(all)
+	var kinds := {}
+	for e in game.selection:
+		if is_instance_valid(e) and not e.dead and e is Unit:
+			kinds[String(e.kind)] = true
+	if controls.mode == "" and page == "" and not kinds.is_empty():
+		var nop := func() -> void: pass
+		if kinds.has(Defs.CUCKOO):
+			all.append(["ab_morph_owl", "MORPH TO OWL", nop, true, "", ""])
+			all.append(["cancel", "CANCEL MORPH", nop, true, "", ""])
+		if kinds.has(ShieldWall.KIND):
+			all.append(["ab_shield", "SHIELD FORWARD", nop, true, "", ""])
+		if kinds.keys().any(func(k) -> bool: return Defs.ARMOURED.has(k)):
+			for rk in ["armour", "matchlock", "bayonet", "pouch"]:      # (the REFITs, once researched)
+				all.append([_research_icon(rk), Defs.research_label(rk), nop, true, "", ""])
+	return all
+
+
+## The letters for these items: index -> letter. `used`: letters already taken.
+func _assign_keys(items: Array, used: Dictionary) -> Dictionary:
+	used = used.duplicate()
 	var chosen := {}
 	var lab_of := func(it: Array) -> String: return String(it[1]).trim_prefix("> ").trim_prefix("~ ")
 	var named := func(it: Array) -> bool: return Defs.UNITS.has(it[0]) or Defs.BUILDINGS.has(it[0]) or Defs.TRAIN_AS.has(it[0])
-	# 1. the player's own keys, the must-have command keys (A attack, S stop, H hold, ...) and the first row's
-	for i in items.size():
-		var own := UiLayout.key_for(key_id(items[i]))
-		var lab: String = lab_of.call(items[i])
-		if own == "" and CTRL_KEYS.has(lab):
-			chosen[i] = String(CTRL_KEYS[lab])
-			continue
-		# (the first row's commands keep their usual letters too: ROOT D on the uprooted Mother, not the Mist Toad's)
-		var must := MUST_KEYS.has(lab) or (i < 4 and FIXED_KEYS.has(lab) and not CARD_LAST.has(lab))
-		var k: String = own if own != "" else (String(FIXED_KEYS[lab]) if must else String(UNIT_KEYS.get(String(items[i][0]), "")))
-		if k != "" and not used.has(k):
-			used[k] = true
-			chosen[i] = k
+	# 1. the player's own keys and the must-have command keys (A attack, S stop, H hold, ...): STOP keeps S before a
+	# unit's own letter (the grub's S) can take it; then the first row's usual keys and the units' standard keys
+	for step in 2:
+		for i in items.size():
+			if chosen.has(i):
+				continue
+			var own := UiLayout.key_for(key_id(items[i]))
+			var lab: String = lab_of.call(items[i])
+			if own == "" and CTRL_KEYS.has(lab):
+				chosen[i] = String(CTRL_KEYS[lab])
+				continue
+			var k := ""
+			if step == 0:
+				k = own if own != "" else (String(FIXED_KEYS[lab]) if MUST_KEYS.has(lab) else "")
+			else:
+				# (the first row's commands keep their usual letters too: ROOT D on the uprooted Mother, not the Mist Toad's)
+				var must := i < 4 and FIXED_KEYS.has(lab) and not CARD_LAST.has(lab)
+				k = String(FIXED_KEYS[lab]) if must else String(UNIT_KEYS.get(String(items[i][0]), ""))
+			if k != "" and not used.has(k):
+				used[k] = true
+				chosen[i] = k
 	# 2. units and buildings: a letter of their name; 3. the other commands' usual keys;
 	# 4. whatever is left: a letter of its label
 	for pass_i in 3:
@@ -2082,9 +2320,22 @@ func _with_keys(items: Array, first := 0) -> Array:
 			if key != "":
 				used[key] = true
 				chosen[i] = key
-	for i in items.size():
-		items[i].append(chosen.get(i, ""))
-	return items
+	return chosen
+
+
+## A letter kept for a command of this card that is not on it now (a research started, queued or done, a toggle's other
+## side): what to tell the player ("" if the letter is nobody's). The key does nothing else: never another command.
+func _hidden_key_note(letter: String) -> String:
+	if Settings.grid_keys or not _key_memo.has(_card_memo_key):
+		return ""
+	var m: Dictionary = _key_memo[_card_memo_key]
+	for id in m["keys"]:
+		if String(m["keys"][id]) == letter:
+			var lab := String(m["labs"].get(id, id))
+			if String(id).begins_with("R:"):
+				return Loc.t("%s: researched, or already researching.") % Loc.t(lab.capitalize())
+			return Loc.t("%s: not now.") % Loc.t(lab.capitalize())
+	return ""
 
 
 ## A key pressed on the keyboard: run the card button with that letter. True if used.
@@ -2109,6 +2360,8 @@ func hotkey(code: int, repeat := false) -> bool:
 	var letter := OS.get_keycode_string(code)
 	if letter.length() != 1:
 		return false
+	# (the card as it is now: a research pressed a moment ago has left it, or its chain's next one has come)
+	_refresh_card()
 	for it in _card_items:
 		if it.size() > 6 and it[6] == letter:
 			flash_card(String(it[1]).trim_prefix("> ").trim_prefix("~ "))
@@ -2120,6 +2373,12 @@ func hotkey(code: int, repeat := false) -> bool:
 			elif it[4] != "":
 				toast(it[4])
 			return true
+	# a letter kept for a command of this card that is not on it now (a research started): a word, nothing else
+	var note := _hidden_key_note(letter)
+	if note != "":
+		if not repeat:
+			toast(note)
+		return true
 	return false
 
 
@@ -4158,7 +4417,7 @@ func _refresh_card() -> void:
 	var span := maxi(0, _card_rows - _rows())
 	_card_scroll = clampi(_card_scroll, 0, span)
 	var first := _card_scroll * _cols()
-	var items := _with_keys(all, first)
+	var items := _with_keys(all, first, true)
 	_card_items = items          # (every button: their keys work scrolled out of view too)
 	var buttons: Array = []
 	var look := PackedStringArray()

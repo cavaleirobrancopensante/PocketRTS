@@ -2425,6 +2425,8 @@ const T := {
 	"EXIT": "SAIR",
 	"Version %s": "Versão %s",
 	"This game was made with the help of AI": "Este jogo foi feito com a ajuda de IA",
+	"%s: researched, or already researching.": "%s: já pesquisado, ou em pesquisa.",
+	"%s: not now.": "%s: agora não.",
 	"WHERE ARE YOU PLAYING?": "ONDE VOCÊ ESTÁ JOGANDO?",
 	"YOU CAN CHANGE THIS LATER IN SETTINGS.": "VOCÊ PODE MUDAR ISSO DEPOIS EM CONFIGURAÇÕES.",
 	"FITS MAP": "DO MAPA",

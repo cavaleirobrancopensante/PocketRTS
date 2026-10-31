@@ -6,6 +6,12 @@ extends SceneTree
 ## every production building) and, for the Brood, the Brood Mother rooted and uprooted.
 ##   godot --headless --fixed-fps 30 --script res://tools/test_card_keys.gd [-- crown|brood|clockwork]
 ## Prints each card's keys ("KEYS <faction> | <where> | LABEL=K ...") and FAIL for a clash.
+## STABLE KEYS (0.24.22, the owner 2026-10-31: "the command card should never or almost never change the hotkeys
+## midmatch"): for every kind with research (the Armoury, the Clockwork's research buildings, the Brood Mother and each
+## Sire) the letters are recorded, a research started (by its key), the queue filled, the creature uprooted and rooted
+## again, the research done: no command left on the card may change its letter, and a research key pressed twice
+## queues the next one or does nothing (never STOP or STOP RESEARCH). The letters a kind gets are also the same whether
+## it is first seen with no research or with all of it.
 var main: Node
 var t := 0.0
 var facs: Array = ["crown", "brood", "clockwork"]
@@ -58,7 +64,10 @@ func _start(f: String) -> Game:
 func _run() -> void:
 	for f in facs:
 		var g: Game = await _start(f)
+		var tech0: Dictionary = (g.players[0]["tech"] as Dictionary).duplicate()
 		await _sweep(g, f)
+		g.players[0]["tech"] = tech0.duplicate()
+		await _stable(g, f, tech0)
 	print("%d cards checked" % cards)
 	print("ALL PASS" if fails == 0 else "%d FAILED" % fails)
 	quit(1 if fails > 0 else 0)
@@ -252,3 +261,187 @@ func _scroll_checks(g: Game, q: Unit) -> void:
 		check(g.controls.mode == "nb_rally", "phone: the tap's release presses RALLY")
 		g.controls.cancel_mode()
 	Settings.device = "pc"
+
+
+# ------------------------------------------------------------------ stable keys
+
+## label -> [letter, stable id] of the card shown now.
+func _rec(g: Game) -> Dictionary:
+	g.hud._refresh_card()
+	var out := {}
+	var ids: Array = g.hud._ids_of(g.hud._card_items)
+	for i in g.hud._card_items.size():
+		var it: Array = g.hud._card_items[i]
+		out[String(it[1]).trim_prefix("> ").trim_prefix("~ ")] = [String(it[6]) if it.size() > 6 else "", String(ids[i])]
+	return out
+
+
+## No command on both cards changed its letter, and no letter went to a different command.
+func _same(a: Dictionary, b: Dictionary, what: String) -> void:
+	cards += 1
+	var bad := PackedStringArray()
+	for lab in b:
+		var k: String = b[lab][0]
+		if a.has(lab) and a[lab][0] != k:
+			bad.append("%s %s -> %s" % [lab, a[lab][0], k])
+		for lab0 in a:
+			if lab0 != lab and k != "" and a[lab0][0] == k and a[lab0][1] != b[lab][1] and not b.has(lab0):
+				bad.append("%s took %s's %s" % [lab, lab0, k])
+	var line := PackedStringArray()
+	for lab in b:
+		line.append("%s=%s" % [lab, b[lab][0]])
+	print("KEYS-STABLE | %s | %s" % [what, " ".join(line)])
+	check(bad.is_empty(), "%s: the letters stay put%s" % [what, "" if bad.is_empty() else " (" + "; ".join(bad) + ")"])
+
+
+func _key_of(r: Dictionary, lab: String) -> int:
+	return OS.find_keycode_from_string(String(r[lab][0])) if r.has(lab) and String(r[lab][0]) != "" else 0
+
+
+## The kind's letters first seen with no research and first seen with all of it: the same.
+func _first_sight(g: Game, sel: Array, what: String, tech0: Dictionary) -> void:
+	g.hud._key_memo = {}
+	g.players[0]["tech"] = tech0.duplicate()
+	g.set_selection(sel)
+	var a := _rec(g)
+	g.hud._key_memo = {}
+	for rk in Defs.RESEARCH:
+		g.players[0]["tech"][rk] = true
+	var b := _rec(g)
+	g.players[0]["tech"] = tech0.duplicate()
+	g.hud._key_memo = {}
+	_same(a, b, what + " first seen with all research")
+
+
+func _stable(g: Game, f: String, tech0: Dictionary) -> void:
+	var hud = g.hud
+	var c := Vector2i(g.W / 2, g.H / 2)
+	var at: Vector2 = g.cell_center(g.nearest_free(c, 10))
+	if f != "brood":
+		for k in Defs.build_list(f):
+			if not Defs.BUILDINGS.has(k) or not hud._has_research_at(k) and (Defs.BUILDINGS[k].get("trains", []) as Array).is_empty():
+				continue
+			var cell := g.nearest_free(c + Vector2i(8, -6), 30)
+			var b: Building = g._add_building(k, 0, cell, true)
+			await physics_frame
+			if b == null:
+				continue
+			await _first_sight(g, [b], "%s %s" % [f, k], tech0)
+			g.set_selection([b])
+			var r0 := _rec(g)
+			var keys: Array = []
+			for rk in Defs.RESEARCH:
+				if String(Defs.RESEARCH[rk]["at"]) == k:
+					keys.append(rk)
+			if keys.is_empty():
+				# a training building: the armoured soldiers come with ARMOUR
+				g.players[0]["tech"]["armour"] = true
+				_same(r0, _rec(g), "%s %s with ARMOUR researched" % [f, k])
+				g.train(b, String((b.d["trains"] as Array)[0]))
+				_same(r0, _rec(g), "%s %s training (CANCEL shown)" % [f, k])
+				g.players[0]["tech"] = tech0.duplicate()
+				b.take_damage(999999.0, null)
+				await physics_frame
+				continue
+			# a research by its key, twice: queued once, then the next of its chain or nothing; never another command
+			var lab0 := Defs.research_label(keys[0])
+			var q0 := b.queue.size()
+			hud.hotkey(_key_of(r0, lab0))
+			var started := b.queue.has("@" + String(keys[0])) or g.has_tech(0, keys[0])
+			if not started:
+				b.add_entry("@" + String(keys[0]))          # (a Clockwork building not meshed: queued by hand)
+			_same(r0, _rec(g), "%s %s researching %s" % [f, k, lab0])
+			var qn := b.queue.size()
+			hud.hotkey(_key_of(r0, lab0))
+			check(b.queue.size() >= qn and b.queue.has("@" + String(keys[0])) and g.controls.mode == "",
+				"%s %s: %s's key again queues the next or does nothing (queue %d -> %d -> %d)" % [f, k, lab0, q0, qn, b.queue.size()])
+			for rk in keys.slice(1):
+				if b.queue.size() >= 5:
+					break
+				if not b.queue.has("@" + String(rk)):
+					b.add_entry("@" + String(rk))
+				_same(r0, _rec(g), "%s %s with %s queued too" % [f, k, Defs.research_label(rk)])
+			for rk in keys:
+				g.players[0]["tech"][rk] = true
+			b.queue.clear()
+			_same(r0, _rec(g), "%s %s with all its research done" % [f, k])
+			g.players[0]["tech"] = tech0.duplicate()
+			b.take_damage(999999.0, null)
+			await physics_frame
+		if f == "crown":
+			# Musketeers: their REFITs come with the Armoury's research
+			var ms: Array = []
+			for i in 3:
+				ms.append(g._add_unit("musketeer", 0, at + Vector2(i * 20, 0)))
+			await physics_frame
+			g.set_selection(ms)
+			var r1 := _rec(g)
+			for rk in ["armour", "matchlock", "bayonet", "pouch"]:
+				g.players[0]["tech"][rk] = true
+			_same(r1, _rec(g), "crown musketeers with their refits researched")
+			g.players[0]["tech"] = tech0.duplicate()
+			for u in ms:
+				g.consume_unit(u)
+			await physics_frame
+		return
+	# ---- the Brood: the Mother and every Sire, rooted, researching (a queue), uprooted and rooted again
+	var q: Unit = BroodNew.queen(g, 0)
+	q.tesla_mode = "deployed"
+	q.nb["stage"] = 2
+	BroodNew.apply_stage(q)
+	var who: Array = [q]
+	for k in ["tyrannosaur", "dilophosaurus", "pterodactyl"]:
+		if not Defs.UNITS.has(k):
+			continue
+		var u: Unit = g._add_unit(k, 0, q.position + Vector2(randf_range(-120, 120), randf_range(60, 140)))
+		await physics_frame
+		u.tesla_mode = "deployed"
+		who.append(u)
+	for u in who:
+		var nm := String(u.kind)
+		await _first_sight(g, [u], "brood %s" % nm, tech0)
+		g.set_selection([u])
+		var r0 := _rec(g)
+		var keys := BroodResearch.keys_at(u.kind)
+		if keys.is_empty():
+			continue
+		var lab0 := Defs.research_label(keys[0])
+		check(r0.has(lab0) and r0[lab0][0] != "", "brood %s: %s has a key (%s)" % [nm, lab0, r0.get(lab0, ["?"])[0]])
+		hud.hotkey(_key_of(r0, lab0))
+		check(BroodResearch.current(u) == keys[0], "brood %s: its key started %s" % [nm, lab0])
+		_same(r0, _rec(g), "brood %s researching %s" % [nm, lab0])
+		hud.hotkey(_key_of(r0, lab0))
+		check(BroodResearch.current(u) == keys[0], "brood %s: %s's key again did not stop it (STOP RESEARCH has %s)" % [nm, lab0, _rec(g).get("STOP RESEARCH", ["none"])[0]])
+		hud.hotkey(_key_of(r0, lab0), true)
+		check(BroodResearch.current(u) == keys[0], "brood %s: %s's key held down did not stop it either" % [nm, lab0])
+		for rk in keys.slice(1):
+			if Defs.research_label(rk) in r0:
+				hud.hotkey(_key_of(r0, Defs.research_label(rk)))
+			_same(r0, _rec(g), "brood %s with %s queued" % [nm, Defs.research_label(rk)])
+		var line_n := BroodResearch.line_of(u).size()
+		check(line_n == keys.size(), "brood %s: its keys queued all %d of its research (%d)" % [nm, keys.size(), line_n])
+		u.tesla_mode = "packed"
+		_same(r0, _rec(g), "brood %s uprooted" % nm)
+		u.tesla_mode = "deployed"
+		_same(r0, _rec(g), "brood %s rooted again" % nm)
+		var r2 := _rec(g)
+		if r2.has("STOP RESEARCH"):
+			hud.hotkey(_key_of(r2, "STOP RESEARCH"))
+		_same(r0, _rec(g), "brood %s after STOP RESEARCH" % nm)
+		while BroodResearch.busy(u):
+			u.cmd_nb_research_stop()
+		for rk in keys:
+			g.players[0]["tech"][rk] = true
+		_same(r0, _rec(g), "brood %s with all its research done" % nm)
+		g.players[0]["tech"] = tech0.duplicate()
+	# the Mother and a Sire together
+	if who.size() > 1:
+		g.set_selection([who[0], who[1]])
+		var rm := _rec(g)
+		who[1].cmd_nb_research(BroodResearch.keys_at(who[1].kind)[0])
+		_same(rm, _rec(g), "brood the Mother and a Sire, the Sire researching")
+		who[0].tesla_mode = "packed"
+		_same(rm, _rec(g), "brood the Mother uprooted and a Sire")
+		who[0].tesla_mode = "deployed"
+		while BroodResearch.busy(who[1]):
+			who[1].cmd_nb_research_stop()
