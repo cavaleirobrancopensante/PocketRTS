@@ -1201,8 +1201,8 @@ static func tick(g: Game, u: Unit, delta: float) -> void:
 				if float(u.nb["egg_t"]) >= float(Defs.NB["egg_time"]):
 					u.nb["egg_t"] = 0.0
 					u.nb["eggs"] = int(u.nb.get("eggs", 0)) + 1
-			if rooted(u) and u.hp < u.max_hp:
-				u.hp = minf(u.max_hp, u.hp + float(Defs.NB["queen_regen"]) * delta)
+			if rooted(u) and u.hp < u.max_hp and g.clock - u.hit_clock >= float(Defs.NB["regen_calm"]):
+				u.hp = minf(u.max_hp, u.hp + float(Defs.NB["queen_regen"]) * delta)     # (out of the fight only)
 		MAW:
 			var food := float(u.nb.get("food", 0.0))
 			u.nb["wet_t"] = float(u.nb.get("wet_t", 0.0)) - delta

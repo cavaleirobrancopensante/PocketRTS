@@ -1943,6 +1943,7 @@ const NB := {
 	"turtle_switch": 2.5, "turtle_swamp": 10.0,  # the Mound Turtle: seconds to root or uproot, tiles of swamp round it rooted
 	"turtle_rooted_r": 60.0,                     # px: a rooted turtle's body (wider than a 3-tile ramp: nothing slips past along its rails)
 	"queen_regen": 4.0,                          # hp/s healed while rooted
+	"regen_calm": 5.0,                           # s since an enemy last hit it before the swamp or the Mother's rooted regen heals
 	# SACRIFICE (the owner, 2026-10-30 08:34): the spoils these kinds give when offered up at the Mother, overriding the
 	# 0.35 formula (Defs.SACRIFICE) for them; the others stay on the formula. A grub can be offered up too (it gives its
 	# whole egg back, like any creature that hatches alone). docs/grub_sacrifice.md

@@ -4,6 +4,7 @@ extends RefCounted
 ## Patch notes in pt: version -> items in the order of scripts/patch_notes.gd ('' = show the English).
 
 const N := {
+	"0.24.23": ["A NINHADA SÓ SE CURA FORA DA LUTA: a cura do pântano (e a CURA DO PÂNTANO) e a cura da Mãe enraizada começam 5 s depois que um inimigo atingiu a criatura pela última vez, não mais durante a luta. Um Soldado-Relógio não conseguia matar uma Tartaruga-Montículo enraizada: o pântano a curava quase tão rápido quanto ele batia."],
 	"0.24.22": ["ASSISTINDO COMPUTADORES: a lista PRODUÇÃO também mostra a Ninhada (ela não tem prédios, então ficava vazia): os ovos chocando, os filhotes mudando para as formas adultas e as pesquisas dos Sires e da Mãe, com o que espera depois."],
 	"0.24.21": ["A LINHA DE BAIXO DO MENU PRINCIPAL: \"Versão 0.24.21\" (clique para ler as notas de atualização; o VOLTAR delas leva ao menu principal) e \"Este jogo foi feito com a ajuda de IA\"."],
 	"0.24.20": ["O MENU PRINCIPAL É UMA GRADE SÓ (o desenho do dono): o título numa linha no alto à esquerda e, embaixo, três fileiras de botões, todas no céu vazio da pintura, sem cobrir nada da batalha: CAMPANHA (em breve), ESCARAMUÇA e ONLINE; COMO JOGAR, REPLAYS e EDITOR; depois CONTINUAR (só quando há uma partida salva), CONFIGURAÇÕES e SAIR. Acabaram os passos JOGAR, APRENDER e OFICINA: cada página está a um toque e o VOLTAR dela traz de volta aqui. SAIR salva e fecha o jogo (não no navegador, onde não há SAIR). REGISTROS DE PARTIDAS agora é um botão na página REPLAYS."],

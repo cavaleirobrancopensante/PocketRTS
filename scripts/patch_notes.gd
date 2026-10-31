@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.23", "items": [
+		"THE BROOD HEALS ONLY OUT OF THE FIGHT: the swamp's healing (and SWAMP MENDING) and the rooted Mother's own healing start 5 s after an enemy last hit the creature, no longer during the fight. A Clock Soldier could not kill a rooted Mound Turtle: the swamp healed it nearly as fast as he hit.",
+	]},
 	{"v": "0.24.22", "items": [
 		"WATCHING COMPUTERS: the PRODUCTION list shows the Brood too (it has no buildings, so it was empty): its eggs hatching, its young moulting into their mature forms, and its Sires' and Mother's research, with what waits after it.",
 	]},

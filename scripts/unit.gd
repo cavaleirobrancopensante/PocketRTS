@@ -3541,8 +3541,10 @@ func _tick_unit(delta: float) -> void:
 		ShieldWall.tick(self, delta)        # (a Clock Soldier's SHIELD FORWARD: the switch, the slower pace)
 	if _k_fac == "brood" and game.on_swamp(team, position):
 		speed *= 1.3
-		if hp < max_hp:
-			hp = minf(max_hp, hp + (2.0 + BroodResearch.mend(self)) * delta)      # (SWAMP MENDING: more, out of the fight)
+		if hp < max_hp and game.clock - hit_clock >= float(Defs.NB["regen_calm"]):
+			# (OUT OF THE FIGHT only, the owner 2026-10-31: a Clock Soldier couldn't kill a rooted Mound Turtle; SWAMP
+			# MENDING: more, after its own calm)
+			hp = minf(max_hp, hp + (2.0 + BroodResearch.mend(self)) * delta)
 	if _k_nb:
 		BroodNew.tick(game, self, delta)      # (the Brood: eggs, food, fertilising, HAUL's pace)
 	if not game.zones.is_empty() or sight != int(d["sight"]):
