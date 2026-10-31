@@ -4,6 +4,7 @@ extends RefCounted
 ## Patch notes in pt: version -> items in the order of scripts/patch_notes.gd ('' = show the English).
 
 const N := {
+	"0.25.8": ["AS MOLDURAS DAS FACÇÕES FICAM EM VOLTA DO PAINEL, NÃO POR CIMA: as molduras do painel da unidade e do cartão de comando são desenhadas mais finas e um pouco por fora, então a corda da Ninhada (e os enfeites dos cantos da Coroa e do Mecanismo) não passam mais por cima do retrato, da linha de atributos ou dos ícones."],
 	"0.25.7": ["RAMPAS: os meios-fios de pedra dos lados de uma rampa correm paralelos, da mesma largura de cima a baixo; a cunha de rocha que estreitava ladeira abaixo os desenhava como um funil."],
 	"0.25.6": ["CORREÇÃO: os botões do menu principal em português e espanhol: uma palavra mais longa (ESCARAMUÇA, CONFIGURAÇÕES) fazia o botão crescer por cima do vizinho. Agora o texto diminui para caber no botão (antes era medido em inglês), e um botão nunca passa do seu lugar."],
 	"0.25.5": ["O CÍRCULO DO BOCARRAIZ, UM POUCO MENOR: 8 casas em volta (eram 10), então os Bocarraízes ficam a 16 casas um do outro: cabem uns dois na base da Mãe da Ninhada. O círculo de 10 casas era duro demais para a economia da Ninhada; cada Bocarraiz ainda guarda 3.000 de comida."],

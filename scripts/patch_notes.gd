@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.25.8", "items": [
+		"THE FACTION FRAMES SIT ROUND THE PANEL, NOT OVER IT: the unit panel's and the command card's frames are drawn thinner and a little outside them, so the Brood's rope (and the Crown's and Clockwork's corner ornaments) no longer run over the portrait, the stats row or the icons.",
+	]},
 	{"v": "0.25.7", "items": [
 		"RAMPS: the stone kerbs down a ramp's sides run parallel, the same width from top to bottom; the rock wedge that narrowed down the slope drew them as a funnel.",
 	]},

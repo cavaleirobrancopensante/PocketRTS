@@ -17,6 +17,9 @@ const MARGINS := {
 }
 const DEFAULT_MARGIN := [60, 60, 60, 60]
 const THIN := 0.7
+## Per faction: the frame's scale (x THIN) and how far it is drawn OUTSIDE the panel's rect, so its border sits round
+## the portrait, bars and stats, not over them (the owner, 2026-10-31: the Brood's thick rope ran over its icons).
+const FIT := {"brood": {"scale": 0.5, "out": 7.0}, "crown": {"scale": 0.65, "out": 6.0}, "clockwork": {"scale": 0.65, "out": 6.0}}
 
 static var _boxes := {}          # "crown_panel" -> StyleBoxTexture, or null when there is no art
 static var drawn := {}           # "panel"/"card" -> the faction last drawn (tools/test_hud_frames.gd)
@@ -64,7 +67,9 @@ static func draw(ci: CanvasItem, r: Rect2, faction: String, which: String) -> vo
 		UiStyle.draw_panel(ci, r, UiStyle.accent(faction) if faction != "" else Color(0, 0, 0, 0))
 		return
 	# (THIN of the height fit: thinner borders, so the stats row and the buttons stay off the ornaments)
-	var s := clampf(THIN * r.size.y / float(sb.texture.get_height()), 0.15, 2.0)
+	var fit: Dictionary = FIT.get(faction, {})
+	r = r.grow(float(fit.get("out", 0.0)))
+	var s := clampf(THIN * float(fit.get("scale", 1.0)) * r.size.y / float(sb.texture.get_height()), 0.15, 2.0)
 	# (the margins must fit the rect's width too)
 	s = minf(s, r.size.x / float(sb.texture_margin_left + sb.texture_margin_right + 1))
 	ci.draw_set_transform(r.position, 0.0, Vector2(s, s))
