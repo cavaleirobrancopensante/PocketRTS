@@ -123,15 +123,17 @@ const KEG := {"blast": 40.0, "radius": 48.0, "hp": 30.0}
 # Brood: grubs carry food from a rooted Rootmaw's flank (or a food pile) to the Brood Mother; the longer the trip,
 # the richer it is (Game.food_at, scripts/brood_new.gd).
 ## A load pays for the time its round trip takes, at a rate that rises with the Rootmaw's distance from the Mother
-## (in tiles): FOOD_RATE biomass per grub-second from FOOD_NEAR tiles in, up to FOOD_BONUS more (+30%) at FOOD_FAR
-## tiles, flat to FOOD_PEAK, then a little less per tile beyond (FOOD_FADE). The trip is estimated as PIT_TIME +
-## FOOD_TRIP seconds a tile of open ground between the two (less the FOOD_REACH a grub needn't walk).
+## (in tiles; Game.food_mult): FOOD_RATE biomass per grub-second up to FOOD_NEAR tiles, rising to FOOD_BONUS more
+## (x2.5) at FOOD_FAR tiles, flat from there (FOOD_PEAK = FOOD_MAX_D: FOOD_FADE never bites). The same multiplier speeds
+## how fast a far Rootmaw drinks its ground (Defs.NB "maw_fill" x food_mult), so a far one pays its PIT_GROUND faster
+## (0.24.22, the owner: "increase the distance buff... isn't snowball"; docs/brood_new.md "0.24.22 distance pay").
+## The trip is estimated as PIT_TIME + FOOD_TRIP seconds a tile of open ground between the two (less FOOD_REACH).
 const PIT_TIME := 2.0             # seconds a grub feeds at the pit before hauling
 const FOOD_RATE := 0.6            # biomass per grub-second of round trip (near pits; was 1.2: halved, same distance curve)
-const FOOD_NEAR := 6.0
-const FOOD_FAR := 18.0
-const FOOD_PEAK := 22.0
-const FOOD_BONUS := 0.3
+const FOOD_NEAR := 8.0           # (was 6 until 0.24.22: the Mother's own Rootmaw, ~8.5 tiles, pays as before)
+const FOOD_FAR := 24.0            # (was 18)
+const FOOD_PEAK := 32.0           # (was 22)
+const FOOD_BONUS := 1.5          # (was 0.3 until 0.24.22)
 const FOOD_FADE := 0.015          # share of the rate lost per tile beyond FOOD_PEAK
 const FOOD_TRIP := 0.8            # seconds of round trip per tile walked (mostly on swamp)
 const FOOD_REACH := 1.5           # tiles of the gap a grub doesn't walk
@@ -140,7 +142,7 @@ const FOOD_MAX_D := 32.0          # a load is worth no more from farther out tha
 ## PIT_GROUND biomass in a circle PIT_CLAIM tiles round it; two of a side's rooted circles may not overlap, and a
 ## spot keeps what was left when its Rootmaw gets up (Game.nb_spots). A Rootmaw's crew grows with its distance from
 ## the Mother: +1 grub per PIT_CREW_STEP tiles beyond FOOD_NEAR, up to PIT_CREW_MAX.
-const PIT_CREW_STEP := 4.0
+const PIT_CREW_STEP := 3.0        # (was 4 until 0.24.22)
 const PIT_CREW_MAX := 12
 const PIT_GROUND := 3000          # biomass in each Rootmaw's ground
 const PIT_CLAIM := 10.0           # tiles: the radius of a Rootmaw's circle of ground (rooted circles may not overlap: their
@@ -1163,7 +1165,7 @@ const UNITS := {
 		"name": "Rootmaw", "hp": 450, "armor": 0, "speed": 80, "cost": 75, "time": 18.0, "supply": 0,
 		"sight": 6, "range": 30, "damage": 14, "cooldown": 1.3, "aim": 0.3, "radius": 22, "from": "brood_mother",
 		"faction": "brood", "new_brood": true,
-		"about": "A swamp lizard that feeds the Brood. ROOT it on fresh ground on your swamp (3,000 food in a 10-tile circle; rooted circles may not overlap): it drinks the ground and swells, and grubs carry the food from its flank to the Brood Mother (farther pays more). Rooted it has more armour. UPROOT spills its food as a pile (grubs still collect it; it rots); HAUL walks off with it, slow and fat (killed hauling, it bursts). It bites.",
+		"about": "A swamp lizard that feeds the Brood. ROOT it on fresh ground on your swamp (3,000 food in a 10-tile circle; rooted circles may not overlap): it drinks the ground and swells, and grubs carry the food from its flank to the Brood Mother (the farther from her, the richer: each trip pays more and it drinks faster). Rooted it has more armour. UPROOT spills its food as a pile (grubs still collect it; it rots); HAUL walks off with it, slow and fat (killed hauling, it bursts). It bites.",
 	},
 	# (the owner, 2026-10-30: the Tyrant Sire, the basic line every opening needs, is the CHEAPER father (150 food,
 	# 30 s); the Venom Sire, the specialist, costs 200 food, 35 s. It was the other way round, priced by body.

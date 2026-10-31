@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.22", "items": [
+		"A FAR ROOTMAW PAYS MORE AND FASTER (Brood): the food of a Rootmaw rises with its distance from the Brood Mother, now up to two and a half times as rich at 24 tiles or more (was +30% at 18). It counts twice: each grub's trip pays more AND the Rootmaw drinks its ground that much faster (before, every Rootmaw drank 4 a second wherever it was, so the distance hardly paid). Its 3,000 food stay the same: a Rootmaw at 23 tiles pays about 560 food a minute and is spent in about 5 and a half minutes, one at 31 tiles about 650 a minute, the Mother's own near one about 230 a minute as before. A far Rootmaw takes one more grub every 3 tiles beyond 8 (was every 4 beyond 6), up to 12.",
+	]},
 	{"v": "0.24.21", "items": [
 		"THE MAIN MENU'S BOTTOM LINE: \"Version 0.24.21\" (click it to read the patch notes; their BACK returns to the main menu) and \"This game was made with the help of AI\".",
 	]},
