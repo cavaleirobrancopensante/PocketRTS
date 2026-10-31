@@ -330,58 +330,75 @@ func show_crash(report: String) -> void:
 	row.add_child(ok)
 
 
-## THE MAIN MENU (the owner, 2026-10-31): the painting covers the whole screen; the title and, under it, a column of
-## buttons sit top-left over the painting's empty storm sky (on a short wide screen, e.g. a phone, two columns);
-## the flags top-right, the version small in the bottom-right corner. The column has levels (menu_level): "top"
-## (CONTINUE, PLAY, LEARN, WORKSHOP, SETTINGS), "play", "learn", "workshop"; a page opened from a level comes
-## back to it (its BACK calls show_menu()). Esc and the phone's or browser's back go back one level (_set_back).
-var menu_level := "top"
-var _menu_row: GridContainer
-## The button Esc / the phone's back / the browser's back presses on this page (null: none, e.g. the top row).
+## THE MAIN MENU (the owner's drawn layout, 2026-10-31): the painting covers the whole screen; the title on ONE line
+## in a box at the top-left (x 0.5%..53%, y 0.5%..9.5% of the screen) and under it a FLAT grid of 3 x 3 slots, every
+## one inside the painting's empty top-left sky:
+##   CAMPAIGN (later)  SKIRMISH (primary)  ONLINE
+##   HOW TO PLAY       REPLAYS             EDITOR
+##   CONTINUE (only with a save of this version, else empty)  SETTINGS  EXIT (not on the web)
+## No levels, no submenus: each page's BACK comes back here. MATCH LOGS is on the REPLAYS page. Esc does nothing
+## here (the phone's back saves and quits, as before). Flags small top-right, the version small bottom-right.
+## The grid's slot ids, row by row ("" = an empty slot).
+const MENU_SLOTS := ["campaign", "skirmish", "online", "help", "replays", "editor", "continue", "settings", "exit"]
+## Fractions of the screen (the owner's mock-up, 1455 x 819): button size, first column / row, the gaps.
+const MENU_BTN := Vector2(0.105, 0.085)
+const MENU_ORIGIN := Vector2(0.007, 0.115)
+const MENU_GAP := Vector2(0.008, 0.0225)
+const MENU_TITLE := Rect2(0.005, 0.005, 0.525, 0.09)
+## The smallest a menu button may be (a phone: a thumb's size; the grid grows down and right to keep it).
+const MENU_MIN_PC := Vector2(120, 48)
+const MENU_MIN_MOBILE := Vector2(150, 62)
+## The grid's buttons by slot id (only the slots that have one this time).
+var menu_buttons := {}
+var _menu_grid: Control
+## The button Esc / the phone's back / the browser's back presses on this page (null: none, e.g. the main menu).
 var _esc_button: Button
-## The menu column's title (its height decides one or two columns of buttons).
 var _menu_title: Label
-## How far down the screen the menu column may reach (the sky ends about there on the painting's left).
-const MENU_SKY := 0.6
+var _menu_note: Label
+## A browser: no EXIT (tools/test_menu_grid.gd sets it to check that).
+var menu_web := OS.has_feature("web")
 
 
-func show_menu(level := "") -> void:
+func show_menu() -> void:
 	sandbox_lobby = false        # (the main menu's SKIRMISH is never the sandbox)
-	if level != "":
-		menu_level = level
 	if Music.me:
 		Music.me.menu()
 	var root := _page()
 	var pc := Settings.pc()
-	_backdrop.sky = true          # (the painting over the whole screen, darkened a little behind the column)
-	var col := VBoxContainer.new()
-	col.position = Vector2(28, 20)
-	col.add_theme_constant_override("separation", 10)
-	root.add_child(col)
-	# the title, outlined and shadowed so it reads on the clouds
-	var title := UiStyle.heading(GameName.heading(), GameName.heading_size(44 if pc else 40), UiStyle.TRIM)
+	_backdrop.sky = true          # (the painting over the whole screen, darkened a little behind the grid)
+	_set_back(null)
+	# the title, one line, outlined and shadowed so it reads on the clouds (its size fits its box: _layout_menu)
+	var title := UiStyle.heading(GameName.heading(), 40, UiStyle.TRIM)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title.add_theme_constant_override("outline_size", 8)
 	title.add_theme_color_override("font_outline_color", Color(0.05, 0.04, 0.03, 0.9))
 	title.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.75))
 	title.add_theme_constant_override("shadow_offset_x", 2)
 	title.add_theme_constant_override("shadow_offset_y", 4)
 	title.add_theme_constant_override("shadow_outline_size", 10)
-	col.add_child(title)
+	root.add_child(title)
 	_menu_title = title
-	_menu_row = GridContainer.new()
-	_menu_row.add_theme_constant_override("h_separation", 10)
-	_menu_row.add_theme_constant_override("v_separation", 8 if pc else 10)
-	col.add_child(_menu_row)
+	_menu_grid = Control.new()
+	_menu_grid.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_menu_grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(_menu_grid)
+	menu_buttons = {}
 	var save := SaveGame.peek()
+	_menu_note = null
 	if not save.is_empty() and SaveGame.old_brood(save):
-		# (a match kept from before 0.18.0 with the old Brood in it: it can't go on; said once, plainly, under the column)
-		var old := UiStyle.text(Loc.t("Your saved match can't be continued.") + " " + Loc.t(Defs.OLD_BROOD_NOTE), 15, Color(1, 0.85, 0.6))
+		# (a match kept from before 0.18.0 with the old Brood in it: it can't go on; said once, plainly, under the grid)
+		var old := UiStyle.text(Loc.t("Your saved match can't be continued.") + " " + Loc.t(Defs.OLD_BROOD_NOTE), 15, Color(1, 0.85, 0.6), HORIZONTAL_ALIGNMENT_LEFT)
 		old.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		old.custom_minimum_size = Vector2(320, 0)
 		old.add_theme_constant_override("outline_size", 5)
 		old.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-		col.add_child(old)
+		root.add_child(old)
+		_menu_note = old
+	for id in MENU_SLOTS:
+		var b := _menu_button(id, save, pc)
+		if b != null:
+			menu_buttons[id] = b
+			_menu_grid.add_child(b)
 	# top-right: the flags, small
 	var flags := _flag_row(Vector2(30, 20) if pc else Vector2(40, 27), show_menu)
 	flags.alignment = BoxContainer.ALIGNMENT_END
@@ -401,119 +418,129 @@ func show_menu(level := "") -> void:
 	ver.offset_right = -12
 	ver.offset_bottom = -6
 	root.add_child(ver)
-	_fill_menu_row(save, false)
+	_menu_grid.resized.connect(_layout_menu)
+	_layout_menu()
 
 
-## The buttons of one level of the main menu's row (menu_level); `fade`: a short fade-in when the row swaps.
-func _fill_menu_row(save: Dictionary, fade := true) -> void:
-	if not is_instance_valid(_menu_row):
+## One slot's button (null: the slot stays empty this time).
+func _menu_button(id: String, save: Dictionary, pc: bool) -> Button:
+	var b: Button
+	match id:
+		"campaign":
+			b = _button("CAMPAIGN", func() -> void: pass)
+			b.disabled = true
+			b.text = Loc.t("CAMPAIGN") + "\n" + Loc.t("coming later")
+			b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+			b.tooltip_text = "The campaign is coming later."
+			b.set_meta("fs", 16 if pc else 18)
+		"skirmish":
+			b = _button("SKIRMISH", func() -> void: show_skirmish())
+			UiStyle.primary(b)
+			b.set_meta("fs", 24 if pc else 26)
+		"online":
+			b = _button("ONLINE", func() -> void: show_online())
+		"help":
+			b = _button("HOW TO PLAY", func() -> void: show_help())
+		"replays":
+			b = _button("REPLAYS", func() -> void: show_replays())
+		"editor":
+			b = _button("EDITOR", func() -> void: show_editor_menu())
+		"continue":
+			if save.is_empty() or SaveGame.old_brood(save) or save.get("version", "") != version:
+				return null
+			b = _button("CONTINUE", func() -> void:
+				var cfg: Dictionary = save["cfg"].duplicate(true)
+				cfg["resume"] = save
+				start(cfg))
+			# CONTINUE with the factions and the time on a smaller second line
+			var facs: Array = []
+			for sl in save["cfg"]["slots"]:
+				facs.append(Loc.t(Defs.base_faction(String(sl["faction"])).capitalize()))
+			var secs := int(save["clock"])
+			b.text = Loc.t("CONTINUE  (%s, %d:%02d)") % [Loc.t(" vs ").join(facs), secs / 60, secs % 60]
+			b.text = b.text.replace("  (", "\n(")
+			b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+			UiStyle.primary(b, Color("#2f6a8a"))
+			b.add_theme_font_override("font", UiStyle.bold_font())
+			b.set_meta("fs", 15 if pc else 17)
+		"settings":
+			b = _button("SETTINGS", func() -> void: show_settings())
+		"exit":
+			if menu_web:
+				return null       # (a browser tab can't be quit: the slot stays empty)
+			b = _button("EXIT", func() -> void: quit_game())
+	b.name = "Menu_" + id
+	b.clip_text = false
+	return b
+
+
+## EXIT: save first (as the phone's back does), then close the game.
+func quit_game() -> void:
+	_autosave()
+	if not OS.has_feature("web"):
+		DirAccess.remove_absolute(RUNNING)     # (closed on purpose: not a crash)
+	get_tree().quit()
+
+
+## Place the title and the grid by the screen's fractions; on a small screen the buttons keep their minimum size
+## and the grid grows down and right from the same corner.
+func _layout_menu() -> void:
+	if not is_instance_valid(_menu_grid):
 		return
-	for c in _menu_row.get_children():
-		_menu_row.remove_child(c)
-		c.queue_free()
 	var pc := Settings.pc()
-	var h := 52.0 if pc else 62.0
-	var swap := func(lv: String) -> void:
-		menu_level = lv
-		_fill_menu_row(save)
-	var items: Array = []        # [text, callable, width, kind]
-	match menu_level:
-		"play":
-			items = [["SKIRMISH", func() -> void: show_skirmish(), 190.0, "primary"],
-				["ONLINE", func() -> void: show_online(), 150.0, ""],
-				["CAMPAIGN", Callable(), 160.0, "later"],
-				["BACK", swap.bind("top"), 120.0, "back"]]
-		"learn":
-			# (room here for a tutorial later)
-			items = [["HOW TO PLAY", func() -> void: show_help(), 200.0, "primary"],
-				["BACK", swap.bind("top"), 120.0, "back"]]
-		"workshop":
-			items = [["EDITOR", func() -> void: show_editor_menu(), 150.0, ""],
-				["REPLAYS", func() -> void: show_replays(), 150.0, ""],
-				["MATCH LOGS", func() -> void: show_logs(), 180.0, ""],
-				["BACK", swap.bind("top"), 120.0, "back"]]
-		_:
-			menu_level = "top"
-			if not save.is_empty() and not SaveGame.old_brood(save) and save.get("version", "") == version:
-				items.append(["CONTINUE", func() -> void:
-					var cfg: Dictionary = save["cfg"].duplicate(true)
-					cfg["resume"] = save
-					start(cfg), 0.0, "continue"])
-			items.append_array([["PLAY|main menu", swap.bind("play"), 170.0, "primary"],
-				["LEARN", swap.bind("learn"), 130.0, ""],
-				["WORKSHOP", swap.bind("workshop"), 160.0, ""],
-				["SETTINGS", func() -> void: show_settings(), 150.0, ""]])
-	_set_back(null)
-	# one column when it fits in the sky (the top MENU_SKY of the screen) under the title, else two (a short wide phone)
-	var sep := float(_menu_row.get_theme_constant("v_separation"))
-	var vh := get_viewport().get_visible_rect().size.y
-	var room := vh * MENU_SKY - 20.0 - 10.0 - _title_height(pc)
-	var n := items.size()
-	var cols := 1 if n * h + (n - 1) * sep <= room else 2
-	_menu_row.columns = cols
-	var bw := (300.0 if pc else 320.0) if cols == 1 else (230.0 if pc else 250.0)
-	for it in items:
-		var kind: String = it[3]
-		var t: String = it[0]
-		var cb: Callable = it[1]
-		var b := _button(_ctx(t), cb if cb.is_valid() else func() -> void: pass)
-		if "|" in t:
-			b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED   # (its text is already translated)
-		b.custom_minimum_size = Vector2(bw, h)
-		match kind:
-			"primary":
-				UiStyle.primary(b)
-				b.add_theme_font_size_override("font_size", 26 if pc else 28)
-			"continue":
-				# CONTINUE with the factions and the time, on two lines to stay slim
-				var facs: Array = []
-				for sl in save["cfg"]["slots"]:
-					facs.append(Loc.t(Defs.base_faction(String(sl["faction"])).capitalize()))
-				var secs := int(save["clock"])
-				b.text = Loc.t("CONTINUE  (%s, %d:%02d)") % [Loc.t(" vs ").join(facs), secs / 60, secs % 60]
-				b.text = b.text.replace("  (", "\n(")
-				b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-				b.add_theme_font_size_override("font_size", 15 if pc else 17)
-				UiStyle.primary(b, Color("#2f6a8a"))
-				b.add_theme_font_override("font", UiStyle.bold_font())
-			"later":
-				b.disabled = true
-				b.text = Loc.t("CAMPAIGN") + "\n" + Loc.t("coming later")
-				b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-				b.add_theme_font_size_override("font_size", 16 if pc else 18)
-				b.tooltip_text = "The campaign is coming later."
-			"back":
-				_set_back(b)
-		_menu_row.add_child(b)
-	if fade:
-		_menu_row.modulate.a = 0.0
-		create_tween().tween_property(_menu_row, "modulate:a", 1.0, 0.12)
+	var vs := _menu_grid.size
+	if vs.x < 10.0:
+		vs = get_viewport().get_visible_rect().size
+	var geo := menu_geometry(vs, pc)
+	var bs: Vector2 = geo[0]
+	var gap: Vector2 = geo[1]
+	var o: Vector2 = geo[2]
+	# the title: one line filling its box's width (or its height, whichever is tighter)
+	if is_instance_valid(_menu_title):
+		var tr := Rect2(MENU_TITLE.position * vs, MENU_TITLE.size * vs)
+		tr.size.y = maxf(tr.size.y, o.y - tr.position.y - 6.0)    # (down to the grid when the buttons grew)
+		var f: Font = _menu_title.get_theme_font("font")
+		var w100 := f.get_string_size(_menu_title.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 100).x
+		var sz := int(minf(100.0 * (tr.size.x - 12.0) / maxf(1.0, w100), 100.0 * tr.size.y / f.get_height(100)))
+		_menu_title.add_theme_font_size_override("font_size", maxi(sz, 16))
+		_menu_title.position = tr.position
+		_menu_title.size = tr.size
+	for i in MENU_SLOTS.size():
+		var id: String = MENU_SLOTS[i]
+		if not menu_buttons.has(id):
+			continue
+		var b: Button = menu_buttons[id]
+		b.custom_minimum_size = Vector2.ZERO
+		_fit_button_font(b, bs, pc)
+		b.position = o + Vector2(i % 3, i / 3) * (bs + gap)
+		b.size = bs
+	if is_instance_valid(_menu_note):
+		_menu_note.position = o + Vector2(0, 3.0 * (bs.y + gap.y))
+		_menu_note.size = Vector2(3.0 * bs.x + 2.0 * gap.x, 0)
+		_menu_note.custom_minimum_size.x = _menu_note.size.x
 
 
-## The menu title's height at its width (the column's): its size shrinks on a phone whose sky is short.
-func _title_height(pc: bool) -> float:
-	if not is_instance_valid(_menu_title):
-		return 0.0
-	var w := 330.0 if pc else 360.0
-	var big := 60 if pc else 52
-	var room := get_viewport().get_visible_rect().size.y * MENU_SKY
-	if not pc and room < 470.0:
-		big = 44        # (a wide phone: a smaller title, the buttons in two columns under it)
-	var sz := GameName.heading_size(big)
-	_menu_title.add_theme_font_size_override("font_size", sz)
-	_menu_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_menu_title.custom_minimum_size = Vector2(w, 0)
-	var f: Font = _menu_title.get_theme_font("font")
-	return f.get_multiline_string_size(_menu_title.text, HORIZONTAL_ALIGNMENT_LEFT, w, sz).y
+## The grid on a screen of size `vs`: [button size, gap, first button's corner] (slot i at o + (i % 3, i / 3) * (bs + gap)).
+static func menu_geometry(vs: Vector2, pc: bool) -> Array:
+	var mn := MENU_MIN_PC if pc else MENU_MIN_MOBILE
+	var bs := Vector2(maxf(MENU_BTN.x * vs.x, mn.x), maxf(MENU_BTN.y * vs.y, mn.y)).floor()
+	var gap := Vector2(maxf(MENU_GAP.x * vs.x, 8.0), maxf(MENU_GAP.y * vs.y, 8.0)).floor()
+	return [bs, gap, (MENU_ORIGIN * vs).floor()]
 
 
-## A key with a context after "|" ("PLAY|main menu": PLAY is also the music player's, translated otherwise):
-## its translation, or the English before the "|".
-static func _ctx(key: String) -> String:
-	if not "|" in key:
-		return key
-	var r := Loc.t(key)
-	return key.get_slice("|", 0) if r == key else r
+## The biggest font (up to the button's own) whose every line fits the button.
+func _fit_button_font(b: Button, bs: Vector2, pc: bool) -> void:
+	var fs: int = b.get_meta("fs", 20 if pc else 22)
+	var f: Font = b.get_theme_font("font")
+	var lines := b.text.split("\n")
+	while fs > 10:
+		var w := 0.0
+		for ln in lines:
+			w = maxf(w, f.get_string_size(ln, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x)
+		if w <= bs.x - 14.0 and lines.size() * f.get_height(fs) <= bs.y - 6.0:
+			break
+		fs -= 1
+	b.add_theme_font_size_override("font_size", fs)
 
 
 ## The button Esc, the phone's back and the browser's back press on this page (null: none).
@@ -2530,7 +2557,7 @@ func _to_menu() -> void:
 	if net_lobby:
 		net_lobby.dispose()
 		net_lobby = null
-	show_menu("top")       # (the top row: CONTINUE is there)
+	show_menu()
 
 
 func _on_end(winner: int) -> void:

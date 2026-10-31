@@ -1,8 +1,8 @@
 extends SceneTree
-## The main menu's column levels as pictures (docs/shots/main_menu/, kept there as jpg):
+## The main menu's flat grid as pictures (docs/shots/main_menu/, kept there as jpg):
 ##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 --script res://tools/shot_menu_row.gd -- <outdir> [pc|mobile] [prefix] [lang] [cont]
-## (cont: a pretend saved match, to see the widest top row with CONTINUE)
-## writes <prefix>top.png and <prefix>play.png (a phone: --resolution 2400x1080 ... -- <outdir> mobile phone_).
+## writes <prefix>menu.png (cont: also <prefix>menu_continue.png with a pretend saved match in the CONTINUE slot).
+## A phone: --resolution 2400x1080 ... -- <outdir> mobile phone_
 var main
 var out := "/tmp"
 var prefix := ""
@@ -35,14 +35,19 @@ func _snap(name: String) -> void:
 
 func _run() -> void:
 	await create_timer(1.5).timeout
-	if lang != "":
+	if lang != "" and lang != "-":
 		Settings.language = lang     # (not saved)
 		Loc.set_lang(lang)
-	main.show_menu("top")
+	main.show_menu()
+	var c: Button = main.menu_buttons.get("continue")
+	if c:
+		c.queue_free()                 # (the picture without CONTINUE)
+		main.menu_buttons.erase("continue")
+	await _snap("menu")
 	if cont:
-		main._fill_menu_row({"version": main.version, "cfg": {"slots": [{"faction": "crown"}, {"faction": "clockwork"}]}, "clock": 754}, false)
-	await _snap("top")
-	main.menu_level = "play"
-	main._fill_menu_row(SaveGame.peek(), false)
-	await _snap("play")
+		var b: Button = main._menu_button("continue", {"version": main.version, "cfg": {"slots": [{"faction": "crown"}, {"faction": "clockwork"}]}, "clock": 754}, Settings.pc())
+		main.menu_buttons["continue"] = b
+		main._menu_grid.add_child(b)
+		main._layout_menu()
+		await _snap("menu_continue")
 	quit()

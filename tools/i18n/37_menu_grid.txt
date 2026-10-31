@@ -1,0 +1,5 @@
+# 0.24.20: the main menu's flat grid (EXIT; MATCH LOGS moved to the REPLAYS page)
+
+> EXIT
+pt SAIR
+es SALIR

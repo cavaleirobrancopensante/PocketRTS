@@ -41,6 +41,11 @@ func build() -> void:
 	var imp: Button = main._button("IMPORT", func() -> void: _import())
 	imp.custom_minimum_size = Vector2(160, 50)
 	top.add_child(imp)
+	# MATCH LOGS (off the main menu since 0.24.20): every match's text log, to paste into a playtest report
+	var logs: Button = main._button("MATCH LOGS", func() -> void: main.show_logs())
+	logs.name = "MatchLogs"
+	logs.custom_minimum_size = Vector2(190, 50)
+	top.add_child(logs)
 	if not OS.has_feature("web") and not OS.has_feature("mobile"):
 		var fold: Button = main._button("OPEN FOLDER", func() -> void:
 			ReplayFile.ensure_dir()

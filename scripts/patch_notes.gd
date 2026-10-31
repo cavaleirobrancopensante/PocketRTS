@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.20", "items": [
+		"THE MAIN MENU IS ONE FLAT GRID (the owner's drawn layout): the title on one line across the top-left, and under it three rows of buttons, all in the painting's empty sky so none of the battle is covered: CAMPAIGN (coming later), SKIRMISH and ONLINE; HOW TO PLAY, REPLAYS and EDITOR; then CONTINUE (only when you have a saved match), SETTINGS and EXIT. No more PLAY, LEARN or WORKSHOP steps: every page is one tap away and its BACK returns here. EXIT saves and closes the game (not in a browser, where there is no EXIT). MATCH LOGS is now a button on the REPLAYS page.",
+	]},
 	{"v": "0.24.19", "items": [
 		"THE MAIN MENU OVER THE WHOLE PAINTING: the battle painting now covers the whole screen, with no wooden bar. The title and a column of buttons sit in the top-left corner, over the painting's dark storm sky (on a wide phone, two columns of buttons under a smaller title); the language flags are in the top-right corner and the version small in the bottom-right. The buttons work as before: PLAY, LEARN and WORKSHOP open their choices in the same place, and BACK, Esc or the back button return.",
 	]},
