@@ -1926,7 +1926,9 @@ func _paint_ramps(img: Image, area := Rect2i(0, 0, W, H)) -> void:
 							col.a = 1.0
 							img.set_pixel((c.x - area.position.x) * T + px, (c.y - area.position.y) * T + py, col)
 							continue
-						var wedge := 8.0 * (1.0 - f)
+						# (no wedge any more, the owner 2026-10-31: the rock wedge narrowing down the slope drew the
+						# kerbs as a funnel; the kerbs now run parallel, the same width top to bottom)
+						var wedge := 0.0
 						var k := sd - wedge
 						if sd < wedge:
 							col = face_t.get_pixel(px, py).darkened(0.1 + 0.25 * (1.0 - sd / maxf(wedge, 0.01)))

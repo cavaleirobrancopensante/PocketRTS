@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.25.7", "items": [
+		"RAMPS: the stone kerbs down a ramp's sides run parallel, the same width from top to bottom; the rock wedge that narrowed down the slope drew them as a funnel.",
+	]},
 	{"v": "0.25.6", "items": [
 		"FIX: the main menu's buttons in Portuguese and Spanish: a longer word (ESCARAMUÇA, CONFIGURAÇÕES) grew its button over its neighbour. The text now shrinks to fit its button (it was measured in English before), and a button never grows past its place.",
 	]},
