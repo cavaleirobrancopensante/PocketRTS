@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.21", "items": [
+		"THE MAIN MENU'S BOTTOM LINE: \"Version 0.24.21\" (click it to read the patch notes; their BACK returns to the main menu) and \"This game was made with the help of AI\".",
+	]},
 	{"v": "0.24.20", "items": [
 		"THE MAIN MENU IS ONE FLAT GRID (the owner's drawn layout): the title on one line across the top-left, and under it three rows of buttons, all in the painting's empty sky so none of the battle is covered: CAMPAIGN (coming later), SKIRMISH and ONLINE; HOW TO PLAY, REPLAYS and EDITOR; then CONTINUE (only when you have a saved match), SETTINGS and EXIT. No more PLAY, LEARN or WORKSHOP steps: every page is one tap away and its BACK returns here. EXIT saves and closes the game (not in a browser, where there is no EXIT). MATCH LOGS is now a button on the REPLAYS page.",
 	]},

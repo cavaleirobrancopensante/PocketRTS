@@ -1,0 +1,9 @@
+# 0.24.21: the main menu's bottom line: the version (a click opens the patch notes) and the AI credit
+
+> Version %s
+pt Versão %s
+es Versión %s
+
+> This game was made with the help of AI
+pt Este jogo foi feito com a ajuda de IA
+es Este juego se hizo con la ayuda de IA

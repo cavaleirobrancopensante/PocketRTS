@@ -408,16 +408,38 @@ func show_menu() -> void:
 	flags.offset_right = -14
 	flags.offset_top = 12
 	root.add_child(flags)
-	# bottom-right corner: the version, small
-	var ver := UiStyle.text("v%s  ·  %s" % [version, Loc.t("playing on computer") if pc else Loc.t("playing on mobile")], 12 if pc else 14, Color(1, 0.96, 0.85, 0.8), HORIZONTAL_ALIGNMENT_RIGHT)
+	# bottom-right corner (the owner, 2026-10-31): "Version X" (a click opens the patch notes) and the AI credit
+	var foot := VBoxContainer.new()
+	foot.add_theme_constant_override("separation", 0)
+	foot.alignment = BoxContainer.ALIGNMENT_END
+	foot.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	foot.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	foot.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	foot.offset_right = -12
+	foot.offset_bottom = -6
+	root.add_child(foot)
+	var fs := 13 if pc else 15
+	var ver := Button.new()
+	ver.flat = true
+	ver.focus_mode = Control.FOCUS_NONE
+	ver.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	ver.text = (Loc.t("Version %s") % version) + "  ·  " + (Loc.t("playing on computer") if pc else Loc.t("playing on mobile"))
+	ver.alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	ver.tooltip_text = Loc.t("PATCH NOTES")
+	ver.add_theme_font_size_override("font_size", fs)
+	ver.add_theme_color_override("font_color", Color(1, 0.96, 0.85, 0.9))
+	ver.add_theme_color_override("font_hover_color", UiStyle.TRIM)
+	ver.add_theme_color_override("font_pressed_color", UiStyle.TRIM)
 	ver.add_theme_constant_override("outline_size", 4)
-	ver.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
-	ver.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	ver.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	ver.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	ver.offset_right = -12
-	ver.offset_bottom = -6
-	root.add_child(ver)
+	ver.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	for st in ["normal", "hover", "pressed", "focus"]:
+		ver.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	ver.pressed.connect(func() -> void: show_patch_notes(true))
+	foot.add_child(ver)
+	var ai := UiStyle.text(Loc.t("This game was made with the help of AI"), fs - 1, Color(1, 0.96, 0.85, 0.75), HORIZONTAL_ALIGNMENT_RIGHT)
+	ai.add_theme_constant_override("outline_size", 4)
+	ai.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	foot.add_child(ai)
 	_menu_grid.resized.connect(_layout_menu)
 	_layout_menu()
 
@@ -980,7 +1002,8 @@ func show_layout() -> void:
 
 
 ## The music player: how the match playlist is chosen, and every piece to listen to.
-func show_patch_notes() -> void:
+## from_menu: opened from the main menu's version line (BACK returns there, not to Settings).
+func show_patch_notes(from_menu := false) -> void:
 	var root := _page()
 	var c := CenterContainer.new()
 	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -1015,7 +1038,11 @@ func show_patch_notes() -> void:
 			t.custom_minimum_size.x = 560
 			t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # (one line each ran far off the screen)
 			list.add_child(t)
-	var back := _button("BACK", func() -> void: show_settings())
+	var back := _button("BACK", func() -> void:
+		if from_menu:
+			show_menu()
+		else:
+			show_settings())
 	_set_back(back)
 	v.add_child(back)
 
