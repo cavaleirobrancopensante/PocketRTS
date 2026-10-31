@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.29", "items": [
+		"BODIES UNDER A ROOTING CREATURE ARE PUSHED OUT: when a Rootmaw, a Mound Turtle, a Sire on his nest or the Mother roots (or the Mother grows) over bodies or a food pile, they are moved to the nearest free ground just outside its footprint, so your grubs can still harvest them; a body keeps its value and its rot, a pile its food. The same when any building is put down over a body.",
+		"GRUBS FIND THE MOTHER THROUGH HER SIRES: with Sires and other creatures rooted close round her, grubs coming from a far Rootmaw no longer get stuck against one of them; they walk in through any open gap. (A grub stuck beside a rooted creature used to be sent on a straight detour round its body, which often ended inside its footprint or a neighbour's, again and again, instead of finding a new path.) If her rim can't be reached at all, a grub delivers from the nearest spot it can reach beside her.",
+	]},
 	{"v": "0.24.28", "items": [
 		"A FAR ROOTMAW PAYS MORE AND FASTER (Brood): the food of a Rootmaw rises with its distance from the Brood Mother, now up to two and a half times as rich at 24 tiles or more (was +30% at 18). It counts twice: each grub's trip pays more AND the Rootmaw drinks its ground that much faster (before, every Rootmaw drank 4 a second wherever it was, so the distance hardly paid). Its 3,000 food stay the same: a Rootmaw at 23 tiles pays about 560 food a minute and is spent in about 5 and a half minutes, one at 31 tiles about 650 a minute, the Mother's own near one about 230 a minute as before. A far Rootmaw takes one more grub every 3 tiles beyond 8 (was every 4 beyond 6), up to 12.",
 	]},

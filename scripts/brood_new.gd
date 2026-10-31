@@ -1566,7 +1566,11 @@ static func grub_tick(g: Game, gr: Unit, delta: float) -> Vector2:
 			var q := queen(g, gr.team)
 			if q == null:
 				return Vector2.ZERO
-			if q.edge_distance(gr.position) < gr.radius + 17.0:
+			# (or at the end of a path that could get no nearer, close to her: the nearest edge it can reach, the owner
+			# 2026-10-31, her rim shut off by the creatures rooted round her)
+			var ended: bool = not gr.path_pending and not gr.path.is_empty() and gr.path_i >= gr.path.size() \
+					and q.edge_distance(gr.position) < 3.0 * Defs.TILE
+			if q.edge_distance(gr.position) < gr.radius + 17.0 or ended:
 				g.add_gold_f(gr.team, gr.load_f)
 				if gr.carrying > 0:
 					g.own_float(gr.team, gr.position + Vector2(0, -26), "+%d" % gr.carrying, Color(0.75, 1.0, 0.4))

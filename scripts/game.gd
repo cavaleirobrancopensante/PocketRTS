@@ -3063,6 +3063,8 @@ func _solidify(b: Building, keep: Array = []) -> void:
 		_orient_gates(c)
 		relink_walls(c)
 	_push_units_out(b.rect(), keep)
+	if not corpses.is_empty() or brood_in_match():
+		BroodRoot.push_bodies(self, b.rect())      # (bodies and food piles under it: just outside, for the grubs)
 	_astar_dirty = true
 	b._update_sprite()
 
