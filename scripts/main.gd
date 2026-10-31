@@ -564,15 +564,25 @@ static func menu_geometry(vs: Vector2, pc: bool) -> Array:
 func _fit_button_font(b: Button, bs: Vector2, pc: bool) -> void:
 	var fs: int = b.get_meta("fs", 20 if pc else 22)
 	var f: Font = b.get_theme_font("font")
-	var lines := b.text.split("\n")
-	while fs > 10:
+	var lines := b.atr(b.text).split("\n")       # (as shown: the button's text is translated when drawn)
+	# the room inside the button's frame (its style's margins: a longer word in another language must shrink, never
+	# widen the button over its neighbour; the owner, 2026-10-31: ESCARAMUÇA ran under ONLINE)
+	var st: StyleBox = b.get_theme_stylebox("normal")
+	var mx := 14.0
+	var my := 6.0
+	if st:
+		mx = maxf(mx, st.get_margin(SIDE_LEFT) + st.get_margin(SIDE_RIGHT) + 6.0)
+		my = maxf(my, st.get_margin(SIDE_TOP) + st.get_margin(SIDE_BOTTOM) + 2.0)
+	var oc: int = b.get_theme_constant("outline_size")
+	while fs > 9:
 		var w := 0.0
 		for ln in lines:
 			w = maxf(w, f.get_string_size(ln, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x)
-		if w <= bs.x - 14.0 and lines.size() * f.get_height(fs) <= bs.y - 6.0:
+		if w + oc <= bs.x - mx and lines.size() * f.get_height(fs) <= bs.y - my:
 			break
 		fs -= 1
 	b.add_theme_font_size_override("font_size", fs)
+	b.clip_text = true          # (whatever happens, the text never makes the button bigger than its slot)
 
 
 ## The button Esc, the phone's back and the browser's back press on this page (null: none).

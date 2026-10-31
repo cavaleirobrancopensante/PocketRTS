@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.25.6", "items": [
+		"FIX: the main menu's buttons in Portuguese and Spanish: a longer word (ESCARAMUÇA, CONFIGURAÇÕES) grew its button over its neighbour. The text now shrinks to fit its button (it was measured in English before), and a button never grows past its place.",
+	]},
 	{"v": "0.25.5", "items": [
 		"THE ROOTMAW'S CIRCLE, A LITTLE SMALLER: 8 tiles round it (was 10), so Rootmaws stand 16 tiles apart: about two fit at the Brood Mother's base. The 10-tile circle was too harsh on the Brood's economy; each Rootmaw still holds 3,000 food.",
 	]},
