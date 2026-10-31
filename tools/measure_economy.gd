@@ -235,10 +235,15 @@ func _snap(i: int) -> Dictionary:
 		# the Brood (no halls): its grubs, rooted Rootmaws and the ground they still hold, the spoils it took in
 		var maws := 0
 		var ground := 0.0
+		var md: Array = []          # (each rooted Rootmaw's distance from the Mother, tiles, and its ground left)
+		var q0 := BroodNew.queen(g, i)
 		for u in g.units:
 			if u.team == i and not u.dead and u.kind == BroodNew.MAW and BroodNew.rooted(u):
 				maws += 1
 				ground += BroodNew.ground_left(g, u)
+				if q0:
+					md.append("%d:%d" % [int(round(q0.position.distance_to(u.position) / Defs.TILE)), int(BroodNew.ground_left(g, u))])
+		r["maws"] = " ".join(md)
 		var grubs := 0
 		for u in g.workers(i):
 			grubs += 1
@@ -286,7 +291,7 @@ func _line(i: int, r: Dictionary) -> String:
 	if r["fac"] == "brood":
 		return "%2d:00 t%d BR earned %d bank %d | spoils in %d bank %d | rootmaws %d grubs %d | turtles %d (%d far) | ground %d | army %d (%d) supply %d/%d" % [
 			r["m"], i, r["earned"], r["bank"], r["powder_in"], r["powder"], r["n_farm"], r["crew_farm"], r.get("turtles", 0), r.get("far", 0), r["soil"], r["army"], r["army_n"],
-			r["supply"], r["cap"]]
+			r["supply"], r["cap"]] + " | maws %s" % r.get("maws", "")
 	return "%2d:00 t%d CR earned %d bank %d | powder in %d bank %d | farms %d crew %d mills %d crew %d | soil %d salt %d | workers %d army %d (%d) supply %d/%d halls %d" % [
 		r["m"], i, r["earned"], r["bank"], r["powder_in"], r["powder"], r["n_farm"], r["crew_farm"], r["n_mill"], r["crew_mill"], r["soil"], r["salt"],
 		r["workers"], r["army"], r["army_n"], r["supply"], r["cap"], r["halls"]]

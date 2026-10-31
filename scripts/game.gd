@@ -2827,12 +2827,20 @@ func wind_decay_mult(t: int) -> float:
 ## The fresh-ground value of a load from a Rootmaw `d` tiles (centre to centre) from the Brood Mother, with `gap`
 ## tiles of open ground between the two: the rate (biomass per grub-second) times the round trip's estimated seconds.
 static func food_at(d: float, gap: float) -> float:
-	d = minf(d, Defs.FOOD_MAX_D)
 	gap = minf(gap, Defs.FOOD_MAX_D)
-	var rate := Defs.FOOD_RATE * (1.0 + Defs.FOOD_BONUS * clampf((d - Defs.FOOD_NEAR) / (Defs.FOOD_FAR - Defs.FOOD_NEAR), 0.0, 1.0))
+	return Defs.FOOD_RATE * food_mult(d) * (Defs.PIT_TIME + Defs.FOOD_TRIP * maxf(0.0, gap - Defs.FOOD_REACH))
+
+
+## THE DISTANCE PAY (0.24.22, the owner: "buffing that isn't snowball"): how much richer the Brood's food is from a
+## Rootmaw `d` tiles from the Mother: 1 up to FOOD_NEAR, rising to 1 + FOOD_BONUS at FOOD_FAR, flat to FOOD_PEAK, then
+## FOOD_FADE less a tile. It scales a load (food_at) AND how fast the Rootmaw drinks its ground (BroodNew, MAW), so a
+## far Rootmaw pays faster but still holds only its PIT_GROUND.
+static func food_mult(d: float) -> float:
+	d = minf(d, Defs.FOOD_MAX_D)
+	var m := 1.0 + Defs.FOOD_BONUS * clampf((d - Defs.FOOD_NEAR) / (Defs.FOOD_FAR - Defs.FOOD_NEAR), 0.0, 1.0)
 	if d > Defs.FOOD_PEAK:
-		rate *= 1.0 - Defs.FOOD_FADE * (d - Defs.FOOD_PEAK)
-	return rate * (Defs.PIT_TIME + Defs.FOOD_TRIP * maxf(0.0, gap - Defs.FOOD_REACH))
+		m *= 1.0 - Defs.FOOD_FADE * (d - Defs.FOOD_PEAK)
+	return m
 
 
 ## The most wounded soldier nearby that a Missionary may bandage.

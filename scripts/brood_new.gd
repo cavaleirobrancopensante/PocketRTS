@@ -1275,7 +1275,9 @@ static func tick(g: Game, u: Unit, delta: float) -> void:
 				var id := int(u.nb["spot"])
 				if g.nb_spots.has(id):
 					var s: Dictionary = g.nb_spots[id]
-					var take := minf(minf(float(Defs.NB["maw_fill"]) * delta, float(s["left"])), float(Defs.NB["maw_cap"]) - food)
+					var qm := queen(g, u.team)        # (a far Rootmaw drinks faster: Game.food_mult, 0.24.22)
+					var fill := float(Defs.NB["maw_fill"]) * (maxf(1.0, Game.food_mult(qm.position.distance_to(u.position) / Defs.TILE)) if qm else 1.0)
+					var take := minf(minf(fill * delta, float(s["left"])), float(Defs.NB["maw_cap"]) - food)
 					if take > 0.0:
 						s["left"] = float(s["left"]) - take
 						u.nb["food"] = food + take

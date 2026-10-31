@@ -490,11 +490,7 @@ static func _per_min(dist: float, trip_value: float) -> float:
 
 ## Game.food_at's rate (food a grub-second) at a distance.
 static func _rate_guess(d: float) -> float:
-	d = minf(d, Defs.FOOD_MAX_D)
-	var rate := Defs.FOOD_RATE * (1.0 + Defs.FOOD_BONUS * clampf((d - Defs.FOOD_NEAR) / (Defs.FOOD_FAR - Defs.FOOD_NEAR), 0.0, 1.0))
-	if d > Defs.FOOD_PEAK:
-		rate *= 1.0 - Defs.FOOD_FADE * (d - Defs.FOOD_PEAK)
-	return rate
+	return Defs.FOOD_RATE * Game.food_mult(d)
 
 
 static func _tip_nb(g: Game, u: Unit) -> Dictionary:

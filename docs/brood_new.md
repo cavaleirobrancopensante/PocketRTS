@@ -28,8 +28,8 @@ Where the decisions come from: docs/idea_brood_mobile_buildings.md (the owner's 
 - You pick a creature on her card (grubs and warriors only since 0.15.14). She lays its egg at once, rooted or walking. Walking, the egg drops behind her (the fall drawn in code). ROOTED, she lays it in her nest (the owner, 16:24, as the Town Hall's bell): her sheet brood_mother_rooted_lay_se_chatgpt.png, 6 frames lined up on the nest (it never shifts against her rooted loop) and scaled so her resting first frame covers as much as the loop's (the sheet drew her body a tenth bigger); frames 3 and 4 (her head reared high) are held longer (BroodNew.LAY_DUR, 1.26 s in all). The game's egg stays hidden until her last frame, appears exactly where that frame draws the new egg and as big (BroodNew.LAY_EGG_AT, LAY_EGG_BIG), then rolls out to the nest's rim and waits; her rooted loop has no extra egg.
 - The egg hatches after the creature's normal time. It cracks for the last 0.8 seconds, then the creature stands on the open shell while it breaks apart.
 - The Rootmaw roots on fresh ground on its side's swamp: 3,000 food in a 10-tile circle (5 until 0.24.7: see "Rootmaw ground, 0.24.7" below). Two rooted circles may not overlap. Old ground keeps what was left, like the old pits.
-- A rooted Rootmaw drinks 4 food a second from its ground into its body. It holds 300. Six stages show how full it is, each breathing: the owner's five breathing sheets (rootmaw_breath_stage*_chatgpt.png, 3 frames each) were given to the stages of the original filling row they match best (shape and share of glowing food; tools/import_brood_new.py maw_stages): "stage2" -> stage 1, "stage1" -> stage 2 (its middle frame, with a big glowing ball a thin stage can't have, left out: a 2-frame loop), "stage3" -> 3, "stage4or5" -> 4, "stage6" -> 5. Stage 6 keeps its original still frame with the code breathing. The owner: "make do with this", no more redraws.
-- Grubs take the food at its flank and carry it to the Mother. The farther, the more a trip pays, as with the old pits. Each Rootmaw takes 6 grubs, one more every 4 tiles beyond 6, up to 12.
+- A rooted Rootmaw drinks 4 food a second from its ground into its body (near the Mother; farther out faster, up to 10 a second: see "0.24.22 distance pay"). It holds 300. Six stages show how full it is, each breathing: the owner's five breathing sheets (rootmaw_breath_stage*_chatgpt.png, 3 frames each) were given to the stages of the original filling row they match best (shape and share of glowing food; tools/import_brood_new.py maw_stages): "stage2" -> stage 1, "stage1" -> stage 2 (its middle frame, with a big glowing ball a thin stage can't have, left out: a 2-frame loop), "stage3" -> 3, "stage4or5" -> 4, "stage6" -> 5. Stage 6 keeps its original still frame with the code breathing. The owner: "make do with this", no more redraws.
+- Grubs take the food at its flank and carry it to the Mother. The farther, the more a trip pays, as with the old pits. Each Rootmaw takes 6 grubs, one more every 3 tiles beyond 8 (every 4 beyond 6 until 0.24.22), up to 12.
 - The grubs have their new harvesting animation at the flank.
 - UPROOT spills the Rootmaw's food as a pile on the ground. Grubs can still collect it. It rots, 0.6 a second. The Rootmaw walks off thin and quick.
 - HAUL uproots it full. It walks at half speed with its food. Rooted again, it keeps it. Killed while hauling, all its food bursts out as a pile. (Since 0.15.14 a move order never gets a rooted creature up: only UPROOT and HAUL do.)
@@ -287,3 +287,62 @@ looked for out to 8.5 tiles (was 7.5). It still spends its food on its army firs
 
 Open for the owner: is half the Crown's income the nerf he wants? A middle step, 7.5 tiles (15 apart), keeps 3 at her
 and 2 round a turtle (about two thirds of the old income at a base).
+
+## 0.24.22 distance pay (branch brood-far): a far Rootmaw pays more and faster
+
+The owner's playtest of 0.24.19 (Brood v Hard Clockwork, Dune Sea): 9,820 food by 19:00 against 21,481 cogs (3,014 v 6,738
+at 10:00): "maybe the brood economy is a bit too nerfed... increase the distance buff that the harvesters far away get
+more resources the longer they travel, buffing that isn't snowball". Not raised: FOOD_RATE (the near pay), PIT_GROUND,
+PIT_CLAIM.
+
+**What was found.** The old bonus (+30% at 18 tiles) hardly paid at all: a Rootmaw drinks its ground into its body at
+4 a second (Defs.NB "maw_fill") and a grub can only take what is in the body, so EVERY Rootmaw, near or far, gave at most
+240 food a minute, and one at 15 tiles (8 grubs on a winding trip) only about 190. The Brood's income was simply 240 x its
+Rootmaws. So the distance pay now counts twice: Game.food_mult(d) scales the load (Game.food_at) and the Rootmaw's
+drinking (scripts/brood_new.gd, MAW: maw_fill x food_mult, never under x1). The 3,000 a Rootmaw holds are unchanged: a far
+one empties sooner.
+
+**The numbers** (scripts/defs.gd): FOOD_NEAR 6 -> 8 (the Mother's own Rootmaw, ~8.5 tiles, pays as before), FOOD_BONUS
+0.3 -> 1.5 (x2.5), FOOD_FAR 18 -> 24, FOOD_PEAK 22 -> 32 (= FOOD_MAX_D: flat from 24 out, never falling), PIT_CREW_STEP
+4 -> 3 (one more grub every 3 tiles beyond 8, up to 12; else the far crews could not carry it). The multiplier: x1.0 at 8,
+x1.56 at 14, x2.31 at 22, x2.5 from 24.
+
+**One Rootmaw, a full crew, nobody fighting** (tools/measure_brood_far.gd on Greenhold; food a minute over 2 steady
+minutes, and how long its 3,000 lasted):
+
+| tiles from her | crew before / after | food/min before | after | emptied before | after |
+|---|---|---|---|---|---|
+| 8 (her own) | 6 / 6 | 236 | 230 | 12:55 | 13:16 |
+| 15 | 8 / 8 | 186 | 285 | 15:49 | 11:01 |
+| 22-23 | 10 / 11 | ~240 (cap) | 560 | 12:33 | 5:31 |
+| 30-31 | 12 / 12 | ~240 (cap) | 653 | 12:30 | 5:17 |
+
+**15 minutes, no fighting** (food earned; target 85-95% of the Crown's 9,880 / 19,380 and the Clockwork's 10,831 /
+17,110 at 10:00 / 15:00, docs/exhaust_economy.md, about 8.8-9.8k and 15.5-17.3k):
+
+| | 3:00 | 10:00 | 15:00 |
+|---|---|---|---|
+| HUMAN-STYLE build before (Greenhold) | 892 | 5,809 (56%) | 10,605 (58%) |
+| HUMAN-STYLE build after | 932 | 8,146 (79%) | 14,315 (78%) |
+| Hard Brood computer before (Greenhold / Highmoor) | 917 / 924 | 4,520 / 4,483 (44%) | 8,788 / 8,072 (46%) |
+| Hard Brood computer after | 1,269 / 1,253 | 11,676 / 11,955 (114%) | 14,256 / 14,324 (78%) |
+
+The human-style build (tools/measure_brood_far.gd plan:8@0,12@120,21@240,29@420,22@660,30@780): her own Rootmaw, a
+second on her swamp at 2:00 (13.5 tiles), one at the natural's turtle at 4:00 (21), one at the third at 7:00 (30), a new
+one at 11:00 (23), each given a full crew of free grubs (no spending modelled); at 13:00 it found no free spot at 30 tiles.
+Dune Sea is the same layout as Greenhold (crossroads).
+
+**What it says**
+- The 15:00 figure is capped by GROUND, not pay: 5 Rootmaws hold 15,000 and both builds used 5. Reaching 85-95% by
+  15:00 needs a sixth Rootmaw on fresh ground by about 13:00: expansion, as the design wants (design_principles section 2).
+- The human-style build stays at 79% by 10:00 (a step higher, FOOD_BONUS 2.0 at FOOD_FAR 28, gave 84% / 79%, but the
+  computer then reached 12,484 by 10:00, 121%).
+- The opening: the human-style build is unchanged (+4% by 3:00: her own Rootmaw pays as before). The COMPUTER's is not
+  (+38% by 3:00): its second Rootmaw goes to the natural's far edge, 30 tiles out, at about 1:30 (the owner's build,
+  ai_brood_new.gd _eco), which now pays x2.5. Any real distance pay does this; to keep its rush timing the computer could
+  root its second Rootmaw on her swamp first (AI work, not done here).
+- The Hard computer then stalls: from about 10:00 it roots no new Rootmaw (40 grubs, 12 turtles, 3,000-5,500 food banked
+  at 15:00): the quirk already noted in docs/exhaust_economy.md, now plainer.
+- Risk is the price: a far Rootmaw is spent in about 5 and a half minutes, so its 10-12 grubs walk a long exposed road and
+  the Brood must keep moving out to fresh ground.
+
