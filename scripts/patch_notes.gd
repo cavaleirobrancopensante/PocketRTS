@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.25.20", "items": [
+		"THE CROWN COMPUTER WALLS IN ITS EXPANSIONS (Normal and Hard): every new Town Hall gets a wall across its ways in, the ground an enemy walks in by. Its own buildings make the wall first: Barracks, Cottages, a Church (and later Foundries, Horse Breeders) are placed in the gaps, palisade fills what is left, and a gate faces the way to its main. The first palisade is laid as the hall goes up; the Farms and the Powder Mill go inside the wall, and part of the army stays at the new hall until the wall is mostly up.",
+	]},
 	{"v": "0.25.19", "items": [
 		"EVERY FULL BAR IS HIDDEN: health shows only on a hurt unit or building (no longer on a selected one at full health), and the charge and powder bars only when not full. Settings, DISPLAY, HEALTH BARS: ONLY WHEN NOT FULL (the default) or ALWAYS (every bar, full or not).",
 	]},

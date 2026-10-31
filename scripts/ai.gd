@@ -58,6 +58,10 @@ var scout: AIScout = null       # scouts the enemy first and picks the plan from
 ## AI round 5 (scripts/ai_round5.gd, docs/ai_round5.md): the Crown against the Clockwork, the Clockwork against Horsemen.
 const AIRound5 := preload("res://scripts/ai_round5.gd")
 var r5 = AIRound5.new(self)      # (made with the AI: tests that build one by hand get it too)
+## CROWN WALL EXPAND (the owner, 2026-10-31; scripts/ai_expand_wall.gd, docs/crown_wall_expand.md): every new Town Hall of
+## the Crown computer is walled in, its buildings first (Barracks, Church, Cottages...), palisade in the gaps, a gate.
+const AIExpandWall := preload("res://scripts/ai_expand_wall.gd")
+var xw = AIExpandWall.new(self)
 ## The harass (scripts/ai_harass.gd, docs/ai_harass.md): a small party out in the enemy's land hunts workers and walks
 ## past structures and rooted Brood creatures; made on first use (hz()).
 var harass: AIHarass = null
@@ -409,6 +413,7 @@ func _think_stage(i: int) -> void:
 	match i:
 		0:
 			_cottage_wall()
+			xw.tick()           # (a new hall's wall pieces come first, like the ramp wall: the harvest's gold, before it is spent)
 			_workers()
 			if _clock() and Defs.line_mode:
 				LineAI.tick(self)           # the Clockwork Line (scripts/line_ai.gd; shelved unless Defs.line_mode)
@@ -1969,10 +1974,16 @@ func _econ_spot(kind: String) -> Vector2i:
 		if not h.built:
 			continue
 		var spot: Vector2i
+		# (CROWN WALL EXPAND: a walled hall's Farms and Mill inside its ring)
+		spot = xw.inside_spot(kind, h)
+		if spot.x >= 0:
+			return spot
+		xw.hold()
 		# (on the hall's own ground first: never down below the ramp while there's room up top)
 		spot = game.find_spot(team, kind, h, 4, Defs.ECON_RANGE - 2, "behind", true)
 		if spot.x < 0:
 			spot = game.find_spot(team, kind, h, 4, Defs.ECON_RANGE - 2, "behind")
+		xw.release()
 		if spot.x >= 0:
 			return spot
 	return Vector2i(-1, -1)
@@ -2253,11 +2264,14 @@ func _hall_keep() -> int:
 ## bank, some train several things a think: 0.24.0's Crown laid its hall on dry land and spent the Farm's gold on two
 ## Cuirassiers and horses the same second, then had no income for good). Returns what was set aside; the caller puts it back.
 func _hide_kept() -> int:
+	# (CROWN WALL EXPAND: and the gold for a new hall's next wall pieces, laid first thing next think: AIExpandWall.keep)
+	var w: int = mini(int(game.players[team]["gold"]), xw.keep())
+	game.players[team]["gold"] -= w
 	if not _keeping():
-		return 0
+		return w
 	var k: int = mini(int(game.players[team]["gold"]), _hall_keep())
 	game.players[team]["gold"] -= k
-	return k
+	return k + w
 
 
 ## Keeping gold for the hall plan now (see _hall_keep).
@@ -2600,7 +2614,8 @@ func _guard_new_hall(army: Array) -> Array:
 	_guards = _guards.filter(func(u) -> bool: return is_instance_valid(u) and not u.dead)
 	# two thirds while it goes up and for its first minute, then a third stays as its garrison
 	var want := maxi(4, army.size() * 2 / 3)
-	if _new_hall and _new_hall.built and game.clock > _guard_until:
+	if _new_hall and _new_hall.built and game.clock > _guard_until and not xw.holding(_new_hall):
+		# (CROWN WALL EXPAND: two thirds stay until the hall's wall is mostly up)
 		want = maxi(3, army.size() / 3)
 		while _guards.size() > want:
 			_guards.pop_back()
@@ -3676,6 +3691,17 @@ func _find_spot(kind: String) -> Vector2i:
 		var kc: Vector2i = game.ai_keep[team][kind]["cell"]
 		if game.placement_problem(team, kind, kc, true) == "":
 			return kc               # (round 6: the spot kept for it on the main's plateau, _keep_tech)
+	var xs: Vector2i = xw.slot_for(kind)
+	if xs.x >= 0:
+		return xs                   # (CROWN WALL EXPAND: a slot in a new hall's wall)
+	xw.hold()
+	var sp := _find_spot_free(kind)
+	xw.release()
+	return sp
+
+
+## _find_spot past the drive, kept and wall-slot spots (the walled halls' kept cells are held as terrain meanwhile).
+func _find_spot_free(kind: String) -> Vector2i:
 	var halls: Array = _halls().filter(func(h: Building) -> bool: return h.built)
 	if game.starts.size() > team:
 		var home := Vector2(game.starts[team]) * Defs.TILE

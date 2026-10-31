@@ -4,6 +4,7 @@ extends RefCounted
 ## Patch notes in pt: version -> items in the order of scripts/patch_notes.gd ('' = show the English).
 
 const N := {
+	"0.25.20": ["O COMPUTADOR DA COROA MURA AS SUAS EXPANSÕES (Normal e Difícil): toda nova Prefeitura ganha um muro nas suas entradas, o chão por onde um inimigo chega. Os próprios prédios fazem o muro primeiro: Quartéis, Casebres, uma Igreja (e depois Fundições, Criadores de Cavalos) vão nas brechas, a paliçada fecha o que sobra e um portão fica virado para o caminho da base principal. A primeira paliçada é posta enquanto a Prefeitura sobe; as Fazendas e o Moinho de Pólvora ficam dentro do muro, e parte do exército fica na nova base até o muro estar quase pronto."],
 	"0.25.19": ["TODA BARRA CHEIA SOME: a vida só aparece numa unidade ou prédio ferido (não mais num selecionado com a vida cheia), e as barras de corda e de pólvora só quando não estão cheias. Configurações, TELA, BARRAS DE VIDA: SÓ QUANDO NÃO CHEIAS (o padrão) ou SEMPRE (todas as barras, cheias ou não)."],
 	"0.25.18": ["OS PONTOS DE REUNIÃO DA MÃE DA NINHADA TÊM NOME: TRABALHADORES sob o ponto dourado (as larvas) e EXÉRCITO sob a bandeira verde (os guerreiros)."],
 	"0.25.17": ["SACRIFICAR OVOS: selecione ovos e aperte SACRIFICAR (C): quando eclodirem, os filhotes vão direto à Mãe da Ninhada para serem devorados, sem passar pelo ponto de reunião. O botão mostra os espólios que os filhotes darão."],

@@ -4,6 +4,7 @@ extends RefCounted
 ## Patch notes in es: version -> items in the order of scripts/patch_notes.gd ('' = show the English).
 
 const N := {
+	"0.25.20": ["LA COMPUTADORA DE LA CORONA AMURALLA SUS EXPANSIONES (Normal y Difícil): cada nuevo Ayuntamiento recibe un muro en sus entradas, el suelo por donde llega un enemigo. Sus propios edificios hacen el muro primero: Cuarteles, Cabañas, una Iglesia (y luego Fundiciones, Criaderos de Caballos) van en los huecos, la empalizada cierra lo que queda y una puerta mira al camino de la base principal. La primera empalizada se pone mientras sube el Ayuntamiento; las Granjas y el Molino de Pólvora quedan dentro del muro, y parte del ejército se queda en la nueva base hasta que el muro está casi listo."],
 	"0.25.19": ["TODA BARRA LLENA DESAPARECE: la vida solo aparece en una unidad o edificio herido (ya no en uno seleccionado con la vida llena), y las barras de cuerda y de pólvora solo cuando no están llenas. Configuración, PANTALLA, BARRAS DE VIDA: SOLO SI NO ESTÁN LLENAS (por defecto) o SIEMPRE (todas las barras, llenas o no)."],
 	"0.25.18": ["LOS PUNTOS DE REUNIÓN DE LA MADRE DE LA CAMADA LLEVAN NOMBRE: TRABAJADORES bajo el punto dorado (sus larvas) y EJÉRCITO bajo la bandera verde (sus guerreros)."],
 	"0.25.17": ["SACRIFICAR HUEVOS: selecciona huevos y pulsa SACRIFICAR (C): cuando eclosionen, sus crías irán directas a la Madre de la Camada para ser devoradas, sin pasar por el punto de reunión. El botón muestra el botín que darán las crías."],
