@@ -49,10 +49,8 @@ static func tick_game(g: Game, delta: float) -> void:
 		g._overlay_view = g.view_rect.position
 		g.overlay.queue_redraw()
 	g.field_layer.queue_redraw()
-	g._ghost_t -= delta
-	if g._ghost_t <= 0.0:
-		g._ghost_t = 0.5
-		g.sweep_ghosts(true)
+	# (no sweep of the sites here: the host drops a site nobody is coming to and the snapshot says so; the guest's copy
+	# can't see an enemy's Winder out of sight nor anyone's Shift queue, and dropped the host's sites: playtest 0.24.34)
 
 
 static func tick_unit(u: Unit, delta: float) -> void:

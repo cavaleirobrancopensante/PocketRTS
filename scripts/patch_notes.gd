@@ -4,6 +4,12 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.25.1", "items": [
+		"ONLINE: THE HOST'S BUILDINGS NO LONGER VANISH ON THE GUEST'S SCREEN: the guest's copy of the match was dropping the host's planned sites as \"nobody was coming to start it\", because it can't see the host's Winder out of sight nor anyone's Shift queue (one match logged 108 of them). Only the host decides now; its sites stay and get built. A freshly placed site also waits a moment before it can be dropped.",
+		"ONLINE: THE ROOTMAWS' GROUND REACHES THE GUEST: a Brood guest saw every Rootmaw's ground as 0% (cards, tooltips, labels and the match log). It is sent with the match now, when it changes.",
+		"ONLINE: MORE ORDERS WORK FOR A GUEST: the Brood Mother's WORKER / ARMY rally keys, taking a research off the queue, a Field Cannon's CANISTER / ROUND SHOT and a gate's ROTATE. (The first was refused with \"That order can't be given online yet.\")",
+		"LIGHTER DRAWING FOR THE BROOD: with the Brood Mother or a father selected, the father's range no longer redraws the map's overlay every frame, only when it changes or she walks (an online guest spent a third of each frame on it); the hover ring over a rooted creature doesn't either.",
+	]},
 	{"v": "0.25.0", "items": [
 		"TENSION FLOWS THROUGH THE WHOLE GEAR NETWORK (Clockwork): a building that uses or spends Tension (the Escapement, the Clock Aviary, the Heavy Works, a Light Works for its Springers and Netters) no longer has to mesh right beside a Mainspring. It is fed when a Mainspring stands anywhere in its gear network, through any chain of meshed rings, so the Mainspring can stand anywhere in your town and nothing has to be demolished to move it. Two Clocktowers whose networks touch share their Mainsprings. Still 1 Mainspring per Clocktower, with its Winders, spring life and 5% floor; a fatigued Mainspring still feeds its network, a destroyed one feeds nothing. The ghost says TENSION FED or NEEDS MAINSPRING, the spring mark reads 'Fed by a Mainspring through the gear network', and the help and descriptions say so.",
 	]},

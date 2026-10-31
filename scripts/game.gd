@@ -4439,6 +4439,7 @@ func requirement_met(t: int, k: String) -> bool:
 
 var _sweep_pos := {}       # sweep_ghosts: a ghost's instance id -> where its worker was last time
 var _ghost_t := 0.2
+const GHOST_GRACE := 0.25  # sweep_ghosts: a site this fresh is never dropped as "abandoned" (an order given a tick after the placing)
 var _crown_orphan := {}    # sweep_ghosts: a Crown ghost's instance id -> sweeps in a row nobody was coming
 
 
@@ -4453,6 +4454,9 @@ var _crown_orphan := {}    # sweep_ghosts: a Crown ghost's instance id -> sweeps
 ## it goes after two sweeps in a row with nobody coming. Sites already begun (Crown: any
 ## progress) are never swept. Run about once a second (from the tick).
 func sweep_ghosts(quick := false) -> void:
+	if puppet:
+		return          # (an online guest or a replay: the host's game decides; the guest doesn't know where an enemy's
+		                # Winder out of sight is, nor anyone's Shift queue, and dropped the host's sites: playtest 0.24.34)
 	var sites: Array = []
 	if not _sweep_pos.is_empty():
 		for id in _sweep_pos.keys():
@@ -4488,7 +4492,7 @@ func sweep_ghosts(quick := false) -> void:
 				if ai.team == b.team and ai.has_method("adopt_site") and ai.adopt_site(b):
 					adopted = true
 					break
-			if not adopted:
+			if not adopted and clock - b.placed_clk >= GHOST_GRACE:
 				site_failed(b, "abandoned")
 			continue
 		var coming: Unit = null
@@ -4508,7 +4512,7 @@ func sweep_ghosts(quick := false) -> void:
 			if coming:
 				break
 		if coming == null:
-			if b.ghost:
+			if b.ghost and clock - b.placed_clk >= GHOST_GRACE:
 				site_failed(b, "abandoned")
 			continue
 		if quick:
@@ -4755,6 +4759,7 @@ func place_building(t: int, k: String, c: Vector2i, builders: Array, queued := f
 	stats[t]["spent"] += price
 	stats[t]["built"] += 1
 	var b := _add_building(k, t, c, false, true)     # a ghost until its building starts
+	b.placed_clk = clock
 	if GearNet.pickable(k):
 		b.gear_big = gear_big_for(t, k)          # (GEAR PICK: its ring, fixed from now on)
 	last_placed[t] = {"at": b.center(), "t": clock, "kind": k}
@@ -10132,6 +10137,7 @@ func _draw_patrol(a: Vector2, b: Vector2, from: Vector2, alpha := 0.75) -> void:
 var _overlay_t := 0.0
 var _overlay_was := false
 var _hover_was := false
+var _brood_ov_key := 0                # BroodRoot.overlay_key when the overlay was last looked at
 var _overlay_view := Vector2.ZERO     # the camera's view when it was last drawn (labels on screen only)
 
 
@@ -10139,13 +10145,18 @@ var _overlay_view := Vector2.ZERO     # the camera's view when it was last drawn
 ## building being placed, the queued orders of the selected units) or just stopped.
 func _overlay_moving() -> bool:
 	var m := not _floats.is_empty() or not _pings.is_empty() or not _tracers.is_empty() or not tongues.is_empty()
-	if not m and (hover_target != null or _hover_was):
+	# (the hover ring pulses: every tick while it shows; a rooted Brood creature's frame is drawn with it, not here)
+	var hv := hover_target != null and is_instance_valid(hover_target) and not (hover_target is Unit and (hover_target as Unit)._k_nb and (hover_target as Unit).nb.has("fpx"))
+	if not m and (hv or _hover_was):
 		m = true
-	_hover_was = hover_target != null
+	_hover_was = hv
 	if not m and controls and (controls.line.size() >= 2 or controls.mode == "place" or controls.mode == "patrol" or (controls.mode == "cast" and controls.cast_spell == "jump")):
 		m = true
-	if not m and factions.has("brood") and BroodRoot.overlay_wanted(self):
-		m = true          # (the Brood: a ROOT ghost, the father's range)
+	if factions.has("brood"):
+		var bk := BroodRoot.overlay_key(self)       # (the Brood: a ROOT ghost every tick, the father's range on change)
+		if bk == -1 or bk != _brood_ov_key:
+			m = true
+		_brood_ov_key = bk
 	if not m:
 		for e in selection:
 			if e is Unit and is_instance_valid(e) and (not (e as Unit).queue.is_empty() or not (e as Unit).line_rest.is_empty() or (e as Unit).patrol_a != Vector2.INF):

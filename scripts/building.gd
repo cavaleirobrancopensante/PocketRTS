@@ -38,6 +38,7 @@ var crate := ""
 # its player alive; only its own side sees it (Game.try_start_site).
 var ghost := false
 var block_since := -1.0          # ghost: match clock when its start was first found blocked
+var placed_clk := -99.0          # ghost: match clock when it was placed (Game.sweep_ghosts gives a fresh one GHOST_GRACE)
 var asked := {}                  # ghost: unit instance id -> clock it was told to step out
 var crate_carrier: Unit = null
 var crate_obj: Crate = null
@@ -1164,6 +1165,15 @@ var gate_open := false
 var vertical := false            # a gate in a north-south wall: drawn side-on
 var dir_locked := false          # turned by hand: stays as it is
 var locked := false              # Gate: locked shut by its owner (Game.set_gate_locked): nobody passes, friends included
+
+
+## A gate's ROTATE (the card, while it is not built yet): turned by hand, it stays this way (online: the host turns it).
+func cmd_rotate(v: bool) -> void:
+	if game and game.net_forward(self, "cmd_rotate", [v]): return
+	if kind != "gate" or built or dead:
+		return
+	dir_locked = true
+	set_vertical(v)
 
 
 func set_vertical(v: bool) -> void:

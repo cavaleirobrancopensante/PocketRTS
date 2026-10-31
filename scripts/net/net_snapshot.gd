@@ -204,6 +204,17 @@ static func build(s: NetSession) -> Dictionary:
 	if kfp != s.keg_fp or key or s.snap_n % 20 == 0:
 		s.keg_fp = kfp
 		m["kg"] = krows
+	# the Rootmaws' ground (Game.nb_spots: [id, x, y, food left, its Rootmaw's serial]), sent when it changes by a whole
+	# unit of food (and in keyframes): the guest's cards, tooltips, labels and match log read it
+	if not g.nb_spots.is_empty() or s.spot_fp != -1:
+		var srows: Array = []
+		for id in g.nb_spots:
+			var sp: Dictionary = g.nb_spots[id]
+			srows.append([int(id), snappedf((sp["p"] as Vector2).x, 0.1), snappedf((sp["p"] as Vector2).y, 0.1), floorf(float(sp["left"])), int(sp.get("maw", 0))])
+		var sfp := hash(srows)
+		if sfp != s.spot_fp or key:
+			s.spot_fp = sfp
+			m["nbs"] = srows
 	if Defs.cw_roster and (not g.cw_consists.is_empty() or s.snap_n % 10 == 0):
 		m["cpl"] = CwConsist.net_rows(s, g)     # coupled rail trains (lists of ids; the host moves the cars)
 	if not g.line_net.rails.trains.is_empty() or s.snap_n % 10 == 0:
@@ -291,7 +302,7 @@ static func merge(list: Array) -> Dictionary:
 		last.erase("fx")
 	else:
 		last["fx"] = shots
-	for k in ["ln", "cpl", "tr", "stats", "acc"]:
+	for k in ["ln", "cpl", "tr", "stats", "acc", "nbs"]:
 		if last.has(k):
 			continue
 		for i in range(list.size() - 2, -1, -1):
@@ -383,6 +394,10 @@ static func apply(s: NetSession, m: Dictionary) -> void:
 		g.line_net.load_rows(m["ln"])
 	if m.has("kg"):
 		apply_kegs(g, m["kg"])
+	if m.has("nbs"):
+		g.nb_spots.clear()
+		for r in m["nbs"]:
+			g.nb_spots[int(r[0])] = {"p": Vector2(float(r[1]), float(r[2])), "left": float(r[3]), "maw": int(r[4])}
 	if m.has("cpl") and Defs.cw_roster:
 		CwConsist.net_apply(s, g, m["cpl"])
 	if m.has("tr"):

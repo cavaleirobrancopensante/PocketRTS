@@ -1174,8 +1174,7 @@ func _build_card() -> Array:
 				var v := not b.vertical
 				for sb in game.selected_buildings():
 					if sb.kind == "gate" and not sb.built and not sb.dead:
-						sb.dir_locked = true
-						sb.set_vertical(v)
+						sb.cmd_rotate(v)
 				toast("Gate turned. It stays this way."), true, "", ""])
 		list.append(["stop", "ABANDON", func() -> void:
 			for sb in game.selected_buildings():

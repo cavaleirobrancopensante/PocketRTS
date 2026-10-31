@@ -26,7 +26,8 @@ const GAME := {
 ## UNIT / BUILDING: methods of an entity the guest owns (the receiver must be theirs).
 const ENTITY := ["cmd_gather", "cmd_harvest", "cmd_sacrifice", "cmd_deploy", "cmd_pack", "cmd_stop",
 	"cmd_land", "cmd_take_off", "cmd_dismount", "cmd_restock", "give", "set_hold_fire", "set_brace", "set_supply", "set_shield",
-	"cmd_lay", "cmd_uproot", "cmd_grow", "cmd_grow_stop", "cmd_nb_research", "cmd_nb_research_stop", "band_hire", "band_solo"]      # (the Brood: the Mother lays an egg; UPROOT / HAUL; GROW and STOP GROWING; a creature's RESEARCH and STOP RESEARCH)
+	"cmd_lay", "cmd_uproot", "cmd_grow", "cmd_grow_stop", "cmd_nb_research", "cmd_nb_research_stop", "band_hire", "band_solo",
+	"cmd_nb_rally", "cmd_nb_research_cancel", "set_canister", "cmd_rotate"]      # (0.25.1: the Mother's WORKER / ARMY rally keys, a research taken off the queue, a cannon's CANISTER, a gate's ROTATE)      # (the Brood: the Mother lays an egg; UPROOT / HAUL; GROW and STOP GROWING; a creature's RESEARCH and STOP RESEARCH)
 
 ## Settings flipped by the command card (a property of an entity the guest owns).
 const PROPS := ["auto_repair", "auto_train", "auto_refit", "supplying", "courier", "team_want", "auto_sweep", "auto_harvest"]      # (auto_sweep: a Great Winder's SWEEP; auto_harvest: a grub's HARVEST autocast)

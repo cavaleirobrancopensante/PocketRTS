@@ -1367,6 +1367,20 @@ static func overlay_wanted(g: Game) -> bool:
 	return ring_wanted(g)
 
 
+## What the Brood's part of the overlay looks like now, for Game._overlay_moving: the ROOT ghost follows the mouse
+## (redrawn every tick: -1); the father's ring only when it comes, goes or its Mother walks (the key changes). Before
+## 0.25.1 the ring alone redrew the overlay every tick while the Mother was selected (an online guest: 30 times a second).
+static func overlay_key(g: Game) -> int:
+	if g.controls and String(g.controls.mode) == "nb_root":
+		return -1
+	if not ring_wanted(g):
+		return 0
+	var q := BroodNew.queen(g, g.human)
+	if q == null:
+		return 1
+	return hash(q.position.snapped(Vector2(2, 2))) | 2
+
+
 ## The father's range round the Mother: while a father (or a grub turning into one) is selected or placing his
 ## root, and while the Mother is selected.
 static func ring_wanted(g: Game) -> bool:

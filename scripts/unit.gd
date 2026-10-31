@@ -1319,6 +1319,7 @@ func set_supply(on: bool) -> void:
 
 
 func set_canister(on: bool) -> void:
+	if game and game.net_forward(self, "set_canister", [on]): return
 	if kind != "cannon" or (mode == "canister") == on:
 		return
 	mode = "canister" if on else ""
