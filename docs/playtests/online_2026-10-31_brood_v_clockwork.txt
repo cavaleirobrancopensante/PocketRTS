@@ -1,0 +1,1152 @@
+Working Title for RTS v0.24.34 match log  (2026-10-31 13:44:30)
+Map: Twin Fords, 2 players  (seed 2053137776)
+  P1 Clockwork  side 1  colour Pink  AI: REMOTE
+  YOU Brood  side 2  colour Orange
+Device: computer
+
+[00:00] (online) guest; same delay for both players on (the host's orders wait as long as the guest's take to arrive)
+[00:30] P1 Clockwork dropped a Cog Press: nobody was coming to start it (refunded)
+[00:40] P1 Clockwork dropped a Regulator: nobody was coming to start it (refunded)
+--- minute 1 ---
+  Performance: 60 fps avg, 1% low 30 fps, worst frame 43 ms, 9 frames over 33 ms, 0 over 50 ms, 0.5 physics steps a frame | units 23, buildings 4, bodies 0, corpses 0, effects 0, smoke puffs 0, nodes 297, objects 2968
+    busy with: overlay draw 369.2 ms/s (29 calls/s), hud draw 249.1 ms/s (59 calls/s), hud/rest 60.9 ms/s (12 calls/s), hud/selection 55.3 ms/s (15 calls/s), hud/top 51.2 ms/s (8 calls/s), hud/minimap 40.1 ms/s (6 calls/s), hud/map view 25.0 ms/s (6 calls/s), unit draw 16.4 ms/s (38 calls/s), hud 15.1 ms/s (63 calls/s), hud/groups 10.3 ms/s (3 calls/s), hud/look 10.2 ms/s (17 calls/s), game 6.0 ms/s (30 calls/s), hud/tip check 4.6 ms/s (17 calls/s), hud/command card 4.3 ms/s (3 calls/s), net/apply 3.6 ms/s (16 calls/s), hud/card build 2.9 ms/s (6 calls/s), hud/hover 2.8 ms/s (23 calls/s), replay/record 2.0 ms/s (4 calls/s), hud/tooltip 1.5 ms/s (1 calls/s), game/fog/units 1.0 ms/s (4 calls/s), hud/glow 0.5 ms/s (4 calls/s), powder smoke 0.1 ms/s (60 calls/s), replay/write 0.1 ms/s (0 calls/s), game/fog/shown 0.1 ms/s (4 calls/s), game/fog/buildings 0.1 ms/s (4 calls/s), building draw 0.0 ms/s (0 calls/s), game/fog/picture 0.0 ms/s (4 calls/s), game/fog/copy 0.0 ms/s (4 calls/s), hud/chat 0.0 ms/s (1 calls/s), hud/pause 0.0 ms/s (1 calls/s)
+  Online (guest): ping avg 337 ms, max 432 ms | snapshots 973 (15.4/s), applied in 0.2 ms avg (7.6 max) | orders sent 65, applied 64, refused 0, seen after 361 ms avg (431 max) | to the relay 173 ms avg, 234 max | stalls 0
+  P1 Clockwork: earned 377 cogs total, has 139 + 0 tension | supply 9/10 | workers 8 | halls 1 | army (0 value): none | kills +0 (0) losses +0 (0) | brass 96% | efficiency 100%
+  YOU Brood: earned 240 biomass total, has 90 + 0 spoils | supply 10/28 | workers 10 | halls 0 | army (175 value): 1 Brood Mother, 1 Rootmaw, 1 Mound Turtle, 2 Egg | kills +0 (0) losses +0 (0) | APM 116 (this minute 116 actions) | Brood: Mother stage 1 rooted, 7 eggs | Rootmaws rooted 1 (ground 0%) | Mound Turtles rooted 1
+[01:04] P1 Clockwork finished a Regulator
+[01:08] P1 Clockwork finished a Cog Press
+[01:21] P1 Clockwork dropped a Mainspring: nobody was coming to start it (refunded)
+[01:58] P1 Clockwork finished a Mainspring
+--- minute 2 ---
+  Performance: 60 fps avg, 1% low 30 fps, worst frame 40 ms, 4 frames over 33 ms, 0 over 50 ms, 0.5 physics steps a frame | units 29, buildings 5, bodies 0, corpses 0, effects 0, smoke puffs 0, nodes 315, objects 3007
+    busy with: overlay draw 386.4 ms/s (30 calls/s), hud draw 193.1 ms/s (52 calls/s), hud/selection 55.0 ms/s (13 calls/s), hud/top 37.1 ms/s (7 calls/s), hud/minimap 36.7 ms/s (6 calls/s), hud/rest 29.8 ms/s (8 calls/s), hud/map view 21.0 ms/s (6 calls/s), hud 13.3 ms/s (60 calls/s), hud/groups 8.7 ms/s (3 calls/s), hud/look 8.4 ms/s (17 calls/s), unit draw 8.1 ms/s (36 calls/s), game 7.8 ms/s (30 calls/s), net/apply 3.9 ms/s (15 calls/s), hud/tip check 3.1 ms/s (17 calls/s), hud/command card 2.9 ms/s (2 calls/s), hud/hover 2.8 ms/s (22 calls/s), hud/card build 2.5 ms/s (6 calls/s), replay/record 2.4 ms/s (4 calls/s), game/fog/units 1.5 ms/s (4 calls/s), hud/tooltip 0.9 ms/s (1 calls/s), hud/glow 0.8 ms/s (5 calls/s), powder smoke 0.1 ms/s (60 calls/s), game/fog/shown 0.1 ms/s (4 calls/s), replay/write 0.1 ms/s (0 calls/s), game/fog/buildings 0.1 ms/s (4 calls/s), game/fog/picture 0.1 ms/s (4 calls/s), game/fog/copy 0.0 ms/s (4 calls/s), hud/chat 0.0 ms/s (1 calls/s), building draw 0.0 ms/s (0 calls/s), hud/pause 0.0 ms/s (1 calls/s)
+  Online (guest): ping avg 342 ms, max 431 ms | snapshots 912 (15.2/s), applied in 0.3 ms avg (1.8 max) | orders sent 55, applied 56, refused 0, seen after 360 ms avg (447 max) | to the relay 172 ms avg, 233 max | stalls 0
+  P1 Clockwork: earned 1128 cogs total, has 572 + 0 tension | supply 12/20 | workers 12 | halls 1 | army (0 value): none | kills +0 (0) losses +0 (0) | brass 87% | efficiency 67%
+  YOU Brood: earned 607 biomass total, has 182 + 0 spoils | supply 13/28 | workers 13 | halls 0 | army (250 value): 1 Brood Mother, 2 Rootmaw, 1 Mound Turtle | kills +0 (0) losses +0 (0) | APM 104 (this minute 104 actions) | Brood: Mother stage 1 rooted, 10 eggs | Rootmaws rooted 2 (ground 0% 0%) | Mound Turtles rooted 1
+[02:02] P1 Clockwork dropped a Light Works: nobody was coming to start it (refunded)
+[02:45] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[02:50] P1 Clockwork finished a Light Works
+[02:56] P1 Clockwork finished a Regulator
+--- minute 3 ---
+  Performance: 60 fps avg, 1% low 24 fps, worst frame 156 ms, 7 frames over 33 ms, 4 over 50 ms, 0.5 physics steps a frame | units 35, buildings 8, bodies 0, corpses 0, effects 0, smoke puffs 0, nodes 335, objects 3088
+    busy with: overlay draw 266.8 ms/s (30 calls/s), hud draw 209.4 ms/s (44 calls/s), hud/selection 74.8 ms/s (14 calls/s), hud/top 48.4 ms/s (6 calls/s), hud/minimap 40.2 ms/s (5 calls/s), hud/rest 21.5 ms/s (6 calls/s), hud 14.6 ms/s (60 calls/s), hud/map view 10.3 ms/s (3 calls/s), hud/look 10.3 ms/s (17 calls/s), unit draw 10.2 ms/s (45 calls/s), game 9.1 ms/s (30 calls/s), hud/groups 8.9 ms/s (2 calls/s), hud/tip check 4.7 ms/s (17 calls/s), net/apply 4.7 ms/s (15 calls/s), replay/record 3.0 ms/s (4 calls/s), hud/tooltip 2.8 ms/s (2 calls/s), hud/card build 2.5 ms/s (6 calls/s), hud/command card 2.2 ms/s (2 calls/s), hud/hover 2.2 ms/s (17 calls/s), game/fog/units 1.9 ms/s (4 calls/s), building draw 0.5 ms/s (11 calls/s), powder smoke 0.1 ms/s (60 calls/s), game/fog/shown 0.1 ms/s (4 calls/s), replay/write 0.1 ms/s (0 calls/s), game/fog/buildings 0.1 ms/s (4 calls/s), game/fog/picture 0.1 ms/s (4 calls/s), effects 0.0 ms/s (10 calls/s), game/fog/copy 0.0 ms/s (4 calls/s), hud/glow 0.0 ms/s (2 calls/s), hud/chat 0.0 ms/s (1 calls/s), hud/pause 0.0 ms/s (1 calls/s)
+  Online (guest): ping avg 333 ms, max 442 ms | snapshots 905 (15.1/s), applied in 0.3 ms avg (11.7 max) | orders sent 29, applied 29, refused 0, seen after 348 ms avg (457 max) | to the relay 162 ms avg, 212 max | stalls 0
+  P1 Clockwork: earned 1986 cogs total, has 391 + 81 tension | supply 18/30 | workers 16 | halls 1 | army (0 value): none | kills +0 (0) losses +0 (0) | brass 78% | efficiency 98%
+  YOU Brood: earned 1422 biomass total, has 447 + 0 spoils | supply 18/28 | workers 14 | halls 0 | army (400 value): 1 Brood Mother, 2 Rootmaw, 1 Mound Turtle, 1 Tyrant Sire | kills +0 (0) losses +0 (0) | APM 79 (this minute 79 actions) | Brood: Mother stage 1 rooted, 10 eggs | Rootmaws rooted 2 (ground 0% 0%) | Mound Turtles rooted 1
+[03:55] P1 Clockwork finished a Clocktower (expansion)
+--- minute 4 ---
+  Performance: 60 fps avg, 1% low 30 fps, worst frame 40 ms, 9 frames over 33 ms, 0 over 50 ms, 0.5 physics steps a frame | units 48, buildings 8, bodies 0, corpses 0, effects 0, smoke puffs 0, nodes 364, objects 3161
+    busy with: overlay draw 333.1 ms/s (28 calls/s), hud draw 167.6 ms/s (47 calls/s), hud/minimap 37.8 ms/s (6 calls/s), hud/selection 37.1 ms/s (9 calls/s), hud/rest 27.4 ms/s (9 calls/s), hud/top 24.0 ms/s (6 calls/s), hud/map view 21.5 ms/s (5 calls/s), unit draw 18.7 ms/s (61 calls/s), hud 16.0 ms/s (60 calls/s), hud/look 11.5 ms/s (16 calls/s), game 10.3 ms/s (30 calls/s), hud/groups 7.6 ms/s (2 calls/s), hud/tip check 6.2 ms/s (16 calls/s), hud/command card 5.9 ms/s (3 calls/s), hud/tooltip 5.6 ms/s (3 calls/s), net/apply 5.3 ms/s (15 calls/s), replay/record 3.5 ms/s (4 calls/s), hud/card build 2.5 ms/s (5 calls/s), game/fog/units 2.1 ms/s (4 calls/s), hud/hover 1.9 ms/s (15 calls/s), hud/glow 0.5 ms/s (3 calls/s), building draw 0.3 ms/s (24 calls/s), game/fog/shown 0.2 ms/s (4 calls/s), powder smoke 0.1 ms/s (60 calls/s), replay/write 0.1 ms/s (0 calls/s), game/fog/buildings 0.1 ms/s (4 calls/s), game/fog/picture 0.1 ms/s (4 calls/s), game/fog/copy 0.0 ms/s (4 calls/s), hud/chat 0.0 ms/s (1 calls/s), hud/pause 0.0 ms/s (1 calls/s)
+  Online (guest): ping avg 338 ms, max 400 ms | snapshots 906 (15.1/s), applied in 0.3 ms avg (8.9 max) | orders sent 33, applied 33, refused 0, seen after 338 ms avg (350 max) | to the relay 163 ms avg, 233 max | stalls 0
+  P1 Clockwork: earned 2845 cogs total, has 1016 + 139 tension | supply 20/40 | workers 18 | halls 2 | army (0 value): none | kills +0 (0) losses +0 (0) | brass 68% 100% | efficiency 95%
+  YOU Brood: earned 2186 biomass total, has 545 + 40 spoils | supply 27/28 | workers 8 | halls 0 | army (850 value): 1 Brood Mother, 2 Rootmaw, 3 Mound Turtle, 1 Tyrant Sire, 10 Raptors, 5 Egg | kills +0 (0) losses +0 (0) | APM 58 (this minute 58 actions) | Brood: Mother stage 2 rooted, 12 eggs | Rootmaws rooted 2 (ground 0% 0%) | Mound Turtles rooted 1 | sacrificed 4 (+40 spoils)
+[04:08] P1 Clockwork dropped a Mainspring: nobody was coming to start it (refunded)
+[04:14] P1 Clockwork dropped a Escapement: nobody was coming to start it (refunded)
+[04:47] P1 Clockwork finished a Mainspring
+[04:57] P1 Clockwork finished a Escapement
+--- minute 5 ---
+  Performance: 60 fps avg, 1% low 30 fps, worst frame 35 ms, 2 frames over 33 ms, 0 over 50 ms, 0.5 physics steps a frame | units 55, buildings 10, bodies 1, corpses 0, effects 0, smoke puffs 0, nodes 389, objects 3266
+    busy with: hud draw 195.6 ms/s (53 calls/s), overlay draw 189.9 ms/s (29 calls/s), hud/selection 61.1 ms/s (17 calls/s), hud/top 36.8 ms/s (7 calls/s), hud/minimap 33.2 ms/s (5 calls/s), hud/map view 29.8 ms/s (6 calls/s), hud/rest 22.9 ms/s (7 calls/s), hud 17.2 ms/s (60 calls/s), unit draw 13.8 ms/s (78 calls/s), hud/look 12.4 ms/s (17 calls/s), game 11.7 ms/s (30 calls/s), hud/groups 7.4 ms/s (2 calls/s), net/apply 7.0 ms/s (15 calls/s), hud/tip check 5.2 ms/s (17 calls/s), replay/record 4.7 ms/s (4 calls/s), hud/command card 3.7 ms/s (3 calls/s), hud/card build 3.6 ms/s (7 calls/s), hud/hover 3.3 ms/s (27 calls/s), game/fog/units 2.6 ms/s (4 calls/s), hud/glow 0.6 ms/s (3 calls/s), building draw 0.3 ms/s (29 calls/s), game/fog/shown 0.2 ms/s (4 calls/s), powder smoke 0.1 ms/s (60 calls/s), replay/write 0.1 ms/s (0 calls/s), effects 0.1 ms/s (51 calls/s), game/fog/buildings 0.1 ms/s (4 calls/s), game/fog/picture 0.1 ms/s (4 calls/s), game/fog/copy 0.0 ms/s (4 calls/s), hud/chat 0.0 ms/s (1 calls/s), hud/tooltip 0.0 ms/s (1 calls/s), hud/pause 0.0 ms/s (1 calls/s)
+  Online (guest): ping avg 337 ms, max 431 ms | snapshots 913 (15.2/s), applied in 0.5 ms avg (12.7 max) | orders sent 159, applied 158, refused 0, seen after 352 ms avg (462 max) | to the relay 164 ms avg, 229 max | stalls 0
+  P1 Clockwork: earned 3654 cogs total, has 1068 + 227 tension | supply 25/40 | workers 20 | halls 2 | army (140 value): 2 Clock Soldier | kills +1 (1) losses +0 (0) | brass 59% 100% | efficiency 90%
+  YOU Brood: earned 3109 biomass total, has 934 + 0 spoils | supply 33/52 | workers 16 | halls 0 | army (1025 value): 1 Brood Mother, 2 Rootmaw, 3 Mound Turtle, 1 Tyrant Sire, 9 Raptors, 1 Venom Sire | kills +0 (0) losses +1 (1) | APM 132 (this minute 132 actions) | Brood: Mother stage 2 rooted, 15 eggs | Rootmaws rooted 2 (ground 0% 0%) | Mound Turtles rooted 3 | sacrificed 4 (+40 spoils)
+[05:23] P1 Clockwork dropped a Heavy Works: nobody was coming to start it (refunded)
+[05:49] P1 Clockwork dropped a Clock Aviary: nobody was coming to start it (refunded)
+--- minute 6 ---
+  Performance: 60 fps avg, 1% low 30 fps, worst frame 40 ms, 6 frames over 33 ms, 0 over 50 ms, 0.5 physics steps a frame | units 76, buildings 12, bodies 1, corpses 0, effects 0, smoke puffs 0, nodes 444, objects 3354
+    busy with: overlay draw 357.3 ms/s (30 calls/s), hud draw 206.7 ms/s (59 calls/s), hud/selection 57.6 ms/s (16 calls/s), hud/top 39.0 ms/s (7 calls/s), hud/minimap 33.8 ms/s (5 calls/s), hud/rest 31.1 ms/s (9 calls/s), hud/map view 28.4 ms/s (7 calls/s), hud 17.2 ms/s (60 calls/s), unit draw 13.7 ms/s (82 calls/s), game 13.3 ms/s (30 calls/s), hud/look 12.2 ms/s (16 calls/s), hud/groups 11.5 ms/s (3 calls/s), net/apply 6.4 ms/s (15 calls/s), hud/tip check 5.2 ms/s (16 calls/s), replay/record 4.6 ms/s (4 calls/s), hud/command card 4.4 ms/s (3 calls/s), hud/card build 3.7 ms/s (6 calls/s), hud/hover 3.4 ms/s (26 calls/s), game/fog/units 3.1 ms/s (4 calls/s), hud/glow 0.6 ms/s (5 calls/s), building draw 0.3 ms/s (29 calls/s), game/fog/shown 0.2 ms/s (4 calls/s), powder smoke 0.1 ms/s (60 calls/s), replay/write 0.1 ms/s (0 calls/s), game/fog/buildings 0.1 ms/s (4 calls/s), hud/tooltip 0.1 ms/s (1 calls/s), game/fog/copy 0.1 ms/s (4 calls/s), game/fog/picture 0.1 ms/s (4 calls/s), hud/chat 0.0 ms/s (1 calls/s), hud/pause 0.0 ms/s (1 calls/s)
+  Online (guest): ping avg 334 ms, max 462 ms | snapshots 908 (15.1/s), applied in 0.4 ms avg (2.0 max) | orders sent 74, applied 71, refused 0, seen after 345 ms avg (428 max) | to the relay 168 ms avg, 197 max | stalls 0
+  P1 Clockwork: earned 4520 cogs total, has 693 + 177 tension | supply 38/40 | workers 26 | halls 2 | army (280 value): 4 Clock Soldier | kills +0 (1) losses +0 (0) | brass 50% 100% | efficiency 84%
+  YOU Brood: earned 4100 biomass total, has 650 + 0 spoils | supply 62/64 | workers 15 | halls 0 | army (1400 value): 1 Brood Mother, 3 Rootmaw, 6 Mound Turtle, 1 Tyrant Sire, 9 Raptors, 1 Venom Sire, 10 Egg | kills +0 (0) losses +0 (1) | APM 108 (this minute 108 actions) | Brood: Mother stage 2 rooted, 7 eggs | Rootmaws rooted 3 (ground 0% 0% 0%) | Mound Turtles rooted 4 | sacrificed 4 (+40 spoils)
+[06:03] P1 Clockwork dropped a Ratchet Turret: nobody was coming to start it (refunded)
+[06:05] P1 Clockwork dropped a Ratchet Turret: nobody was coming to start it (refunded)
+[06:12] P1 Clockwork finished a Heavy Works
+[06:30] P1 Clockwork dropped a Cog Press: nobody was coming to start it (refunded)
+[06:31] P1 Clockwork dropped a Cog Press: nobody was coming to start it (refunded)
+[06:37] P1 Clockwork finished a Ratchet Turret
+[06:42] P1 Clockwork finished a Clock Aviary
+[06:45] P1 Clockwork finished a Ratchet Turret
+--- minute 7 ---
+  Performance: 60 fps avg, 1% low 30 fps, worst frame 41 ms, 9 frames over 33 ms, 0 over 50 ms, 0.5 physics steps a frame | units 63, buildings 16, bodies 0, corpses 0, effects 0, smoke puffs 0, nodes 428, objects 3338
+    busy with: overlay draw 283.2 ms/s (29 calls/s), hud draw 222.9 ms/s (53 calls/s), hud/selection 77.1 ms/s (16 calls/s), hud/top 46.8 ms/s (7 calls/s), hud/minimap 38.9 ms/s (5 calls/s), hud/rest 25.9 ms/s (8 calls/s), unit draw 22.1 ms/s (93 calls/s), hud/map view 17.3 ms/s (4 calls/s), hud 16.6 ms/s (60 calls/s), game 15.3 ms/s (30 calls/s), hud/look 11.6 ms/s (16 calls/s), net/apply 7.4 ms/s (15 calls/s), hud/groups 7.1 ms/s (2 calls/s), hud/command card 5.7 ms/s (3 calls/s), hud/tip check 5.6 ms/s (16 calls/s), replay/record 4.8 ms/s (4 calls/s), game/fog/units 3.4 ms/s (4 calls/s), hud/hover 3.2 ms/s (26 calls/s), hud/tooltip 3.1 ms/s (2 calls/s), hud/card build 2.3 ms/s (6 calls/s), hud/glow 0.8 ms/s (5 calls/s), building draw 0.3 ms/s (29 calls/s), game/fog/shown 0.3 ms/s (4 calls/s), replay/write 0.1 ms/s (0 calls/s), powder smoke 0.1 ms/s (60 calls/s), game/fog/buildings 0.1 ms/s (4 calls/s), game/fog/copy 0.1 ms/s (4 calls/s), game/fog/picture 0.1 ms/s (4 calls/s), hud/chat 0.0 ms/s (1 calls/s), hud/pause 0.0 ms/s (1 calls/s)
+  Online (guest): ping avg 332 ms, max 397 ms | snapshots 908 (15.1/s), applied in 0.5 ms avg (13.3 max) | orders sent 86, applied 90, refused 0, seen after 344 ms avg (415 max) | to the relay 166 ms avg, 233 max | stalls 0
+  P1 Clockwork: earned 5255 cogs total, has 796 + 286 tension | supply 40/40 | workers 30 | halls 2 | army (505 value): 4 Clock Soldier, 1 Netter, 1 Springer | kills +0 (1) losses +0 (0) | brass 42% 100% | efficiency 79%
+  YOU Brood: earned 4864 biomass total, has 289 + 440 spoils | supply 20/112 | workers 12 | halls 0 | army (1450 value): 1 Brood Mother, 4 Rootmaw, 8 Mound Turtle, 1 Tyrant Sire, 1 Venom Sire | kills +0 (0) losses +0 (1) | APM 91 (this minute 91 actions) | Brood: Mother stage 2 rooted, 15 eggs | Rootmaws rooted 3 (ground 0% 0% 0%) | Mound Turtles rooted 8 | sacrificed 43 (+625 spoils)
+[07:14] P1 Clockwork finished a Cog Press
+[07:17] P1 Clockwork finished a Cog Press
+[07:26] P1 Clockwork dropped a Regulator: nobody was coming to start it (refunded)
+[07:28] P1 Clockwork dropped a Regulator: nobody was coming to start it (refunded)
+[07:31] P1 Clockwork dropped a Regulator: nobody was coming to start it (refunded)
+[07:35] (online) the host refused an order: That order can't be given online yet.
+[07:36] P1 Clockwork dropped a Regulator: nobody was coming to start it (refunded)
+[07:51] P1 Clockwork finished a Regulator
+[07:56] P1 Clockwork dropped a Regulator: nobody was coming to start it (refunded)
+[07:57] P1 Clockwork finished a Regulator
+[07:58] P1 Clockwork dropped a Regulator: nobody was coming to start it (refunded)
+--- minute 8 ---
+  Performance: 60 fps avg, 1% low 30 fps, worst frame 41 ms, 6 frames over 33 ms, 0 over 50 ms, 0.5 physics steps a frame | units 66, buildings 20, bodies 0, corpses 0, effects 0, smoke puffs 0, nodes 448, objects 3399
+    busy with: overlay draw 338.1 ms/s (30 calls/s), hud draw 242.4 ms/s (57 calls/s), hud/selection 76.0 ms/s (15 calls/s), hud/map view 57.0 ms/s (12 calls/s), hud/top 40.5 ms/s (6 calls/s), hud/minimap 37.3 ms/s (5 calls/s), hud/rest 20.7 ms/s (8 calls/s), game 15.9 ms/s (30 calls/s), hud 15.7 ms/s (60 calls/s), unit draw 12.5 ms/s (67 calls/s), hud/look 10.7 ms/s (16 calls/s), hud/groups 5.9 ms/s (2 calls/s), net/apply 5.9 ms/s (15 calls/s), hud/tip check 5.1 ms/s (16 calls/s), replay/record 4.3 ms/s (4 calls/s), game/fog/units 3.4 ms/s (4 calls/s), hud/hover 3.2 ms/s (25 calls/s), hud/command card 3.0 ms/s (2 calls/s), hud/card build 2.1 ms/s (4 calls/s), hud/tooltip 1.6 ms/s (2 calls/s), game/fog/shown 0.3 ms/s (4 calls/s), building draw 0.2 ms/s (18 calls/s), game/fog/buildings 0.1 ms/s (4 calls/s), powder smoke 0.1 ms/s (60 calls/s), hud/glow 0.1 ms/s (2 calls/s), replay/write 0.1 ms/s (0 calls/s), game/fog/picture 0.1 ms/s (4 calls/s), game/fog/copy 0.0 ms/s (4 calls/s), hud/chat 0.0 ms/s (1 calls/s), hud/pause 0.0 ms/s (1 calls/s)
+  Online (guest): ping avg 342 ms, max 430 ms | snapshots 905 (15.1/s), applied in 0.4 ms avg (10.2 max) | orders sent 23, applied 22, refused 1, seen after 359 ms avg (447 max) | to the relay 168 ms avg, 228 max | stalls 0
+  P1 Clockwork: earned 6628 cogs total, has 1664 + 400 tension | supply 40/60 | workers 30 | halls 2 | army (605 value): 4 Clock Soldier, 1 Netter, 2 Springer | kills +0 (1) losses +0 (0) | brass 32% 94% | efficiency 83%
+  YOU Brood: earned 5479 biomass total, has 504 + 400 spoils | supply 26/112 | workers 12 | halls 0 | army (1750 value): 1 Brood Mother, 4 Rootmaw, 8 Mound Turtle, 1 Tyrant Sire, 1 Venom Sire, 2 Brute | kills +0 (0) losses +0 (1) | APM 54 (this minute 54 actions) | Brood: Mother stage 3 rooted, 20 eggs | Rootmaws rooted 3 (ground 0% 0% 0%) | Mound Turtles rooted 8 | sacrificed 43 (+625 spoils)
+[08:01] P1 Clockwork dropped a Regulator: nobody was coming to start it (refunded)
+[08:05] P1 Clockwork finished a Regulator
+[08:22] P1 Clockwork finished a Regulator
+[08:25] P1 Clockwork dropped a Clock Aviary: nobody was coming to start it (refunded)
+[08:25] P1 Clockwork finished a Regulator
+[08:33] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[08:48] P1 Clockwork dropped a Regulator: nobody was coming to start it (refunded)
+[08:51] P1 Clockwork dropped a Regulator: nobody was coming to start it (refunded)
+[08:53] P1 Clockwork dropped a Regulator: nobody was coming to start it (refunded)
+[08:54] P1 Clockwork dropped a Regulator: nobody was coming to start it (refunded)
+[08:55] P1 Clockwork dropped a Regulator: nobody was coming to start it (refunded)
+[08:56] P1 Clockwork dropped a Regulator: nobody was coming to start it (refunded)
+[08:57] P1 Clockwork dropped a Regulator: nobody was coming to start it (refunded)
+[08:59] P1 Clockwork dropped a Regulator: nobody was coming to start it (refunded)
+--- minute 9 ---
+  Performance: 60 fps avg, 1% low 30 fps, worst frame 40 ms, 13 frames over 33 ms, 0 over 50 ms, 0.5 physics steps a frame | units 98, buildings 24, bodies 0, corpses 0, effects 0, smoke puffs 0, nodes 522, objects 3528
+    busy with: hud draw 248.0 ms/s (55 calls/s), overlay draw 231.2 ms/s (30 calls/s), hud/selection 65.2 ms/s (14 calls/s), hud/map view 57.0 ms/s (11 calls/s), unit draw 41.2 ms/s (93 calls/s), hud/minimap 38.8 ms/s (5 calls/s), hud/top 37.6 ms/s (6 calls/s), hud/rest 32.1 ms/s (9 calls/s), game 19.7 ms/s (30 calls/s), hud 17.9 ms/s (60 calls/s), hud/look 12.9 ms/s (16 calls/s), hud/groups 9.1 ms/s (2 calls/s), net/apply 7.4 ms/s (15 calls/s), hud/tip check 5.7 ms/s (16 calls/s), replay/record 5.7 ms/s (4 calls/s), hud/command card 4.3 ms/s (2 calls/s), game/fog/units 4.2 ms/s (4 calls/s), hud/card build 4.1 ms/s (6 calls/s), hud/tooltip 3.8 ms/s (2 calls/s), hud/hover 3.1 ms/s (23 calls/s), game/fog/shown 0.3 ms/s (4 calls/s), building draw 0.3 ms/s (27 calls/s), game/fog/buildings 0.2 ms/s (4 calls/s), replay/write 0.1 ms/s (0 calls/s), powder smoke 0.1 ms/s (60 calls/s), game/fog/picture 0.1 ms/s (4 calls/s), game/fog/copy 0.0 ms/s (4 calls/s), hud/chat 0.0 ms/s (1 calls/s), hud/glow 0.0 ms/s (2 calls/s), effects 0.0 ms/s (2 calls/s), hud/pause 0.0 ms/s (1 calls/s)
+  Online (guest): ping avg 337 ms, max 400 ms | snapshots 908 (15.1/s), applied in 0.5 ms avg (17.8 max) | orders sent 49, applied 49, refused 0, seen after 345 ms avg (397 max) | to the relay 173 ms avg, 233 max | stalls 0
+  P1 Clockwork: earned 8312 cogs total, has 973 + 43 tension | supply 68/90 | workers 34 | halls 2 | army (905 value): 4 Clock Soldier, 1 Netter, 3 Springer, 1 Pendulum | kills +0 (1) losses +0 (0) | brass 22% 85% | efficiency 81%
+  YOU Brood: earned 6001 biomass total, has 251 + 400 spoils | supply 51/124 | workers 16 | halls 0 | army (2375 value): 1 Brood Mother, 4 Rootmaw, 9 Mound Turtle, 1 Tyrant Sire, 1 Venom Sire, 2 Brute, 21 Raptors | kills +0 (0) losses +0 (1) | APM 60 (this minute 60 actions) | Brood: Mother stage 3 rooted, 20 eggs | Rootmaws rooted 3 (ground 0% 0% 0%) | Mound Turtles rooted 9 | sacrificed 43 (+625 spoils)
+[09:01] P1 Clockwork dropped a Regulator: nobody was coming to start it (refunded)
+[09:01] P1 Clockwork dropped a Regulator: nobody was coming to start it (refunded)
+[09:03] P1 Clockwork dropped a Regulator: nobody was coming to start it (refunded)
+[09:05] P1 Clockwork dropped a Regulator: nobody was coming to start it (refunded)
+[09:07] P1 Clockwork dropped a Regulator: nobody was coming to start it (refunded)
+[09:09] P1 Clockwork dropped a Regulator: nobody was coming to start it (refunded)
+[09:13] P1 Clockwork dropped a Regulator: nobody was coming to start it (refunded)
+[09:15] P1 Clockwork finished a Regulator
+[09:21] P1 Clockwork finished a Regulator
+[09:27] P1 Clockwork finished a Regulator
+[09:33] P1 Clockwork finished a Regulator
+[09:40] P1 Clockwork finished a Regulator
+[09:45] P1 Clockwork finished a Clocktower (expansion)
+--- minute 10 ---
+  Performance: 60 fps avg, 1% low 30 fps, worst frame 39 ms, 16 frames over 33 ms, 0 over 50 ms, 0.5 physics steps a frame | units 109, buildings 27, bodies 0, corpses 0, effects 0, smoke puffs 0, nodes 550, objects 3588
+    busy with: overlay draw 267.3 ms/s (30 calls/s), hud draw 194.7 ms/s (48 calls/s), hud/selection 55.7 ms/s (13 calls/s), hud/minimap 38.1 ms/s (5 calls/s), hud/top 34.9 ms/s (6 calls/s), hud/map view 33.6 ms/s (7 calls/s), unit draw 28.7 ms/s (81 calls/s), game 22.9 ms/s (30 calls/s), hud 18.3 ms/s (60 calls/s), hud/rest 18.0 ms/s (5 calls/s), hud/look 13.3 ms/s (16 calls/s), net/apply 7.8 ms/s (15 calls/s), hud/groups 6.9 ms/s (2 calls/s), replay/record 6.6 ms/s (4 calls/s), hud/tip check 6.1 ms/s (16 calls/s), game/fog/units 5.1 ms/s (4 calls/s), hud/command card 5.1 ms/s (3 calls/s), hud/card build 3.1 ms/s (5 calls/s), hud/hover 3.1 ms/s (23 calls/s), hud/tooltip 2.1 ms/s (2 calls/s), game/fog/shown 0.4 ms/s (4 calls/s), building draw 0.3 ms/s (29 calls/s), game/fog/buildings 0.2 ms/s (4 calls/s), hud/glow 0.2 ms/s (3 calls/s), replay/write 0.1 ms/s (0 calls/s), powder smoke 0.1 ms/s (60 calls/s), game/fog/copy 0.1 ms/s (4 calls/s), game/fog/picture 0.1 ms/s (4 calls/s), hud/chat 0.0 ms/s (1 calls/s), hud/pause 0.0 ms/s (1 calls/s)
+  Online (guest): ping avg 339 ms, max 435 ms | snapshots 908 (15.1/s), applied in 0.5 ms avg (10.7 max) | orders sent 40, applied 40, refused 0, seen after 351 ms avg (420 max) | to the relay 172 ms avg, 266 max | stalls 0
+  P1 Clockwork: earned 10047 cogs total, has 2354 + 38 tension | supply 75/150 | workers 34 | halls 3 | army (1480 value): 4 Clock Soldier, 3 Netter, 3 Springer, 1 Pendulum, 1 Spring Ballista, 1 Great Winder | kills +0 (1) losses +0 (0) | brass 13% 75% 100% | efficiency 79%
+  YOU Brood: earned 6766 biomass total, has 241 + 260 spoils | supply 65/124 | workers 18 | halls 0 | army (2675 value): 1 Brood Mother, 4 Rootmaw, 10 Mound Turtle, 1 Tyrant Sire, 1 Venom Sire, 2 Brute, 21 Raptors, 2 Mist Toad, 2 Egg | kills +0 (0) losses +0 (1) | APM 75 (this minute 75 actions) | Brood: Mother stage 3 rooted, 18 eggs | Rootmaws rooted 4 (ground 0% 0% 0% 0%) | Mound Turtles rooted 9 | sacrificed 43 (+625 spoils)
+[10:10] P1 Clockwork dropped a Mainspring: nobody was coming to start it (refunded)
+[10:15] P1 Clockwork dropped a Cog Press: nobody was coming to start it (refunded)
+[10:17] P1 Clockwork dropped a Cog Press: nobody was coming to start it (refunded)
+[10:20] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[10:21] P1 Clockwork dropped a Cog Press: nobody was coming to start it (refunded)
+[10:21] P1 Clockwork dropped a Cog Press: nobody was coming to start it (refunded)
+[10:24] P1 Clockwork dropped a Cog Press: nobody was coming to start it (refunded)
+[10:24] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[10:24] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[10:29] P1 Clockwork dropped a Cog Press: nobody was coming to start it (refunded)
+[10:29] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[10:29] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[10:32] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[10:32] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[10:37] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[10:40] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[10:45] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[10:45] (online) the host refused an order: It is already moulting.
+--- minute 11 ---
+  Performance: 60 fps avg, 1% low 30 fps, worst frame 38 ms, 14 frames over 33 ms, 0 over 50 ms, 0.5 physics steps a frame | units 122, buildings 31, bodies 2, corpses 0, effects 4, smoke puffs 0, nodes 614, objects 3809
+    busy with: hud draw 255.4 ms/s (57 calls/s), overlay draw 164.5 ms/s (30 calls/s), hud/map view 61.9 ms/s (11 calls/s), hud/selection 60.9 ms/s (14 calls/s), unit draw 58.5 ms/s (103 calls/s), hud/top 48.8 ms/s (7 calls/s), hud/minimap 41.6 ms/s (6 calls/s), game 26.3 ms/s (30 calls/s), hud/rest 26.2 ms/s (9 calls/s), hud 20.4 ms/s (60 calls/s), hud/look 15.0 ms/s (17 calls/s), hud/groups 9.9 ms/s (3 calls/s), net/apply 8.9 ms/s (15 calls/s), replay/record 7.4 ms/s (4 calls/s), game/fog/units 6.4 ms/s (4 calls/s), hud/tip check 6.2 ms/s (17 calls/s), hud/command card 4.7 ms/s (3 calls/s), hud/card build 4.2 ms/s (7 calls/s), hud/hover 3.7 ms/s (27 calls/s), hud/tooltip 1.1 ms/s (1 calls/s), game/fog/shown 0.4 ms/s (4 calls/s), building draw 0.3 ms/s (30 calls/s), game/fog/buildings 0.2 ms/s (4 calls/s), replay/write 0.1 ms/s (0 calls/s), powder smoke 0.1 ms/s (60 calls/s), game/fog/picture 0.1 ms/s (4 calls/s), hud/glow 0.1 ms/s (2 calls/s), effects 0.0 ms/s (26 calls/s), game/fog/copy 0.0 ms/s (4 calls/s), hud/chat 0.0 ms/s (1 calls/s), hud/pause 0.0 ms/s (1 calls/s)
+  Online (guest): ping avg 335 ms, max 466 ms | snapshots 902 (15.0/s), applied in 0.6 ms avg (14.9 max) | orders sent 32, applied 30, refused 1, seen after 358 ms avg (425 max) | to the relay 162 ms avg, 234 max | stalls 0
+  P1 Clockwork: earned 11736 cogs total, has 2560 + 42 tension | supply 76/150 | workers 34 | halls 3 | army (1835 value): 3 Clock Soldier, 4 Netter, 3 Springer, 1 Pendulum, 3 Spring Ballista, 1 Great Winder | kills +1 (2) losses +4 (4) | brass 3% 66% 100% | efficiency 77%
+  YOU Brood: earned 7694 biomass total, has 182 + 168 spoils | supply 82/124 | workers 17 | halls 0 | army (3865 value): 1 Brood Mother, 4 Rootmaw, 10 Mound Turtle, 1 Tyrant Sire, 1 Venom Sire, 2 Brute, 6 Tyrant Challenger, 15 Raptors, 4 Mist Toad, 12 Spitters | kills +4 (4) losses +1 (2) | APM 90 (this minute 90 actions) | Brood: Mother stage 3 rooted, 20 eggs | Rootmaws rooted 4 (ground 0% 0% 0% 0%) | Mound Turtles rooted 9 | sacrificed 43 (+625 spoils)
+[11:05] P1 Clockwork finished a Cog Press
+[11:11] P1 Clockwork finished a Cog Press
+[11:33] P1 Clockwork dropped a Heavy Works: nobody was coming to start it (refunded)
+[11:36] P1 Clockwork dropped a Light Works: nobody was coming to start it (refunded)
+[11:39] P1 Clockwork dropped a Light Works: nobody was coming to start it (refunded)
+[11:40] P1 Clockwork dropped a Light Works: nobody was coming to start it (refunded)
+[11:44] P1 Clockwork finished a Clocktower (expansion)
+[11:44] P1 Clockwork dropped a Light Works: nobody was coming to start it (refunded)
+[11:44] P1 Clockwork dropped a Light Works: nobody was coming to start it (refunded)
+[11:48] P1 Clockwork dropped a Light Works: nobody was coming to start it (refunded)
+[11:52] P1 Clockwork dropped a Light Works: nobody was coming to start it (refunded)
+--- minute 12 ---
+  Performance: 60 fps avg, 1% low 30 fps, worst frame 36 ms, 14 frames over 33 ms, 0 over 50 ms, 0.5 physics steps a frame | units 90, buildings 35, bodies 42, corpses 0, effects 0, smoke puffs 0, nodes 637, objects 4141
+    busy with: overlay draw 205.4 ms/s (30 calls/s), hud draw 165.3 ms/s (45 calls/s), hud/selection 63.1 ms/s (16 calls/s), unit draw 59.2 ms/s (133 calls/s), hud/top 38.8 ms/s (7 calls/s), hud/minimap 34.6 ms/s (6 calls/s), game 25.5 ms/s (30 calls/s), hud 19.1 ms/s (60 calls/s), hud/look 13.8 ms/s (17 calls/s), hud/rest 10.5 ms/s (4 calls/s), net/apply 10.4 ms/s (15 calls/s), hud/map view 8.9 ms/s (3 calls/s), replay/record 7.1 ms/s (4 calls/s), hud/tip check 6.8 ms/s (17 calls/s), game/fog/units 5.8 ms/s (4 calls/s), hud/groups 5.3 ms/s (2 calls/s), hud/command card 4.1 ms/s (3 calls/s), hud/hover 3.8 ms/s (29 calls/s), hud/card build 2.6 ms/s (6 calls/s), game/fog/shown 0.4 ms/s (4 calls/s), effects 0.3 ms/s (197 calls/s), building draw 0.3 ms/s (30 calls/s), game/fog/buildings 0.2 ms/s (4 calls/s), replay/write 0.2 ms/s (0 calls/s), powder smoke 0.1 ms/s (60 calls/s), game/fog/picture 0.1 ms/s (4 calls/s), game/fog/copy 0.0 ms/s (4 calls/s), hud/chat 0.0 ms/s (1 calls/s), hud/glow 0.0 ms/s (2 calls/s), hud/tooltip 0.0 ms/s (1 calls/s), hud/pause 0.0 ms/s (1 calls/s)
+  Online (guest): ping avg 342 ms, max 399 ms | snapshots 907 (15.1/s), applied in 0.7 ms avg (14.6 max) | orders sent 60, applied 61, refused 0, seen after 373 ms avg (530 max) | to the relay 167 ms avg, 230 max | stalls 0
+  P1 Clockwork: earned 13281 cogs total, has 2610 + 34 tension | supply 55/160 | workers 35 | halls 4 | army (410 value): 3 Clock Soldier, 2 Springer | kills +23 (25) losses +14 (18) | brass 0% 57% 96% 100% | efficiency 56%
+  YOU Brood: earned 8661 biomass total, has 1146 + 168 spoils | supply 53/136 | workers 17 | halls 0 | army (2785 value): 1 Brood Mother, 4 Rootmaw, 10 Mound Turtle, 1 Tyrant Sire, 1 Venom Sire, 1 Brute, 2 Tyrant Challenger, 1 Raptors, 4 Mist Toad, 8 Spitters | kills +14 (18) losses +23 (25) | APM 117 (this minute 117 actions) | Brood: Mother stage 3 rooted, 20 eggs | Rootmaws rooted 4 (ground 0% 0% 0% 0%) | Mound Turtles rooted 10 | sacrificed 43 (+625 spoils)
+[12:07] P1 Clockwork finished a Clocktower (expansion)
+[12:25] P1 Clockwork finished a Heavy Works
+[12:29] P1 Clockwork finished a Light Works
+[12:39] P1 Clockwork finished a Light Works
+[12:45] P1 Clockwork finished a Light Works
+--- minute 13 ---
+  Performance: 60 fps avg, 1% low 30 fps, worst frame 35 ms, 16 frames over 33 ms, 0 over 50 ms, 0.5 physics steps a frame | units 122, buildings 35, bodies 23, corpses 0, effects 0, smoke puffs 0, nodes 675, objects 4157
+    busy with: overlay draw 230.6 ms/s (25 calls/s), hud draw 192.6 ms/s (47 calls/s), hud/selection 56.3 ms/s (14 calls/s), hud/minimap 39.0 ms/s (6 calls/s), hud/top 37.7 ms/s (6 calls/s), hud/map view 34.4 ms/s (7 calls/s), game 26.8 ms/s (30 calls/s), unit draw 23.6 ms/s (84 calls/s), hud 19.2 ms/s (60 calls/s), hud/look 14.4 ms/s (16 calls/s), hud/rest 11.2 ms/s (4 calls/s), net/apply 8.9 ms/s (15 calls/s), hud/tip check 6.7 ms/s (16 calls/s), replay/record 6.6 ms/s (4 calls/s), game/fog/units 5.7 ms/s (4 calls/s), hud/groups 5.3 ms/s (2 calls/s), hud/tooltip 4.3 ms/s (2 calls/s), hud/command card 3.9 ms/s (2 calls/s), hud/card build 3.6 ms/s (6 calls/s), hud/hover 2.7 ms/s (21 calls/s), game/fog/shown 0.4 ms/s (4 calls/s), hud/glow 0.3 ms/s (3 calls/s), building draw 0.3 ms/s (30 calls/s), game/fog/buildings 0.2 ms/s (4 calls/s), replay/write 0.1 ms/s (0 calls/s), powder smoke 0.1 ms/s (60 calls/s), game/fog/picture 0.1 ms/s (4 calls/s), game/fog/copy 0.0 ms/s (4 calls/s), hud/chat 0.0 ms/s (1 calls/s), hud/pause 0.0 ms/s (1 calls/s)
+  Online (guest): ping avg 339 ms, max 480 ms | snapshots 906 (15.1/s), applied in 0.6 ms avg (2.9 max) | orders sent 47, applied 47, refused 0, seen after 359 ms avg (428 max) | to the relay 168 ms avg, 230 max | stalls 0
+  P1 Clockwork: earned 15008 cogs total, has 3450 + 15 tension | supply 70/170 | workers 39 | halls 5 | army (880 value): 4 Clock Soldier, 3 Springer, 1 Netter, 1 Great Winder | kills +0 (25) losses +0 (18) | brass 0% 47% 86% 100% 100% | efficiency 55%
+  YOU Brood: earned 9342 biomass total, has 387 + 76 spoils | supply 85/136 | workers 17 | halls 0 | army (4225 value): 1 Brood Mother, 4 Rootmaw, 10 Mound Turtle, 1 Tyrant Sire, 1 Venom Sire, 1 Brute, 2 Tyrant Challenger, 25 Raptors, 4 Mist Toad, 8 Venom Challenger | kills +0 (18) losses +0 (25) | APM 55 (this minute 55 actions) | Brood: Mother stage 3 rooted, 20 eggs | Rootmaws rooted 4 (ground 0% 0% 0% 0%) | Mound Turtles rooted 10 | sacrificed 43 (+625 spoils)
+[13:21] P1 Clockwork dropped a Mainspring: nobody was coming to start it (refunded)
+[13:26] P1 Clockwork dropped a Light Works: nobody was coming to start it (refunded)
+[13:29] P1 Clockwork dropped a Light Works: nobody was coming to start it (refunded)
+[13:42] P1 Clockwork dropped a Cog Press: nobody was coming to start it (refunded)
+--- minute 14 ---
+  Performance: 60 fps avg, 1% low 29 fps, worst frame 42 ms, 16 frames over 33 ms, 0 over 50 ms, 0.5 physics steps a frame | units 141, buildings 39, bodies 13, corpses 0, effects 0, smoke puffs 0, nodes 700, objects 4160
+    busy with: hud draw 215.1 ms/s (46 calls/s), overlay draw 129.2 ms/s (18 calls/s), hud/selection 63.1 ms/s (12 calls/s), hud/minimap 44.0 ms/s (6 calls/s), hud/map view 32.4 ms/s (5 calls/s), game 30.4 ms/s (30 calls/s), hud/top 28.4 ms/s (5 calls/s), hud/rest 24.1 ms/s (7 calls/s), hud 19.6 ms/s (60 calls/s), unit draw 18.3 ms/s (59 calls/s), hud/look 14.4 ms/s (16 calls/s), hud/pause 8.9 ms/s (1 calls/s), net/apply 8.7 ms/s (15 calls/s), replay/record 7.3 ms/s (4 calls/s), game/fog/units 6.9 ms/s (4 calls/s), hud/groups 6.8 ms/s (2 calls/s), hud/tip check 6.1 ms/s (16 calls/s), hud/command card 4.8 ms/s (2 calls/s), hud/hover 3.6 ms/s (28 calls/s), hud/card build 3.3 ms/s (5 calls/s), hud/tooltip 1.9 ms/s (1 calls/s), hud/glow 0.6 ms/s (4 calls/s), game/fog/shown 0.5 ms/s (4 calls/s), building draw 0.3 ms/s (30 calls/s), game/fog/buildings 0.2 ms/s (4 calls/s), powder smoke 0.1 ms/s (60 calls/s), replay/write 0.1 ms/s (0 calls/s), game/fog/picture 0.1 ms/s (4 calls/s), game/fog/copy 0.0 ms/s (4 calls/s), hud/chat 0.0 ms/s (1 calls/s), effects 0.0 ms/s (2 calls/s)
+  Online (guest): ping avg 329 ms, max 365 ms | snapshots 904 (15.1/s), applied in 0.6 ms avg (3.2 max) | orders sent 28, applied 28, refused 0, seen after 363 ms avg (395 max) | to the relay 163 ms avg, 204 max | stalls 0
+  P1 Clockwork: earned 16712 cogs total, has 3662 + 38 tension | supply 84/170 | workers 45 | halls 5 | army (1900 value): 15 Clock Soldier, 4 Springer, 1 Netter, 1 Great Winder, 1 Spring Ballista | kills +0 (25) losses +0 (18) | brass 0% 38% 77% 100% 100% | efficiency 55%
+  YOU Brood: earned 10245 biomass total, has 1090 + 76 spoils | supply 85/136 | workers 17 | halls 0 | army (4225 value): 1 Brood Mother, 4 Rootmaw, 10 Mound Turtle, 1 Tyrant Sire, 1 Venom Sire, 1 Brute, 2 Tyrant Challenger, 25 Raptors, 4 Mist Toad, 8 Venom Challenger | kills +0 (18) losses +0 (25) | APM 61 (this minute 61 actions) | Brood: Mother stage 3 rooted, 20 eggs | Rootmaws rooted 4 (ground 0% 0% 0% 0%) | Mound Turtles rooted 10 | sacrificed 43 (+625 spoils)
+[14:08] P1 Clockwork finished a Mainspring
+[14:22] P1 Clockwork finished a Light Works
+[14:28] P1 Clockwork finished a Cog Press
+[14:31] P1 Clockwork finished a Cog Press
+[14:42] P1 Clockwork lost a Clock Aviary to YOU Brood
+--- minute 15 ---
+  Performance: 60 fps avg, 1% low 30 fps, worst frame 36 ms, 15 frames over 33 ms, 0 over 50 ms, 0.5 physics steps a frame | units 172, buildings 38, bodies 42, corpses 0, effects 0, smoke puffs 0, nodes 820, objects 4517
+    busy with: hud draw 174.6 ms/s (45 calls/s), overlay draw 86.9 ms/s (22 calls/s), hud/selection 48.8 ms/s (13 calls/s), hud/map view 38.0 ms/s (7 calls/s), unit draw 35.0 ms/s (184 calls/s), hud/minimap 34.6 ms/s (6 calls/s), game 31.8 ms/s (30 calls/s), hud/top 26.9 ms/s (5 calls/s), hud 19.9 ms/s (60 calls/s), hud/look 15.2 ms/s (16 calls/s), net/apply 12.1 ms/s (13 calls/s), hud/rest 11.8 ms/s (4 calls/s), replay/record 9.3 ms/s (4 calls/s), hud/groups 9.1 ms/s (3 calls/s), hud/tip check 7.5 ms/s (16 calls/s), game/fog/units 6.6 ms/s (4 calls/s), hud/command card 5.2 ms/s (3 calls/s), hud/card build 3.6 ms/s (6 calls/s), hud/hover 2.8 ms/s (23 calls/s), game/fog/shown 0.5 ms/s (4 calls/s), building draw 0.4 ms/s (59 calls/s), game/fog/buildings 0.2 ms/s (4 calls/s), effects 0.2 ms/s (153 calls/s), replay/write 0.2 ms/s (0 calls/s), powder smoke 0.1 ms/s (60 calls/s), game/fog/picture 0.1 ms/s (4 calls/s), game/fog/copy 0.0 ms/s (4 calls/s), hud/chat 0.0 ms/s (1 calls/s), hud/glow 0.0 ms/s (2 calls/s), hud/tooltip 0.0 ms/s (1 calls/s), hud/pause 0.0 ms/s (1 calls/s)
+  Online (guest): ping avg 331 ms, max 395 ms | snapshots 793 (13.2/s), applied in 0.9 ms avg (8.6 max) | orders sent 69, applied 69, refused 0, seen after 354 ms avg (414 max) | to the relay 167 ms avg, 205 max | stalls 0
+  P1 Clockwork: earned 18491 cogs total, has 3835 + 18 tension | supply 98/170 | workers 41 | halls 5 | army (2210 value): 18 Clock Soldier, 5 Springer, 1 Netter, 1 Great Winder, 1 Spring Ballista | kills +29 (54) losses +8 (26) | brass 0% 28% 69% 98% 100% | efficiency 56%
+  YOU Brood: earned 11212 biomass total, has 557 + 76 spoils | supply 108/160 | workers 15 | halls 0 | army (4850 value): 1 Brood Mother, 4 Rootmaw, 12 Mound Turtle, 1 Tyrant Sire, 1 Venom Sire, 3 Mist Toad, 8 Venom Challenger, 60 Raptors | kills +8 (26) losses +29 (54) | APM 83 (this minute 83 actions) | Brood: Mother stage 3 rooted, 13 eggs | Rootmaws rooted 3 (ground 0% 0% 0%) | Mound Turtles rooted 12 | sacrificed 43 (+625 spoils)
+[15:23] P1 Clockwork dropped a Ratchet Turret: nobody was coming to start it (refunded)
+[15:23] P1 Clockwork dropped a Ratchet Turret: nobody was coming to start it (refunded)
+[15:27] P1 Clockwork dropped a Ratchet Turret: nobody was coming to start it (refunded)
+[16:00] P1 Clockwork finished a Ratchet Turret
+--- minute 16 ---
+  Performance: 60 fps avg, 1% low 30 fps, worst frame 36 ms, 18 frames over 33 ms, 0 over 50 ms, 0.5 physics steps a frame | units 128, buildings 40, bodies 9, corpses 0, effects 0, smoke puffs 0, nodes 671, objects 4139
+    busy with: hud draw 295.6 ms/s (58 calls/s), overlay draw 108.9 ms/s (23 calls/s), hud/map view 99.7 ms/s (14 calls/s), hud/selection 74.1 ms/s (15 calls/s), unit draw 45.1 ms/s (73 calls/s), hud/minimap 44.9 ms/s (5 calls/s), hud/top 33.4 ms/s (5 calls/s), game 33.3 ms/s (30 calls/s), hud/rest 30.6 ms/s (8 calls/s), hud 20.0 ms/s (60 calls/s), hud/look 15.0 ms/s (17 calls/s), net/apply 9.4 ms/s (14 calls/s), hud/groups 8.6 ms/s (2 calls/s), replay/record 8.3 ms/s (4 calls/s), game/fog/units 7.2 ms/s (4 calls/s), hud/tip check 6.8 ms/s (17 calls/s), hud/command card 4.0 ms/s (2 calls/s), hud/hover 3.4 ms/s (26 calls/s), hud/card build 3.0 ms/s (7 calls/s), game/fog/shown 0.6 ms/s (4 calls/s), building draw 0.5 ms/s (86 calls/s), game/fog/buildings 0.2 ms/s (4 calls/s), replay/write 0.2 ms/s (0 calls/s), powder smoke 0.1 ms/s (60 calls/s), game/fog/picture 0.1 ms/s (4 calls/s), hud/glow 0.1 ms/s (2 calls/s), game/fog/copy 0.1 ms/s (4 calls/s), hud/chat 0.0 ms/s (1 calls/s), hud/tooltip 0.0 ms/s (1 calls/s), hud/pause 0.0 ms/s (1 calls/s), effects 0.0 ms/s (0 calls/s)
+  Online (guest): ping avg 339 ms, max 432 ms | snapshots 883 (14.7/s), applied in 0.6 ms avg (4.4 max) | orders sent 76, applied 76, refused 0, seen after 363 ms avg (406 max) | to the relay 178 ms avg, 235 max | stalls 0
+  P1 Clockwork: earned 20658 cogs total, has 4956 + 54 tension | supply 110/170 | workers 41 | halls 5 | army (3425 value): 30 Clock Soldier, 6 Springer, 2 Netter, 1 Great Winder, 2 Spring Ballista | kills +0 (54) losses +0 (26) | brass 0% 18% 59% 93% 100% | efficiency 55%
+  YOU Brood: earned 12120 biomass total, has 1115 + 906 spoils | supply 54/148 | workers 14 | halls 0 | army (3700 value): 1 Brood Mother, 4 Rootmaw, 12 Mound Turtle, 1 Tyrant Sire, 1 Venom Sire, 3 Mist Toad, 8 Venom Challenger, 1 Storm Sire, 1 Brute | kills +0 (26) losses +0 (54) | APM 42 (this minute 42 actions) | Brood: Mother stage 3 rooted, 20 eggs | Rootmaws rooted 4 (ground 0% 0% 0% 0%) | Mound Turtles rooted 11 | sacrificed 103 (+1525 spoils)
+[16:04] P1 Clockwork finished a Ratchet Turret
+[16:53] (online) the host refused an order: It is already moulting.
+[16:53] YOU Brood pressed MATURE: refused, Not enough biomass. (had 90 biomass, 0 tension)
+[16:53] (online) the host refused an order: It is already moulting.
+--- minute 17 ---
+  Performance: 60 fps avg, 1% low 29 fps, worst frame 37 ms, 29 frames over 33 ms, 0 over 50 ms, 0.5 physics steps a frame | units 173, buildings 40, bodies 11, corpses 0, effects 2, smoke puffs 0, nodes 772, objects 4370
+    busy with: overlay draw 160.6 ms/s (25 calls/s), hud draw 158.5 ms/s (45 calls/s), unit draw 62.4 ms/s (207 calls/s), hud/selection 51.1 ms/s (15 calls/s), hud/minimap 34.6 ms/s (6 calls/s), game 33.0 ms/s (30 calls/s), hud/top 26.6 ms/s (5 calls/s), hud 24.3 ms/s (60 calls/s), hud/map view 23.1 ms/s (5 calls/s), hud/look 19.3 ms/s (17 calls/s), net/apply 13.2 ms/s (12 calls/s), replay/record 9.5 ms/s (4 calls/s), hud/groups 9.1 ms/s (2 calls/s), hud/tip check 8.5 ms/s (17 calls/s), hud/rest 7.0 ms/s (3 calls/s), game/fog/units 7.0 ms/s (4 calls/s), hud/card build 5.9 ms/s (8 calls/s), hud/command card 5.2 ms/s (3 calls/s), hud/hover 3.4 ms/s (25 calls/s), hud/tooltip 1.5 ms/s (1 calls/s), game/fog/shown 0.6 ms/s (4 calls/s), building draw 0.4 ms/s (64 calls/s), game/fog/buildings 0.2 ms/s (4 calls/s), effects 0.2 ms/s (110 calls/s), replay/write 0.2 ms/s (0 calls/s), powder smoke 0.1 ms/s (60 calls/s), hud/glow 0.1 ms/s (2 calls/s), game/fog/picture 0.1 ms/s (4 calls/s), game/fog/copy 0.0 ms/s (4 calls/s), hud/chat 0.0 ms/s (1 calls/s), hud/pause 0.0 ms/s (1 calls/s)
+  Online (guest): ping avg 339 ms, max 496 ms | snapshots 761 (12.7/s), applied in 1.0 ms avg (14.3 max) | orders sent 93, applied 91, refused 2, seen after 369 ms avg (686 max) | to the relay 172 ms avg, 228 max | stalls 0
+  P1 Clockwork: earned 22540 cogs total, has 5555 + 47 tension | supply 128/170 | workers 42 | halls 5 | army (4040 value): 37 Clock Soldier, 6 Springer, 3 Netter, 1 Great Winder, 2 Spring Ballista | kills +5 (59) losses +3 (29) | brass 0% 9% 53% 88% 100% | efficiency 37%
+  YOU Brood: earned 13053 biomass total, has 118 + 631 spoils | supply 90/148 | workers 14 | halls 0 | army (4895 value): 1 Brood Mother, 3 Rootmaw, 1 Tyrant Sire, 11 Mound Turtle, 1 Venom Sire, 3 Mist Toad, 8 Venom Challenger, 1 Storm Sire, 38 Hatchlings | kills +3 (29) losses +5 (59) | APM 112 (this minute 112 actions) | Brood: Mother stage 3 rooted, 17 eggs | Rootmaws rooted 3 (ground 0% 0% 0%) | Mound Turtles rooted 11 | sacrificed 103 (+1525 spoils)
+--- minute 18 ---
+  Performance: 60 fps avg, 1% low 30 fps, worst frame 39 ms, 10 frames over 33 ms, 0 over 50 ms, 0.5 physics steps a frame | units 92, buildings 40, bodies 75, corpses 0, effects 0, smoke puffs 0, nodes 735, objects 4668
+    busy with: overlay draw 165.7 ms/s (20 calls/s), hud draw 132.7 ms/s (34 calls/s), unit draw 106.9 ms/s (199 calls/s), hud/minimap 40.7 ms/s (5 calls/s), hud/top 39.6 ms/s (5 calls/s), game 31.5 ms/s (30 calls/s), hud/selection 22.1 ms/s (8 calls/s), hud 20.2 ms/s (60 calls/s), hud/look 15.9 ms/s (16 calls/s), hud/map view 15.0 ms/s (5 calls/s), net/apply 11.8 ms/s (13 calls/s), replay/record 9.1 ms/s (4 calls/s), hud/tip check 8.5 ms/s (16 calls/s), hud/rest 7.7 ms/s (3 calls/s), game/fog/units 6.1 ms/s (4 calls/s), hud/groups 5.3 ms/s (2 calls/s), hud/card build 3.2 ms/s (5 calls/s), hud/command card 2.1 ms/s (2 calls/s), hud/hover 1.8 ms/s (13 calls/s), game/fog/shown 0.6 ms/s (4 calls/s), effects 0.4 ms/s (351 calls/s), building draw 0.4 ms/s (69 calls/s), game/fog/buildings 0.2 ms/s (4 calls/s), replay/write 0.2 ms/s (0 calls/s), powder smoke 0.1 ms/s (60 calls/s), game/fog/picture 0.1 ms/s (4 calls/s), game/fog/copy 0.0 ms/s (4 calls/s), hud/chat 0.0 ms/s (1 calls/s), hud/glow 0.0 ms/s (1 calls/s), hud/tooltip 0.0 ms/s (1 calls/s), hud/pause 0.0 ms/s (1 calls/s)
+  Online (guest): ping avg 340 ms, max 621 ms | snapshots 782 (13.0/s), applied in 0.9 ms avg (14.7 max) | orders sent 50, applied 50, refused 0, seen after 361 ms avg (460 max) | to the relay 176 ms avg, 399 max | stalls 0
+  P1 Clockwork: earned 24281 cogs total, has 6126 + 75 tension | supply 89/170 | workers 37 | halls 5 | army (1880 value): 14 Clock Soldier, 1 Great Winder, 2 Spring Ballista, 1 Netter, 3 Springer | kills +20 (79) losses +49 (78) | brass 0% 0% 47% 83% 100% | efficiency 31%
+  YOU Brood: earned 13639 biomass total, has 419 + 1141 spoils | supply 34/136 | workers 10 | halls 0 | army (2675 value): 1 Brood Mother, 3 Rootmaw, 1 Tyrant Sire, 10 Mound Turtle, 1 Venom Sire, 6 Venom Challenger, 1 Storm Sire | kills +49 (78) losses +20 (79) | APM 35 (this minute 35 actions) | Brood: Mother stage 3 rooted, 20 eggs | Rootmaws rooted 3 (ground 0% 0% 0%) | Mound Turtles rooted 10 | sacrificed 140 (+2043 spoils)
+[18:42] P1 Clockwork dropped a Mainspring: nobody was coming to start it (refunded)
+[18:45] P1 Clockwork dropped a Mainspring: nobody was coming to start it (refunded)
+[18:57] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+--- minute 19 ---
+  Performance: 60 fps avg, 1% low 31 fps, worst frame 38 ms, 3 frames over 33 ms, 0 over 50 ms, 0.5 physics steps a frame | units 87, buildings 42, bodies 85, corpses 0, effects 0, smoke puffs 0, nodes 746, objects 4743
+    busy with: overlay draw 237.2 ms/s (21 calls/s), hud draw 176.0 ms/s (33 calls/s), hud/selection 88.7 ms/s (13 calls/s), hud/minimap 41.3 ms/s (5 calls/s), unit draw 35.4 ms/s (63 calls/s), game 28.0 ms/s (30 calls/s), hud/top 26.2 ms/s (4 calls/s), hud 16.9 ms/s (60 calls/s), hud/look 12.7 ms/s (15 calls/s), hud/map view 11.3 ms/s (3 calls/s), net/apply 7.6 ms/s (15 calls/s), hud/tip check 7.2 ms/s (15 calls/s), replay/record 5.0 ms/s (4 calls/s), game/fog/units 4.5 ms/s (4 calls/s), hud/groups 3.8 ms/s (1 calls/s), hud/command card 2.5 ms/s (2 calls/s), hud/hover 1.9 ms/s (16 calls/s), hud/card build 1.7 ms/s (4 calls/s), hud/tooltip 1.5 ms/s (1 calls/s), hud/rest 0.7 ms/s (1 calls/s), building draw 0.4 ms/s (87 calls/s), game/fog/shown 0.4 ms/s (4 calls/s), game/fog/buildings 0.2 ms/s (4 calls/s), powder smoke 0.1 ms/s (60 calls/s), replay/write 0.1 ms/s (0 calls/s), effects 0.1 ms/s (52 calls/s), game/fog/picture 0.1 ms/s (4 calls/s), game/fog/copy 0.0 ms/s (4 calls/s), hud/chat 0.0 ms/s (1 calls/s), hud/glow 0.0 ms/s (1 calls/s), hud/pause 0.0 ms/s (1 calls/s)
+  Online (guest): ping avg 336 ms, max 396 ms | snapshots 901 (15.0/s), applied in 0.5 ms avg (12.9 max) | orders sent 11, applied 11, refused 0, seen after 365 ms avg (429 max) | to the relay 169 ms avg, 229 max | stalls 0
+  P1 Clockwork: earned 25832 cogs total, has 5612 + 64 tension | supply 88/170 | workers 37 | halls 5 | army (1580 value): 14 Clock Soldier, 1 Great Winder, 1 Netter, 3 Springer | kills +2 (81) losses +15 (93) | brass 0% 0% 38% 75% 100% | efficiency 41%
+  YOU Brood: earned 14147 biomass total, has 927 + 1141 spoils | supply 30/136 | workers 10 | halls 0 | army (2375 value): 1 Brood Mother, 3 Rootmaw, 1 Tyrant Sire, 10 Mound Turtle, 1 Venom Sire, 4 Venom Challenger, 1 Storm Sire | kills +15 (93) losses +2 (81) | APM 32 (this minute 32 actions) | Brood: Mother stage 3 rooted, 20 eggs | Rootmaws rooted 3 (ground 0% 0% 0%) | Mound Turtles rooted 10 | sacrificed 140 (+2043 spoils)
+[19:01] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[19:05] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[19:06] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[19:07] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[19:09] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[19:11] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[19:11] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[19:13] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[19:15] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[19:15] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[19:19] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[19:19] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[19:23] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[19:23] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[19:26] P1 Clockwork finished a Mainspring
+[19:27] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[19:27] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[19:31] P1 Clockwork finished a Mainspring
+[19:31] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[19:31] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[19:35] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[19:35] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[19:39] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[19:39] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[19:43] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[19:47] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[19:51] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[19:54] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[19:59] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+--- minute 20 ---
+  Performance: 60 fps avg, 1% low 31 fps, worst frame 34 ms, 8 frames over 33 ms, 0 over 50 ms, 0.5 physics steps a frame | units 124, buildings 45, bodies 29, corpses 0, effects 0, smoke puffs 0, nodes 716, objects 4419
+    busy with: overlay draw 291.9 ms/s (27 calls/s), hud draw 233.9 ms/s (41 calls/s), hud/selection 116.0 ms/s (15 calls/s), hud/minimap 39.5 ms/s (5 calls/s), game 30.8 ms/s (30 calls/s), hud/map view 29.3 ms/s (6 calls/s), hud/top 28.9 ms/s (4 calls/s), hud 18.3 ms/s (60 calls/s), hud/look 14.3 ms/s (16 calls/s), unit draw 11.2 ms/s (76 calls/s), hud/rest 8.0 ms/s (2 calls/s), net/apply 7.8 ms/s (14 calls/s), hud/tip check 7.2 ms/s (16 calls/s), hud/groups 5.6 ms/s (2 calls/s), replay/record 5.4 ms/s (4 calls/s), game/fog/units 4.9 ms/s (4 calls/s), hud/card build 3.6 ms/s (4 calls/s), hud/command card 3.4 ms/s (2 calls/s), hud/tooltip 3.0 ms/s (2 calls/s), hud/hover 1.8 ms/s (14 calls/s), game/fog/shown 0.5 ms/s (4 calls/s), building draw 0.4 ms/s (86 calls/s), game/fog/buildings 0.2 ms/s (4 calls/s), replay/write 0.1 ms/s (0 calls/s), powder smoke 0.1 ms/s (60 calls/s), game/fog/picture 0.1 ms/s (4 calls/s), game/fog/copy 0.1 ms/s (4 calls/s), hud/chat 0.0 ms/s (1 calls/s), hud/glow 0.0 ms/s (1 calls/s), hud/pause 0.0 ms/s (1 calls/s)
+  Online (guest): ping avg 344 ms, max 398 ms | snapshots 905 (15.1/s), applied in 0.5 ms avg (3.0 max) | orders sent 35, applied 35, refused 0, seen after 367 ms avg (515 max) | to the relay 174 ms avg, 236 max | stalls 0
+  P1 Clockwork: earned 27571 cogs total, has 3961 + 8 tension | supply 121/170 | workers 41 | halls 5 | army (2610 value): 23 Clock Soldier, 1 Great Winder, 1 Netter, 7 Springer | kills +0 (81) losses +0 (93) | brass 0% 0% 28% 65% 100% | efficiency 40%
+  YOU Brood: earned 14622 biomass total, has 27 + 1051 spoils | supply 50/136 | workers 10 | halls 0 | army (2375 value): 1 Brood Mother, 3 Rootmaw, 1 Tyrant Sire, 10 Mound Turtle, 1 Venom Sire, 4 Venom Challenger, 1 Storm Sire, 20 Egg | kills +0 (93) losses +0 (81) | APM 20 (this minute 20 actions) | Brood: Mother stage 3 rooted, 5 eggs | Rootmaws rooted 2 (ground 0% 0%) | Mound Turtles rooted 10 | sacrificed 140 (+2043 spoils)
+[20:02] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[20:07] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[20:11] P1 Clockwork dropped a Clocktower: nobody was coming to start it (refunded)
+[20:16] P1 Clockwork finished a Clocktower (expansion)
+[20:41] P1 Clockwork finished a Clocktower (expansion)
+--- minute 21 ---
+  Performance: 60 fps avg, 1% low 30 fps, worst frame 36 ms, 16 frames over 33 ms, 0 over 50 ms, 0.5 physics steps a frame | units 143, buildings 46, bodies 8, corpses 0, effects 0, smoke puffs 0, nodes 707, objects 4304
+    busy with: hud draw 256.4 ms/s (51 calls/s), overlay draw 188.6 ms/s (18 calls/s), hud/selection 93.5 ms/s (15 calls/s), hud/minimap 44.7 ms/s (5 calls/s), hud/map view 43.9 ms/s (8 calls/s), hud/rest 38.2 ms/s (8 calls/s), unit draw 34.4 ms/s (75 calls/s), game 34.1 ms/s (30 calls/s), hud/top 26.5 ms/s (4 calls/s), hud 19.3 ms/s (60 calls/s), hud/look 14.8 ms/s (16 calls/s), net/apply 8.8 ms/s (14 calls/s), hud/tip check 8.8 ms/s (16 calls/s), replay/record 6.6 ms/s (4 calls/s), game/fog/units 6.3 ms/s (4 calls/s), hud/groups 6.2 ms/s (2 calls/s), hud/command card 2.9 ms/s (2 calls/s), hud/hover 2.6 ms/s (20 calls/s), hud/card build 1.4 ms/s (4 calls/s), game/fog/shown 0.6 ms/s (4 calls/s), building draw 0.4 ms/s (87 calls/s), hud/glow 0.4 ms/s (3 calls/s), game/fog/buildings 0.3 ms/s (4 calls/s), replay/write 0.2 ms/s (0 calls/s), powder smoke 0.1 ms/s (60 calls/s), game/fog/picture 0.1 ms/s (4 calls/s), game/fog/copy 0.0 ms/s (4 calls/s), hud/chat 0.0 ms/s (1 calls/s), hud/tooltip 0.0 ms/s (1 calls/s), hud/pause 0.0 ms/s (1 calls/s)
+  Online (guest): ping avg 334 ms, max 501 ms | snapshots 900 (15.0/s), applied in 0.6 ms avg (3.6 max) | orders sent 34, applied 34, refused 0, seen after 361 ms avg (447 max) | to the relay 163 ms avg, 199 max | stalls 0
+  P1 Clockwork: earned 29219 cogs total, has 4984 + 82 tension | supply 134/190 | workers 47 | halls 7 | army (3770 value): 31 Clock Soldier, 1 Great Winder, 1 Netter, 10 Springer, 2 Spring Ballista | kills +0 (81) losses +0 (93) | brass 0% 0% 19% 57% 100% 100% 100% | efficiency 48%
+  YOU Brood: earned 14929 biomass total, has 234 + 1051 spoils | supply 50/136 | workers 30 | halls 0 | army (2375 value): 1 Brood Mother, 3 Rootmaw, 1 Tyrant Sire, 10 Mound Turtle, 1 Venom Sire, 4 Venom Challenger, 1 Storm Sire | kills +0 (93) losses +0 (81) | APM 50 (this minute 50 actions) | Brood: Mother stage 3 rooted, 20 eggs | Rootmaws rooted 3 (ground 0% 0% 0%) | Mound Turtles rooted 10 | sacrificed 140 (+2043 spoils)
+[21:04] P1 Clockwork dropped a Clock Aviary: nobody was coming to start it (refunded)
+[21:08] P1 Clockwork dropped a Clock Aviary: nobody was coming to start it (refunded)
+[21:12] P1 Clockwork dropped a Clock Aviary: nobody was coming to start it (refunded)
+[21:12] P1 Clockwork finished a Clocktower (expansion)
+[21:18] P1 Clockwork dropped a Regulator: nobody was coming to start it (refunded)
+[21:22] P1 Clockwork dropped a Mainspring: nobody was coming to start it (refunded)
+[21:33] P1 Clockwork finished a Clocktower (expansion)
+[21:34] P1 Clockwork dropped a Mainspring: nobody was coming to start it (refunded)
+[21:43] P1 Clockwork finished a Regulator
+[21:58] P1 Clockwork finished a Clock Aviary
+--- minute 22 ---
+  Performance: 60 fps avg, 1% low 29 fps, worst frame 44 ms, 25 frames over 33 ms, 0 over 50 ms, 0.5 physics steps a frame | units 150, buildings 50, bodies 12, corpses 0, effects 6, smoke puffs 0, nodes 734, objects 4389
+    busy with: hud draw 240.2 ms/s (42 calls/s), overlay draw 156.9 ms/s (16 calls/s), hud/selection 121.5 ms/s (15 calls/s), hud/minimap 47.6 ms/s (5 calls/s), game 37.2 ms/s (30 calls/s), unit draw 29.7 ms/s (79 calls/s), hud/top 29.5 ms/s (4 calls/s), hud 23.5 ms/s (60 calls/s), hud/rest 20.3 ms/s (6 calls/s), hud/look 19.7 ms/s (15 calls/s), hud/map view 16.3 ms/s (4 calls/s), hud/tip check 13.7 ms/s (15 calls/s), net/apply 9.2 ms/s (14 calls/s), replay/record 7.2 ms/s (4 calls/s), game/fog/units 6.8 ms/s (4 calls/s), hud/groups 3.4 ms/s (1 calls/s), hud/command card 1.4 ms/s (2 calls/s), hud/card build 1.2 ms/s (4 calls/s), hud/hover 1.2 ms/s (9 calls/s), game/fog/shown 0.7 ms/s (4 calls/s), building draw 0.4 ms/s (78 calls/s), game/fog/buildings 0.3 ms/s (4 calls/s), replay/write 0.1 ms/s (0 calls/s), powder smoke 0.1 ms/s (60 calls/s), game/fog/picture 0.1 ms/s (4 calls/s), hud/tooltip 0.1 ms/s (1 calls/s), effects 0.0 ms/s (22 calls/s), game/fog/copy 0.0 ms/s (4 calls/s), hud/chat 0.0 ms/s (1 calls/s), hud/glow 0.0 ms/s (1 calls/s), hud/pause 0.0 ms/s (1 calls/s)
+  Online (guest): ping avg 333 ms, max 417 ms | snapshots 875 (14.6/s), applied in 0.6 ms avg (4.8 max) | orders sent 14, applied 14, refused 0, seen after 362 ms avg (431 max) | to the relay 165 ms avg, 200 max | stalls 0
+  P1 Clockwork: earned 30900 cogs total, has 3980 + 290 tension | supply 166/200 | workers 51 | halls 9 | army (5215 value): 42 Clock Soldier, 2 Great Winder, 1 Netter, 13 Springer, 2 Spring Ballista, 1 Pendulum | kills +13 (94) losses +1 (94) | brass 0% 0% 9% 48% 100% 100% 100% 100% 100% | efficiency 45%
+  YOU Brood: earned 15405 biomass total, has 710 + 1051 spoils | supply 32/148 | workers 20 | halls 0 | army (1875 value): 1 Brood Mother, 3 Rootmaw, 1 Tyrant Sire, 11 Mound Turtle, 1 Venom Sire, 1 Storm Sire | kills +1 (94) losses +13 (94) | APM 27 (this minute 27 actions) | Brood: Mother stage 3 walking, 20 eggs | Rootmaws rooted 3 (ground 0% 0% 0%) | Mound Turtles rooted 11 | sacrificed 140 (+2043 spoils)
+[22:11] P1 Clockwork finished a Clock Aviary
+[22:19] P1 Clockwork finished a Mainspring
+--- minute 23 ---
+  Performance: 60 fps avg, 1% low 29 fps, worst frame 38 ms, 27 frames over 33 ms, 0 over 50 ms, 0.5 physics steps a frame | units 139, buildings 50, bodies 41, corpses 0, effects 9, smoke puffs 0, nodes 755, objects 4628
+    busy with: overlay draw 247.4 ms/s (26 calls/s), hud draw 192.3 ms/s (50 calls/s), hud/selection 66.9 ms/s (16 calls/s), hud/map view 43.7 ms/s (9 calls/s), unit draw 37.0 ms/s (118 calls/s), game 36.3 ms/s (30 calls/s), hud/minimap 32.9 ms/s (6 calls/s), hud 23.6 ms/s (60 calls/s), hud/top 23.0 ms/s (5 calls/s), hud/look 18.5 ms/s (17 calls/s), hud/rest 17.1 ms/s (5 calls/s), hud/tip check 11.0 ms/s (17 calls/s), net/apply 10.6 ms/s (14 calls/s), replay/record 6.6 ms/s (4 calls/s), game/fog/units 5.8 ms/s (4 calls/s), hud/groups 4.0 ms/s (1 calls/s), hud/hover 3.7 ms/s (29 calls/s), hud/command card 3.7 ms/s (3 calls/s), hud/card build 3.4 ms/s (6 calls/s), hud/tooltip 0.8 ms/s (1 calls/s), game/fog/shown 0.7 ms/s (4 calls/s), building draw 0.4 ms/s (69 calls/s), game/fog/buildings 0.3 ms/s (4 calls/s), effects 0.2 ms/s (148 calls/s), replay/write 0.2 ms/s (0 calls/s), powder smoke 0.1 ms/s (60 calls/s), game/fog/picture 0.1 ms/s (4 calls/s), game/fog/copy 0.0 ms/s (4 calls/s), hud/chat 0.0 ms/s (1 calls/s), hud/glow 0.0 ms/s (2 calls/s), hud/pause 0.0 ms/s (1 calls/s)
+  Online (guest): ping avg 332 ms, max 399 ms | snapshots 849 (14.1/s), applied in 0.7 ms avg (10.8 max) | orders sent 63, applied 58, refused 0, seen after 364 ms avg (430 max) | to the relay 169 ms avg, 200 max | stalls 0
+  P1 Clockwork: earned 32324 cogs total, has 3647 + 48 tension | supply 194/200 | workers 50 | halls 9 | army (6435 value): 48 Clock Soldier, 2 Great Winder, 3 Netter, 13 Springer, 2 Spring Ballista, 3 Pendulum, 2 Swift | kills +22 (116) losses +7 (101) | brass 0% 0% 0% 41% 100% 100% 100% 100% 100% | efficiency 21%
+  YOU Brood: earned 15444 biomass total, has 749 + 1051 spoils | supply 12/40 | workers 0 | halls 0 | army (1700 value): 1 Brood Mother, 2 Rootmaw, 1 Tyrant Sire, 10 Mound Turtle, 1 Venom Sire, 1 Storm Sire | kills +7 (101) losses +22 (116) | APM 123 (this minute 123 actions) | Brood: Mother stage 3 walking, 20 eggs | Rootmaws rooted 1 (ground 0%) | Mound Turtles rooted 2 | sacrificed 140 (+2043 spoils)
+--- minute 23 ---
+  Performance: 60 fps avg, 1% low 29 fps, worst frame 42 ms, 7 frames over 33 ms, 0 over 50 ms, 0.5 physics steps a frame | units 125, buildings 50, bodies 51, corpses 0, effects 0, smoke puffs 0, nodes 763, objects 4741
+    busy with: overlay draw 224.9 ms/s (27 calls/s), hud draw 122.7 ms/s (40 calls/s), hud/selection 51.3 ms/s (16 calls/s), game 35.9 ms/s (30 calls/s), hud/top 33.5 ms/s (8 calls/s), hud 31.5 ms/s (60 calls/s), unit draw 31.2 ms/s (220 calls/s), hud/look 27.2 ms/s (18 calls/s), hud/minimap 26.7 ms/s (6 calls/s), hud/tip check 16.9 ms/s (18 calls/s), net/apply 12.3 ms/s (11 calls/s), replay/record 8.7 ms/s (4 calls/s), hud/map view 6.4 ms/s (2 calls/s), hud/card build 6.2 ms/s (10 calls/s), game/fog/units 5.7 ms/s (4 calls/s), hud/groups 2.7 ms/s (1 calls/s), hud/hover 2.2 ms/s (18 calls/s), hud/command card 2.0 ms/s (2 calls/s), game/fog/shown 0.7 ms/s (4 calls/s), effects 0.6 ms/s (553 calls/s), building draw 0.3 ms/s (46 calls/s), game/fog/buildings 0.3 ms/s (4 calls/s), replay/write 0.1 ms/s (0 calls/s), powder smoke 0.1 ms/s (60 calls/s), game/fog/picture 0.0 ms/s (4 calls/s), game/fog/copy 0.0 ms/s (4 calls/s), hud/chat 0.0 ms/s (1 calls/s), hud/rest 0.0 ms/s (1 calls/s), hud/glow 0.0 ms/s (1 calls/s), hud/tooltip 0.0 ms/s (1 calls/s), hud/pause 0.0 ms/s (1 calls/s)
+  Online (guest): ping avg 340 ms, max 400 ms | snapshots 178 (11.7/s), applied in 1.0 ms avg (12.1 max) | orders sent 64, applied 69, refused 0, seen after 385 ms avg (1198 max) | to the relay 172 ms avg, 199 max | stalls 0
+  P1 Clockwork: earned 32517 cogs total, has 3494 + 56 tension | supply 192/200 | workers 50 | halls 9 | army (6375 value): 45 Clock Soldier, 2 Great Winder, 3 Netter, 13 Springer, 2 Spring Ballista, 3 Pendulum, 4 Swift | kills +14 (130) losses +8 (109) | brass 0% 0% 0% 39% 100% 100% 100% 100% 100% | efficiency 27%
+
+RESULT at 23:15: winner P1 Clockwork
+  Performance per minute: m1 60 fps (1% low 30), m2 60 fps (1% low 30), m3 60 fps (1% low 24), m4 60 fps (1% low 30), m5 60 fps (1% low 30), m6 60 fps (1% low 30), m7 60 fps (1% low 30), m8 60 fps (1% low 30), m9 60 fps (1% low 30), m10 60 fps (1% low 30), m11 60 fps (1% low 30), m12 60 fps (1% low 30), m13 60 fps (1% low 30), m14 60 fps (1% low 29), m15 60 fps (1% low 30), m16 60 fps (1% low 30), m17 60 fps (1% low 29), m18 60 fps (1% low 30), m19 60 fps (1% low 31), m20 60 fps (1% low 31), m21 60 fps (1% low 30), m22 60 fps (1% low 29), m23 60 fps (1% low 29), m23 60 fps (1% low 29). Worst: minute 3 (1% low 24 fps, worst frame 156 ms).
+  P1 Clockwork: earned 32517, spent 28840, trained 227, built 49, killed 130, lost 109, razed 0, buildings lost 1, peak army 6585. Kills by: Clock Soldier 35, Springer 33, Spring Ballista 39, Pendulum 7, Winder 11, Netter 1
+  YOU Brood: earned 15444, spent 14945, trained 284, built 0, killed 109, lost 130, razed 1, buildings lost 0, peak army 5050. Kills by: Spitters 5, Raptors 7, Tyrant Challenger 7, Brute 2, Venom Challenger 71, Storm Challenger 2, Mound Turtle 2, Brood Mother 2, Storm Sire 3, Tyrant Sire 4, Rootmaw 1, Venom Sire 3 APM: average 77, peak 164, 1795 actions.
+  APM peaks and lows: busiest minute 5 (132 actions), quietest minute 20 (20 actions); busiest 10 seconds: 55 actions, ending at 23:07 (a pace of 330 APM). Per minute: 116, 104, 79, 58, 132, 108, 91, 54, 60, 75, 90, 117, 55, 61, 83, 42, 112, 35, 32, 20, 50, 27
+[23:15] (online) the host's replay came (4034 KB)
+
+--- SOUND LOG (every sound and music change, per second; x2 = played twice) ---
+[00:00] MUSIC brood_peace_4, AMBIENCE grass, ui/click x4, ui/start_match, voice/brood_mother/select
+[00:02] brood/error
+[00:05] ui/click
+[00:06] ui/click
+[00:07] ui/click
+[00:08] voice/brood_egg/select, ui/click
+[00:09] voice/brood_mother/select
+[00:10] ui/click x2, voice/brood_egg/select
+[00:11] voice/brood_egg/select, ui/click
+[00:13] voice/brood_mother/select
+[00:15] voice/brood_egg/select, ui/click
+[00:16] voice/brood_mother/select
+[00:17] brood/error
+[00:18] ui/click
+[00:19] voice/grub/select, ui/click, voice/grub/move x2
+[00:20] voice/grub/move x2
+[00:21] voice/grub/move, ui/click
+[00:22] voice/grub/move x2
+[00:23] voice/grub/move x3, brood/error, ui/click
+[00:24] voice/grub/move, ui/click, voice/brood_mother/select
+[00:26] ui/click
+[00:27] voice/brood_egg/select, ui/click x2, voice/brood_mother/select
+[00:30] brood/error, announcer/brood/no_gold, voice/brood_mother/select
+[00:31] ui/click
+[00:32] voice/grub/select, ui/click, voice/grub/move
+[00:33] voice/grub/move x5
+[00:34] voice/grub/move x3, ui/click
+[00:35] voice/grub/move x2
+[00:36] voice/grub/move x3
+[00:37] voice/grub/move x3
+[00:39] brood/error, ui/click
+[00:44] voice/grub/move
+[00:45] voice/grub/move x2
+[00:46] voice/brood_mother/select, brood/error, ui/click
+[00:47] ui/click
+[00:48] voice/grub/select, ui/click
+[00:49] voice/grub/move x2
+[00:51] voice/grub/move
+[00:52] ui/click
+[00:53] voice/grub/move
+[00:54] voice/grub/move x2
+[00:56] voice/grub/move x3
+[00:57] voice/grub/move x6
+[00:59] ui/click x2, brood/error, voice/grub/move
+[01:00] voice/grub/move, voice/brood_mother/select
+[01:01] voice/grub/select, ui/click
+[01:02] voice/grub/select, ui/click, voice/grub/move x2
+[01:03] voice/grub/move x3
+[01:04] voice/grub/move, voice/grub/select, ui/click
+[01:05] ui/click
+[01:06] brood/error, ui/click
+[01:08] voice/grub/move, ui/click
+[01:10] voice/grub/select, ui/click
+[01:11] voice/grub/move, voice/brood_mother/select
+[01:13] brood/error x2
+[01:15] voice/brood_mother/select, ui/click
+[01:16] ui/click, brood/error
+[01:17] ui/click x3
+[01:18] ui/click, brood/error, announcer/brood/no_gold
+[01:31] voice/brood_mother/select, ui/click
+[01:32] voice/brood_mother/select, ui/click
+[01:33] voice/grub/select, ui/click
+[01:34] voice/grub/move x4
+[01:35] voice/grub/move x2
+[01:36] brood/error x2, ui/click, voice/brood_mother/select
+[01:38] ui/click x2
+[01:39] voice/grub/select, voice/brood_mother/select
+[01:40] MUSIC ended brood_peace_4, MUSIC brood_peace_7
+[01:41] voice/grub/select, ui/click
+[01:42] voice/grub/select, ui/click
+[01:43] voice/grub/move
+[01:44] voice/grub/move
+[01:45] voice/grub/move x3, ui/click
+[01:46] voice/grub/move, voice/rootmaw/select, ui/click
+[01:48] voice/brood_egg/select x2, ui/click x2
+[01:49] ui/click
+[01:51] voice/brood_egg/select, ui/click
+[01:52] voice/grub/select, ui/click x2, voice/grub/move x2
+[01:53] voice/grub/move x4
+[01:54] voice/grub/move
+[01:55] voice/grub/move x4
+[01:56] voice/grub/move x3
+[01:57] voice/grub/move x5
+[01:58] voice/grub/move x5
+[02:00] brood/error, ui/click x2, voice/grub/move
+[02:01] voice/brood_mother/select
+[02:02] ui/click, voice/brood_mother/select
+[02:03] ui/click
+[02:04] voice/brood_mother/select
+[02:05] voice/brood_mother/select, brood/error
+[02:06] brood/error, ui/click
+[02:09] ui/click
+[02:19] voice/grub/select
+[02:20] voice/grub/select, ui/click
+[02:21] voice/grub/move x3
+[02:22] voice/grub/move
+[02:23] voice/grub/move x2
+[02:24] voice/grub/move x2
+[02:25] voice/grub/move x2
+[02:26] voice/grub/move x4
+[02:27] voice/grub/move
+[02:28] voice/grub/move x2
+[02:29] voice/grub/move x2
+[02:30] voice/grub/move
+[02:31] voice/grub/move
+[02:32] voice/grub/move
+[02:33] voice/grub/move
+[02:34] voice/grub/move, voice/brood_mother/select
+[02:36] voice/tyrannosaur/select, ui/click
+[02:37] voice/brood_mother/select, ui/click x2
+[02:38] ui/click
+[02:40] ui/click
+[02:41] voice/tyrannosaur/select, ui/click
+[02:42] voice/brood_mother/select, ui/click
+[02:43] ui/click
+[02:49] ui/click x2
+[02:50] voice/grub/select, ui/click
+[02:52] ui/click
+[02:53] voice/brood_mother/select, brood/error
+[02:56] voice/brood_mother/select, ui/click
+[03:27] voice/tyrannosaur/select, ui/click
+[03:28] ui/click
+[03:30] ui/click x7
+[03:31] ui/click x2, brood/error, announcer/brood/no_supply, voice/grub/select
+[03:32] voice/grub/select, ui/click
+[03:33] ui/click x2, brood/error x2, announcer/brood/bad_place
+[03:34] voice/grub/move, ui/click
+[03:35] voice/grub/select, ui/click
+[03:36] voice/grub/move
+[03:37] ui/click
+[03:38] brood/error, ui/click
+[03:39] voice/grub/move, ui/click
+[03:41] voice/brood_mother/select, brood/error
+[03:43] voice/grub/select, ui/click x2
+[03:46] voice/rootmaw/select, ui/click x2, voice/grub/select
+[03:48] voice/grub/move, brood/error, ui/click
+[03:49] voice/brood_mother/select, brood/error
+[03:51] voice/brood_mother/select, ui/click, brood/error x2
+[03:52] ui/click x4
+[03:54] voice/brood_mother/select, ui/click x3
+[03:55] ui/click x2, voice/raptor/move
+[03:56] ui/click, voice/raptor/attack
+[03:57] ui/click, voice/brood_mother/select
+[03:58] ui/click
+[03:59] voice/brood_mother/select, ui/click x2
+[04:00] voice/grub/move x2
+[04:01] voice/grub/move x2
+[04:02] ui/click, voice/grub/move
+[04:03] voice/grub/move x3
+[04:04] ui/click, voice/grub/move x2
+[04:05] voice/grub/move
+[04:06] voice/grub/move x2
+[04:07] voice/grub/move x4
+[04:08] voice/grub/select, ui/click
+[04:09] ui/click
+[04:10] ui/click
+[04:11] ui/click, voice/brood_mother/select
+[04:12] brood/error
+[04:13] voice/grub/select, ui/click x2
+[04:14] voice/grub/move x2
+[04:16] voice/grub/select, ui/click, voice/grub/move x2
+[04:17] brood/error, ui/click x2, voice/grub/move
+[04:19] voice/dilophosaurus/select, ui/click x2
+[04:20] ui/click
+[04:22] voice/raptor/select, ui/click
+[04:23] voice/raptor/move
+[04:25] ui/click x2, voice/raptor/attack
+[04:26] brood/error, voice/raptor/select
+[04:27] brood/error
+[04:29] ui/click x3
+[04:30] ui/click x2, voice/raptor/select
+[04:31] voice/raptor/move
+[04:32] ui/click
+[04:33] voice/raptor/move, ui/click x3
+[04:34] voice/raptor/move, ui/click x3
+[04:38] ui/click x2, voice/raptor/select
+[04:39] ui/click
+[04:40] voice/raptor/move, ui/click
+[04:41] ui/click
+[04:42] voice/raptor/move, ui/click
+[04:44] voice/raptor/attack, combat/raptor_death
+[04:45] voice/raptor/move
+[04:46] voice/raptor/move
+[04:47] voice/raptor/move
+[04:48] voice/raptor/move x2, ui/click x2
+[04:50] ui/click x2, voice/raptor/select
+[04:52] voice/raptor/move x2
+[04:53] voice/raptor/move
+[04:54] voice/raptor/attack
+[04:55] voice/brood_mother/select
+[04:56] brood/error, ui/click, voice/raptor/move
+[04:57] ui/click
+[04:58] voice/raptor/move
+[04:59] voice/raptor/move
+[05:00] voice/raptor/move
+[05:02] voice/dilophosaurus/select, ui/click x2, voice/tyrannosaur/select, MUSIC ended brood_peace_7, MUSIC brood_peace_3
+[05:04] voice/brood_mother/select, ui/click
+[05:06] ui/click x2, brood/error
+[05:07] voice/grub/move, ui/click
+[05:09] voice/grub/select, ui/click x2
+[05:10] voice/grub/move x2
+[05:11] voice/grub/move, brood/error, ui/click
+[05:12] voice/grub/move, ui/click
+[05:13] voice/brood_mother/select
+[05:14] voice/dilophosaurus/select, ui/click
+[05:15] voice/brood_mother/select, brood/error
+[05:16] ui/click x2
+[05:17] ui/click, voice/brood_mother/select
+[05:18] ui/click
+[05:19] voice/grub/move x3, ui/click
+[05:20] voice/grub/move
+[05:21] voice/grub/move x4
+[05:22] voice/grub/move x3, ui/click x2
+[05:23] voice/grub/move
+[05:24] ui/click, voice/grub/move x2
+[05:25] voice/brood_mother/select
+[05:26] voice/tyrannosaur/select, ui/click
+[05:29] voice/brood_mother/select
+[05:32] voice/grub/select, ui/click, voice/grub/move x2
+[05:33] voice/grub/move x2
+[05:34] ui/click
+[05:35] voice/brood_mother/select, ui/click
+[05:37] voice/grub/select, ui/click
+[05:38] voice/brood_mother/select
+[05:39] voice/grub/select, ui/click, voice/grub/move
+[05:40] ui/click x2, brood/error x2, announcer/brood/bad_place
+[05:41] brood/error, voice/grub/move, ui/click
+[05:43] voice/grub/select, ui/click, voice/grub/move x2
+[05:44] ui/click x2, brood/error
+[05:45] voice/grub/move, ui/click, voice/brood_mother/select
+[05:46] ui/click x2
+[05:47] voice/brood_mother/select, ui/click x2
+[05:48] ui/click
+[05:49] voice/raptor/select
+[05:50] voice/raptor/move, brood/error, ui/click
+[05:54] ui/click x7
+[05:55] ui/click x4, voice/raptor/select
+[05:57] voice/brood_mother/select
+[05:59] voice/grub/select, ui/click, voice/grub/move x3
+[06:00] voice/grub/move x3, ui/click
+[06:01] brood/error, ui/click
+[06:02] voice/grub/move, ui/click
+[06:04] voice/grub/select, ui/click x2
+[06:06] voice/grub/select, ui/click, voice/grub/move
+[06:07] voice/grub/move
+[06:08] brood/error, ui/click x2, voice/grub/move
+[06:09] voice/mound_turtle/select, ui/click x3
+[06:10] ui/click
+[06:12] voice/brood_mother/select, ui/click
+[06:13] ui/click
+[06:14] voice/raptor/move, brood/error, ui/click
+[06:17] voice/brood_mother/select
+[06:19] ui/click
+[06:21] voice/dilophosaurus/select, ui/click
+[06:23] ui/click
+[06:24] ui/click x2, brood/error
+[06:25] ui/click x2
+[06:26] voice/tyrannosaur/select, ui/click
+[06:27] ui/click
+[06:28] voice/brood_mother/select
+[06:29] voice/grub/select, ui/click, voice/grub/move
+[06:30] voice/grub/move, ui/click
+[06:31] ui/click
+[06:32] voice/grub/move x6
+[06:33] voice/grub/move x3
+[06:34] voice/grub/move x3, brood/error, ui/click
+[06:35] voice/grub/move, ui/click, voice/brood_mother/select
+[06:40] voice/grub/select, ui/click
+[06:41] voice/grub/move x2
+[06:42] voice/grub/move x3
+[06:44] voice/grub/move x2
+[06:45] voice/grub/move
+[06:47] voice/grub/move x2, brood/error, ui/click, MUSIC ended brood_peace_3, MUSIC brood_peace_5
+[06:48] voice/grub/move x2
+[06:50] voice/brood_mother/select
+[06:51] voice/grub/select, ui/click
+[06:52] voice/grub/move x4
+[06:55] voice/grub/move x5
+[06:56] voice/grub/move
+[06:57] voice/grub/move, ui/click
+[06:59] brood/error, ui/click
+[07:01] voice/brood_mother/select
+[07:02] voice/dilophosaurus/select, ui/click
+[07:04] voice/brood_mother/select, ui/click
+[07:07] voice/rootmaw/select, ui/click
+[07:08] ui/click
+[07:11] voice/rootmaw/move, brood/error
+[07:12] voice/rootmaw/move
+[07:13] brood/error, ui/click
+[07:15] voice/rootmaw/move, ui/click
+[07:18] voice/tyrannosaur/select, ui/click
+[07:20] voice/dilophosaurus/select, ui/click x3, voice/brood_mother/select
+[07:26] voice/dilophosaurus/select, ui/click
+[07:28] voice/brood_mother/select
+[07:30] ui/click x2
+[07:34] brood/error, ui/click
+[07:35] brood/error
+[07:36] brood/error, ui/click
+[07:39] voice/brood_mother/move
+[07:41] voice/brood_mother/move
+[07:43] voice/rootmaw/select, ui/click
+[07:44] ui/click
+[07:52] voice/grub/select, ui/click, voice/grub/move
+[07:53] ui/click
+[07:54] voice/grub/move x2, ui/click
+[07:55] voice/grub/move
+[07:56] brood/error, ui/click x2, voice/grub/move
+[07:57] voice/rootmaw/select, ui/click
+[07:58] voice/brood_mother/select
+[07:59] voice/brute/select, ui/click
+[08:00] voice/brute/move
+[08:01] voice/brute/move
+[08:02] voice/brute/move
+[08:05] voice/dilophosaurus/select, ui/click x2
+[08:07] voice/brood_mother/select, ui/click
+[08:09] ui/click
+[08:10] ui/click x8, brood/error x2, announcer/brood/no_gold
+[08:14] brood/error
+[08:15] ui/click
+[08:16] ui/click x7
+[08:21] voice/mound_turtle/select, ui/click x2
+[08:24] voice/brute/select, ui/click
+[08:25] ui/click x2, voice/brute/move, voice/brood_mother/select
+[08:26] brood/error
+[08:27] voice/raptor/select, ui/click x2
+[08:28] voice/raptor/move, ui/click
+[08:32] voice/brood_mother/select
+[08:33] ui/click
+[08:34] ui/click x6, brood/error x2, announcer/brood/no_gold
+[08:35] voice/dilophosaurus/select, ui/click
+[08:36] voice/dilophosaurus/select, ui/click x2
+[08:37] ui/click x2, voice/brood_mother/select
+[08:39] voice/brood_army/select, ui/click
+[08:40] ui/click
+[08:43] voice/brood_mother/select
+[08:46] voice/dilophosaurus/select, ui/click
+[08:47] ui/click
+[08:49] voice/dilophosaurus/select, ui/click
+[08:50] ui/click
+[08:55] voice/brood_mother/select, ui/click
+[08:57] voice/brute/select, ui/click
+[09:05] voice/raptor/select, ui/click
+[09:06] voice/brood_mother/select, ui/click
+[09:08] ui/click
+[09:09] ui/click
+[09:13] MUSIC ended brood_peace_5, MUSIC brood_peace
+[09:15] voice/tyrannosaur/select, ui/click
+[09:16] ui/click
+[09:18] voice/brood_mother/select
+[09:19] ui/click x5
+[09:20] ui/click x2, voice/grub/select
+[09:21] voice/grub/select, ui/click
+[09:23] ui/click, voice/grub/move x4
+[09:24] voice/grub/move
+[09:25] brood/error, ui/click x2, voice/grub/move
+[09:27] voice/rootmaw/select, ui/click
+[09:28] voice/rootmaw/move x2
+[09:29] voice/rootmaw/move x2, brood/error, ui/click x2
+[09:31] voice/brood_army/select, ui/click
+[09:33] voice/brood_army/select, ui/click x2
+[09:34] voice/brood_army/select, ui/click
+[09:35] voice/brute/select, ui/click
+[09:36] voice/brute/select, ui/click x2
+[09:37] voice/brute/move, ui/click
+[09:39] voice/raptor/select, ui/click x2
+[09:40] voice/raptor/move, ui/click x2, voice/raptor/select
+[09:41] ui/click x2, voice/raptor/move
+[09:43] voice/raptor/select, ui/click x2
+[09:44] voice/raptor/move, ui/click x2
+[09:45] voice/brood_mother/select
+[09:46] ui/click
+[09:47] voice/brood_mother/select, brood/error
+[09:49] voice/brood_mother/move
+[09:50] voice/brood_mother/move
+[09:53] voice/brood_mother/move
+[09:54] voice/tyrannosaur/select, ui/click
+[09:55] ui/click
+[09:57] voice/brood_mother/select
+[09:59] ui/click x2
+[10:00] voice/mist_toad/select, ui/click
+[10:01] voice/mist_toad/select, ui/click x2
+[10:02] voice/mist_toad/move, ui/click
+[10:04] voice/mist_toad/select, ui/click x2
+[10:05] voice/brood_mother/select
+[10:06] ui/click
+[10:07] voice/mist_toad/select, ui/click x2
+[10:08] voice/raptor/select, ui/click x2
+[10:10] voice/brood_army/select, ui/click
+[10:11] voice/brood_army/select, ui/click
+[10:12] brood/error, voice/brood_mother/select
+[10:15] ui/click
+[10:16] ui/click x8, brood/error, announcer/brood/no_gold
+[10:17] voice/brood_army/select
+[10:20] voice/brood_egg/select, ui/click x2, voice/mound_turtle/select
+[10:21] voice/brood_mother/select
+[10:22] voice/grub/select, ui/click
+[10:30] voice/mound_turtle/select, ui/click
+[10:32] ui/click, voice/mound_turtle/move
+[10:35] brood/error, ui/click x2, voice/mound_turtle/move
+[10:41] voice/spitter/select, ui/click x2
+[10:42] voice/spitter/move, ui/click
+[10:43] voice/raptor/select, ui/click x2
+[10:44] voice/raptor/move, ui/click x3
+[10:45] brood/error
+[10:46] voice/brood_mother/select
+[10:47] brood/error, announcer/brood/no_gold
+[10:48] voice/brood_army/select
+[10:49] voice/mist_toad/select, ui/click
+[10:50] ui/click x3, voice/mist_toad/select, voice/mist_toad/move
+[10:51] voice/brood_mother/select
+[10:52] voice/brute/select, ui/click
+[10:53] ui/click x3, combat/grub_death
+[10:54] voice/brood_army/select, ui/click x2
+[10:56] ui/click x2, voice/brood_army/attack
+[10:57] voice/mist_toad/select, ui/click x2
+[10:58] combat/springer_death, ui/click
+[10:59] combat/clock_soldier_death, voice/mist_toad/attack, ui/click x3, combat/winder_death x2
+[11:00] combat/winder_death
+[11:01] ui/click x2, voice/mist_toad/attack
+[11:02] combat/springer_death, ui/click
+[11:03] voice/mist_toad/attack, ui/click, combat/raptor_death, combat/netter_death
+[11:04] combat/raptor_death, combat/springer_death
+[11:05] combat/raptor_death x2, combat/winder_death
+[11:06] combat/raptor_death x3, ui/click
+[11:07] voice/mist_toad/attack, ui/click
+[11:08] ui/click x2, combat/raptor_death, voice/mist_toad/select
+[11:09] ui/click x2, voice/mist_toad/select, combat/raptor_death
+[11:10] voice/spitter/select, ui/click x4, voice/spitter/attack
+[11:11] voice/mist_toad/select, ui/click x2
+[11:13] ui/click x2, voice/mist_toad/attack
+[11:14] combat/tyrant_challenger_death
+[11:15] combat/raptor_death
+[11:16] ui/click
+[11:18] voice/mist_toad/attack, ui/click, combat/spitter_death
+[11:19] combat/spitter_death
+[11:20] combat/pendulum_death, voice/mist_toad/move
+[11:21] voice/mist_toad/move x2
+[11:22] ui/click x2, voice/mist_toad/attack
+[11:23] combat/netter_death
+[11:24] voice/spitter/select, ui/click x4, voice/spitter/move, voice/spitter/attack
+[11:25] combat/spitter_death, voice/mist_toad/select, ui/click
+[11:26] ui/click, MUSIC ended brood_peace, MUSIC brood_peace_2, voice/mist_toad/move
+[11:27] voice/mist_toad/move, combat/raptor_death
+[11:28] ui/click
+[11:29] voice/mist_toad/attack x2, ui/click x3
+[11:30] brood/error, combat/netter_death
+[11:31] ui/click x2, voice/mist_toad/select
+[11:33] ui/click x2, voice/mist_toad/attack
+[11:34] combat/great_winder_death, brood/error, ui/click x3, voice/mist_toad/select
+[11:35] ui/click
+[11:36] combat/ballista_death, voice/spitter/select, ui/click x2
+[11:37] ui/click x2, voice/spitter/attack, combat/brute_death
+[11:38] combat/tyrant_challenger_death, voice/mist_toad/select, ui/click
+[11:39] ui/click, voice/mist_toad/move
+[11:40] voice/mist_toad/move, ui/click x2, voice/mist_toad/attack
+[11:41] combat/tyrant_challenger_death
+[11:42] combat/netter_death, voice/mist_toad/move x2, combat/ballista_death
+[11:43] voice/mist_toad/move, ui/click x2
+[11:45] voice/mist_toad/move x2
+[11:46] voice/spitter/select, ui/click x2
+[11:47] voice/spitter/move, ui/click
+[11:48] voice/spitter/attack, ui/click
+[11:49] voice/mist_toad/select, ui/click x4, voice/brute/select
+[11:50] combat/springer_death, ui/click x2
+[11:51] voice/brood_army/select, ui/click x2
+[11:52] voice/brood_army/attack, ui/click
+[11:54] voice/brood_army/select, ui/click x3
+[11:55] combat/tyrant_challenger_death, combat/spitter_death
+[11:56] combat/ballista_death
+[11:58] ui/click
+[11:59] voice/brood_army/select, ui/click
+[12:00] voice/brood_army/select, ui/click
+[12:01] ui/click, voice/brood_mother/select
+[12:07] voice/brood_mother/select
+[12:09] voice/grub/select, ui/click, voice/grub/move x3
+[12:10] voice/grub/move x3
+[12:11] voice/grub/move x4, ui/click
+[12:12] voice/grub/move
+[12:14] brood/error x2, ui/click x2
+[12:15] voice/grub/move
+[12:16] voice/grub/move
+[12:18] voice/rootmaw/select, ui/click x2, voice/brood_army/select
+[12:19] ui/click, voice/brood_mother/select
+[12:23] voice/spitter/select, ui/click x2
+[12:24] voice/spitter/move, ui/click
+[12:26] voice/brute/select, ui/click
+[12:28] voice/grub/select, ui/click
+[12:35] ui/click x7
+[12:36] ui/click x3, brood/error x2, announcer/brood/no_gold
+[12:39] voice/brood_army/select, ui/click
+[12:44] voice/brood_army/move
+[12:45] voice/venom_challenger/select, ui/click
+[12:46] voice/venom_challenger/select, ui/click x2
+[12:47] voice/venom_challenger/move, ui/click x2
+[12:49] voice/raptor/select, ui/click
+[12:55] voice/mist_toad/select, ui/click x2
+[12:56] voice/mist_toad/move, ui/click
+[13:00] voice/raptor/select, ui/click x2
+[13:01] voice/raptor/move, ui/click
+[13:04] voice/raptor/move x2, ui/click
+[13:10] voice/rootmaw/select, ui/click
+[13:12] voice/rootmaw/select, ui/click
+[13:13] voice/grub/select, ui/click x2, voice/brood_army/select
+[13:14] voice/grub/select, ui/click
+[13:15] ui/click, voice/grub/move x2
+[13:17] brood/error x2, ui/click x2, voice/grub/move
+[13:18] voice/grub/move x4
+[13:19] brood/error, ui/click
+[13:20] brood/error, ui/click
+[13:21] voice/grub/move
+[13:27] ui/click, MUSIC ended brood_peace_2, MUSIC brood_peace_6
+[13:30] ui/click
+[13:33] voice/grub/select x2, ui/click x3
+[13:34] voice/raptor/select, ui/click x2
+[13:35] ui/click x3, voice/brood_army/select
+[13:36] ui/click x2, voice/brood_army/select
+[13:38] ui/click x2, voice/brood_army/attack
+[13:40] ui/click
+[13:41] voice/brood_army/attack, ui/click
+[13:48] voice/grub/select, ui/click
+[13:50] voice/grub/select, ui/click
+[13:51] voice/brood_mother/select, ui/click
+[13:52] ui/click
+[13:53] brood/error, ui/click
+[13:54] voice/grub/move, ui/click
+[13:55] voice/grub/select, ui/click x3, brood/error
+[13:56] voice/grub/move x2, ui/click x4, brood/error
+[13:58] voice/brood_army/select, ui/click
+[13:59] voice/brood_army/select, ui/click
+[14:00] voice/brood_army/move, ui/click
+[14:01] ui/click
+[14:03] ui/click x2, voice/brood_army/attack
+[14:04] ui/click x2, voice/brood_army/attack
+[14:05] combat/raptor_death x2, ui/click x2, voice/mist_toad/select
+[14:06] combat/raptor_death x3
+[14:07] combat/raptor_death x3, ui/click x2, voice/mist_toad/attack
+[14:08] combat/raptor_death x3, ui/click x2, voice/mist_toad/attack
+[14:09] combat/raptor_death, combat/winder_death
+[14:10] combat/clock_soldier_death
+[14:11] ui/click x3, combat/raptor_death, voice/mist_toad/select, combat/brute_death, combat/clock_soldier_death
+[14:13] voice/venom_challenger/select, ui/click x3, combat/clock_soldier_death, combat/mist_toad_death, combat/raptor_death
+[14:14] combat/raptor_death x2, voice/venom_challenger/attack, ui/click x2
+[14:15] combat/raptor_death x2, voice/mist_toad/select, ui/click x3
+[14:16] voice/mist_toad/move x2
+[14:17] voice/mist_toad/move x3
+[14:18] ui/click x2, voice/mist_toad/attack, combat/clock_soldier_death
+[14:19] combat/winder_death x2, combat/tyrant_challenger_death, voice/mist_toad/move
+[14:20] voice/brood_army/select, ui/click
+[14:21] voice/brood_army/move
+[14:22] voice/brood_army/move
+[14:23] combat/raptor_death
+[14:24] voice/brood_army/move
+[14:25] voice/brood_army/move, combat/tyrant_challenger_death
+[14:26] voice/brood_army/move
+[14:28] voice/brood_mother/select
+[14:29] ui/click, voice/brood_army/move
+[14:30] voice/brood_army/move, ui/click
+[14:31] voice/brood_mother/select
+[14:35] ui/click x9
+[14:36] ui/click x10, brood/error
+[14:37] voice/brood_army/select, ui/click x3, combat/winder_death
+[14:38] ui/click x2, voice/venom_challenger/select
+[14:39] voice/venom_challenger/move, ui/click
+[14:40] voice/mist_toad/select, ui/click x3, voice/mist_toad/move
+[14:41] voice/venom_challenger/select, ui/click x3, voice/venom_challenger/move
+[14:54] voice/tyrannosaur/select, ui/click
+[14:55] ui/click
+[14:56] ui/click x2, voice/rootmaw/select
+[14:57] ui/click
+[14:59] brood/error, ui/click
+[15:06] voice/mound_turtle/select, ui/click
+[15:09] voice/rootmaw/select, ui/click
+[15:10] voice/rootmaw/move
+[15:11] brood/error, ui/click x2, voice/rootmaw/move
+[15:17] voice/raptor/select, ui/click x2
+[15:18] ui/click
+[15:23] voice/raptor/move, brood/error, ui/click
+[15:25] voice/grub/select, ui/click x2
+[15:26] voice/grub/move x2
+[15:27] brood/error, ui/click x2, voice/grub/move
+[15:28] voice/brood_mother/select, ui/click
+[15:30] ui/click x2
+[15:31] ui/click, brood/error x2, announcer/brood/no_res2
+[15:33] voice/mist_toad/select, ui/click x3
+[15:34] voice/venom_challenger/select, ui/click x3, voice/venom_challenger/move
+[15:35] ui/click
+[15:49] voice/mound_turtle/select, ui/click, brood/error
+[15:51] ui/click
+[15:54] brood/error, ui/click x2, voice/mound_turtle/move
+[15:57] voice/brood_mother/select
+[15:59] voice/brood_army/select
+[16:00] voice/brood_army/move
+[16:01] voice/brood_army/move, ui/click
+[16:02] voice/mist_toad/select, ui/click
+[16:03] voice/mist_toad/select, ui/click x2
+[16:04] ui/click
+[16:09] voice/dilophosaurus/select, ui/click
+[16:10] voice/pterodactyl/select, ui/click x2, voice/dilophosaurus/select
+[16:11] ui/click
+[16:14] voice/pterodactyl/select, ui/click
+[16:17] voice/brood_army/select, ui/click
+[16:20] voice/brute/select, ui/click
+[16:21] ui/click, voice/grub/move
+[16:22] voice/brood_army/select, ui/click
+[16:24] ui/click, voice/brood_army/move
+[16:26] ui/click x3, voice/brood_army/move
+[16:27] voice/brood_army/attack, ui/click, voice/brood_army/move, combat/springer_death
+[16:28] voice/brood_army/move
+[16:29] combat/brute_death
+[16:30] ui/click
+[16:31] ui/click x14, MUSIC ended brood_peace_6, MUSIC brood_peace_4
+[16:32] voice/brood_army/select, ui/click
+[16:33] voice/brood_army/move
+[16:34] voice/brood_army/select, ui/click
+[16:35] ui/click x2
+[16:36] voice/brood_army/move, ui/click
+[16:37] voice/brood_army/attack, ui/click, voice/brood_army/move
+[16:38] combat/mound_turtle_death
+[16:40] voice/brood_army/select, ui/click
+[16:43] voice/venom_challenger/select, ui/click x2
+[16:45] voice/mist_toad/select, ui/click x2
+[16:47] voice/mist_toad/move, combat/rootmaw_death, ui/click
+[16:48] voice/mist_toad/attack, ui/click
+[16:50] voice/mist_toad/move x2
+[16:51] voice/hatchlings/select, ui/click x2, brood/wings_small, voice/hatchlings/move
+[16:52] voice/hatchlings/move x2, brood/wings_small, ui/click x2
+[16:53] voice/hatchlings/move, ui/click x2, brood/error x2, announcer/brood/no_gold
+[16:54] combat/hatchlings_death
+[16:55] ui/click
+[16:56] combat/hatchlings_death, voice/hatchlings/select, ui/click, brood/wings_small, voice/hatchlings/move
+[16:57] voice/brood_army/select, ui/click
+[16:58] voice/brood_army/move
+[16:59] voice/brood_army/move
+[17:01] ui/click x3, voice/hatchlings/select, voice/brood_army/select
+[17:02] ui/click x2, combat/grub_death
+[17:03] combat/springer_death x2, ui/click x3, voice/hatchlings/select
+[17:04] brood/wings_small, voice/hatchlings/move x2, combat/springer_death, combat/netter_death
+[17:05] combat/springer_death, combat/clock_soldier_death, voice/mist_toad/select, ui/click
+[17:06] ui/click x2, combat/netter_death, voice/mist_toad/move
+[17:07] combat/clock_soldier_death x2, voice/mist_toad/move
+[17:08] ui/click x2, voice/mist_toad/attack
+[17:09] ui/click x2, voice/mist_toad/attack, combat/clock_soldier_death, voice/brood_mother/select
+[17:10] ui/click
+[17:11] ui/click, combat/clock_soldier_death, brood/error x2, announcer/brood/no_gold
+[17:12] voice/hatchlings/select, ui/click x2, combat/storm_challenger_death
+[17:13] brood/wings_small, voice/hatchlings/move, brood/error, ui/click
+[17:18] combat/clock_soldier_death, combat/mound_turtle_death
+[17:19] voice/brood_mother/select, ui/click
+[17:20] ui/click, brood/error, announcer/brood/no_gold
+[17:21] combat/mist_toad_death
+[17:22] combat/clock_soldier_death
+[17:23] combat/mist_toad_death, combat/clock_soldier_death
+[17:24] combat/winder_death, combat/mist_toad_death
+[17:25] voice/venom_challenger/select, ui/click
+[17:26] combat/clock_soldier_death, ui/click
+[17:27] combat/winder_death, combat/clock_soldier_death
+[17:28] combat/grub_death
+[17:29] combat/grub_death, combat/clock_soldier_death
+[17:30] combat/clock_soldier_death, combat/winder_death
+[17:31] combat/clock_soldier_death x2
+[17:33] combat/winder_death x2, combat/venom_challenger_death, combat/raptor_death
+[17:34] combat/venom_challenger_death, combat/raptor_death
+[17:35] combat/clock_soldier_death
+[17:36] combat/clock_soldier_death
+[17:39] combat/clock_soldier_death x3
+[17:40] combat/winder_death
+[17:41] combat/clock_soldier_death
+[17:42] combat/clock_soldier_death, combat/spitter_death
+[17:43] combat/clock_soldier_death
+[17:45] combat/spitter_death
+[17:46] combat/clock_soldier_death
+[17:47] combat/clock_soldier_death
+[17:48] combat/springer_death, combat/spitter_death
+[17:49] combat/raptor_death x2, combat/netter_death
+[17:50] combat/raptor_death
+[17:51] combat/springer_death
+[17:52] combat/clock_soldier_death
+[17:56] combat/clock_soldier_death
+[17:57] combat/clock_soldier_death
+[18:00] combat/venom_challenger_death, combat/clock_soldier_death
+[18:01] combat/clock_soldier_death
+[18:02] combat/clock_soldier_death x2
+[18:03] combat/springer_death
+[18:05] voice/venom_challenger/select, ui/click
+[18:06] voice/venom_challenger/move, ui/click
+[18:07] voice/venom_challenger/attack, ui/click
+[18:08] combat/clock_soldier_death
+[18:13] combat/ballista_death
+[18:15] ui/click, MUSIC ended brood_peace_4, MUSIC brood_peace_7
+[18:16] voice/venom_challenger/attack, ui/click, combat/venom_challenger_death
+[18:17] combat/clock_soldier_death x2
+[18:18] combat/clock_soldier_death x2, voice/brood_mother/select
+[18:22] combat/springer_death x2
+[18:24] voice/venom_challenger/select, ui/click x3, combat/netter_death
+[18:25] voice/venom_challenger/attack, ui/click
+[18:26] voice/venom_challenger/move x2
+[18:27] ui/click x2, voice/venom_challenger/attack
+[18:29] ui/click
+[18:30] voice/venom_challenger/select, ui/click
+[18:33] ui/click x3, voice/venom_challenger/select
+[18:35] combat/ballista_death
+[18:37] voice/venom_challenger/select, ui/click x2
+[18:38] voice/venom_challenger/move, ui/click
+[18:41] ui/click
+[18:47] voice/brood_mother/select, ui/click
+[19:27] ui/click
+[19:32] ui/click
+[19:33] ui/click
+[19:35] voice/tyrannosaur/select, ui/click
+[19:36] voice/pterodactyl/select, ui/click
+[19:37] ui/click
+[19:38] ui/click
+[19:40] voice/brood_army/select, ui/click x2
+[19:41] ui/click
+[19:45] voice/venom_challenger/select
+[19:49] voice/venom_challenger/move, ui/click
+[19:50] voice/brood_mother/select
+[19:51] ui/click x4
+[19:52] ui/click x13
+[19:57] voice/rootmaw/select, ui/click x2
+[20:01] voice/mound_turtle/select, ui/click
+[20:02] brood/error
+[20:03] ui/click
+[20:06] voice/mound_turtle/move
+[20:07] brood/error, ui/click
+[20:12] voice/mound_turtle/move, ui/click
+[20:13] voice/rootmaw/select, ui/click x2
+[20:15] voice/rootmaw/move
+[20:21] voice/brood_mother/select, ui/click
+[20:23] voice/grub/select, ui/click x2
+[20:26] voice/rootmaw/select, ui/click
+[20:27] voice/rootmaw/move
+[20:29] voice/rootmaw/move
+[20:30] voice/rootmaw/move
+[20:31] brood/error, ui/click
+[20:32] voice/rootmaw/move, ui/click
+[20:34] voice/grub/select, ui/click
+[20:35] ui/click x2, brood/error
+[20:36] voice/grub/move
+[20:38] voice/grub/move, ui/click
+[20:41] voice/rootmaw/select, ui/click
+[20:42] ui/click
+[20:43] voice/rootmaw/move
+[20:44] voice/rootmaw/move
+[20:45] voice/rootmaw/move, brood/error, ui/click
+[20:46] voice/rootmaw/move, ui/click
+[20:49] ui/click
+[20:51] brood/error, ui/click
+[20:54] voice/rootmaw/move, ui/click
+[21:37] MUSIC ended brood_peace_7, MUSIC brood_peace_3
+[21:43] voice/venom_challenger/select, ui/click
+[21:44] voice/venom_challenger/move x2, ui/click
+[21:45] voice/venom_challenger/move
+[21:46] voice/venom_challenger/move
+[21:47] combat/venom_challenger_death
+[21:49] voice/brood_mother/select, ui/click
+[21:50] ui/click x4, voice/dilophosaurus/select
+[21:51] ui/click x2, brood/error
+[21:52] combat/venom_challenger_death
+[21:53] combat/clock_soldier_death
+[21:54] combat/venom_challenger_death, brood/error
+[21:55] ui/click, combat/venom_challenger_death, combat/grub_death
+[21:56] combat/grub_death x2
+[21:57] voice/brood_army/select, ui/click
+[21:58] voice/brood_army/move, ui/click x2, combat/grub_death
+[21:59] combat/grub_death x2
+[22:00] ui/click, combat/grub_death, brood/wings_big, voice/pterodactyl/move
+[22:01] voice/pterodactyl/move
+[22:02] combat/grub_death x2, voice/brood_army/select, ui/click
+[22:03] combat/grub_death x2, voice/brood_army/select, ui/click
+[22:04] voice/brood_army/move
+[22:06] voice/mound_turtle/select, ui/click x3, brood/error x2
+[22:07] combat/grub_death, ui/click
+[22:08] combat/grub_death
+[22:09] combat/grub_death
+[22:10] voice/mound_turtle/select, ui/click x3
+[22:12] voice/mound_turtle/select, ui/click x2
+[22:13] voice/mound_turtle/select, ui/click x2
+[22:14] ui/click, brood/error
+[22:16] voice/brood_army/select
+[22:17] voice/brood_army/move
+[22:18] voice/brood_army/select, ui/click
+[22:19] voice/brood_army/move
+[22:21] voice/brood_army/move
+[22:24] voice/brood_army/move
+[22:25] combat/grub_death
+[22:26] voice/brood_army/move, combat/grub_death
+[22:28] combat/grub_death
+[22:29] ui/click, combat/grub_death
+[22:31] combat/grub_death
+[22:32] combat/rootmaw_death, voice/brood_army/select, ui/click, combat/grub_death
+[22:33] voice/brood_army/select, ui/click
+[22:34] ui/click
+[22:35] voice/brood_army/select, ui/click
+[22:37] ui/click x2, voice/mound_turtle/select
+[22:38] voice/mound_turtle/move, ui/click
+[22:39] voice/brood_army/select, ui/click
+[22:40] ui/click x2, voice/brood_mother/select
+[22:41] ui/click x2
+[22:42] voice/mound_turtle/move, ui/click
+[22:46] ui/click x2, voice/mound_turtle/select
+[22:47] ui/click x3, voice/brood_mother/select
+[22:48] ui/click x5, voice/dilophosaurus/attack
+[22:49] ui/click
+[22:50] voice/dilophosaurus/select, ui/click
+[22:51] ui/click x2, combat/clock_soldier_death
+[22:52] voice/mound_turtle/select, ui/click x4, combat/winder_death
+[22:53] voice/dilophosaurus/select, ui/click x3
+[22:54] voice/brood_mother/attack, ui/click x2
+[22:55] combat/clock_soldier_death x2, ui/click x2, voice/dilophosaurus/attack
+[22:56] ui/click x2, voice/dilophosaurus/attack, combat/clock_soldier_death
+[22:57] voice/mound_turtle/select, ui/click x2
+[22:58] ui/click x3, voice/mound_turtle/attack
+[22:59] voice/brood_mother/move x2, combat/clock_soldier_death
+[23:00] voice/brood_mother/move
+[23:01] voice/brood_mother/move
+[23:02] voice/brood_mother/move x2
+[23:03] combat/mound_turtle_death, voice/brood_mother/move
+[23:04] voice/brood_mother/move x2
+[23:05] voice/brood_mother/move
+[23:06] voice/brood_mother/move
+[23:07] voice/brood_mother/move, ui/click x2, combat/clock_soldier_death x2
+[23:08] combat/clock_soldier_death
+[23:09] combat/clock_soldier_death, voice/pterodactyl/select, ui/click x2, brood/wings_big
+[23:10] ui/click x2, voice/brood_mother/select
+[23:11] voice/brood_mother/move
+[23:12] voice/brood_mother/move x2, combat/clock_soldier_death x2
+[23:13] voice/brood_mother/move
+[23:14] combat/clock_soldier_death x2, voice/brood_mother/move, combat/brood_mother_death
+[23:15] combat/tyrannosaur_death, combat/mound_turtle_death, combat/dilophosaurus_death, combat/pterodactyl_death, announcer/brood/defeat, ui/click
