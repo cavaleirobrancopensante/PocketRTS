@@ -1264,8 +1264,9 @@ func _rooted_art(q: Unit) -> void:
 		var r: Rect2 = BroodRoot.rect_of(u) if BroodRoot.has_fp(u) else Rect2()
 		var br: Rect2 = BroodRoot.body_rect(u)
 		var sc: float = BroodRoot.scale_of(u)
-		check(BroodRoot.has_fp(u) and br.end.y >= r.end.y - 4.0 and br.end.y <= r.end.y + 14.0 * sc,
-			"    the %s's drawn bottom on its footprint's bottom edge (%.0f px from it; the drop %.0f px)" % [u.d["name"], br.end.y - r.end.y, BroodRoot.drop(u)])
+		var lift: float = float(Defs.NB.get("nest_lift", {}).get(u.kind, 0.0)) * sc      # (raised to the middle, 0.25.15)
+		check(BroodRoot.has_fp(u) and br.end.y >= r.end.y - lift - 4.0 and br.end.y <= r.end.y - lift + 14.0 * sc,
+			"    the %s's drawn bottom on its footprint's bottom edge, less its lift (%.0f px from it; the drop %.0f px)" % [u.d["name"], br.end.y - r.end.y, BroodRoot.drop(u)])
 		var srt: Node = u.get_node_or_null(BroodRoot.SORT)
 		var fr: Node = srt.get_node_or_null(BroodRoot.FP_NODE) if srt else null
 		check(fr != null and u.sprite.get_parent() == srt and fr.get_index() < u.sprite.get_index(), "    its selection frame is drawn under its pictures")

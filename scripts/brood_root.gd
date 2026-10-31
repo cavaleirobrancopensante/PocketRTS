@@ -760,13 +760,15 @@ static func art_dy(u: Unit) -> float:
 static func drop(u: Unit) -> float:
 	if not has_fp(u):
 		return 0.0
-	return rect_of(u).end.y - u.position.y - nest_y(u.kind, scale_of(u))
+	return rect_of(u).end.y - u.position.y - nest_y(u.kind, scale_of(u)) - float(Defs.NB.get("nest_lift", {}).get(u.kind, 0.0)) * scale_of(u)
 
 
 ## The same for a `k` rooted on the grid (snapped feet: the ROOT ghost).
 static func drop_for(k: String, sc := 1.0) -> float:
 	var f := fp(k, sc)
-	return (f[1] as Vector2).y + float((f[0] as Vector2i).y) * T * 0.5 - nest_y(k, sc)
+	# (Defs.NB "nest_lift": a short picture on a tall footprint is raised to its middle; the Mound Turtle, the owner
+	# 2026-10-31: it sat in the bottom row of its 3x3)
+	return (f[1] as Vector2).y + float((f[0] as Vector2i).y) * T * 0.5 - nest_y(k, sc) - float(Defs.NB.get("nest_lift", {}).get(k, 0.0)) * sc
 
 
 ## Where the bottom of a `k`'s rooted picture lies from its feet, as drawn (her stage's scale, the art scale).

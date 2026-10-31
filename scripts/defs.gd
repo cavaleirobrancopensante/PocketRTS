@@ -2034,6 +2034,7 @@ const NB := {
 	# the rooted strips: the lowest row a sixth as wide as the picture); rooted, the pictures are drawn that much lower
 	# (BroodRoot.drop) so that bottom touches the footprint's bottom edge, as a building stands on its tiles.
 	# (her stage-2 and stage-3 art, "brood_mother_2" / "_3", tools/import_brood_mature.py, by art key)
+	"nest_lift": {"mound_turtle": 20.0},         # px a rooted picture is raised off its footprint's bottom, to sit in its middle (BroodRoot.drop_for)
 	"nest_y": {"brood_mother": -8, "brood_mother_2": -13, "brood_mother_3": -9, "rootmaw": -1, "tyrannosaur": 26, "mound_turtle": 0, "dilophosaurus": 21, "pterodactyl": 9},
 }
 
