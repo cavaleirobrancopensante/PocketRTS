@@ -813,7 +813,9 @@ static func _hatch(g: Game, e: Unit) -> void:
 			u.nb["hof"] = e.net_id         # (online: the guest hands its selection of the egg on to them too, NetSnapshot)
 		if n > 1:
 			u.clutch_n = n          # (its share of the egg, for SACRIFICE: devour)
-		if not BroodRoot.send(g, u, rp, i) and k == "grub":     # (to the rally: the Mother's, the egg's own, or the father's for his nest)
+		if bool(e.nb.get("sac", false)):
+			u.cmd_sacrifice()          # (offered up while still an egg: straight to the Mother)
+		elif not BroodRoot.send(g, u, rp, i) and k == "grub":     # (to the rally: the Mother's, the egg's own, or the father's for his nest)
 			var src := free_source(g, t, u.position)
 			if src:
 				u.cmd_gather(src)

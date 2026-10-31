@@ -1144,14 +1144,18 @@ func _build_card() -> Array:
 			var has_pen := game.offer_place(offer[0].position, game.human) != null
 			var ess := 0
 			for u in offer:
-				ess += Game.sacrifice_value(u.kind)
+				if u.kind == BroodNew.EGG:
+					var yk := String(u.nb.get("k", "grub"))
+					ess += Game.sacrifice_value(yk) * int(u.nb.get("n", Defs.UNITS[yk].get("spawn", 1)))
+				else:
+					ess += Game.sacrifice_value(u.kind)
 			list.append(["ab_sacrifice", "SACRIFICE", func() -> void:
 				var n := 0
 				for u in game.selected_units():
 					if u.can_sacrifice():
 						u.cmd_sacrifice()
 						n += 1
-				toast("%d offered up: they go to the Brood Mother to be devoured (+%d spoils)." % [n, ess]), has_pen, "Needs the Brood Mother.", "+%d" % ess])
+				toast("%d offered up: they go to the Brood Mother to be devoured (+%d spoils)." % [n, ess] if not offer.all(func(x: Unit) -> bool: return x.kind == BroodNew.EGG) else "Offered up: as these eggs hatch, their young go straight to the Brood Mother to be devoured (+%d spoils)." % ess), has_pen, "Needs the Brood Mother.", "+%d" % ess])
 		_nb_buttons(list, units)          # (the Brood: the Mother's eggs, ROOT / UPROOT / HAUL)
 		for dk in ["cannon", "mortar", "tesla_cart"]:
 			var kk: String = dk

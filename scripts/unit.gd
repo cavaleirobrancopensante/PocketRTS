@@ -5642,12 +5642,18 @@ func _haul_battery(src: Building, delta: float) -> Vector2:
 ## A grub can be (10 spoils, Defs.NB "sac"), from its work too (what it carries is handed over at her), but not
 ## one on its way to turn into a Rootmaw, a Mound Turtle or a Sire (order "nb_morph").
 func can_sacrifice() -> bool:
+	if kind == BroodNew.EGG:
+		return not nb.has("out") and Game.sacrifice_value(String(nb.get("k", "grub"))) > 0     # (an egg: its young, when it hatches)
 	return Game.sacrifice_value(kind) > 0 and aboard == null and not off_field and order != "nb_morph"
 
 
 func cmd_sacrifice() -> void:
 	if game.net_forward(self, "cmd_sacrifice", []): return
 	if not can_sacrifice():
+		return
+	if kind == BroodNew.EGG:
+		# SACRIFICE ON AN EGG (the owner, 2026-10-31): its young go straight to the Mother to be devoured as they hatch
+		nb["sac"] = true
 		return
 	_reset_work()
 	order = "sacrifice"

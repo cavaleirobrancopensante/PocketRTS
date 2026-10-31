@@ -3,3 +3,7 @@
 > Ground spent: %d food
 pt Chão esgotado: %d de comida
 es Suelo agotado: %d de comida
+
+> Offered up: as these eggs hatch, their young go straight to the Brood Mother to be devoured (+%d spoils).
+pt Oferecidos: quando estes ovos eclodirem, os filhotes vão direto à Mãe da Ninhada para serem devorados (+%d espólios).
+es Ofrecidos: cuando estos huevos eclosionen, sus crías irán directas a la Madre de la Camada para ser devoradas (+%d de botín).

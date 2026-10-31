@@ -2545,6 +2545,7 @@ const T := {
 	"ALWAYS": "SEMPRE",
 	"WILL CONNECT": "VAI LIGAR",
 	"Ground spent: %d food": "Chão esgotado: %d de comida",
+	"Offered up: as these eggs hatch, their young go straight to the Brood Mother to be devoured (+%d spoils).": "Oferecidos: quando estes ovos eclodirem, os filhotes vão direto à Mãe da Ninhada para serem devorados (+%d espólios).",
 	"(next match)": "(próxima partida)",
 	"Patch notes, the animation viewer and RESET SETTINGS are in the main menu's Settings.": "As notas de atualização, o visualizador de animações e REDEFINIR CONFIGURAÇÕES estão nas Configurações do menu principal.",
 	"WHERE ARE YOU PLAYING?": "ONDE VOCÊ ESTÁ JOGANDO?",

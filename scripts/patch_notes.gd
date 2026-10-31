@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.25.17", "items": [
+		"SACRIFICE ON EGGS: select eggs and press SACRIFICE (C): as they hatch, their young go straight to the Brood Mother to be devoured, with no rally on the way. The button shows the spoils the eggs' young will give.",
+	]},
 	{"v": "0.25.16", "items": [
 		"THE MISSIONARY CAN BE KILLED AWAY FROM HIS CHURCH: he is untouchable only within 20 tiles of one of your Churches (and never near enemy buildings, as before). Before, he could not be hurt anywhere except near enemy buildings, so he strolled untouched through a Brood base, which has none.",
 	]},
