@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.25.2", "items": [
+		"ARMIES BUNCH UP LESS: soldiers of one side keep about a quarter more room between them, standing and on the move (a group of 30 Musketeers stands about 20 px apart instead of 17, Raptors 15 instead of 12), so a fight is easier to see and to micro and a blast catches fewer of them. No formations: a group sent somewhere still heads for about the same place as before and spreads out by pushing apart, a little more than before. In a gap, a gate or on a ramp, men who are stuck close up to the old spacing, so a crowd still goes through. Their bodies are not bigger: clicks, hits, paths, ramps and gates are as before. Enemies still close right in, so melee units reach their prey as before; workers keep the old spacing at mines, farms and yards.",
+	]},
 	{"v": "0.25.1", "items": [
 		"ONLINE: THE HOST'S BUILDINGS NO LONGER VANISH ON THE GUEST'S SCREEN: the guest's copy of the match was dropping the host's planned sites as \"nobody was coming to start it\", because it can't see the host's Winder out of sight nor anyone's Shift queue (one match logged 108 of them). Only the host decides now; its sites stay and get built. A freshly placed site also waits a moment before it can be dropped.",
 		"ONLINE: THE ROOTMAWS' GROUND REACHES THE GUEST: a Brood guest saw every Rootmaw's ground as 0% (cards, tooltips, labels and the match log). It is sent with the match now, when it changes.",

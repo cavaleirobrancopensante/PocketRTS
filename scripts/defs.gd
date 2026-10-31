@@ -15,6 +15,13 @@ const REPAIR_RATE := 20.0         # slowest repair speed (hp/s per worker); fast
 # Crown and Clockwork ones must stand near one of their halls.
 const ECON_RANGE := 14            # tiles from a hall
 const HALL_SPACING := 18          # a new hall needs its own ground: tiles from your other halls
+## SPACING (the owner, 2026-10-31: "they bunch up too much... make them bunch up a little bit less"): two units shove
+## each other apart (Game.separation) when their middles are closer than (both radii) times this. Soldiers of one side
+## keep SPACING (it was 0.85, the same as everyone else's, before 0.25.2); enemies keep SPACING_FOE, so a melee unit
+## still stands as close to its prey as before, and workers keep SPACING_FOE among themselves (mines, drop-offs and
+## yards are as crowded as ever: the economy is not touched). The body radius (clicks, hits, paths) is unchanged.
+const SPACING := 1.1
+const SPACING_FOE := 0.85
 ## Lodes: every Town Hall's ground holds a reserve of saltpetre for its Powder Mill, every
 ## Clocktower's a reserve of ore for its Ore Crushers (a Mill / Crusher draws on the nearest
 ## hall of its own). Amounts are in what they pay: powder for saltpetre, ore for ore. A hall's
