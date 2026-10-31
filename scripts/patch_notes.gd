@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.28", "items": [
+		"THE CROWN'S RAIDERS DON'T WAIT AT A ROOTMAW: Horsemen raiding the Brood who have killed every grub in sight no longer stand hitting the rooted Rootmaw or Mound Turtle the grubs worked at; they wait beside it for the next grub (they still fight any armed creature that comes).",
+	]},
 	{"v": "0.24.27", "items": [
 		"THE COMPUTER HARASSES THE WORKERS: a computer's soldier out alone in the enemy's land (a Clock Soldier that chased a scout out of its base, the Crown's raiding Horsemen, a soldier scout) no longer stops to hit a ROOTED Brood creature (a Mound Turtle, a Rootmaw) or a building: it walks past them and goes for the workers (grubs, Labourers, Winders), the ones standing still first, and keeps walking to the worker line. A Sire, the Brood Mother on her feet or a stronger force makes it pull back, then it comes again; hurt or out too long, it goes home. A big army attack still hits whatever it meets.",
 	]},

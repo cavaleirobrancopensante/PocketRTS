@@ -2918,8 +2918,12 @@ func _hunt(u: Unit, prey: Vector2) -> void:
 		# (a plain ride past the buildings on the way, but never with its back to a soldier: with one
 		# in reach it goes on attack-move and fights him; the computer (almost) never uses plain MOVE)
 		u.cmd_move(prey + Vector2(randf_range(-30, 30), randf_range(-30, 30)), _fighter_near(u))
-	elif not far and (u.order == "idle" or u.order == "move"):
-		u.cmd_move(prey + Vector2(randf_range(-30, 30), randf_range(-30, 30)), true)
+	elif not far and (u.order == "idle" or u.order == "move" or (u.order == "amove" and AIHarass.is_static(tgt))):
+		# (at the prey's spot with no worker in sight: it waits there for the next one, on attack-move only with a
+		# fighter near; never at the rooted Rootmaw or Mound Turtle the grubs work at: ai_harass.gd, test_ai_harass)
+		var fight := _fighter_near(u)
+		if fight or u.order != "move" or u.order_point.distance_to(prey) > 80.0:
+			u.cmd_move(prey + Vector2(randf_range(-30, 30), randf_range(-30, 30)), fight)
 
 
 
