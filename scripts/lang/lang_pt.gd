@@ -2540,6 +2540,7 @@ const T := {
 	"Fed by a Mainspring through the gear network": "Alimentada por uma Mola Real pela rede de engrenagens",
 	"TENSION FED": "TENSÃO CHEGA",
 	"No Mainspring in its gear network: it will stand idle. Link it to a network that has a Mainspring.": "Nenhuma Mola Real na sua rede de engrenagens: vai ficar parada. Ligue-a a uma rede que tenha uma Mola Real.",
+	"Ground spent: %d food": "Chão esgotado: %d de comida",
 	"WHERE ARE YOU PLAYING?": "ONDE VOCÊ ESTÁ JOGANDO?",
 	"YOU CAN CHANGE THIS LATER IN SETTINGS.": "VOCÊ PODE MUDAR ISSO DEPOIS EM CONFIGURAÇÕES.",
 	"FITS MAP": "DO MAPA",

@@ -1476,8 +1476,12 @@ static func draw_ghost(g: Game, ov: Node2D, k: String, c: Vector2i, sc := 1.0) -
 		lines.append(["ROOT HERE", Color(0.6, 1.0, 0.55)])
 	if k == BroodNew.MAW:
 		# the food in the ground there (fresh, partly spent, or spent: BroodNew._claim's rule)
+		# (online the guest reads the host's ground: Game.nb_spots comes with the snapshots, NetSnapshot "nbs")
 		var gl := BroodNew.ground_at(g, p)
-		lines.append([Loc.t("%d food in the ground") % int(gl), Color(0.95, 0.85, 0.35) if gl >= 1.0 else Color(1.0, 0.45, 0.4), true])
+		if gl < 1.0:
+			lines.append([Loc.t("Ground spent: %d food") % 0, Color(1.0, 0.35, 0.3), true])
+		else:
+			lines.append([Loc.t("%d food in the ground") % int(gl), Color(0.95, 0.85, 0.35) if gl >= float(Defs.PIT_GROUND) * 0.25 else Color(1.0, 0.6, 0.35), true])
 	var y0 := r.position.y - 8.0 - 18.0 * float(lines.size() - 1)       # (over the ghost: the card covers the screen's bottom)
 	for ln in lines:
 		var txt := String(ln[0]) if ln.size() > 2 else Loc.t(String(ln[0]))       # (a third field: already in the player's words)

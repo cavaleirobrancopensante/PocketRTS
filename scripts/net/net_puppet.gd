@@ -84,16 +84,99 @@ static func tick_unit(u: Unit, delta: float) -> void:
 				p.position = u.position
 	if u.kind == MarchingBand.KIND:
 		MarchingBand.look_tick(u, delta)      # (the Marching Band's music and ring, shown from its state)
+	_clocks(u, delta)
 	u._animate(delta)
+	if u.kind == "mist_toad":
+		ToadHop.track(u, delta)          # (its hop: the frame from the ground it covers, as on the host; it never hopped here)
 	if not u.visible or not u.game.view_rect.has_point(u.position):
 		u._draw_key = Vector4i(-1, -1, -1, -1)
+	elif not u.jump.is_empty() or u.moult_t >= 0.0:
+		u.queue_redraw()                 # (a Springer in the air: its shadow shrinks as it rises; a moult's bar and slime)
 	else:
-		var key := Vector4i(int(u.selected) + (2 if u.carrying > 0 else 0) + u.kills * 64, int(u.hp),
+		var key := Vector4i(int(u.selected) + (2 if u.carrying > 0 else 0) + u.kills * 64, int(u.hp) + (ToadHop.draw_key(u) * 100000 if u.kind == "mist_toad" else 0),
 			int(u.wind * 40.0) + int(u.powder * 2.0) + (1000 if u.supplying else 0) + ((int(u.owl_t * 4.0) + 1) * 100000 if u.owl_t >= 0.0 else 0),
 			int(u.max_hp) + int(u.reload_frac() * 16.0) * 10000)      # (a morph under way: its bar and clock hand move)
 		if key != u._draw_key:
 			u._draw_key = key
 			u.queue_redraw()
+
+
+## The clocks of what a unit is in the middle of, run on here between the host's pictures (each whole row sets them to
+## the host's again): a moult, a Swift's morph, rooting or uprooting, a cocoon, an egg's hatching, the Mother's laying, a
+## Springer's leap. Ten pictures a second (fewer, in bursts, over a slow line) made them stutter or stand still; each stops
+## at its end and waits for the host's word (the kind change, the cocoon opening).
+static func _clocks(u: Unit, delta: float) -> void:
+	if u.dead:
+		return
+	if u.moult_t >= 0.0:
+		u.moult_t = minf(u.moult_t + delta, float(Defs.NB["moult"]))
+	if u.owl_t >= 0.0:
+		u.owl_t = minf(u.owl_t + delta, float(Defs.OWL_MORPH["time"]))
+	if (u.tesla_mode == "deploying" or u.tesla_mode == "packing") and u.tesla_t > 0.0:
+		u.tesla_t = maxf(0.0, u.tesla_t - delta)
+	if not u.jump.is_empty():
+		Springer.view_tick(u, delta)
+	if u._k_nb:
+		if u.nb.has("coc"):
+			u.nb["coc"] = minf(float(u.nb["coc"]) + delta, BroodRoot.cocoon_time(u) - 0.01)
+		if u.kind == BroodNew.EGG and u.nb.has("out"):
+			u.nb["out"] = minf(float(u.nb["out"]) + delta, BroodNew.HATCH_OUT)
+		if float(u.nb.get("lay_t", 0.0)) > 0.0:
+			u.nb["lay_t"] = maxf(0.0, float(u.nb["lay_t"]) - delta)
+
+
+## The host changed a unit's kind (Unit.morph): a young Brood unit's moult ended (its shell must open and the Challenger
+## show: the guest kept the shell and the faded young one for good, "commanding cocoons"), a Swift became an Owl. The
+## pictures and sounds the host's own tick gives it (BroodMature.tick, CwAir.morph_tick), without the game's side.
+static func morph_to(u: Unit, k: String) -> void:
+	var g := u.game
+	var was := u.kind
+	var moulting := u.moult_t >= 0.0 or u.get_node_or_null(MoultLook.SHELL) != null
+	var owl := u.owl_t >= 0.0
+	u.morph(k)
+	var shown := u.visible and g.view_rect.has_point(u.position)
+	if moulting:
+		u.moult_t = -1.0
+		if u.sprite:
+			u.sprite.self_modulate = Color.WHITE
+			if BroodMature.mature_of(was) == k:
+				MoultLook.finish(u)         # (the empty shell and the shed skin left on the ground; its colour comes back)
+			else:
+				MoultLook.clear(u)
+		if shown and BroodMature.mature_of(was) == k:
+			g.spawn_effect("acid_splash", u.position + Vector2(0, -8), 0.9)
+			Sfx.play("brood/cocoon_split", u.position, -4.0)
+			Sfx.play_any(["brood/mature_" + k, "hatch", "roar"], u.position, -6.0)
+	if owl:
+		u.owl_t = -1.0
+		if shown and k == Defs.OWL:
+			var fx := g.spawn_effect("smoke", u.position + Vector2(0, -float(Defs.FLYER[Defs.OWL]["centre"])), 0.9)
+			fx.scale = Vector2(1.3, 1.3)
+			Sfx.play_any(["combat/owl_ready", "ratchet"], u.position, -4.0)
+
+
+## A moult the host began (BroodMature.start): its sound here.
+static func moult_began(u: Unit) -> void:
+	if u.visible and u.game.view_rect.has_point(u.position):
+		Sfx.play_any(["brood/moult", "hatch", "work/grub_deliver"], u.position, -6.0)
+
+
+## A Springer's leap from the host's row: the host's clock (each picture), the guest's own marks of what it has shown
+## (the launch and landing sounds and dust, Springer.view_tick) kept across pictures; {} when it has landed.
+static func set_jump(u: Unit, j: Dictionary) -> void:
+	if j.is_empty():
+		u.jump = {}
+		return
+	var nj := j.duplicate()
+	if u.jump.is_empty():
+		if u.visible and u.game.view_rect.has_point(u.position):
+			Sfx.play_any(["combat/springer_crouch", "ratchet"], u.position, -6.0)
+	else:
+		for k in ["g_off", "g_down"]:
+			if u.jump.has(k):
+				nj[k] = u.jump[k]
+		nj["t"] = maxf(float(nj["t"]), minf(float(u.jump["t"]), float(nj["t"]) + 0.15))      # (no step back to an older picture's clock)
+	u.jump = nj
 
 
 ## A unit told to walk, shown ahead of the snapshots (NetSession.lead): until the host's snapshot shows the order it

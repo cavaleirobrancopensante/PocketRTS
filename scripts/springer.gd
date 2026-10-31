@@ -188,6 +188,28 @@ static func tick(u: Unit, delta: float) -> void:
 		u.sprite.position = Vector2(0.0, -lift(u))
 
 
+## An online guest's (or a replay's) leap: only the clock and what it shows (the host moves it): the launch's sound, the
+## landing's dust and sound, once each ("g_off" / "g_down": the guest's own marks, NetPuppet.set_jump keeps them). It
+## waits on the last landing frame for the host's picture that ends it.
+static func view_tick(u: Unit, delta: float) -> void:
+	var j: Dictionary = u.jump
+	var c := float(j["crouch"])
+	var a := float(j["air"])
+	j["t"] = minf(float(j["t"]) + delta, c + a + float(j["land"]) - 0.01)
+	var t := float(j["t"])
+	var shown := u.visible and u.game.view_rect.has_point(u.position)
+	if t >= c and not j.has("g_off"):
+		j["g_off"] = true
+		if shown:
+			Sfx.play_any(["combat/springer_jump", "combat/arrow_whoosh"], u.position, -4.0)
+	if t >= c + a and not j.has("g_down"):
+		j["g_down"] = true
+		if shown:
+			var fx := u.game.spawn_effect("dust", u.position + Vector2(0, -2), 1.6)
+			fx.scale = Vector2(0.55, 0.45)
+			Sfx.play_any(["combat/springer_land", "gear_hit"], u.position, -8.0)
+
+
 ## The sprite's height over its ground shadow now (px): 0 on the ground, the arc in the air.
 static func lift(u: Unit) -> float:
 	if u.jump.is_empty():
