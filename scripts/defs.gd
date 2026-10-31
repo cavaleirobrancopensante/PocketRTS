@@ -854,7 +854,7 @@ const UNITS := {
 		"tags": ["light"],
 		"name": "Labourer", "hp": 46, "armor": 0, "speed": 74, "cost": 50, "time": 12.0, "supply": 1,
 		"sight": 7, "range": 20, "damage": 7, "cooldown": 1.0, "radius": 9, "from": "town_hall",
-		"faction": "crown", "worker": true, "about": "Mines gold and builds. Weak in a fight.",
+		"faction": "crown", "worker": true, "about": "Builds and repairs (buildings and the guns and wagons), and works the Farms and the Powder Mills. Right-clicked onto a Town Hall he becomes a hauler: he leads horses to the Barracks and Foundry and carries powder kegs to the Wagons. MOUNT a horse and he rides as a Messenger. Weak in a fight.",
 	},
 	"musketeer": {
 		"tags": ["light"],
@@ -1258,7 +1258,7 @@ const UNITS := {
 		"name": "Mist Toad", "hp": 90, "armor": 0, "speed": 42, "cost": 100, "cost2": 25, "time": 22.0, "supply": 3,
 		"sight": 9, "range": 24, "damage": 4, "cooldown": 1.6, "aim": 0.3, "radius": 14, "from": "",
 		"faction": "brood",
-		"about": "Slow, fragile swamp caster with only a weak lick. Its energy (fills over time, faster on swamp) pays for two spells. FOG lays a swamp fog bank: shots fired from or into it miss half the time, and units inside see only 2 tiles. TONGUE marks one enemy for 3 s (they see the crosshair), then drags it to the Toad's feet, a flyer too (through the air, to just over the Toad); heavy engines, field guns and mortars, the Brood Mother and the fathers are only staggered (stunned 2.5 s).",
+		"about": "Slow, fragile swamp caster with only a weak lick. Its energy (fills over time, faster on swamp) pays for three spells. FOG lays a swamp fog bank: shots fired from or into it miss half the time, and units inside see only 2 tiles. TONGUE marks one enemy for 3 s (they see the crosshair), then drags it to the Toad's feet, a flyer too (through the air, to just over the Toad); heavy engines, field guns and mortars, the Brood Mother and the fathers are only staggered (stunned 2.5 s). MIASMA lays a green cloud for 8 s: the Brood inside heal up to 30% of their health.",
 	},
 	"ornithopter": {
 		"tags": ["light"],
@@ -1377,7 +1377,7 @@ const BUILDINGS := {
 	"clocktower": {
 		"name": "Clocktower", "hp": 2000, "armor": 3, "cost": 400, "time": 60.0, "size": Vector2i(5, 4),
 		"supply": 10, "sight": 9, "trains": ["winder"], "field": 9, "battery": [2.0, 6], "crew": 4, "faction": "clockwork",
-		"about": "The blueprint of the machine: builds Winders, takes in the cogs, unlocks the other buildings and fills a battery every 2 s. Its gear ring is the biggest: every building must mesh with it, directly or through others, or it stops. Allows 2 Boilers and 2 Cog Presses nearby. Its ground holds a reserve of raw brass for its presses (spent, they yield a quarter), and its Boilers share its coal. A new Clocktower starts its own gear field.",
+		"about": "The blueprint of the machine: builds Winders, takes in the cogs and unlocks the other buildings. Its gear ring is the biggest: every building must mesh with it, directly or through others, or it stops. Allows 2 Cog Presses and 1 Mainspring nearby. Its ground holds 9,000 raw brass for its presses (spent, they yield nothing) and 1,320 SPRING LIFE for its Mainspring (it winds less as that runs down, 5% once spent). A new Clocktower brings fresh brass and spring life and starts its own gear field.",
 	},
 	"spring_tower": {
 		"name": "Spring Tower", "hp": 500, "armor": 2, "cost": 100, "time": 20.0, "size": Vector2i(2, 2),
@@ -2226,7 +2226,7 @@ const TIPS := {
 	"brute": "Huge horned tank: charges in, knocks enemies back and batters down walls and gates.",
 	"skywing": "Flying, it hunts flyers with spines. LAND it to bite ground units (then anything can hit it). Retired: no longer laid.",
 	"hatchlings": "Cheap, fast little flyers that bite only flyers. Two hatch from each egg (three with BIGGER CLUTCH). MATURE into a Storm Challenger.",
-	"mist_toad": "Swamp caster. FOG makes shots miss half the time; TONGUE drags an enemy to its feet. Weak in a fight.",
+	"mist_toad": "Swamp caster. FOG makes shots miss half the time; TONGUE drags an enemy to its feet; MIASMA heals the Brood in its cloud. Weak in a fight.",
 	"tyrant_challenger": "A matured Raptor, a young Tyrant Sire: a medium all-round biter between the Raptor and the Brute.",
 	"venom_challenger": "A matured Spitter, a young Venom Sire: a heavier glob than a Spitter's, a little farther, with a small splash.",
 	"storm_challenger": "A matured Hatchling, a young Storm Sire: a flyer that swoops to bite flyers and ground units alike.",
@@ -2253,6 +2253,112 @@ const TIPS := {
 	"quadrant": "Every Field Cannon and Mortar reaches 1 tile further.",
 	"charge": "Horsemen and Cuirassiers charge: after a gallop the first blow hits double and throws the enemy back.",
 }
+
+
+## THE CARD'S ONE LINE (the owner, 2026-10-31: "it should give a small description of the unit, not a gigantic text"):
+## the single-selection panel shows this short line (one line, at most SHORT_MAX characters in every language:
+## tools/test_card_text.gd); the full "about" text and the stats are in the portrait's tooltip (hover it, or a long
+## press on a phone). Every unit and building that can be in a match has one; any other kind falls back to the first
+## sentence of its "about" (short_of). Armoured soldiers: SHORT_ARMOURED, by their unarmoured kind.
+const SHORT_MAX := 80
+const SHORT := {
+	# Crown units
+	"labourer": "Builds, repairs, works Farms and Mills, and hauls. Weak in a fight.",
+	"musketeer": "Line infantry: volleys at range, the bayonet up close. Hits flyers.",
+	"cannon": "Field gun: unlimber it to fire round shot or canister. Needs a horse.",
+	"mortar": "Siege mortar: deploy it to lob shells over walls, 5 to 11 tiles.",
+	"powder_wagon": "Carries powder: soldiers near it refill. Blows up when destroyed.",
+	"cuirassier": "Fast horseman: one pistol shot, then the sabre. Reloads on foot.",
+	"horse": "Lead it, ride it or harness it to a gun or wagon. Can be stolen.",
+	"messenger": "A Labourer on a horse: a fast, unarmed scout.",
+	"dragoon": "A Musketeer on a horse: rides fast, dismounts to fire.",
+	"dismounted": "A Horseman on foot: pistol and sabre. MOUNT a horse to ride.",
+	"balloon": "Carries 4 men over anything; Musketeers aboard shoot farther.",
+	"band": "Plays small buffs to your soldiers within 5 tiles. Unarmed.",
+	"missionary": "Bandages the wounded and raises fallen soldiers. One per Church.",
+	"mounted_missionary": "A Missionary on a horse: fast and unarmed; gets off to heal.",
+	# Brood
+	"grub": "Carries food to the Brood Mother; BUILD turns it into a rooting creature.",
+	"raptor": "Fast, flimsy claws. Two hatch from each egg.",
+	"spitter": "Spits acid at ground units: it burns and strips armour.",
+	"brute": "Huge horned tank: charges, knocks back and batters down walls.",
+	"hatchlings": "Cheap, fast little flyers that bite only flyers.",
+	"mist_toad": "Swamp caster: FOG, TONGUE and MIASMA. Weak in a fight.",
+	"skywing": "Retired flyer: hunts flyers; LAND it to bite on the ground.",
+	"brood_mother": "The heart of the Brood: she lays every egg. If she dies, you lose.",
+	"rootmaw": "Roots on your swamp and drinks the ground; grubs carry its food.",
+	"mound_turtle": "Rooted: 12 supply, new swamp and a living wall. Uprooted it walks.",
+	"tyrannosaur": "A father: rooted by the Mother, he fathers Raptors and Brutes.",
+	"dilophosaurus": "A father: rooted by the Mother, he fathers Spitters and Mist Toads.",
+	"pterodactyl": "A flying father: landed by the Mother, he fathers Hatchlings.",
+	"tyrant_challenger": "A matured Raptor: a medium all-round biter.",
+	"venom_challenger": "A matured Spitter: heavier venom with a small splash; hits flyers.",
+	"storm_challenger": "A matured Hatchling: swoops to bite flyers and ground alike.",
+	"brood_egg": "One of the Mother's eggs: a warrior's waits for its father's breath.",
+	"food_pile": "Spilled food: grubs carry it to the Brood Mother. It rots slowly.",
+	# Clockwork units
+	"winder": "The worker: winds Cog Presses and Mainsprings, builds and repairs.",
+	"clock_soldier": "Front-line soldier: clock-hand sword and shield. Quick but light.",
+	"springer": "Shoots screws at ground and air; JUMPS up to 5 tiles.",
+	"cuckoo": "Fast brass bird that hunts flyers; can MORPH TO OWL.",
+	"ticking_owl": "Swoops on units and bombs buildings. Cannot hit flyers.",
+	"pendulum": "Slow and tough: its blades cut every ground enemy in its arc.",
+	"netter": "Nets one enemy for 4 s: it can't move or use abilities.",
+	"ballista": "Bolt thrower: its screw goes through the target into those behind.",
+	"great_winder": "Winds and mends the army near it; sweeps wrecks into cogs.",
+	# Crown buildings
+	"town_hall": "Trains Labourers and haulers. Allows 2 Farms and 1 Powder Mill.",
+	"cottage": "Houses 8 more supply. The first unlocks the Barracks and palisade.",
+	"wall": "Wooden palisade: blocks the way. Lay it in a line.",
+	"gate": "A palisade piece that opens for your side only.",
+	"barracks": "Trains Musketeers, Horsemen, Officers and Dragoons. Refits soldiers.",
+	"armoury": "The Crown's research: armour, locks, bayonet, guns and the charge.",
+	"foundry": "Casts cannons and mortars, rigs balloons, builds powder wagons.",
+	"farm": "Labourers grow gold here: a 380-gold harvest about every 40 s.",
+	"powder_mill": "Labourers grind saltpetre into powder. Soldiers refill nearby.",
+	"horse_breeder": "Sells horses (40 gold) for cavalry, guns and wagons.",
+	"church": "Sends out one Missionary.",
+	# Clockwork buildings
+	"clocktower": "Builds Winders and takes in cogs; its gear ring drives the field.",
+	"movement_works": "Makes Clock Soldiers; Springers and Netters with a Mainspring.",
+	"heavy_works": "Makes Pendulums, Spring Ballistas and Great Winders.",
+	"escapement": "The tech building: unlocks the Springer, researches HIGH LEAP.",
+	"cuckoo_house": "Makes Swifts and researches TICKING OWL.",
+	"regulator": "10 more supply for the machine.",
+	"ratchet_turret": "Static defence: fires screws at ground and air alike.",
+	"cog_press": "Winders wind it for COGS from its Clocktower's brass.",
+	"mainspring": "Winders crank it for TENSION; it drives the rings that mesh with it.",
+}
+const SHORT_ARMOURED := {
+	"musketeer": "Armoured Musketeer: +1 armour, +20 health. Volleys and bayonet.",
+	"cuirassier": "Armoured Horseman: +1 armour, +30 health. Pistol and sabre.",
+	"dragoon": "A Guardsman on a horse: rides fast, dismounts to fire.",
+	"dismounted": "A Cuirassier on foot: pistol and sabre. MOUNT a horse to ride.",
+}
+
+
+## The card's one line for a kind (English: Loc.t it): SHORT, else its "about" up to the first full stop.
+static func short_of(kind: String, armoured := false) -> String:
+	if armoured and SHORT_ARMOURED.has(kind):
+		return SHORT_ARMOURED[kind]
+	if SHORT.has(kind):
+		return SHORT[kind]
+	for d in [UNITS, BUILDINGS]:
+		if (d as Dictionary).has(kind):
+			var a := String(d[kind].get("about", ""))
+			var i := a.find(". ")
+			return a.left(i + 1) if i > 0 else a
+	return ""
+
+
+## The full card text for the portrait's tooltip: the "about" (an armoured soldier's own).
+static func about_of(kind: String, armoured := false) -> String:
+	if armoured and ARMOURED.has(kind):
+		return String(ARMOURED[kind]["about"])
+	for d in [UNITS, BUILDINGS]:
+		if (d as Dictionary).has(kind):
+			return String(d[kind].get("about", ""))
+	return ""
 
 
 ## The short tooltip text for a unit, building or research ("about" when it has none).
