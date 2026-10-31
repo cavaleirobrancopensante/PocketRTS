@@ -58,6 +58,19 @@ func _run() -> void:
 	g.set_selection([])
 	key(1)
 	check(g.selection.size() == g.groups[0].size() and g.selection.size() == 2, "1 selects group 1 (%d)" % g.selection.size())
+	# F2 twice: the camera goes to the army's biggest clump
+	for i in 5:
+		g._add_unit("musketeer", g.human, Vector2(2000, 1500) + Vector2(randf() * 40.0, randf() * 40.0))
+	g._add_unit("musketeer", g.human, Vector2(400, 1500))
+	g.camera.position = Vector2(200, 200)
+	var f2 := InputEventKey.new()
+	f2.pressed = true
+	f2.keycode = KEY_F2
+	g.hud.bar.key(f2)
+	var once: Vector2 = g.camera.position
+	g.hud.bar.key(f2)
+	await process_frame
+	check(once.distance_to(Vector2(200, 200)) < 1.0 and g.camera.position.distance_to(Vector2(2020, 1520)) < 300.0, "F2 once selects; twice: the camera goes to the army (%s)" % str(g.camera.position))
 	main._to_menu()
 	print("ALL OK" if fails == 0 else "SOME FAILED (%d)" % fails)
 	quit(1 if fails else 0)

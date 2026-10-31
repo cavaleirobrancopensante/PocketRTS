@@ -283,6 +283,40 @@ func select_army() -> void:
 		hud.toast("No army yet.")
 		return
 	gm.set_selection(a)
+	# pressed twice: the camera goes to where MOST of the army is (its biggest clump), as a group's key does
+	if _twice("army"):
+		hud._jump(_densest(a))
+
+
+## The same key (F1, F2, F3) pressed again within 0.4 s: the camera goes there.
+var _last_key := ""
+var _last_key_t := 0
+func _twice(k: String) -> bool:
+	var now := Time.get_ticks_msec()
+	var again := _last_key == k and now - _last_key_t < 400
+	_last_key = k
+	_last_key_t = now
+	return again
+
+
+## Where most of `list` stands: the middle of the biggest clump (the units within 8 tiles of the one with the most
+## neighbours).
+func _densest(list: Array) -> Vector2:
+	var r2 := pow(8.0 * Defs.TILE, 2.0)
+	var best: Node2D = list[0]
+	var bn := -1
+	var step := maxi(1, list.size() / 60)          # (a big army: sample the centres)
+	for i in range(0, list.size(), step):
+		var u: Node2D = list[i]
+		var n := 0
+		for o in list:
+			if u.global_position.distance_squared_to(o.global_position) < r2:
+				n += 1
+		if n > bn:
+			bn = n
+			best = u
+	var near: Array = list.filter(func(o) -> bool: return best.global_position.distance_squared_to(o.global_position) < r2)
+	return _centre(near)
 
 
 ## Every finished building that makes something (the Town Hall too). The Brood has no buildings: its maker is the
@@ -302,8 +336,8 @@ func select_production() -> void:
 		hud.toast("No buildings that make anything yet.")
 		return
 	game().set_selection(pb)
-	if BroodNew.on(game(), game().human):
-		hud._jump(pb[0].position)
+	if BroodNew.on(game(), game().human) or _twice("make"):
+		hud._jump(pb[0].position if pb.size() == 1 else _densest(pb))
 
 
 func cam_save(j: int) -> void:

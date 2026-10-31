@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.25.10", "items": [
+		"F2 (ARMY) PRESSED TWICE: the camera goes to where most of your army stands (its biggest clump), as a group's number does when pressed twice. F3 (MAKE) twice goes to your production buildings.",
+	]},
 	{"v": "0.25.9", "items": [
 		"HARVEST AUTOCAST REACHES FARTHER: a grub with automatic harvest on goes to any body its side can see (up to 60 tiles), not only those within 10 tiles of it; the nearest first. A HARVEST order given by hand still takes the bodies near it.",
 	]},
