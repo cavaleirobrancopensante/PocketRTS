@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.25.14", "items": [
+		"THE BROOD MOTHER'S GRUB IS S, StarCraft's worker key: on her card alone (rooted or uprooted, with any research) GRUB is S and STOP is G. A selection mixing her with other creatures is an army card: STOP keeps S there.",
+		"SETTINGS IN A MATCH: the match MENU has a SETTINGS button that opens the same Settings page as the main menu (GAMEPLAY, DISPLAY, SOUND, EXPERIMENTAL, OTHER) over the match: change the hotkeys and layout, the command keys, the interface size, the health and charge bars, the expansion spots, the powder smoke, full screen or the volumes, and they apply in the match. A single-player match is paused meanwhile; online the match keeps running. What only a new match picks up (the experiments, PLAYING ON) is dimmed with \"(next match)\"; RESET SETTINGS, the animation viewer and the patch notes stay in the main menu. BACK or Esc returns to the match MENU.",
+	]},
 	{"v": "0.25.13", "items": [
 		"ARMIES BUNCH UP LESS: soldiers of one side keep about a quarter more room between them, standing and on the move (a group of 30 Musketeers stands about 20 px apart instead of 17, Raptors 15 instead of 12), so a fight is easier to see and to micro and a blast catches fewer of them. No formations: a group sent somewhere still heads for about the same place as before and spreads out by pushing apart, a little more than before. In a gap, a gate or on a ramp, men who are stuck close up to the old spacing, so a crowd still goes through. Their bodies are not bigger: clicks, hits, paths, ramps and gates are as before. Enemies still close right in, so melee units reach their prey as before; workers keep the old spacing at mines, farms and yards.",
 	]},

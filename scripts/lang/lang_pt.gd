@@ -2545,6 +2545,8 @@ const T := {
 	"ALWAYS": "SEMPRE",
 	"WILL CONNECT": "VAI LIGAR",
 	"Ground spent: %d food": "Chão esgotado: %d de comida",
+	"(next match)": "(próxima partida)",
+	"Patch notes, the animation viewer and RESET SETTINGS are in the main menu's Settings.": "As notas de atualização, o visualizador de animações e REDEFINIR CONFIGURAÇÕES estão nas Configurações do menu principal.",
 	"WHERE ARE YOU PLAYING?": "ONDE VOCÊ ESTÁ JOGANDO?",
 	"YOU CAN CHANGE THIS LATER IN SETTINGS.": "VOCÊ PODE MUDAR ISSO DEPOIS EM CONFIGURAÇÕES.",
 	"FITS MAP": "DO MAPA",
@@ -3449,4 +3451,5 @@ const T := {
 	"EXPERIMENTS BEING TRIED OUT. THEY APPLY FROM THE NEXT MATCH.": "EXPERIMENTOS EM TESTE. VALEM A PARTIR DA PRÓXIMA PARTIDA.",
 	"WORKING: A MAINSPRING FEEDS IT THROUGH THE GEAR NETWORK.": "FUNCIONANDO: UMA MOLA REAL A ALIMENTA PELA REDE DE ENGRENAGENS.",
 	"FED BY A MAINSPRING THROUGH THE GEAR NETWORK": "ALIMENTADA POR UMA MOLA REAL PELA REDE DE ENGRENAGENS",
+	"(NEXT MATCH)": "(PRÓXIMA PARTIDA)",
 }

@@ -163,6 +163,8 @@ func _ready() -> void:
 ## A fresh full-screen menu page over the animated backdrop.
 func _page() -> Control:
 	_clear_ui()
+	_match_settings = false
+	_match_overlay = null
 	_esc_button = null
 	_backdrop = MenuBackdrop.new()
 	_backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -853,7 +855,7 @@ func show_settings(tab := "") -> void:
 		settings_tab = tab
 	if not SETTINGS_TABS.has(settings_tab):
 		settings_tab = "GAMEPLAY"
-	var root := _page()
+	var root := _settings_page()
 	_settings_root = root
 	var c := CenterContainer.new()
 	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -873,7 +875,11 @@ func show_settings(tab := "") -> void:
 	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(head)
-	var top_back := _button("BACK", func() -> void: show_menu())
+	var top_back := _button("BACK", func() -> void:
+		if _match_settings:
+			close_match_settings()        # (in a match: back to the match's MENU)
+		else:
+			show_menu())
 	top_back.custom_minimum_size = Vector2(150, 46)
 	_set_back(top_back)
 	top.add_child(top_back)
@@ -912,6 +918,112 @@ func show_settings(tab := "") -> void:
 			scr.custom_minimum_size.y = minf(v.get_combined_minimum_size().y, get_viewport().get_visible_rect().size.y - 170.0)).call_deferred()
 
 
+## SETTINGS IN A MATCH (the owner, 2026-10-31: "when we press MENU, we should get access to the settings button so we
+## can change hotkeys and things during a match"): the match MENU's SETTINGS opens this same tabbed page as an overlay
+## over the match (scripts/ui/hud.gd settings_requested). Single player the match is paused meanwhile (and goes on as it
+## was when it closes); online it keeps running. BACK or Esc closes it, back to the match's MENU. The rows are the same
+## (settings_rows); what only a new match picks up is dimmed with "(next match)", and what makes no sense mid-match
+## (RESET SETTINGS, the animation viewer, the patch notes, the music player: the MENU has its own) is left out.
+var _match_settings := false          # the Settings page is open over a match
+var _match_overlay: Control           # its page (over the HUD, under nothing)
+var _match_paused_by_us := false      # opening it paused the match (single player): closing it resumes
+var _match_smoke := -1                # the powder smoke level when it opened (changed: the match's smoke is rebuilt)
+
+
+func open_match_settings(tab := "") -> void:
+	if game == null or game.hud == null:
+		return
+	var hud = game.hud
+	_match_settings = true
+	hud.settings_open = true
+	_match_smoke = Settings.powder_smoke_level()
+	_match_paused_by_us = false
+	if not hud.paused and game.net == null and game.replay == null and not game.over:
+		hud.set_paused(true)
+		_match_paused_by_us = true
+	show_settings(tab)
+
+
+func close_match_settings() -> void:
+	if is_instance_valid(_match_overlay):
+		_match_overlay.queue_free()
+	_match_overlay = null
+	_settings_root = null
+	_match_settings = false
+	_esc_button = null
+	if game == null or game.hud == null:
+		return
+	var hud = game.hud
+	hud.settings_open = false
+	_apply_match_settings()
+	if _match_paused_by_us and hud.paused:
+		hud.set_paused(false)
+	_match_paused_by_us = false
+	hud._sig.clear()
+	hud._redraw_t = 0.0
+
+
+## What a changed setting needs to show in the running match (the rest is read as it is drawn: the hotkeys, grid keys,
+## interface size, health and charge bars, tooltips, minimap, area marks, volumes, full screen).
+func _apply_match_settings() -> void:
+	if game == null:
+		return
+	var lv := Settings.powder_smoke_level()
+	if lv != _match_smoke and game.powder_smoke != null and PowderSmoke.force < 0:
+		var old: PowderSmoke = game.powder_smoke
+		var ps := PowderSmoke.new()
+		ps.setup(game, lv)
+		old.add_sibling(ps)
+		old.queue_free()
+		game.powder_smoke = ps
+		_match_smoke = lv
+	if game.exp_spots != null and is_instance_valid(game.exp_spots):
+		game.exp_spots.refresh()
+		game.exp_spots.queue_redraw()
+	for e in game.units + game.buildings:      # (the health and charge bars: drawn again now, paused too)
+		if is_instance_valid(e):
+			(e as CanvasItem).queue_redraw()
+
+
+## The Settings page's root: a fresh menu page, or in a match a dimmed overlay over the match.
+func _settings_page() -> Control:
+	if not _match_settings or game == null:
+		return _page()
+	if is_instance_valid(_match_overlay):
+		_match_overlay.queue_free()
+	_esc_button = null
+	var o := Control.new()
+	o.name = "MatchSettings"
+	o.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	o.theme = UiStyle.theme()
+	o.mouse_filter = Control.MOUSE_FILTER_STOP           # (nothing reaches the map under it)
+	o.process_mode = Node.PROCESS_MODE_ALWAYS
+	var dim := ColorRect.new()
+	dim.color = Color(0.02, 0.02, 0.04, 0.72)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	o.add_child(dim)
+	ui_layer.add_child(o)
+	_match_overlay = o
+	return o
+
+
+## In a match: a row only a new match picks up, dimmed with "(next match)" in its title; `lock` also disables its
+## buttons (a choice that opens a page of its own).
+func _next_match(row: Control, lock := false) -> Control:
+	if not _match_settings:
+		return row
+	row.modulate.a = 0.5
+	var done := false
+	for c in row.get_children():
+		if c is Label and not done:
+			(c as Label).text = Loc.t(String((c as Label).text)) + " " + Loc.t("(next match)")
+			done = true
+		if lock and c is BaseButton:
+			(c as BaseButton).disabled = true
+	return row
+
+
 ## The rows of one Settings tab. Every row that holds a setting is tagged with its id
 ## (meta "setting"): tools/test_settings_tabs.gd checks each one shows in exactly one tab.
 func settings_rows(tab: String) -> Array:
@@ -922,7 +1034,7 @@ func settings_rows(tab: String) -> Array:
 			var lh := _row("LANGUAGE")
 			lh.add_child(_flag_row(Vector2(42, 28), redo))
 			rows.append(_tag(lh, "language"))
-			rows.append(_tag(_choice_row("PLAYING ON", Loc.t("COMPUTER") if Settings.pc() else Loc.t("MOBILE"), func() -> void: show_device()), "device"))
+			rows.append(_tag(_next_match(_choice_row("PLAYING ON", Loc.t("COMPUTER") if Settings.pc() else Loc.t("MOBILE"), func() -> void: show_device()), true), "device"))
 			if Settings.pc():
 				rows.append(_tag(_toggle_row("COMMAND KEYS", func() -> bool: return Settings.grid_keys, func() -> void:
 					Settings.grid_keys = not Settings.grid_keys
@@ -988,7 +1100,7 @@ func settings_rows(tab: String) -> Array:
 			rows.append(_tag(mm, "mini_alpha"))
 			var smoke_names := ["OFF", "LIGHT", "FULL", "THICK (experiment)"]
 			rows.append(_tag(_choice_row("POWDER SMOKE", smoke_names[Settings.powder_smoke_level()], func() -> void:
-				Settings.powder_smoke = (Settings.powder_smoke_level() + 1) % 4     # (off, light, full, thick; it applies from the next match)
+				Settings.powder_smoke = (Settings.powder_smoke_level() + 1) % 4     # (off, light, full, thick; in a match: when Settings closes)
 				Settings.save_all()
 				show_settings()), "powder_smoke"))
 			rows.append(_tag(_toggle_row("AREA MARKS", func() -> bool: return Settings.area_marks, func() -> void:
@@ -1009,19 +1121,24 @@ func settings_rows(tab: String) -> Array:
 			rows.append(_tag(_volume_row("SOUND", "sound"), "sound"))
 			rows.append(_tag(_volume_row("AMBIENCE", "ambience"), "ambience"))
 			rows.append(_hint("The speaker beside a bar mutes it."))
-			rows.append(_tag(_choice_row("MUSIC PLAYER", "OPEN", func() -> void: show_music()), "music_player"))
+			if not _match_settings:          # (in a match the MENU has its own music player)
+				rows.append(_tag(_choice_row("MUSIC PLAYER", "OPEN", func() -> void: show_music()), "music_player"))
 		"EXPERIMENTAL":
 			rows.append(_hint("Experiments being tried out. They apply from the next match."))
-			rows.append(_tag(_toggle_row("TURNING GEARS (experiment)", func() -> bool: return Settings.gear_turn, func() -> void:
+			rows.append(_tag(_next_match(_toggle_row("TURNING GEARS (experiment)", func() -> bool: return Settings.gear_turn, func() -> void:
 				Settings.gear_turn = not Settings.gear_turn       # (from the next match: a match keeps the rule it started with)
-				Settings.save_all()), "gear_turn"))
-			rows.append(_tag(_toggle_row("MARCHING BAND (experiment)", func() -> bool: return Settings.marching_band, func() -> void:
+				Settings.save_all())), "gear_turn"))
+			rows.append(_tag(_next_match(_toggle_row("MARCHING BAND (experiment)", func() -> bool: return Settings.marching_band, func() -> void:
 				Settings.marching_band = not Settings.marching_band       # (the Crown's band at the Barracks: from the next match)
-				Settings.save_all()), "marching_band"))
-			rows.append(_tag(_toggle_row("CLOCKWORK LAB", func() -> bool: return Settings.cw_lab, func() -> void:
+				Settings.save_all())), "marching_band"))
+			rows.append(_tag(_next_match(_toggle_row("CLOCKWORK LAB", func() -> bool: return Settings.cw_lab, func() -> void:
 				Settings.cw_lab = not Settings.cw_lab
-				Settings.save_all()), "cw_lab"))
+				Settings.save_all())), "cw_lab"))
 		"OTHER":
+			if _match_settings:        # (a match: no pages of their own, no reset; the version only)
+				rows.append(_hint("Patch notes, the animation viewer and RESET SETTINGS are in the main menu's Settings."))
+				rows.append(_hint(Loc.t("Version %s") % version))
+				return rows
 			rows.append(_tag(_choice_row("PATCH NOTES", "OPEN", func() -> void: show_patch_notes()), "patch_notes"))
 			rows.append(_tag(_choice_row("ANIMATION VIEWER", "OPEN", func() -> void: show_anim_viewer()), "anim_viewer"))
 			rows.append(_tag(_choice_row("RESET SETTINGS", "PRESS AGAIN TO RESET" if _reset_armed else "RESET", func() -> void:
@@ -1090,9 +1207,12 @@ func show_anim_viewer() -> AnimViewer:
 
 ## Interface layout profiles and hotkeys.
 func show_layout() -> void:
-	_clear_ui()
 	var ed := LayoutEditor.new()
-	ui_layer.add_child(ed)
+	if _match_settings and game != null:
+		_settings_page().add_child(ed)        # (in a match: over the match, BACK returns to the Settings overlay)
+	else:
+		_clear_ui()
+		ui_layer.add_child(ed)
 	ed.done.connect(func() -> void: show_settings())
 
 
@@ -2649,6 +2769,10 @@ func start(cfg: Dictionary = {}) -> void:
 	c.hud = hud
 	game.hud = hud
 	ui_layer.add_child(hud)
+	hud.settings_requested.connect(func() -> void: open_match_settings())
+	hud.settings_back.connect(func() -> void:
+		if _match_settings:
+			close_match_settings())
 	hud.quit_requested.connect(func() -> void:
 		if watching:
 			_to_replays()

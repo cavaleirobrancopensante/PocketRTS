@@ -193,6 +193,8 @@ func begin_place(kind: String) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if hud != null and hud.settings_open:
+		return                      # (the Settings page is open over the match: its keys are not orders)
 	game.input_cmd = true          # (the orders given here are the player's own: online, with the same delay for both, they wait)
 	_on_input(event)
 	game.input_cmd = false
