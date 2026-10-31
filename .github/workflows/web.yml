@@ -32,7 +32,7 @@ jobs:
           path: |
             ~/godot
             ~/.local/share/godot/export_templates
-          key: godot-${{ env.GODOT_VERSION }}-web-android
+          key: godot-${{ env.GODOT_VERSION }}-web-android-windows
 
       - name: Install Godot and web templates
         if: steps.cache.outputs.cache-hit != 'true'
@@ -44,7 +44,7 @@ jobs:
           curl -sSfL -o tpl.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
           dest=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
           mkdir -p "$dest"
-          unzip -q -j tpl.tpz 'templates/web_nothreads_*' 'templates/android_*' 'templates/version.txt' -d "$dest"
+          unzip -q -j tpl.tpz 'templates/web_nothreads_*' 'templates/android_*' 'templates/windows_release_x86_64.exe' 'templates/version.txt' -d "$dest"
           rm tpl.tpz
 
       # Code pack + art pack + music on demand + gzipped engine, and the loading page that ties
@@ -78,6 +78,17 @@ jobs:
           ~/godot/godot --headless --export-release "Android" build/web/Holdfast.apk 2>&1 | grep -v "savepack\|Storing File" | tail -40
           test -s build/web/Holdfast.apk
           echo "Android app: Holdfast.apk ($(du -h build/web/Holdfast.apk | cut -f1))" >> "$GITHUB_STEP_SUMMARY"
+
+      # The same game for Windows: one .exe with the game packed inside, zipped, published next to the web build as
+      # Holdfast_windows.zip. (If this step fails the web build still goes out.)
+      - name: Export Windows program
+        continue-on-error: true
+        run: |
+          mkdir -p build/windows
+          ~/godot/godot --headless --export-release "Windows Desktop" build/windows/Holdfast.exe 2>&1 | grep -v "savepack\|Storing File" | tail -20
+          test -s build/windows/Holdfast.exe
+          (cd build/windows && zip -q -9 ../web/Holdfast_windows.zip Holdfast.exe)
+          echo "Windows program: Holdfast_windows.zip ($(du -h build/web/Holdfast_windows.zip | cut -f1))" >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-pages-artifact@v3
         with:
