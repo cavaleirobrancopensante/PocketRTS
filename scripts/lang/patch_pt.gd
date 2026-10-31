@@ -4,6 +4,7 @@ extends RefCounted
 ## Patch notes in pt: version -> items in the order of scripts/patch_notes.gd ('' = show the English).
 
 const N := {
+	"0.24.18": ["A PINTURA DO MENU PRINCIPAL, MAIS LARGA: mais piques e mosquetes da Coroa à esquerda e mais colunas do Mecanismo à direita, então a pintura enche toda a tela acima da barra, de ponta a ponta, no computador e no celular."],
 	"0.24.17": ["O MENU PRINCIPAL TEM UMA SÓ BARRA FINA: a pintura enche a tela acima de uma única barra de madeira embaixo, com o título à esquerda, uma fileira de botões no meio e as bandeiras dos idiomas e a versão à direita. A fileira: CONTINUAR (quando há uma partida salva), JOGAR, APRENDER, OFICINA e CONFIGURAÇÕES. JOGAR abre ESCARAMUÇA, ONLINE e CAMPANHA (em breve) no mesmo lugar; APRENDER abre COMO JOGAR; OFICINA abre EDITOR, REPLAYS e REGISTROS DE PARTIDAS. VOLTAR, Esc e o botão de voltar do celular ou do navegador voltam um passo, e uma página que você deixa leva de volta à fileira de onde você a abriu."],
 	"0.24.16": ["A PINTURA DO MENU PRINCIPAL APARECE INTEIRA: o título fica numa barra de madeira acima dela e os botões numa abaixo, então nada cobre a imagem; numa tela larga, os lados são preenchidos com as cores da própria pintura, escurecidas."],
 	"0.24.15": ["A NOVA IMAGEM DO MENU PRINCIPAL: uma só pintura a óleo, parada, dos três exércitos em choque (a salva e a carga da Coroa, a Ninhada descendo a colina sob a sua Mãe, o Mecanismo marchando em latão), no lugar das três imagens das facções que se moviam."],
