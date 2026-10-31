@@ -1716,12 +1716,20 @@ class MenuBackdrop extends Control:
 	const REALMS := ["crown", "clockwork", "brood"]
 	const HOLD := 9.0          # seconds the triptych holds, then one realm takes the screen
 
+	## THE BATTLE PAINTING (the owner's oil painting, 2026-10-31): one fixed picture, no panning; the old
+	## triptych only when it is missing
+	var _battle: Texture2D = null
+
 	func _ready() -> void:
+		var bp := "res://assets/menu/battle.jpg"
+		_battle = load(bp) if ResourceLoader.exists(bp) else null
 		for r in REALMS:
 			var p := "res://assets/menu/%s.png" % r
 			_art.append(load(p) if ResourceLoader.exists(p) else null)
 
 	func _process(delta: float) -> void:
+		if _battle != null:
+			return          # (a still picture: drawn again only when the window changes size)
 		t += delta
 		queue_redraw()
 
@@ -1739,6 +1747,14 @@ class MenuBackdrop extends Control:
 
 	func _draw() -> void:
 		draw_rect(Rect2(Vector2.ZERO, size), UiStyle.BG)
+		if _battle != null:
+			# fixed, covering the screen, centred (cut at the sides or top and bottom as the screen's shape needs)
+			var ts := _battle.get_size()
+			var sc := maxf(size.x / ts.x, size.y / ts.y)
+			var src_size := size / sc
+			draw_texture_rect_region(_battle, Rect2(Vector2.ZERO, size), Rect2((ts - src_size) * 0.5, src_size))
+			_shade(false)
+			return
 		var n := _art.size()
 		if n == 0:
 			return
@@ -1757,12 +1773,18 @@ class MenuBackdrop extends Control:
 				draw_rect(Rect2(i * col_w - 1, 0, 3, size.y), Color(0.79, 0.64, 0.29, 0.7 * (1.0 - f)))
 		if f > 0.0:
 			_cover(_art[focus], Rect2(Vector2.ZERO, size), t * 0.04, 1.0 + 0.06 * f, f)
-		# a dark band behind the menu column, fading to the right
-		var w := size.x * 0.6
+		_shade()
+
+	## The dark band behind the menu column and the vignettes over the picture.
+	func _shade(band := true) -> void:
+		# a dark band behind the menu column, fading to the right (not over the battle painting: the menu sits in
+		# the middle and the band hid the Crown's side)
+		var w := size.x * 0.6 if band else 0.0
 		var dark := Color(0.04, 0.03, 0.02, 0.88)
 		var clear := Color(0.04, 0.03, 0.02, 0.0)
-		draw_polygon(PackedVector2Array([Vector2.ZERO, Vector2(w, 0), Vector2(w, size.y), Vector2(0, size.y)]),
-			PackedColorArray([dark, clear, clear, dark]))
+		if band:
+			draw_polygon(PackedVector2Array([Vector2.ZERO, Vector2(w, 0), Vector2(w, size.y), Vector2(0, size.y)]),
+				PackedColorArray([dark, clear, clear, dark]))
 		# vignette top and bottom
 		draw_polygon(PackedVector2Array([Vector2.ZERO, Vector2(size.x, 0), Vector2(size.x, 90), Vector2(0, 90)]),
 			PackedColorArray([Color(0, 0, 0, 0.55), Color(0, 0, 0, 0.55), Color(0, 0, 0, 0), Color(0, 0, 0, 0)]))

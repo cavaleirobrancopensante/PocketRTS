@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.15", "items": [
+		"THE MAIN MENU'S NEW PICTURE: one still oil painting of the three armies clashing (the Crown's volley and charge, the Brood pouring down the hill under its Mother, the Clockwork marching in brass), in place of the three panning faction pictures.",
+	]},
 	{"v": "0.24.14", "items": [
 		"PICK THE GEAR WHEN YOU BUILD (Clockwork): while you place a Cog Press, Mainspring, Light Works, Ratchet Turret, Escapement, Clock Aviary or Regulator, the card has a SMALL GEAR / BIG GEAR button (key G) and the ghost shows its ring at that size and says which. A big ring costs 25 cogs more, takes 4 s longer to build and needs more room: the ghost checks the big ring, so it can't cut into another ring. Once placed the size is fixed. Each kind remembers your last pick for the match. The big ring's numbers are back: a Cog Press with up to 8 Winders for 10 cogs a second (small: 5 for 7.2), a Mainspring with 6 Winders storing 400 Tension (small: 3 and 200), the Ratchet Turret's slow heavy screws; the Light Works, Escapement and Clock Aviary work slower on it. The Heavy Works is always big.",
 		"The Clockwork computer lays a big Cog Press when it has the spare Winders to fill one and the room for its ring; everything else small. Online and in replays the size goes with the build order; saves keep each building's ring and your last picks.",
