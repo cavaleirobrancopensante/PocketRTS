@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.25.19", "items": [
+		"EVERY FULL BAR IS HIDDEN: health shows only on a hurt unit or building (no longer on a selected one at full health), and the charge and powder bars only when not full. Settings, DISPLAY, HEALTH BARS: ONLY WHEN NOT FULL (the default) or ALWAYS (every bar, full or not).",
+	]},
 	{"v": "0.25.18", "items": [
 		"THE BROOD MOTHER'S RALLY POINTS ARE LABELLED: WORKERS under the gold point (her grubs) and ARMY under the green flag (her warriors).",
 	]},

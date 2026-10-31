@@ -4,6 +4,7 @@ extends RefCounted
 ## Patch notes in es: version -> items in the order of scripts/patch_notes.gd ('' = show the English).
 
 const N := {
+	"0.25.19": ["TODA BARRA LLENA DESAPARECE: la vida solo aparece en una unidad o edificio herido (ya no en uno seleccionado con la vida llena), y las barras de cuerda y de pólvora solo cuando no están llenas. Configuración, PANTALLA, BARRAS DE VIDA: SOLO SI NO ESTÁN LLENAS (por defecto) o SIEMPRE (todas las barras, llenas o no)."],
 	"0.25.18": ["LOS PUNTOS DE REUNIÓN DE LA MADRE DE LA CAMADA LLEVAN NOMBRE: TRABAJADORES bajo el punto dorado (sus larvas) y EJÉRCITO bajo la bandera verde (sus guerreros)."],
 	"0.25.17": ["SACRIFICAR HUEVOS: selecciona huevos y pulsa SACRIFICAR (C): cuando eclosionen, sus crías irán directas a la Madre de la Camada para ser devoradas, sin pasar por el punto de reunión. El botón muestra el botín que darán las crías."],
 	"0.25.16": ["EL MISIONERO PUEDE MORIR LEJOS DE SU IGLESIA: solo es intocable a menos de 20 casillas de una de tus Iglesias (y nunca cerca de edificios enemigos, como antes). Antes no podía ser herido en ningún sitio salvo cerca de edificios enemigos, así que paseaba intocado por una base de la Camada, que no tiene edificios."],

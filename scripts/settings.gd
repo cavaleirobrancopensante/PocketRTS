@@ -15,7 +15,7 @@ static var build_grid := true         # show the planning grid while placing a b
 static var area_marks := true         # area attacks lay their shape on the ground where they strike (GroundMarks)
 static var powder_smoke := -1         # black powder smoke (PowderSmoke): -1 = not chosen (THICK for now), 0 off, 1 light, 2 full, 3 thick
 static var expansion_spots := true    # the best expansion spots tinted on the ground (ExpansionSpots; Crown and Clockwork)
-static var health_bars := 0           # HEALTH BARS: 0 = DAMAGED OR SELECTED (the default), 1 = ALWAYS (Entity.health_bar_shown)
+static var health_bars := 0           # BARS: 0 = ONLY WHEN NOT FULL (the default: health when hurt, charge and powder when not full), 1 = ALWAYS (every bar)
 static var charge_bars := true        # SHOW CHARGE BARS: a thin charge bar over own Clockwork units not fully wound (Unit._draw_unit)
 static var gear_turn := true          # TURNING GEARS (experiment, on for now): a Clockwork ring's band carries units round (GearTurn); from the next match
 static var marching_band := false     # MARCHING BAND (experiment, off by default): the Crown's band at the Barracks (MarchingBand); from the next match

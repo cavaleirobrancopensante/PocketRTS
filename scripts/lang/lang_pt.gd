@@ -2542,6 +2542,7 @@ const T := {
 	"No Mainspring in its gear network: it will stand idle. Link it to a network that has a Mainspring.": "Nenhuma Mola Real na sua rede de engrenagens: vai ficar parada. Ligue-a a uma rede que tenha uma Mola Real.",
 	"HEALTH BARS": "BARRAS DE VIDA",
 	"DAMAGED OR SELECTED": "FERIDOS OU SELECIONADOS",
+	"ONLY WHEN NOT FULL": "SÓ QUANDO NÃO CHEIAS",
 	"ALWAYS": "SEMPRE",
 	"WILL CONNECT": "VAI LIGAR",
 	"Ground spent: %d food": "Chão esgotado: %d de comida",

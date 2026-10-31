@@ -173,9 +173,10 @@ static func hp_box(mhp: float, w: float) -> float:
 	return box
 
 
-## Is the health bar drawn now? Hurt, or selected, or always (Settings HEALTH BARS: ALWAYS).
+## Is the health bar drawn now? Hurt, or always (Settings HEALTH BARS: ALL BARS). A full bar is not drawn, selected or
+## not (the owner, 2026-10-31: "any bar that is full should disappear, to avoid clutter").
 func health_bar_shown() -> bool:
-	return hp < max_hp or selected or Settings.health_bars == 1
+	return hp < max_hp or Settings.health_bars == 1
 
 
 ## The health bar (when health_bar_shown); `always` is kept for the callers (unused). Returns where the secondary bars

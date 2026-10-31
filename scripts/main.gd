@@ -1109,7 +1109,7 @@ func settings_rows(tab: String) -> Array:
 			rows.append(_tag(_toggle_row("SHOW EXPANSION SPOTS", func() -> bool: return Settings.expansion_spots, func() -> void:
 				Settings.expansion_spots = not Settings.expansion_spots
 				Settings.save_all()), "expansion_spots"))
-			rows.append(_tag(_choice_row("HEALTH BARS", ["DAMAGED OR SELECTED", "ALWAYS"][Settings.health_bars], func() -> void:
+			rows.append(_tag(_choice_row("HEALTH BARS", ["ONLY WHEN NOT FULL", "ALWAYS"][Settings.health_bars], func() -> void:
 				Settings.health_bars = 1 - Settings.health_bars       # (over units and buildings: Entity.health_bar_shown)
 				Settings.save_all()
 				show_settings()), "health_bars"))

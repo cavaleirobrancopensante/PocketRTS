@@ -1061,7 +1061,7 @@ func charge_text() -> String:
 
 ## Is the thin charge bar over it shown? Own (and allied) units with a charge, not full, with SHOW CHARGE BARS on.
 func charge_bar_shown() -> bool:
-	return Settings.charge_bars and has_charge() and wind < 0.995 and not dead and game != null \
+	return Settings.charge_bars and has_charge() and (wind < 0.995 or Settings.health_bars == 1) and not dead and game != null \
 		and (team == game.human or (game.human >= 0 and game.allied(team, game.human)) or game.demo)
 
 
@@ -7796,14 +7796,16 @@ func _draw_unit() -> void:
 		var ph := SUB_H
 		var py := sy
 		var pf := clampf(powder / _pmax, 0.0, 1.0)
-		if powder >= 1.0:
-			draw_sub_bar(py, pw, pf, Color(0.95, 0.68, 0.22))
-		else:
-			draw_sub_bar(py, pw, 1.0, Color(0.75, 0.15, 0.12))     # empty: all red
-		var hx := -pw * 0.5 - 6.0
-		draw_colored_polygon(PackedVector2Array([Vector2(hx, py - 2), Vector2(hx + 4, py - 1), Vector2(hx + 4, py + ph + 1), Vector2(hx + 1, py + ph)]), Color(0.86, 0.78, 0.6))
-		if kind == "powder_wagon" and supplying:
-			draw_rect(Rect2(pw * 0.5 + 2.0, py - 1.0, 3, 3), Color(1, 0.85, 0.35))   # SUPPLY on
+		# (full: no bar and no horn, as every full bar; BARS: ALWAYS shows it)
+		if pf < 0.995 or Settings.health_bars == 1:
+			if powder >= 1.0:
+				draw_sub_bar(py, pw, pf, Color(0.95, 0.68, 0.22))
+			else:
+				draw_sub_bar(py, pw, 1.0, Color(0.75, 0.15, 0.12))     # empty: all red
+			var hx := -pw * 0.5 - 6.0
+			draw_colored_polygon(PackedVector2Array([Vector2(hx, py - 2), Vector2(hx + 4, py - 1), Vector2(hx + 4, py + ph + 1), Vector2(hx + 1, py + ph)]), Color(0.86, 0.78, 0.6))
+			if kind == "powder_wagon" and supplying:
+				draw_rect(Rect2(pw * 0.5 + 2.0, py - 1.0, 3, 3), Color(1, 0.85, 0.35))   # SUPPLY on
 	if cocoon > 0 and not ArtData.UNITS["grub"]["frames"].has("carry_cocoon_e"):
 		# the cocoon on its back (drawn by hand when there's no sheet)
 		draw_set_transform(Vector2(0, -17), 0.0, Vector2(1.0, 0.7))
