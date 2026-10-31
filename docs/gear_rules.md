@@ -4,6 +4,26 @@ The owner's decisions of 2026-10-27, built. The study behind them is docs/clockw
 
 The owner was away. Every guess below is Claude's. Each one says so.
 
+## 0.25.0: Tension flows through the whole gear network (owner, 2026-10-31)
+
+A friend of the owner said it, and the owner agreed: "it would be much more practical if it just connected to the town and supplied Tension to every connected building". The owner: "He is right that it can be confusing".
+
+Before, a Tension user (the Escapement, the Clock Aviary, the Heavy Works, and a Light Works for its Springers and Netters) had to have its ring mesh directly with a Mainspring's ring. A Mainspring in a bad spot meant demolishing things.
+
+Now a Tension user is fed when a Mainspring stands anywhere in its gear network: any chain of meshed rings. The Mainspring may stand anywhere in the town. A town whose two Clocktowers' networks touch is one network, so it shares its Mainspring.
+
+What did not change: 1 Mainspring per Clocktower, the Winders, the spring life, the 5% floor. A FATIGUED Mainspring still feeds its network, as before (it only winds at the floor). A Mainspring destroyed, or one in another network, feeds nothing.
+
+Claude's choice on distance: the chain's length weakens nothing for Tension. Simple: fed or not. The DRIVE rule is unchanged (a ring works 100%, 90%, 80%, 70% by its rings from the nearest Clocktower or Mainspring), so a Mainspring nearby still helps the work speed, as before.
+
+How it works: GearNet.solve gives every connected building its network (net_of) and its nearest Mainspring in that network (spring_of, by fewest rings; one meshing directly comes first). spring_for, needs_spring, speed_mult, GearEcon.spend_problem and the spring mark all read spring_of, so they follow. Online, the guest works the field out from the synced buildings, as before, so nothing new is sent.
+
+What the player sees: the spring mark's tooltip is "Fed by a Mainspring through the gear network". The placement ghost says TENSION FED (was MESHES MAINSPRING) when the ring would join a network with a Mainspring, else NEEDS MAINSPRING. A Mainspring's ghost counts FEEDS for every Tension user in the networks it would join. The gear view outlines each Mainspring dashed (before: its reach). The cards, the help and the descriptions say "a Mainspring in its gear network".
+
+The computer still puts its Escapement and Works beside a Mainspring on purpose (it keeps those spots). It no longer needs to: a Works anywhere in the town counts as fed.
+
+Tests: tools/test_gear_rules.gd: a Heavy Works with no direct mesh is fed and trains the Pendulum; the Mainspring destroyed unfeeds the Heavy Works and the Escapement; a new Mainspring two links away (Heavy Works, Regulator, Mainspring) feeds it again; a second Clocktower's network far off is not fed; a fatigued Mainspring still feeds.
+
 ## 0.24.12: pick the gear when you build (owner, 2026-10-30)
 
 The owner's words: "Choose the gear size when building and only then."
@@ -83,7 +103,7 @@ It makes the heavy machines: the Pendulum, the Spring Ballista and the Great Win
 
 It sits on its BIG gear only. Its card says so: "Big gear only: slow and strong, the heavy torque."
 
-Everything it makes costs Tension. So it is a Tension user, like the Escapement and the Clock Aviary. Its ring must mesh with a Mainspring's ring. Without one it stands idle and shows NEEDS MAINSPRING.
+Everything it makes costs Tension. So it is a Tension user, like the Escapement and the Clock Aviary. It needs a Mainspring in its gear network (since 0.25.0; before, its ring had to mesh with a Mainspring's). Without one it stands idle and shows NEEDS MAINSPRING.
 
 It needs a working Escapement before it can be placed. That is the Ballista's old requirement.
 
@@ -111,7 +131,7 @@ The Movement Works is renamed the Light Works. In Portuguese, Oficina Leve. In S
 
 Only the name the player sees changed. The internal id stays movement_works, so saves, replays, the computer and the tests did not need a rename.
 
-It makes the light machines: the Clock Soldier, the Springer and the Netter. The Springer and the Netter still need a Mainspring beside it, for their Tension.
+It makes the light machines: the Clock Soldier, the Springer and the Netter. The Springer and the Netter still need a Mainspring in its gear network, for their Tension (beside it until 0.25.0).
 
 It no longer makes the Pendulum, the Ballista or the Great Winder.
 

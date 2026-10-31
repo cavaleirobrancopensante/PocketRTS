@@ -319,7 +319,7 @@ func _bot() -> void:
 				g.train(av, Defs.CUCKOO)
 	if firsts.has("esc_work") and not works.is_empty() and not made.has("works2") and not made.has("springw") \
 			and not steps.any(func(s: Dictionary) -> bool: return s["id"] == "works2" or s["id"] == "springw"):
-		if works.all(func(w: Building) -> bool: return g.can_train(w, Defs.SPRINGER).contains("meshes with no Mainspring")):
+		if works.all(func(w: Building) -> bool: return g.can_train(w, Defs.SPRINGER).contains("no Mainspring in its gear network")):
 			steps.push_front({"k": Defs.CW_WORKS, "big": false, "id": "works2"})
 			next = steps[0]
 			next_cost = int(Defs.BUILDINGS[next["k"]]["cost"])

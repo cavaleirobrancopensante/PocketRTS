@@ -114,7 +114,7 @@ func _run() -> void:
 	check("it lays a Heavy Works (0.14.94)", not _mine(Defs.CW_HEAVY).is_empty(), "%.0f s" % waited)
 	check("only one", _mine(Defs.CW_HEAVY).size() == 1)
 	waited = await _wait(func() -> bool: return _mine(Defs.CW_HEAVY).any(func(b: Building) -> bool: return b.built and g.gear_net.spring_for(b) != null), 200.0)
-	check("its Heavy Works stands and meshes with a Mainspring", _mine(Defs.CW_HEAVY).any(func(b: Building) -> bool: return b.built and g.gear_net.spring_for(b) != null), "%.0f s" % waited)
+	check("its Heavy Works stands and is fed by a Mainspring", _mine(Defs.CW_HEAVY).any(func(b: Building) -> bool: return b.built and g.gear_net.spring_for(b) != null), "%.0f s" % waited)
 	waited = await _wait(func() -> bool: return not _units(Defs.PENDULUM).is_empty() and not _units(Defs.NETTER).is_empty(), 200.0)
 	check("it trains Pendulums", not _units(Defs.PENDULUM).is_empty(), "%d after %.0f s" % [_units(Defs.PENDULUM).size(), waited])
 	check("and Netters", not _units(Defs.NETTER).is_empty(), "%d" % _units(Defs.NETTER).size())

@@ -70,7 +70,7 @@ func _run() -> void:
 	# ---- THE TENSION RULE (GearEcon): the Netter costs Tension, so it is made only at a Works whose ring meshes with a Mainspring's
 	if g.gear_net.spring_for(works) == null:
 		why = g.can_train(works, N)
-		check("a Works meshing with no Mainspring refuses the Netter (it costs Tension)", why.contains("meshes with no Mainspring"), why)
+		check("a Works meshing with no Mainspring refuses the Netter (it costs Tension)", why.contains("no Mainspring in its gear network"), why)
 		# (0.24.0: one Mainspring per Clocktower, so the Works moves to the Mainspring instead of a second one coming to it)
 		g._remove_quietly(works)
 		works = _beside(g, Defs.CW_WORKS, spring)

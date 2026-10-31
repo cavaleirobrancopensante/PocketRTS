@@ -163,7 +163,7 @@ func _run() -> void:
 	print("NOTE  tier 2 at %d:%02d: %d Mainspring(s), %d Escapement(s) built (%d working), %d Springers trained, %d alive, Tension %d, High Leap %s" % [
 		int(g.clock) / 60, int(g.clock) % 60, _mine("mainspring").size(), esc_n, working, _springers_seen.size(),
 		g.units.filter(func(u: Unit) -> bool: return u.team == 0 and u.kind == Defs.SPRINGER and not u.dead).size(), int(g.tension(0)), str(g.has_tech(0, "high_leap"))])
-	check(esc_n == working or (vs != "passive" and g.over), "every Escapement it built meshes with a Mainspring (%d of %d)" % [working, esc_n])
+	check(esc_n == working or (vs != "passive" and g.over), "every Escapement it built is fed by a Mainspring (%d of %d)" % [working, esc_n])
 	# only the rebuilt army (owner, 2026-10-26: Defs.retired): no Assembly Works, no prototype unit, ever
 	var old: Array = []
 	for b in g.buildings:

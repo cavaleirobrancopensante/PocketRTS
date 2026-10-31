@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.25.0", "items": [
+		"TENSION FLOWS THROUGH THE WHOLE GEAR NETWORK (Clockwork): a building that uses or spends Tension (the Escapement, the Clock Aviary, the Heavy Works, a Light Works for its Springers and Netters) no longer has to mesh right beside a Mainspring. It is fed when a Mainspring stands anywhere in its gear network, through any chain of meshed rings, so the Mainspring can stand anywhere in your town and nothing has to be demolished to move it. Two Clocktowers whose networks touch share their Mainsprings. Still 1 Mainspring per Clocktower, with its Winders, spring life and 5% floor; a fatigued Mainspring still feeds its network, a destroyed one feeds nothing. The ghost says TENSION FED or NEEDS MAINSPRING, the spring mark reads 'Fed by a Mainspring through the gear network', and the help and descriptions say so.",
+	]},
 	{"v": "0.24.33", "items": [
 		"SETTINGS IN TABS: the Settings page is split into GAMEPLAY (language, device, command keys or one-finger drag, layout and hotkeys, tooltips, build grid, replays kept, online relay), DISPLAY (full screen, interface size, minimap solidity, powder smoke, area marks, expansion spots, charge bars), SOUND, EXPERIMENTAL (turning gears, marching band, Clockwork lab) and OTHER (patch notes, animation viewer, reset settings). The tab you pick stays picked until you close the game.",
 		"FULL SCREEN ON A COMPUTER: a FULL SCREEN switch in Settings > DISPLAY; the Windows program also switches with F11 or Alt+Enter and starts the way you left it. In a browser the switch works from the click (F11 still works too).",

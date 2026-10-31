@@ -3752,10 +3752,10 @@ func tension_user_problem(t: int, kind: String) -> String:
 ## A Tension user's refusals (the Escapement's, the Clock Aviary's).
 func _idle_text(kind: String) -> String:
 	if kind == Defs.CW_AIR:
-		return "The Clock Aviary stands idle: mesh its gear ring with a Mainspring's."
+		return "The Clock Aviary stands idle: its gear network has no Mainspring."
 	if kind == Defs.CW_HEAVY:
-		return "The Heavy Works stands idle: mesh its gear ring with a Mainspring's."
-	return "The Escapement stands idle: mesh its gear ring with a Mainspring's."
+		return "The Heavy Works stands idle: its gear network has no Mainspring."
+	return "The Escapement stands idle: its gear network has no Mainspring."
 
 
 func _unlinked_text(kind: String) -> String:

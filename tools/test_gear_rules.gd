@@ -4,8 +4,9 @@ extends SceneTree
 ##     not overlap: a second turret too close is refused with the reason (TOO NEAR A TURRET on the ghost), one far enough is
 ##     accepted; the computer's spot search (Game.find_spot, the one AI._construct uses) never picks a spot too close; an
 ##     old save with two turrets side by side loads and keeps both.
-##  2. THE HEAVY WORKS trains the Pendulum and the Spring Ballista, only while a Mainspring's ring meshes with its ring
-##     (idle and refusing them otherwise); it sits on its big gear only; the Light Works (internal id movement_works) no
+##  2. THE HEAVY WORKS trains the Pendulum and the Spring Ballista, only while a Mainspring stands in its gear network
+##     (TENSION NET, 2026-10-31: fed with no direct mesh, two links away; unfed when the Mainspring dies or in a separate
+##     network; a fatigued Mainspring still feeds) (idle and refusing them otherwise); it sits on its big gear only; the Light Works (internal id movement_works) no
 ##     longer makes them, and is called the Light Works.
 ##  3. SIZE SETS THE TEMPO: a Light Works trains 15% faster on its small ring and 15% slower on its big one; the Escapement
 ##     researches 10% faster or slower; a Ratchet Turret fires quick light screws on its small ring and slow heavy ones on
@@ -92,15 +93,15 @@ func _run() -> void:
 	check("the Heavy Works trains the Pendulum and the Ballista", (hd["trains"] as Array).has(Defs.PENDULUM) and (hd["trains"] as Array).has(Defs.BALLISTA_KIND))
 	check("the Light Works trains the Clock Soldier, the Springer and the Netter only", Defs.BUILDINGS[Defs.CW_WORKS]["trains"] == ["clock_soldier", "springer", "netter"], str(Defs.BUILDINGS[Defs.CW_WORKS]["trains"]))
 	check("it is in the gear-mode build list", Defs.build_list("clockwork").has(Defs.CW_HEAVY))
-	check("it is a Tension user (it must mesh with a Mainspring)", Defs.TENSION_USERS.has(Defs.CW_HEAVY))
+	check("it is a Tension user (it needs a Mainspring in its gear network)", Defs.TENSION_USERS.has(Defs.CW_HEAVY))
 	check("it needs a working Escapement to be placed", g.requirement_text(0, Defs.CW_HEAVY) != "", g.requirement_text(0, Defs.CW_HEAVY))
 	var esc := U.put(g, 0, Defs.CW_TECH, hall.cell)
 	var sp := _spring_beside(g, esc)
 	U.step(g, 0.6)
 	check("an Escapement works by a Mainspring", sp != null and g.has_working(0, Defs.CW_TECH))
 	check("then the Heavy Works may be placed", g.requirement_text(0, Defs.CW_HEAVY) == "", g.requirement_text(0, Defs.CW_HEAVY))
-	var hw := _heavy_alone(g, hall)
-	check("a Heavy Works stands away from every Mainspring", hw != null)
+	var hw := _heavy_apart(g, hall)
+	check("a Heavy Works stands whose ring meshes with no Mainspring's", hw != null)
 	if hw == null:
 		_end(g)
 		return
@@ -108,15 +109,31 @@ func _run() -> void:
 	g.players[0]["cap"] = 200
 	check("it sits on its BIG gear (the big ring's teeth)", hw.gear_big and GearNet.b_n(hw) == GearNet.ring_n(Defs.CW_HEAVY, hw.size, true))
 	check("there is no gear swap (removed in 0.24.4): it keeps its big gear", not g.has_method("swap_gear") and not g.has_method("gear_swap_problem"))
-	check("without a Mainspring it stands idle (NEEDS MAINSPRING)", g.gear_net.needs_spring(hw))
+	# TENSION FLOWS THROUGH THE NETWORK (2026-10-31): no direct mesh needed, the Mainspring by the Escapement feeds it
+	check("TENSION NET: not meshing with it, it is still fed by the Mainspring in its network", not _touches(hw, sp) and g.gear_net.spring_for(hw) == sp and not g.gear_net.needs_spring(hw))
+	check("and has the spring mark", g.gear_net.has_spring_mark(hw))
 	var why2 := g.can_train(hw, Defs.PENDULUM)
-	check("and refuses the Pendulum", why2 != "", why2)
+	check("and trains the Pendulum", why2 == "", why2)
+	# the Mainspring destroyed: the whole network goes unfed, as before
+	sp.take_damage(1.0e7, null)
+	U.step(g, 0.6)
+	g.gear_net.solve()
+	check("the Mainspring destroyed: the Heavy Works stands idle (NEEDS MAINSPRING)", sp.dead and g.gear_net.needs_spring(hw) and g.gear_net.speed_mult(hw) == 0.0)
+	check("and so does the Escapement (the whole network)", g.gear_net.needs_spring(esc) and not g.has_working(0, Defs.CW_TECH))
+	why2 = g.can_train(hw, Defs.PENDULUM)
+	check("and it refuses the Pendulum", why2 != "", why2)
 	why2 = g.can_train(hw, Defs.BALLISTA_KIND)
 	check("and the Ballista", why2 != "", why2)
-	var hsp := _spring_beside(g, hw)
+	if lw != null:
+		check("a Light Works refuses the Springer too", g.gear_net.spring_for(lw) == null and g.can_train(lw, Defs.SPRINGER) != "")
+	# a new Mainspring two links away: Heavy Works - Regulator - Mainspring
+	var hsp := _spring_two_away(g, hw)
 	U.step(g, 0.6)
 	g.players[0]["cap"] = 200
-	check("a Mainspring put beside it meshes with it", hsp != null and g.gear_net.spring_for(hw) == hsp)
+	check("TENSION NET: a Mainspring two links away (through a Regulator) feeds it", hsp != null and not _touches(hw, hsp) and g.gear_net.spring_for(hw) == hsp)
+	check("and the Escapement works again", g.has_working(0, Defs.CW_TECH))
+	if hsp != null:
+		sp = hsp
 	why2 = g.can_train(hw, Defs.PENDULUM)
 	check("now it trains the Pendulum", why2 == "", why2)
 	why2 = g.can_train(hw, Defs.BALLISTA_KIND)
@@ -218,7 +235,7 @@ func _run() -> void:
 	check("the Heavy Works is there after a load, on its big gear", hw2 != null and hw2.gear_big)
 	check("the last gear pick per kind is kept (a big Cog Press, a small Regulator)", g2.gear_big_for(0, Defs.GEAR_PRESS) and not g2.gear_big_for(0, Defs.CW_SUPPLY))
 	check("with its queue", hw2 != null and hw2.queue == q0, str(hw2.queue if hw2 else []))
-	check("it meshes with its Mainspring again", hw2 != null and g2.gear_net.spring_for(hw2) != null)
+	check("it is fed by its Mainspring again", hw2 != null and g2.gear_net.spring_for(hw2) != null)
 	check("its bay is drawn again", hw2 != null and hw2.bay != null)
 	var turrets2 := g2.buildings.filter(func(b: Building) -> bool: return b.team == 0 and b.kind == Defs.CW_TURRET and not b.dead)
 	check("an old save's turrets inside each other's circles are all kept", tA != null and turrets2.size() == g.buildings.filter(func(b: Building) -> bool: return b.team == 0 and b.kind == Defs.CW_TURRET and not b.dead).size(), "%d" % turrets2.size())
@@ -228,6 +245,7 @@ func _run() -> void:
 		var lw2 := _find(g2, Defs.CW_WORKS, lw.cell)
 		check("the Light Works' big gear is kept", lw2 != null and lw2.gear_big)
 	SaveGame.clear()
+	_separate_net(g, hall, hw)
 	_end(g)
 
 
@@ -345,19 +363,86 @@ func _spring_beside(g: Game, b: Building) -> Building:
 	return null
 
 
-## A finished Heavy Works on a spot that links but meshes with no Mainspring (so it starts idle).
-func _heavy_alone(g: Game, hall: Building) -> Building:
+## Do the rings of a and b mesh (touch within the link gap)?
+func _touches(a: Building, b: Building) -> bool:
+	if a == null or b == null:
+		return false
+	return GearNet.b_c(a).distance_to(GearNet.b_c(b)) - GearNet.b_r(a) - GearNet.b_r(b) <= float(Defs.GEAR["slack"]) * Defs.TILE
+
+
+## A finished Heavy Works on a spot that links but whose ring meshes with no Mainspring's.
+func _heavy_apart(g: Game, hall: Building) -> Building:
+	var springs := g.buildings.filter(func(b: Building) -> bool: return b.kind == "mainspring" and not b.dead)
+	var slack := float(Defs.GEAR["slack"]) * Defs.TILE
+	var size: Vector2i = Defs.BUILDINGS[Defs.CW_HEAVY]["size"]
+	var r := GearNet.ring_r(Defs.CW_HEAVY, size, true)
 	for y in range(hall.cell.y - 24, hall.cell.y + 25):
 		for x in range(hall.cell.x - 24, hall.cell.x + 25):
 			var c := Vector2i(x, y)
-			if not g.in_map(c) or g.placement_problem(0, Defs.CW_HEAVY, c) != "" or not g.margin_free(c, Defs.BUILDINGS[Defs.CW_HEAVY]["size"]):
+			if not g.in_map(c) or g.placement_problem(0, Defs.CW_HEAVY, c) != "" or not g.margin_free(c, size):
 				continue
-			var st: Dictionary = g.gear_net.candidate(0, Defs.CW_HEAVY, c)
-			if st["state"] == "ok" and st.get("spring") == null:
+			var gc := GearNet.gpos(Vector2(c) * Defs.TILE + Vector2(size) * Defs.TILE * 0.5)
+			if springs.any(func(m: Building) -> bool: return gc.distance_to(GearNet.b_c(m)) - r - GearNet.b_r(m) <= slack * 1.1):
+				continue
+			if g.gear_net.candidate(0, Defs.CW_HEAVY, c)["state"] == "ok":
 				var b := g._add_building(Defs.CW_HEAVY, 0, c, true)
+				b.gear_big = true
 				g.gear_net.solve()
 				return b
 	return null
+
+
+## A Regulator meshing with b's ring only, then a Mainspring meshing with the Regulator's only (two links from b); null if
+## none fits.
+func _spring_two_away(g: Game, b: Building) -> Building:
+	var rc := U.chain_spot(g, 0, Defs.CW_SUPPLY, b)
+	if rc.x < 0:
+		return null
+	var reg: Building = g._add_building(Defs.CW_SUPPLY, 0, rc, true)
+	g.gear_net.solve()
+	var mc := U.chain_spot(g, 0, "mainspring", reg)
+	if mc.x < 0:
+		return null
+	var m: Building = g._add_building("mainspring", 0, mc, true)
+	g.gear_net.solve()
+	return m
+
+
+## TENSION NET: a second Clocktower far off starts its own network; a Heavy Works by it is not fed by the first town's
+## Mainspring; a fatigued Mainspring still feeds its network (it winds at the floor: Defs.TENSION_FLOOR).
+func _separate_net(g: Game, hall: Building, hw: Building) -> void:
+	var size: Vector2i = Defs.BUILDINGS["clocktower"]["size"]
+	var t2: Building = null
+	for y in range(hall.cell.y - 44, hall.cell.y + 45, 2):
+		for x in range(hall.cell.x - 44, hall.cell.x + 45, 2):
+			var c := Vector2i(x, y)
+			if t2 != null or not g.in_map(c) or Vector2(c - hall.cell).length() < 34.0 or not U._free_fp(g, c, size) or not g.margin_free(c, size):
+				continue
+			var gc := GearNet.gpos(Vector2(c) * Defs.TILE + Vector2(size) * Defs.TILE * 0.5)
+			var clear := true
+			for o in g.gear_net.linked:
+				if is_instance_valid(o) and gc.distance_to(GearNet.b_c(o)) - GearNet.b_r(o) < GearNet.ring_r("clocktower", size, false) + 12.0 * Defs.TILE:
+					clear = false
+					break
+			if clear:
+				t2 = g._add_building("clocktower", 0, c, true)
+	g.gear_net.solve()
+	check("TENSION NET: a second Clocktower far off stands, in a network of its own", t2 != null and g.gear_net.is_linked(t2) and g.gear_net.net_of.get(t2, -1) != g.gear_net.net_of.get(hall, -2))
+	if t2 == null:
+		return
+	var hw2 := U.put(g, 0, Defs.CW_HEAVY, t2.cell, true)
+	U.step(g, 0.6)
+	check("a Heavy Works by it links to that network only", hw2 != null and g.gear_net.is_linked(hw2) and g.gear_net.net_of.get(hw2, -1) == g.gear_net.net_of.get(t2, -2))
+	check("the first town's Mainspring does not feed it (NEEDS MAINSPRING)", hw2 != null and g.gear_net.needs_spring(hw2) and g.can_train(hw2, Defs.PENDULUM) != "")
+	check("while the first town's Heavy Works is still fed", g.gear_net.spring_for(hw) != null)
+	# a fatigued Mainspring still feeds its network (only its winding falls to the floor)
+	var m: Building = g.gear_net.spring_for(hw)
+	var h: Building = g.soil_hall(m) if m != null else null
+	if h != null:
+		h.soil = 0.0
+		U.step(g, 0.6)
+		g.players[0]["cap"] = 200
+		check("a FATIGUED Mainspring still feeds its whole network", m.fatigued() and g.gear_net.spring_for(hw) == m and g.can_train(hw, Defs.PENDULUM) == "", g.can_train(hw, Defs.PENDULUM))
 
 
 ## The share of a unit's training a building gets through in `secs` (from an empty queue; refunded after).
