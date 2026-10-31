@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.25.2", "items": [
+		"A new Clocktower icon (the owner's ChatGPT drawing): the brass tower with its clock face, red pennant and gear, readable at a glance, in place of the shrunken building picture.",
+	]},
 	{"v": "0.25.1", "items": [
 		"ONLINE: THE HOST'S BUILDINGS NO LONGER VANISH ON THE GUEST'S SCREEN: the guest's copy of the match was dropping the host's planned sites as \"nobody was coming to start it\", because it can't see the host's Winder out of sight nor anyone's Shift queue (one match logged 108 of them). Only the host decides now; its sites stay and get built. A freshly placed site also waits a moment before it can be dropped.",
 		"ONLINE: THE ROOTMAWS' GROUND REACHES THE GUEST: a Brood guest saw every Rootmaw's ground as 0% (cards, tooltips, labels and the match log). It is sent with the match now, when it changes.",
