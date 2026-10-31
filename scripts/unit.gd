@@ -2876,7 +2876,7 @@ func _start(o: Dictionary) -> bool:
 			cmd_hold()
 		"nb_root":
 			# the Brood: walk to the spot and root there (BroodRoot); only a creature that is up
-			if not BroodNew.ROOTERS.has(kind) or tesla_mode != "packed":
+			if not BroodNew.ROOTERS.has(kind) or not (tesla_mode in ["packed", "packing"]):       # (uprooting: it waits till up, root_tick)
 				return false
 			BroodRoot.start_root(self, o["p"])
 		"nb_morph":
@@ -3681,6 +3681,15 @@ func _tick_unit(delta: float) -> void:
 		phase = ""
 	if order == "idle" and not queue.is_empty():
 		_next_order()
+	if auto_harvest and _ah_busy():
+		_ah_t -= delta
+		if _ah_t <= 0.0:
+			_ah_t = 1.0
+			if game.find_corpse(self, float(Defs.HARVEST["range"]) * Defs.TILE) != null:
+				var keep := {"o": order, "p": order_point, "pa": patrol_a, "pb": patrol_b, "q": queue.duplicate(), "at": position}
+				cmd_harvest()
+				_harvest_auto = true
+				_ah_resume = keep
 	if auto_mount and Defs.MOUNTS.has(kind):
 		_foot_dragoon(delta)
 	if not led.is_empty():
@@ -3727,6 +3736,7 @@ func _tick_unit(delta: float) -> void:
 					if game.find_corpse(self, float(Defs.HARVEST["range"]) * Defs.TILE) != null:
 						cmd_harvest()
 						_harvest_auto = true
+						_ah_resume = {}          # (idle: afterwards back to work, WORK)
 						scan_t = 1.0
 			# an idle Winder carries a crate dropped close by on to its site
 			if kind == "winder" and order == "idle" and scan_t <= 0.0 and not game.crates.is_empty():
@@ -5667,6 +5677,42 @@ var harvest_home := Vector2.ZERO
 var _corpse: Unit = null
 
 
+## HARVEST AUTOCAST ON PATROL, HOLD OR ATTACK-MOVE (the owner's playtest, 2026-10-31: "interrupt, harvest, deliver, and go
+## back to patrol"): a grub with HARVEST on that is patrolling, holding or attack-moving (not fighting, not on a plain
+## move the player gave) breaks off for a body near it (Unit._ah_t, every second), and once its harvest is delivered goes
+## back to what it was doing (_ah_back): the same patrol between the same two points, on toward the one it was heading
+## for; its hold spot; its attack-move; and its Shift-queued orders behind.
+var _ah_resume := {}
+
+
+func _ah_busy() -> bool:
+	if kind != "grub" or target != null or aboard:
+		return false
+	return order == "hold" or order == "amove" or (order == "move" and patrol_a != Vector2.INF)
+
+
+func _ah_back() -> bool:
+	if _ah_resume.is_empty():
+		return false
+	var k := _ah_resume
+	_ah_resume = {}
+	_harvest_auto = false
+	var q: Array = k["q"]
+	if k["pa"] != Vector2.INF and String(k["o"]) != "hold":
+		cmd_move(k["pb"], String(k["o"]) == "amove")
+		patrol_a = k["pa"]
+		patrol_b = k["pb"]
+	elif String(k["o"]) == "hold":
+		patrol_a = Vector2.INF
+		cmd_move(k["at"])
+		q.push_front({"o": "hold"})
+	else:
+		patrol_a = Vector2.INF
+		cmd_move(k["p"], String(k["o"]) == "amove")
+	queue = q
+	return true
+
+
 func cmd_harvest() -> void:
 	if game.net_forward(self, "cmd_harvest", []): return
 	if aboard:
@@ -5707,7 +5753,8 @@ func _harvest(delta: float) -> Vector2:
 				_corpse.harvester = self
 				_request_path(_corpse.position)
 			elif _harvest_auto:
-				cmd_stop()          # (its own harvest done: idle, so WORK sends it back to its post)
+				if not _ah_back():
+					cmd_stop()          # (its own harvest done: idle, so WORK sends it back to its post)
 				return Vector2.ZERO
 		if _corpse == null:
 			if position.distance_to(harvest_home) > 40.0:

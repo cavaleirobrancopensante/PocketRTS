@@ -343,6 +343,8 @@ static func root_tick(g: Game, u: Unit, delta: float) -> Vector2:
 	var done := (u.path.is_empty() or u.path_i >= u.path.size()) and not u.path_pending
 	if d < 10.0 or (done and d < 48.0):
 		var why := place_problem(g, u.team, u.kind, p, u, false, scale_of(u))
+		if _swamp_wait(g, u, p, why, delta):
+			return Vector2.ZERO
 		if why != "":
 			g.tell(u.team, "The %s can't root there: %s" % [u.d["name"], why])
 			u.cmd_stop()
@@ -362,6 +364,23 @@ static func root_tick(g: Game, u: Unit, delta: float) -> Vector2:
 			return Vector2.ZERO
 		u._request_path(p)
 	return u._follow(delta)
+
+
+## The swamp is still spreading toward the spot (1 tile a second, BroodNew.swamp_coming): it waits there for it (up
+## to SWAMP_WAIT s) instead of giving up.
+const SWAMP_WAIT := 15.0
+
+
+static func _swamp_wait(g: Game, u: Unit, p: Vector2, why: String, delta: float) -> bool:
+	if not why.begins_with("No swamp") or not BroodNew.swamp_coming(g, u.team, p):
+		u.nb.erase("swait")
+		return false
+	u.nb["swait"] = float(u.nb.get("swait", 0.0)) + delta
+	if float(u.nb["swait"]) > SWAMP_WAIT:
+		u.nb.erase("swait")
+		return false
+	u.path = PackedVector2Array()
+	return true
 
 
 # ------------------------------------------------------------------ grubs morph (order "nb_morph")
@@ -437,6 +456,8 @@ static func morph_tick(g: Game, gr: Unit, delta: float) -> Vector2:
 	var done := (gr.path.is_empty() or gr.path_i >= gr.path.size()) and not gr.path_pending
 	if r.grow(gr.radius + 4.0).has_point(gr.position) or (done and r.grow(40.0).has_point(gr.position)):
 		var why := place_problem(g, gr.team, k, p, gr)
+		if _swamp_wait(g, gr, p, why, delta):
+			return Vector2.ZERO
 		if why == "":
 			why = morph_problem(g, gr.team, k, gr)
 		if why != "":
@@ -450,7 +471,8 @@ static func morph_tick(g: Game, gr: Unit, delta: float) -> Vector2:
 			g.add_res2(gr.team, -float(price[1]))
 			g.stats[gr.team]["spent"] += int(price[0])
 		gr.nb.erase("mpaid")          # (spent: its cocoon)
-		cocoon(g, gr.team, k, p)
+		var cu := cocoon(g, gr.team, k, p)
+		g.hand_on(gr, [cu])          # (a selected grub: its cocoon is selected now, in its control groups)
 		if gr.team == g.human:
 			Sfx.play_any(["burrow", "work/brood_build"], gr.position, -4.0)
 		g.consume_unit(gr)

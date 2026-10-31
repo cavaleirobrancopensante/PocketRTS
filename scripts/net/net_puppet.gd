@@ -31,7 +31,7 @@ static func tick_game(g: Game, delta: float) -> void:
 	g._rebuild_hash()
 	g._swamp_t -= delta
 	if g.swamp_dirty and g._swamp_t <= 0.0:
-		g._swamp_t = 0.5
+		g._swamp_t = Game.SWAMP_STEP      # (the radii come from the host: each source's nb "swr", NetSnapshot)
 		g._update_swamp()
 	g._vis_t -= delta
 	if g._vis_t <= 0.0:

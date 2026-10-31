@@ -1027,7 +1027,9 @@ func _nb_find_spot(q: Unit, m: Unit):
 				if not _nb_on_map(p) or not game._walkable(c) or game.region_of(c) != home:
 					continue
 				# (the ROOT checks: its footprint, on its side's swamp, its circle clear of the others' and of their plans)
-				if not _nb_spot_ok(p) or BroodRoot.place_problem(game, team, BroodNew.MAW, p, m, true) != "" or _spot_bad(p):
+				# (or where the swamp is spreading to, 1 tile a second: it will be there when the grub is)
+				var soon := not BroodNew.on_swamp(game, team, p) and BroodNew.swamp_coming(game, team, p)
+				if not _nb_spot_ok(p) or BroodRoot.place_problem(game, team, BroodNew.MAW, p, m, true, 1.0, not soon) != "" or _spot_bad(p):
 					continue
 				var s := p.distance_to(q.position) * (1.0 if ci == 0 else 0.6) + (60.0 if int(game.height[game.idx(c)]) != h else 0.0) + p.distance_to(from) * 0.3
 				if _eco():

@@ -281,6 +281,12 @@ func _run() -> void:
 	for gr in mine("grub"):
 		gr.cmd_stop()
 		gr.auto_work = false
+	# (her uprooting in 2. took her swamp from under it: it uprooted by itself (brood-fix3); root it again once her new
+	# swamp has spread back over it, 1 tile a second)
+	check(maw.tesla_mode == "packed", "   the Mother walked off (2.): her swamp receded and the Rootmaw uprooted by itself")
+	await wait_for(func() -> bool: return g.on_swamp(0, maw.position), 20.0)
+	maw.cmd_deploy()
+	await wait_for(func() -> bool: return maw.tesla_mode == "deployed", float(Defs.NB["maw_switch"]) + 2.0)
 	maw.nb["food"] = 0.0
 	var left0: float = BroodNew.ground_left(g, maw)
 	await wait(5.0)
@@ -343,8 +349,9 @@ func _run() -> void:
 	check(mx.tesla_mode == "packed", "12. a Rootmaw 21 tiles out (off her swamp) may not root")
 	var tx: Unit = g._add_unit(BroodNew.TURTLE, 0, free_spot(BroodNew.TURTLE, q.position + dir2 * 14.0 * Defs.TILE, 0.0))
 	tx.cmd_deploy()
-	await wait(float(Defs.NB["turtle_switch"]) + 1.2)
-	check(BroodNew.on_swamp(g, 0, far2), "    a Mound Turtle rooted 14 tiles out spreads swamp there")
+	await wait(float(Defs.NB["turtle_switch"]) + 0.2)
+	var spread: bool = await wait_for(func() -> bool: return BroodNew.on_swamp(g, 0, far2), float(Defs.NB["turtle_swamp"]) + 2.0)
+	check(spread, "    a Mound Turtle rooted 14 tiles out spreads swamp there (1 tile a second)")
 	mx.cmd_deploy()
 	await wait(float(Defs.NB["maw_switch"]) + 1.0)
 	mx.nb["food"] = 0.0
@@ -542,7 +549,8 @@ func _run() -> void:
 	var nb_grown: bool = await wait_for(func() -> bool: return BroodNew.stage(q) == 1, float(nb_stages[1]["time"]) + 2.0)
 	check(nb_grown and BroodNew.eggs_max(q) == int(nb_stages[1]["eggs"]) and BroodNew.drawn_r(q) > nb_r_before * 1.1 and q.radius <= BroodNew.BODY_R and absf(float(BroodNew.lay_rate(g, q)[1]) - float(nb_stages[1]["rate"])) < 0.001,
 		"    stage 2 after %d s: %d eggs held, laying x%.2f, drawn %.0f -> %.0f px, her walking body capped (%.0f, ground %.0f)" % [int(nb_stages[1]["time"]), BroodNew.eggs_max(q), float(BroodNew.lay_rate(g, q)[1]), nb_r_before, BroodNew.drawn_r(q), q.radius, q.ground_r()])
-	check(BroodNew.swamp_sources(g, 0).any(func(sw) -> bool: return absf(float(sw[1]) - float(nb_stages[1]["swamp"])) < 0.01), "    her swamp %.1f tiles" % float(nb_stages[1]["swamp"]))
+	var nb_sw: bool = await wait_for(func() -> bool: return BroodNew.swamp_sources(g, 0).any(func(sw) -> bool: return absf(float(sw[1]) - float(nb_stages[1]["swamp"])) < 0.01), 4.0)
+	check(nb_sw, "    her swamp %.1f tiles (grown out to it)" % float(nb_stages[1]["swamp"]))
 	check(BroodNew.grow_problem(g, q).contains(String(Defs.FACTIONS["brood"]["res"][1]).to_lower()), "    stage 3 needs essence: %s" % BroodNew.grow_problem(g, q))
 	p["res2"] = 200.0
 	q.cmd_uproot(false)
@@ -550,6 +558,9 @@ func _run() -> void:
 	check(BroodNew.grow_problem(g, q) != "", "    uprooted she can't grow: %s" % BroodNew.grow_problem(g, q))
 	q.cmd_deploy()
 	await wait_for(func() -> bool: return q.tesla_mode == "deployed", float(Defs.NB["queen_switch"]) + 2.0)
+	for gr in mine("grub"):
+		gr.auto_work = false          # (no deliveries meanwhile: the refund is counted below)
+		gr.cmd_stop()
 	var nb_g1: int = int(p["gold"])
 	q.cmd_grow()
 	q.cmd_uproot(false)
@@ -993,6 +1004,12 @@ func _fixes_2(q: Unit, p: Dictionary) -> void:
 	await wait(lt + 0.5)
 	# (3) the worker count over a rooted Rootmaw
 	var maw: Unit = null
+	# (Rootmaws that uprooted by themselves when her swamp went from under them (her uprooting in 14.): out of the way;
+	# her swamp spread out again)
+	for m in mine(BroodNew.MAW):
+		if m.tesla_mode == "packed":
+			g.consume_unit(m)
+	await wait_for(func() -> bool: return BroodNew.rooted(q) and float(q.nb.get("swr", 0.0)) >= BroodNew.swamp_full(q), 20.0)
 	for m in mine(BroodNew.MAW):
 		if BroodNew.rooted(m):
 			maw = m
@@ -1002,6 +1019,9 @@ func _fixes_2(q: Unit, p: Dictionary) -> void:
 		maw.nb.erase("coc")
 		BroodNew.recount(g, 0)
 	maw.nb["food"] = 300.0
+	for gr in mine("grub"):
+		gr.auto_work = false          # (only the two sent count)
+		gr.cmd_stop()
 	var crew_g: Array = mine("grub").slice(0, 2)
 	for c in crew_g:
 		c.cmd_gather(maw)
@@ -1200,6 +1220,10 @@ func _rooted_art(q: Unit) -> void:
 	if q.tesla_mode == "packed":
 		q.cmd_deploy()
 	await wait_for(func() -> bool: return q.tesla_mode == "deployed", 8.0)
+	await wait_for(func() -> bool: return float(q.nb.get("swr", 0.0)) >= BroodNew.swamp_full(q), 20.0)      # (her swamp spread out again)
+	for mm in mine(BroodNew.MAW):
+		if mm.tesla_mode == "packed":
+			g.consume_unit(mm)          # (one that uprooted by itself when her swamp went: out of the way)
 	var made: Array = []
 	var f: Unit = BroodNew.father(g, 0)
 	if f == null:
