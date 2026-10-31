@@ -380,6 +380,20 @@ func _nb_scout(q: Unit) -> void:
 		_scout.cmd_stop()        # (home: back to work; WORK finds a grub a Rootmaw)
 		_scout = null
 		return
+	# a Raptor scout harasses on its loop: a worker in reach is bitten, a rooted creature (the Brood's own kind, in a
+	# mirror) or a building its attack-move took up is walked past (scripts/ai_harass.gd)
+	if not _scout.is_worker():
+		var prey := hz().pick_prey(_scout)
+		if prey != null and prey.position.distance_to(_scout.position) < 6.0 * Defs.TILE:
+			if _scout.order != "attack" or _scout.order_target != prey:
+				_scout.cmd_attack(prey)
+			return
+		if (_scout.order == "attack" and AIHarass.is_static(_scout.order_target)) or (_scout.target != null and is_instance_valid(_scout.target) and AIHarass.is_static(_scout.target)):
+			_scout.cmd_move(_scout_pts[_scout_i])
+			return
+		if _scout.order == "attack":
+			_scout_go(_scout, _scout_pts[_scout_i])      # (its prey dead: on with the loop)
+			return
 	if _scout.position.distance_to(_scout_pts[_scout_i]) < 3.0 * Defs.TILE or _scout.order == "idle":
 		_scout_i += 1
 		if _scout_i < _scout_pts.size():

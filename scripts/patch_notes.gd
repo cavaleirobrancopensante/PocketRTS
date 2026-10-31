@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.24", "items": [
+		"THE COMPUTER HARASSES THE WORKERS: a computer's soldier out alone in the enemy's land (a Clock Soldier that chased a scout out of its base, the Crown's raiding Horsemen, a soldier scout) no longer stops to hit a ROOTED Brood creature (a Mound Turtle, a Rootmaw) or a building: it walks past them and goes for the workers (grubs, Labourers, Winders), the ones standing still first, and keeps walking to the worker line. A Sire, the Brood Mother on her feet or a stronger force makes it pull back, then it comes again; hurt or out too long, it goes home. A big army attack still hits whatever it meets.",
+	]},
 	{"v": "0.24.23", "items": [
 		"THE BROOD HEALS ONLY OUT OF THE FIGHT: the swamp's healing (and SWAMP MENDING) and the rooted Mother's own healing start 5 s after an enemy last hit the creature, no longer during the fight. A Clock Soldier could not kill a rooted Mound Turtle: the swamp healed it nearly as fast as he hit.",
 	]},
