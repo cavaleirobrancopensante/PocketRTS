@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.25.12", "items": [
+		"THE BROOD'S PLANNED ROOTS STAY ON THE GROUND: every Rootmaw, Mound Turtle or lure your grubs are on their way to, or have queued with Shift, is drawn as a faint ghost of its footprint and picture until it roots, so you can plan several at once (as the Crown's and Clockwork's building sites stay drawn).",
+	]},
 	{"v": "0.25.11", "items": [
 		"ORDERS ON THE MINIMAP: PATROL (and every other order waiting for a point: rally points, ATTACK GROUND, spells) can be given by clicking the minimap, with Shift to queue it, as MOVE and ATTACK could; it used to move the view instead.",
 	]},

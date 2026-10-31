@@ -4,6 +4,7 @@ extends RefCounted
 ## Patch notes in pt: version -> items in the order of scripts/patch_notes.gd ('' = show the English).
 
 const N := {
+	"0.25.12": ["AS RAÍZES PLANEJADAS DA NINHADA FICAM NO CHÃO: cada Bocarraiz, Tartaruga-Montículo ou isca a caminho de onde vão suas larvas, ou na fila com Shift, aparece como um fantasma suave da sua área e do seu desenho até enraizar, para você planejar várias de uma vez (como os canteiros da Coroa e do Mecanismo ficam desenhados)."],
 	"0.25.11": ["ORDENS NO MINIMAPA: PATRULHAR (e qualquer outra ordem que espera um ponto: pontos de reunião, ATACAR O CHÃO, feitiços) pode ser dada clicando no minimapa, com Shift para enfileirar, como MOVER e ATACAR já podiam; antes movia a vista."],
 	"0.25.10": ["F2 (EXÉRCITO) APERTADO DUAS VEZES: a câmera vai para onde está a maior parte do seu exército (o maior grupo), como o número de um grupo faz quando apertado duas vezes. F3 (FAZER) duas vezes vai aos seus prédios de produção."],
 	"0.25.9": ["A COLHEITA AUTOMÁTICA VAI MAIS LONGE: uma larva com a colheita automática ligada vai a qualquer corpo que o seu lado veja (até 60 casas), não só aos que estão a 10 casas dela; o mais perto primeiro. Uma ordem COLHER dada à mão ainda pega os corpos perto dela."],

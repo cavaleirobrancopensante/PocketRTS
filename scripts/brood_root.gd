@@ -1373,12 +1373,30 @@ static func overlay_wanted(g: Game) -> bool:
 static func overlay_key(g: Game) -> int:
 	if g.controls and String(g.controls.mode) == "nb_root":
 		return -1
+	var pk := _plans_key(g)         # (the planned roots: redrawn when one is added, reached or dropped)
 	if not ring_wanted(g):
-		return 0
+		return pk
 	var q := BroodNew.queen(g, g.human)
 	if q == null:
-		return 1
-	return hash(q.position.snapped(Vector2(2, 2))) | 2
+		return 1 ^ pk
+	return (hash(q.position.snapped(Vector2(2, 2))) | 2) ^ pk
+
+
+static func _plans_key(g: Game) -> int:
+	if not BroodNew.on(g, g.human):
+		return 0
+	var h := 0
+	for u in g.units:
+		if u.dead or u.team != g.human:
+			continue
+		var pl := plan_of(u)
+		if not pl.is_empty():
+			h = hash([h, pl[0], pl[1]])
+		for o in u.queue:
+			var oo := String(o.get("o", ""))
+			if (oo == "nb_root" or oo == "nb_morph") and o.has("p"):
+				h = hash([h, oo, o["p"], o.get("k", "")])
+	return h
 
 
 ## The father's range round the Mother: while a father (or a grub turning into one) is selected or placing his
@@ -1410,8 +1428,64 @@ static func draw_overlay(g: Game, ov: Node2D) -> void:
 			var lp := q.position + Vector2(-font.get_string_size(lt, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x * 0.5, rr - 10.0)
 			ov.draw_string_outline(font, lp, lt, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, 4, Color(0, 0, 0, 0.8))
 			ov.draw_string(font, lp, lt, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1.0, 0.75, 0.45))
+	draw_plans(g, ov)
 	if g.controls and String(g.controls.mode) == "nb_root" and g.controls.ghost_cell.x >= 0:
 		draw_ghost(g, ov, String(g.controls.place_kind), g.controls.ghost_cell, g.controls.nb_sc)
+
+
+## THE PLANNED ROOTS STAY ON THE GROUND (the owner, 2026-10-31: "the Brood's ghosts don't linger, I can't see them to
+## plan"): every root or morph your creatures are on their way to, or have queued (Shift), drawn as a faint ghost of
+## its footprint and its rooted picture, as the Crown's and the Clockwork's sites stay drawn.
+static func draw_plans(g: Game, ov: Node2D) -> void:
+	if not BroodNew.on(g, g.human):
+		return
+	for u in g.units:
+		if u.dead or u.team != g.human:
+			continue
+		var plans: Array = []
+		var pl := plan_of(u)
+		if not pl.is_empty():
+			plans.append(pl)
+		for o in u.queue:
+			var oo := String(o.get("o", ""))
+			if oo == "nb_root" and o.has("p"):
+				plans.append([u.kind, o["p"]])
+			elif oo == "nb_morph" and o.has("p") and o.has("k"):
+				plans.append([String(o["k"]), o["p"]])
+		for pp in plans:
+			var k := String(pp[0])
+			var p: Vector2 = pp[1]
+			var sc := scale_of(u) if k == u.kind else 1.0
+			var r := rect_for(k, p, sc)
+			ov.draw_rect(r, Color(0.45, 1.0, 0.45, 0.10))
+			ov.draw_rect(r, Color(0.45, 1.0, 0.45, 0.55), false, 1.5)
+			_plan_picture(ov, k, p, sc)
+
+
+## A planned root's rooted picture, faint (frame 0 of its rooted loop).
+static func _plan_picture(ov: Node2D, k: String, p: Vector2, sc: float) -> void:
+	var art := BroodMature.stage_art(BroodMature.stage_of_scale(sc)) if k == BroodNew.QUEEN else k
+	if not ArtData.UNITS.has(art):
+		return
+	var frames: Dictionary = ArtData.UNITS[art]["frames"]
+	var strip := ""
+	for s in ["rooted_se", "fill1_se", "fill_se", "idle_se"]:
+		if frames.has(s):
+			strip = s
+			break
+	if strip == "":
+		return
+	var tx := Game.tex("res://assets/units/%s/%s.png" % [art, strip])
+	if tx == null:
+		return
+	var n := int(frames[strip])
+	var fw := tx.get_width() / n
+	var cell: Vector2i = ArtData.UNITS[art]["cell"]
+	var anc: Vector2 = ArtData.UNITS[art]["anchor"]
+	var sk := sc * float(Defs.UNITS[k].get("art_scale", 1.0))
+	var off := (-anc - Vector2(0, tx.get_height() - cell.y)) * sk
+	off.y += drop_for(k, sc)
+	ov.draw_texture_rect_region(tx, Rect2(p + off, Vector2(fw, tx.get_height()) * sk), Rect2(0, 0, fw, tx.get_height()), Color(0.7, 1, 0.7, 0.35))
 
 
 ## The ROOT ghost (point 8): the footprint's cells green or red, the creature's rooted picture, and why not.

@@ -4,6 +4,7 @@ extends RefCounted
 ## Patch notes in es: version -> items in the order of scripts/patch_notes.gd ('' = show the English).
 
 const N := {
+	"0.25.12": ["LAS RAÍCES PLANEADAS DE LA CAMADA SE QUEDAN EN EL SUELO: cada Bocarraíz, Tortuga Montículo o señuelo hacia el que van tus larvas, o en la cola con Mayús, se dibuja como un fantasma tenue de su huella y su dibujo hasta que enraíza, para que planees varios a la vez (como se quedan dibujadas las obras de la Corona y del Mecanismo)."],
 	"0.25.11": ["ÓRDENES EN EL MINIMAPA: PATRULLAR (y cualquier otra orden que espera un punto: puntos de reunión, ATACAR EL SUELO, hechizos) se puede dar haciendo clic en el minimapa, con Mayús para encolarla, como ya podían MOVER y ATACAR; antes movía la vista."],
 	"0.25.10": ["F2 (EJÉRCITO) PULSADO DOS VECES: la cámara va a donde está la mayor parte de tu ejército (su grupo más grande), como hace el número de un grupo pulsado dos veces. F3 (HACER) dos veces va a tus edificios de producción."],
 	"0.25.9": ["LA COSECHA AUTOMÁTICA LLEGA MÁS LEJOS: una larva con la cosecha automática activada va a cualquier cuerpo que su bando vea (hasta 60 casillas), no solo a los que están a 10 casillas; el más cercano primero. Una orden COSECHAR dada a mano sigue tomando los cuerpos cercanos."],
