@@ -1009,14 +1009,10 @@ func _nb_on_map(p: Vector2) -> bool:
 	return Rect2(Vector2.ZERO, Vector2(Game.W, Game.H) * Defs.TILE).grow(-Defs.TILE).has_point(p)
 
 
-## Fresh ground: not spent (an old circle with little left).
+## Fresh ground: a Rootmaw rooted there would have at least a third of a full ground (BroodNew.ground_at: what the
+## ROOT ghost shows and what the Rootmaw gets), not spent ground.
 func _nb_spot_ok(p: Vector2) -> bool:
-	var r := float(Defs.PIT_CLAIM) * Defs.TILE * 2.0
-	for id in game.nb_spots:
-		var sp: Dictionary = game.nb_spots[id]
-		if (sp["p"] as Vector2).distance_to(p) < r and float(sp["left"]) < 400.0:
-			return false       # (spent ground)
-	return true
+	return BroodNew.ground_at(game, p) >= float(Defs.PIT_GROUND) / 3.0
 
 
 ## A Rootmaw's spot: on the swamp round the Mother first, then round the turtles on new ground (their swamp; a far

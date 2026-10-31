@@ -1,0 +1,5 @@
+# 0.25.2 (branch online-anim): the Rootmaw ROOT ghost on spent ground
+
+> Ground spent: %d food
+pt Chão esgotado: %d de comida
+es Suelo agotado: %d de comida

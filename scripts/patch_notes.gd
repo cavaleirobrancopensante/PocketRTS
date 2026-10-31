@@ -4,6 +4,11 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.25.3", "items": [
+		"ONLINE: A GUEST'S MATURED UNITS COME OUT OF THEIR COCOONS: a Raptor maturing into a Tyrant Challenger (and every other moult) stayed a grey shell on the guest's screen for good once the host finished it, so the guest was commanding cocoons. Now the shell splits, the Challenger steps out with its own art and the empty shell and skin are left behind, as on the host. A Swift turning into a Ticking Owl shows its puff of smoke too.",
+		"ONLINE: THE GUEST SEES THE ANIMATIONS THE HOST'S GAME PLAYS: the Mist Toad hops (it slid along crouched), a Springer's jump plays its crouch, arc and landing (it glided), and the moult, a Swift's morph, rooting and uprooting, a cocoon, an egg hatching and the Brood Mother laying run smoothly between the host's updates instead of stuttering over a slow line, with their sounds.",
+		"ROOTMAW GROUND, FAIRER: a new Rootmaw's ground loses what was drunk from each old, spent circle it overlaps, by how much of that circle it covers. Before, it took the LEAST of every circle it touched, so a fresh spot just inside a spent circle's edge had 0 food. Rooting on (or right beside) spent ground still gives almost nothing. The ROOT ghost says \"Ground spent: 0 food\" in red on spent ground, and the computer only roots where at least a third of a full ground is left. (Online, the guest's ghost reads the host's ground since 0.25.1; in 0.24.34 every guest's Rootmaw showed 0% and every ghost 3,000.)",
+	]},
 	{"v": "0.25.2", "items": [
 		"A new Clocktower icon (the owner's ChatGPT drawing): the brass tower with its clock face, red pennant and gear, readable at a glance, in place of the shrunken building picture.",
 	]},

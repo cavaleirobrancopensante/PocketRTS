@@ -1110,35 +1110,51 @@ static func root_problem(g: Game, u: Unit) -> String:
 	return BroodRoot.place_problem(g, u.team, u.kind, u.position, u, false, BroodRoot.scale_of(u))
 
 
-## The Rootmaw takes its circle of ground: fresh (Defs.PIT_GROUND), or what is left of old ground it overlaps (the
-## least of them: rooting beside spent ground can't refresh it, as the old pits).
+## The Rootmaw takes its circle of ground: what ground_at says is there. The old free circles it covers half or more of
+## are merged into it (their spent share is counted in its own now); one it only touches stays, for the ground beside it.
 static func _claim(g: Game, u: Unit) -> void:
-	var r := float(Defs.PIT_CLAIM) * Defs.TILE * 2.0
 	var left := ground_at(g, u.position)
 	var gone: Array = []
 	for id in g.nb_spots:
 		var s: Dictionary = g.nb_spots[id]
-		if (s["p"] as Vector2).distance_to(u.position) < r and int(s.get("maw", 0)) == 0:
-			left = minf(left, float(s["left"]))
+		if int(s.get("maw", 0)) == 0 and overlap((s["p"] as Vector2).distance_to(u.position)) >= 0.5:
 			gone.append(id)
 	for id in gone:
 		g.nb_spots.erase(id)
 	g.nb_spot_next += 1
+	while g.nb_spots.has(g.nb_spot_next):
+		g.nb_spot_next += 1         # (never over a spot still there: another Rootmaw's ground would be taken)
 	g.nb_spots[g.nb_spot_next] = {"p": u.position, "left": left, "maw": u.serial}
 	u.nb["spot"] = g.nb_spot_next
 	u.nb["gw"] = 0          # (its ground warnings start again on its new ground)
 
 
-## The food a Rootmaw rooted at p would have in its ground (_claim's rule): fresh PIT_GROUND, or the least of the old
-## free ground it overlaps (the ROOT ghost shows it: the owner, 2026-10-30 19:36).
+## The food a Rootmaw rooted at p would have in its ground (_claim's rule; the ROOT ghost shows it: the owner, 2026-10-30
+## 19:36): PIT_GROUND, less what was drunk from each old free circle it overlaps, by the share of that circle it covers
+## (rooting on or beside spent ground can't refresh it; a fresh circle that only touches an old one keeps nearly all its
+## food: until 0.25.2 the least of the circles it touched was taken, so a circle a tile into a spent one's edge had 0).
 static func ground_at(g: Game, p: Vector2) -> float:
-	var r := float(Defs.PIT_CLAIM) * Defs.TILE * 2.0
 	var left := float(Defs.PIT_GROUND)
 	for id in g.nb_spots:
 		var s: Dictionary = g.nb_spots[id]
-		if (s["p"] as Vector2).distance_to(p) < r and int(s.get("maw", 0)) == 0:
-			left = minf(left, float(s["left"]))
-	return left
+		if int(s.get("maw", 0)) != 0:
+			continue
+		var k := overlap((s["p"] as Vector2).distance_to(p))
+		if k > 0.0:
+			left -= maxf(0.0, float(Defs.PIT_GROUND) - float(s["left"])) * k
+	return clampf(left, 0.0, float(Defs.PIT_GROUND))
+
+
+## The share of a Rootmaw's circle of ground (radius PIT_CLAIM tiles) that another one d px away covers (1 on the same
+## spot, 0 when they don't touch).
+static func overlap(d: float) -> float:
+	var r := float(Defs.PIT_CLAIM) * Defs.TILE
+	if d >= 2.0 * r:
+		return 0.0
+	if d <= 0.0:
+		return 1.0
+	var lens := 2.0 * r * r * acos(d / (2.0 * r)) - 0.5 * d * sqrt(4.0 * r * r - d * d)
+	return clampf(lens / (PI * r * r), 0.0, 1.0)
 
 
 static func _release(g: Game, u: Unit) -> void:

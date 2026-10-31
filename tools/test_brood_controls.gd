@@ -330,7 +330,8 @@ func _extras(q: Unit, maw: Unit, p: Dictionary) -> void:
 	g.nb_spot_next += 1
 	var sid: int = g.nb_spot_next
 	g.nb_spots[sid] = {"p": far + Vector2(2, 0) * Defs.TILE, "left": 500.0, "maw": 0}
-	check(int(BroodNew.ground_at(g, far)) == 500, "   over old, partly spent ground: %d" % int(BroodNew.ground_at(g, far)))
+	var want := int(float(Defs.PIT_GROUND) - (float(Defs.PIT_GROUND) - 500.0) * BroodNew.overlap(2.0 * Defs.TILE))
+	check(absi(int(BroodNew.ground_at(g, far)) - want) <= 1 and want < 1000, "   over old, partly spent ground (2 tiles off, 500 left): %d" % int(BroodNew.ground_at(g, far)))
 	g.nb_spots.erase(sid)
 	# 8. HARVEST autocast
 	var hg: Unit = g._add_unit("grub", 0, q.position + Vector2(-80, 140))

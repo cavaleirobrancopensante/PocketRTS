@@ -2,7 +2,7 @@
 
 *(a working title: the game was called Holdfast until October 2026, but that name belongs to another game; the web address, the app file and the repository keep the old name for now so links and installs keep working)*
 
-**Play in your browser (version 0.25.2): https://holdfastrts.github.io/Holdfast/**
+**Play in your browser (version 0.25.3): https://holdfastrts.github.io/Holdfast/**
 
 **Windows program: https://holdfastrts.github.io/Holdfast/Holdfast_windows.zip** (rebuilt on every push; unzip it and run Holdfast.exe; if Windows warns "Windows protected your PC", click More info, then Run anyway)
 

@@ -18,9 +18,9 @@ const UNIT_PROPS := ["order", "phase", "work", "carrying", "mode", "tesla_mode",
 	"cocoon", "coat", "armoured", "kills", "art", "powder", "wind", "max_hp", "off_field", "horse_hp", "harnessed",
 	"topter_bat", "courier", "supplying", "auto_repair", "hold_fire", "pistol", "bayonet", "pouch", "carry_empty",
 	"spin", "overclock_t", "cranked_t", "self_wind_t", "tongue_stage", "tesla_t", "haul_t", "auto_work",
-	"owl_t", "net_t", "arm", "shield_up", "shield_t", "loaded", "auto_sweep", "ride_n", "nb", "stun_end", "moult_t", "band"]       # (band: the Marching Band's state, scripts/marching_band.gd)       # (stun_end: the clock a real stun's stars go, scripts/stun_mark.gd; nb: the Brood's own state, scripts/brood_new.gd; (a Clock Soldier's SHIELD FORWARD and its switch; a Swift's morph under way: its clock and bar; a unit caught in a Netter's net; the
+	"owl_t", "net_t", "arm", "shield_up", "shield_t", "loaded", "auto_sweep", "ride_n", "nb", "stun_end", "moult_t", "band", "jump"]       # (band: the Marching Band's state, scripts/marching_band.gd)       # (stun_end: the clock a real stun's stars go, scripts/stun_mark.gd; nb: the Brood's own state, scripts/brood_new.gd; (a Clock Soldier's SHIELD FORWARD and its switch; a Swift's morph under way: its clock and bar; a unit caught in a Netter's net; the
 	# launcher a Springer fires now, so a guest plays that arm's strip; a Spring Ballista's bolt in or not: loaded or fired, its crew
-	# cranking; a Great Winder's SWEEP autocast, for its card; ride_n: a Horseman's blows struck in passing, so a
+	# cranking; jump: a Springer's leap, so a guest plays its crouch, arc and landing (NetPuppet.set_jump); a Great Winder's SWEEP autocast, for its card; ride_n: a Horseman's blows struck in passing, so a
 	# guest draws the sabre arc: scripts/ride_by.gd)
 const UNIT_REFS := ["target", "home_mine", "leader", "aboard", "order_target", "crew_of"]      # (crew_of: a Ballista's crewman)
 const BLD_PROPS := ["built", "progress", "ghost", "queue", "prod_t", "growth",
@@ -56,7 +56,8 @@ static func unit_vals(u: Unit) -> Array:
 		snappedf(u.self_wind_t, 0.01), u.tongue_stage, snappedf(u.tesla_t, 0.01), snappedf(u.haul_t, 0.01), u.auto_work,
 		snappedf(u.owl_t, 0.01), snappedf(u.net_t, 0.01), u.arm, u.shield_up, snappedf(u.shield_t, 0.01), u.loaded, u.auto_sweep, u.ride_n,
 		BroodNew.unit_save(u) if u._k_nb else u.nb, snappedf(u.stun_end, 0.01), snappedf(u.moult_t, 0.01),
-		MarchingBand.save(u) if u.kind == MarchingBand.KIND else u.band]
+		MarchingBand.save(u) if u.kind == MarchingBand.KIND else u.band,
+		u.jump if u.jump.is_empty() else u.jump.duplicate()]
 
 
 ## The building's values, in BLD_PROPS order.
@@ -535,7 +536,7 @@ static func _unit_row(s: NetSession, row: Array) -> Unit:
 	if u.dead:
 		return null
 	if u.kind != String(row[1]):
-		u.morph(String(row[1]))
+		NetPuppet.morph_to(u, String(row[1]))      # (a moult, a Swift's morph: the host's change of kind, shown as the host shows it)
 	# movement: glide from where it is to the new spot over about one snapshot interval (NetPuppet.tick_unit)
 	var mo = s.motion.get(id)
 	var shown: Vector2 = u.position - s.lead_off(id)       # (where the pictures have it: a unit walking off at once is shown ahead)
@@ -640,11 +641,16 @@ static func _set_unit_vals(u: Unit, row: Array, o: int) -> void:
 		if u.stun_end > float(u.game.clock):
 			StunMark.add(u.game, u)      # (the host's stars: scripts/stun_mark.gd)
 	if row.size() > o + 47:
+		var was_m := u.moult_t
 		u.moult_t = float(row[o + 47])        # (a young Brood unit maturing: its shimmer and bar, scripts/brood_mature.gd)
+		if was_m < 0.0 and u.moult_t >= 0.0:
+			NetPuppet.moult_began(u)
 	if row.size() > o + 48 and row[o + 48] is Dictionary and u.kind == MarchingBand.KIND:
 		var mhp := u.max_hp
 		MarchingBand.load_state(u, row[o + 48])      # (the Marching Band: its musicians, solo and cooldowns, for its ring and card)
 		u.max_hp = mhp
+	if row.size() > o + 49 and row[o + 49] is Dictionary:
+		NetPuppet.set_jump(u, row[o + 49])           # (a Springer's leap: its clock goes on here between pictures)
 
 
 static func _unit_refs(s: NetSession, u: Unit, row: Array) -> void:
