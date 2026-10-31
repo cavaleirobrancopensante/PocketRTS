@@ -111,8 +111,10 @@ func _run_map() -> void:
 	if "visible_cells" in g:
 		pass
 	# (the other side's starting workers would pick fights with the test groups: they go)
+	# (the Brood Mother stays: since 0.18.0 she is the Brood's base, and without her the match ends at once and the
+	# path queue stops: every later case walked straight at its goal and the cases round cliffs and buildings failed)
 	for u in g.units.duplicate():
-		if u.team != 0:
+		if u.team != 0 and u.kind != BroodNew.QUEEN:
 			g.consume_unit(u)
 	await physics_frame
 	for u in g.units:

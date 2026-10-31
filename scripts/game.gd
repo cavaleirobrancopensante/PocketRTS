@@ -5783,6 +5783,11 @@ func _rebuild_hash() -> void:
 		_gend[last] = k
 
 
+## How far round a unit separation looks past its own radius (it was 18 px; 24 since the friends' SPACING grew, so
+## two Horsemen or Brutes still feel each other over the whole of their spacing).
+const SEP_REACH := 24.0
+
+
 ## Another unit (a tongue's pull, a charge's shove, a Balloon letting men off...) moved `u` during the tick:
 ## if that took it farther from its grid place than the searches allow, they allow that much more.
 func note_move(u: Unit) -> void:
@@ -5836,11 +5841,14 @@ func units_near(p: Vector2, r: float) -> Array:
 	return out
 
 
-## (as units_near(u.position, u.radius + 18), in the same order, without building the list)
+## (as units_near(u.position, u.radius + SEP_REACH), in the same order, without building the list)
+## Friends keep (both radii) * Defs.SPACING apart, enemies and workers (both radii) * Defs.SPACING_FOE, and so do
+## friends when either is squeezed (Unit.squeezed: walking and getting nowhere, in a gap, a gate, on a ramp).
 func separation(u: Unit) -> Vector2:
 	var push := Vector2.ZERO
 	var p := u.position
-	var rr := u.radius + 18.0
+	# (a worker keeps the old spacing from everyone: the old, smaller reach does)
+	var rr := u.radius + (18.0 if u._k_worker else SEP_REACH)
 	var air := u.is_air()
 	var c0 := Vector2i(int(p.x - rr) / HASH, int(p.y - rr) / HASH)
 	var c1 := Vector2i(int(p.x + rr) / HASH, int(p.y + rr) / HASH)
@@ -5851,6 +5859,9 @@ func separation(u: Unit) -> Vector2:
 	var u_still := u.velocity.length() < 15.0
 	var u_mill: bool = u._mill_in
 	var ur: float = u.radius
+	var u_work: bool = u._k_worker
+	var ut: int = u.team
+	var u_sq: bool = u.squeezed
 	var gw := _grid_w
 	if not _hash.is_empty():
 		# (anyone off the grid: every cell is looked up the slow way)
@@ -5862,11 +5873,12 @@ func separation(u: Unit) -> Vector2:
 				for o in lst:
 					push = _sep_push(u, o, p, rr, air, u_rail, mu, u_still, u_mill, push)
 		return push
-	# (a man pushes only from closer than (both radii) * 0.85, at most rr: the packed positions tell who
-	# can't be that close, even after a step since the rebuild, without looking at him)
+	# (a man pushes only from closer than (both radii) * Defs.SPACING (a friend; an enemy less), at most rr: the
+	# packed positions tell who can't be that close, even after a step since the rebuild, without looking at him)
 	var slack := grid_slack
 	var lim := rr + slack
 	var lim2 := lim * lim
+	var sp_most: float = Defs.SPACING_FOE if u_work or u_sq else Defs.SPACING
 	for y in range(maxi(c0.y, 0), mini(c1.y, _grid_h - 1) + 1):
 		var row := y * gw
 		for x in range(maxi(c0.x, 0), mini(c1.x, gw - 1) + 1):
@@ -5877,7 +5889,7 @@ func separation(u: Unit) -> Vector2:
 				var d2: float = _gpos[j].distance_squared_to(p)
 				if d2 > lim2:
 					continue
-				var md: float = (ur + _grad[j]) * 0.85 + slack
+				var md: float = (ur + _grad[j]) * sp_most + slack
 				if d2 > md * md:
 					continue
 				# (_sep_push, written out: this is the hottest loop of a big fight)
@@ -5886,7 +5898,7 @@ func separation(u: Unit) -> Vector2:
 					continue
 				var dvec: Vector2 = p - o.position
 				var dist := dvec.length()
-				var min_d: float = (ur + o.radius) * 0.85
+				var min_d: float = (ur + o.radius) * (Defs.SPACING if o.team == ut and not u_work and not o._k_worker and not u_sq and not o.squeezed else Defs.SPACING_FOE)
 				if dist >= min_d or dist > rr:
 					continue
 				if o.dead or o.off_field or (o._air_k and o.net_t <= 0.0) != air:      # (o.is_air())
@@ -5935,7 +5947,7 @@ func _sep_push(u: Unit, o, p: Vector2, rr: float, air: bool, u_rail: bool, mu: f
 		return push           # (a Powder Mill's crew share its small yard: they pass close by each other, never shove, Unit._mill_work)
 	var dvec: Vector2 = p - o.position
 	var dist := dvec.length()
-	var min_d: float = (u.radius + o.radius) * 0.85
+	var min_d: float = (u.radius + o.radius) * (Defs.SPACING if o.team == u.team and not u._k_worker and not o._k_worker and not u.squeezed and not o.squeezed else Defs.SPACING_FOE)
 	if dist < min_d:
 		if dist < 0.01:
 			dvec = Vector2.from_angle(randf() * TAU)

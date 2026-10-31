@@ -224,10 +224,13 @@ func _process(delta: float) -> bool:
 
 # ------------------------------------------------------------------ the armies
 
-func _hall(team: int) -> Building:
+func _hall(team: int) -> Entity:
 	for b in g.buildings:
 		if b.team == team and not b.dead and b.kind in ["hive", "town_hall", "clocktower"]:
 			return b
+	for u in g.units:
+		if u.team == team and not u.dead and u.kind == BroodNew.QUEEN:
+			return u              # (the Brood has no buildings since 0.18.0: its Mother stands for its base)
 	return null
 
 

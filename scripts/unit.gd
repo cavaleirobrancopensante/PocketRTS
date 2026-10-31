@@ -52,6 +52,10 @@ var path_i := 0
 var path_goal := Vector2.INF
 var path_pending := false
 var stuck_t := 0.0
+## SQUEEZED: trying to move and getting nowhere (stuck_t over SQUEEZE_T): its friends keep only the enemies' spacing
+## from it (Game.separation), so a crowd in a gap, a gate or on a ramp closes up and goes through instead of jamming.
+var squeezed := false
+const SQUEEZE_T := 0.3
 var squeeze_t := 0.0            # > 0: walking out of a sealed pocket through a building's edge (last resort)
 var nb_pass := 0.0              # > 0: a Brood creature walking out through its own side's rooted creatures (BroodRoot.pass_move)
 var _nb_top := -9999.0          # the Brood: where its bar sits over its drawn body (Unit._draw)
@@ -4250,6 +4254,7 @@ func _move(want: Vector2, delta: float) -> void:
 		return
 	# neighbours only nudge each other: a unit on the move works it out every other tick, one
 	# standing still every third
+	squeezed = stuck_t > SQUEEZE_T and want != Vector2.ZERO
 	_sep_n += 1
 	if _sep_n >= (2 if want != Vector2.ZERO or velocity != Vector2.ZERO else 3):
 		_sep_n = 0
