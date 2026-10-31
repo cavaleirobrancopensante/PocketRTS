@@ -4316,6 +4316,10 @@ func _nb_round() -> bool:
 	for o in game.units_near(position, radius + 100.0):
 		if o == self or o.dead or not o._k_nb or o._k_still or o.nb_mass < 8.0 or o.velocity.length() > 10.0:
 			continue          # (rooted, or a heavy one standing: the Mother, the Tyrannosaur at his eggs)
+		if BroodRoot.has_fp(o):
+			continue          # (rooted on its footprint: solid in the path grid like a building, so a fresh path goes round it;
+			                  # a straight waypoint round its CIRCLE fell inside its footprint or a neighbour's, and was
+			                  # put in again and again instead of a repath: grubs stuck for good, the owner 2026-10-31)
 		if o._k_shell and (o.team == team or game.allied(o.team, team)):
 			continue           # (its own side climbs over a turtle's shell)
 		var away: Vector2 = position - o.position

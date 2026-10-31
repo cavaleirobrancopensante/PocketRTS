@@ -104,6 +104,38 @@ static func footprint_on(g: Game, u: Unit, push := true) -> void:
 			if o._k_still:
 				keep.append(o)          # (its eggs, a food pile: they lie where they are)
 		g._push_units_out(r, keep)
+	push_bodies(g, rect_of(u))
+
+
+## (the owner, 2026-10-31) Bodies the grubs harvest and food piles lying on ground that has just turned solid (a creature
+## rooted or grown over them, a building put down on them) are moved to the nearest free open cell just outside it, on
+## their own level, so grubs can still reach them; a body keeps its value and rot clock (both go by died_at and its
+## damage), a pile its food. Eggs stay where they are (they lie on a creature on purpose).
+static func push_bodies(g: Game, r: Rect2) -> void:
+	var lst: Array = []
+	for b in g.corpses:
+		if is_instance_valid(b) and not b.is_queued_for_deletion():
+			lst.append(b)
+	var big := r.grow(T)
+	for o in g.units:          # (not units_near: a pile spilled this tick is not in the unit grid yet)
+		if o._k_still and o.kind == BroodNew.PILE and not o.dead and big.has_point(o.position):
+			lst.append(o)
+	var n := 0
+	for b in lst:
+		var c := g.cell_of(b.position)
+		if not g.in_map(c) or (g.open_cell(c) and not r.has_point(b.position)):
+			continue
+		var to := g.nearest_free_level(c, 8)
+		if not g.is_free(to):
+			continue
+		# (a few px apart within the cell: two bodies pushed to one cell don't lie exactly on top of each other)
+		b.position = g.cell_center(to) + Vector2(float(n % 3 - 1) * 7.0, float(n / 3 % 3 - 1) * 5.0)
+		n += 1
+		if not b.dead:
+			g.note_move(b)
+		var h = b.get("harvester")
+		if h != null and is_instance_valid(h) and not h.dead and h.order == "harvest" and not h.path_pending:
+			h._request_path(b.position)
 
 
 ## Its ground is free again (it got up, or died).

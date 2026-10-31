@@ -4,6 +4,10 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.22", "items": [
+		"BODIES UNDER A ROOTING CREATURE ARE PUSHED OUT: when a Rootmaw, a Mound Turtle, a Sire on his nest or the Mother roots (or the Mother grows) over bodies or a food pile, they are moved to the nearest free ground just outside its footprint, so your grubs can still harvest them; a body keeps its value and its rot, a pile its food. The same when any building is put down over a body.",
+		"GRUBS FIND THE MOTHER THROUGH HER SIRES: with Sires and other creatures rooted close round her, grubs coming from a far Rootmaw no longer get stuck against one of them; they walk in through any open gap. (A grub stuck beside a rooted creature used to be sent on a straight detour round its body, which often ended inside its footprint or a neighbour's, again and again, instead of finding a new path.) If her rim can't be reached at all, a grub delivers from the nearest spot it can reach beside her.",
+	]},
 	{"v": "0.24.21", "items": [
 		"THE MAIN MENU'S BOTTOM LINE: \"Version 0.24.21\" (click it to read the patch notes; their BACK returns to the main menu) and \"This game was made with the help of AI\".",
 	]},
