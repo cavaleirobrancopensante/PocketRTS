@@ -260,6 +260,7 @@ func _scroll_checks(g: Game, q: Unit) -> void:
 		hud._release((rb["rect"] as Rect2).get_center())
 		check(g.controls.mode == "nb_rally", "phone: the tap's release presses RALLY")
 		g.controls.cancel_mode()
+	Settings.load_all()       # (main loads the shared settings file at start: read it first, or its device wins over ours)
 	Settings.device = "pc"
 
 

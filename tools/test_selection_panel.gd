@@ -31,6 +31,7 @@ func _ms(n: int) -> void:
 
 
 func _run() -> void:
+	Settings.load_all()       # (main loads the shared settings file at start: read it first, or its device wins over ours)
 	Settings.device = "pc"
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
@@ -187,6 +188,7 @@ func _run() -> void:
 	await _ms(400)
 	await _frames(2)
 	check(g.selection.size() == 59 and not g.selection.has(up["e"]), "phone: a long press drops him")
+	Settings.load_all()       # (main loads the shared settings file at start: read it first, or its device wins over ours)
 	Settings.device = "pc"
 	# a new selection starts at the top
 	g.set_selection(mixed)
