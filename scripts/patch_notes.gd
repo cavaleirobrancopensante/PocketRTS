@@ -4,6 +4,12 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.25.2", "items": [
+		"THINNER BARS, IN BOXES (StarCraft 2 style): the health bar over units and buildings is thinner (3 px, a building's 4) with a thin dark outline, and cut into BOXES: 25 health a box up to 300 health, 50 up to 800, 100 up to 2,000, 250 above (bigger boxes when they would be too narrow to read). The bars are a little narrower too. The reload, charge (wind) and powder bars are 2 px, flush under the health bar, shown only when not full, never more than two.",
+		"HEALTH BARS setting (Settings, DISPLAY): DAMAGED OR SELECTED (the default: a bar over a hurt or selected unit or building) or ALWAYS.",
+		"WILL CONNECT: while you place a Clockwork building, every building whose ring would mesh with the ghost's ring is outlined with a link line to it, and an OFF (unlinked) building that the new one would bring onto the gear field glows teal, with its link line and a WILL CONNECT mark over it (off buildings meshing in a chain behind it too).",
+		"SILHOUETTES ONLY WHEN REALLY HIDDEN: a unit is drawn as a silhouette only when it stands behind a building or a big creature AND that picture's solid pixels really lie over it (not its empty corners, not the gear rings or floor plates on the ground), and only the covered part of the unit is drawn as a silhouette. Winders working at a Cog Press no longer show one.",
+	]},
 	{"v": "0.25.1", "items": [
 		"ONLINE: THE HOST'S BUILDINGS NO LONGER VANISH ON THE GUEST'S SCREEN: the guest's copy of the match was dropping the host's planned sites as \"nobody was coming to start it\", because it can't see the host's Winder out of sight nor anyone's Shift queue (one match logged 108 of them). Only the host decides now; its sites stay and get built. A freshly placed site also waits a moment before it can be dropped.",
 		"ONLINE: THE ROOTMAWS' GROUND REACHES THE GUEST: a Brood guest saw every Rootmaw's ground as 0% (cards, tooltips, labels and the match log). It is sent with the match now, when it changes.",

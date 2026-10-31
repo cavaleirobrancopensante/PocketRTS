@@ -1113,6 +1113,118 @@ func draw_ghost(ci: CanvasItem, t: int, k: String, c: Vector2i, big := false) ->
 	draw_ring(ci, ring_kind(k, big), n, centre, rot, 1.0, tint, true, true, Color(col.r, col.g, col.b, 0.38 if st["state"] == "clash" else 0.18))
 	ci.draw_set_transform(Vector2.ZERO)
 	draw_contacts(ci, t, k, c, big)
+	_draw_will_connect(ci, t, k, c, big)
+
+
+## WILL CONNECT (the owner's playtest, 2026-10-31: "the off building doesn't show that it's going to connect"): while a
+## Clockwork building is placed, every finished building of yours whose ring would MESH with the ghost's ring at this spot,
+## and every OFF (unlinked) one the ghost would bring onto the field, through it or through other off rings meshing in a
+## chain. [[building, the world point its link comes from (the ghost's or the off ring's centre), off: bool]]. Worked out
+## again only when the ghost moves to another cell, its gear size changes or the buildings change (_wc_key).
+const WILL_CONNECT := Color(0.25, 1.0, 0.9)
+var _wc_key := ""
+var _wc: Array = []
+
+
+func will_connect(t: int, k: String, c: Vector2i, big := false) -> Array:
+	if not enforce or not Defs.gear_mode or not Defs.BUILDINGS.has(k) or Defs.BUILDINGS[k]["faction"] != "clockwork":
+		return []
+	big = big or big_only(k)
+	var key := "%d|%s|%d|%d|%d|%d|%d" % [t, k, c.x, c.y, int(big), _signature(), version]
+	if key == _wc_key:
+		return _wc
+	_wc_key = key
+	_wc = []
+	var linking := k == "clocktower" or String(candidate(t, k, c, big)["state"]) == "ok"
+	var size: Vector2i = Defs.BUILDINGS[k]["size"]
+	var g := gpos(Vector2(c) * T + Vector2(size) * T * 0.5)
+	var r := ring_r(k, size, big)
+	var lv := foot_level(game, c, size)
+	var slack := float(Defs.GEAR["slack"]) * T
+	var over := float(Defs.GEAR["overlap"]) * T
+	var off: Array = []            # the unlinked finished buildings of t, not reached yet
+	var q: Array = []
+	for b in game.buildings:
+		if not is_instance_valid(b) or b.dead or b.ghost or not b.built or b.team != t or b.d["faction"] != "clockwork":
+			continue
+		var gb := b_c(b)
+		var gap := g.distance_to(gb) - r - b_r(b)
+		var meets := gap >= -over and gap <= slack and b_level(b) == lv and joint_ok(game, g, r, gb, b_r(b), lv)
+		var is_off := not linked.has(b)
+		if meets and (linking or not is_off):
+			_wc.append([b, Vector2(g.x, g.y * FY), is_off])
+			if is_off:
+				q.append(b)
+		elif is_off:
+			off.append(b)
+	# (the off rings meshing with an off ring that connects: they connect too)
+	var qi := 0
+	while qi < q.size() and not off.is_empty():
+		var a: Building = q[qi]
+		qi += 1
+		var ga := b_c(a)
+		for j in range(off.size() - 1, -1, -1):
+			var b: Building = off[j]
+			var gb := b_c(b)
+			if ga.distance_to(gb) > b_r(a) + b_r(b) + slack:
+				continue
+			if b_level(a) != b_level(b) or not joint_ok(game, ga, b_r(a), gb, b_r(b), b_level(a)):
+				continue
+			_wc.append([b, Vector2(ga.x, ga.y * FY), true])
+			q.append(b)
+			off.remove_at(j)
+	return _wc
+
+
+## The rings that would mesh with the ghost (will_connect): the link line from the ghost (or the off ring it comes through)
+## to each, a thin green outline round a linked one, and an off one's ring washed bright teal with a teal outline and its
+## meshing teeth glowing teal.
+func _draw_will_connect(ci: CanvasItem, t: int, k: String, c: Vector2i, big := false) -> void:
+	var wc := will_connect(t, k, c, big)
+	if wc.is_empty():
+		return
+	ci.draw_set_transform(Vector2.ZERO)
+	var ok_col: Color = Defs.GEAR["col"]["ok"]
+	for e in wc:
+		var b: Building = e[0]
+		if not is_instance_valid(b):
+			continue
+		var from: Vector2 = e[1]
+		var to := b.center()
+		var col := WILL_CONNECT if e[2] else ok_col
+		var rt := radius_of_teeth(b_n(b))
+		if e[2]:
+			draw_ring(ci, ring_kind(b.kind, b.gear_big), b_n(b), to, float(ang.get(b, 0.0)), 1.0, Color(1, 1, 1, 0), false, true, Color(col.r, col.g, col.b, 0.5))
+			ci.draw_set_transform(Vector2.ZERO)
+		var pts := PackedVector2Array()
+		for i in 49:
+			var p := Vector2.from_angle(TAU * float(i) / 48.0) * (rt + 3.0)
+			pts.append(to + Vector2(p.x, p.y * FY))
+		ci.draw_polyline(pts, Color(0, 0, 0, 0.5), 5.0 if e[2] else 3.5, true)
+		ci.draw_polyline(pts, Color(col.r, col.g, col.b, 0.95 if e[2] else 0.6), 2.5 if e[2] else 1.5, true)
+		ci.draw_line(from, to, Color(0, 0, 0, 0.55), 5.0, true)
+		ci.draw_line(from, to, Color(col.r, col.g, col.b, 0.95), 2.5, true)
+		ci.draw_circle(to, 4.0, Color(col.r, col.g, col.b, 0.95))
+		if e[2]:
+			var gf := gpos(from)
+			var gb := b_c(b)
+			var phi := (gb - gf).angle()
+			_teeth_arc(ci, gb, b_r(b), phi + PI, col)
+
+
+## WILL CONNECT over each off building the ghost would bring onto the field (on the overlay, above the buildings).
+func _draw_will_connect_marks(ci: CanvasItem, t: int, k: String, c: Vector2i, big := false) -> void:
+	var font := ThemeDB.fallback_font
+	var txt := Loc.t("WILL CONNECT")
+	var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+	for e in will_connect(t, k, c, big):
+		var b: Building = e[0]
+		if not e[2] or not is_instance_valid(b):
+			continue
+		var at := Vector2(b.center().x - w * 0.5, b.sprite_rect().position.y + 14.0)
+		ci.draw_rect(Rect2(at + Vector2(-5, -12), Vector2(w + 10, 16)), Color(0.03, 0.08, 0.08, 0.85))
+		ci.draw_rect(Rect2(at + Vector2(-5, -12), Vector2(w + 10, 16)), WILL_CONNECT, false, 1.5)
+		ci.draw_string(font, at, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, WILL_CONNECT)
 
 
 ## READABILITY (owner, 2026-10-27): on the placing ghost, the TEETH where its ring would mesh glow green (on both rings,
@@ -1260,6 +1372,7 @@ func draw_ghost_label(ci: CanvasItem, t: int, k: String, c: Vector2i, big := fal
 	ci.draw_rect(Rect2(at + Vector2(-6, -14), Vector2(w + 12, 20)), Color(0.05, 0.05, 0.07, 0.85))
 	ci.draw_rect(Rect2(at + Vector2(-6, -14), Vector2(w + 12, 20)), col, false, 1.5)
 	ci.draw_string(font, at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, col)
+	_draw_will_connect_marks(ci, t, k, c, big)
 	if pickable(k):
 		# GEAR PICK: the ring it would be placed on, under the verdict (the G key, or the card's button, switches it)
 		var tag := Loc.t("BIG GEAR") if big else Loc.t("SMALL GEAR")

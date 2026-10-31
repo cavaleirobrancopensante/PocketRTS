@@ -15,6 +15,7 @@ static var build_grid := true         # show the planning grid while placing a b
 static var area_marks := true         # area attacks lay their shape on the ground where they strike (GroundMarks)
 static var powder_smoke := -1         # black powder smoke (PowderSmoke): -1 = not chosen (THICK for now), 0 off, 1 light, 2 full, 3 thick
 static var expansion_spots := true    # the best expansion spots tinted on the ground (ExpansionSpots; Crown and Clockwork)
+static var health_bars := 0           # HEALTH BARS: 0 = DAMAGED OR SELECTED (the default), 1 = ALWAYS (Entity.health_bar_shown)
 static var charge_bars := true        # SHOW CHARGE BARS: a thin charge bar over own Clockwork units not fully wound (Unit._draw_unit)
 static var gear_turn := true          # TURNING GEARS (experiment, on for now): a Clockwork ring's band carries units round (GearTurn); from the next match
 static var marching_band := false     # MARCHING BAND (experiment, off by default): the Crown's band at the Barracks (MarchingBand); from the next match
@@ -44,6 +45,7 @@ static func load_all() -> void:
 		powder_smoke = clampi(int(cfg.get_value("ui", "powder_smoke", -1)), -1, 3)
 		expansion_spots = bool(cfg.get_value("ui", "expansion_spots", true))
 		charge_bars = bool(cfg.get_value("ui", "charge_bars", true))
+		health_bars = clampi(int(cfg.get_value("ui", "health_bars", 0)), 0, 1)
 		gear_turn = bool(cfg.get_value("ui", "gear_turn", true))
 		marching_band = bool(cfg.get_value("ui", "marching_band", false))
 		mini_alpha = clampf(float(cfg.get_value("input", "mini_alpha", 0.6)), 0.2, 1.0)
@@ -72,6 +74,7 @@ static func save_all() -> void:
 	cfg.set_value("ui", "powder_smoke", powder_smoke)
 	cfg.set_value("ui", "expansion_spots", expansion_spots)
 	cfg.set_value("ui", "charge_bars", charge_bars)
+	cfg.set_value("ui", "health_bars", health_bars)
 	cfg.set_value("ui", "gear_turn", gear_turn)
 	cfg.set_value("ui", "marching_band", marching_band)
 	cfg.set_value("input", "mini_alpha", mini_alpha)
@@ -116,6 +119,7 @@ static func reset() -> void:
 	powder_smoke = -1
 	expansion_spots = true
 	charge_bars = true
+	health_bars = 0
 	gear_turn = true
 	marching_band = false
 	mini_alpha = 0.6
