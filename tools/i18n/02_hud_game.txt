@@ -2370,9 +2370,9 @@ es Selecciona todos los edificios que producen algo (el Ayuntamiento también), 
 pt Grupo %d
 es Grupo %d
 
-> %d: select it (twice: jump to it). Shift+%d: add it to your selection. Ctrl+%d: set it to the selection. Ctrl+Shift+%d: add the selection to it. To drop a unit: select the group, Shift+click the unit off, Ctrl+%d.
-pt %d: seleciona (duas vezes: vai até ele). Shift+%d: adiciona à seleção. Ctrl+%d: define como a seleção. Ctrl+Shift+%d: adiciona a seleção a ele. Para tirar uma unidade: selecione o grupo, Shift+clique na unidade, Ctrl+%d.
-es %d: lo selecciona (dos veces: salta a él). Mayús+%d: lo añade a tu selección. Ctrl+%d: lo define con la selección. Ctrl+Mayús+%d: le añade la selección. Para quitar una unidad: selecciona el grupo, Mayús+clic en la unidad, Ctrl+%d.
+> %d: select it (twice: jump to it). Ctrl+%d: set it to the selection. Shift+%d: add the selection to it. Alt+%d: set it and take those units out of every other group (Shift+Alt+%d: add them and take them out). To drop a unit: select the group, Shift+click the unit off, Ctrl+%d.
+pt %d: seleciona (duas vezes: vai até ele). Ctrl+%d: define como a seleção. Shift+%d: adiciona a seleção a ele. Alt+%d: define e tira essas unidades de todos os outros grupos (Shift+Alt+%d: adiciona e tira). Para tirar uma unidade: selecione o grupo, Shift+clique na unidade, Ctrl+%d.
+es %d: lo selecciona (dos veces: salta a él). Ctrl+%d: lo define con la selección. Mayús+%d: le añade la selección. Alt+%d: lo define y saca esas unidades de todos los demás grupos (Mayús+Alt+%d: las añade y las saca). Para quitar una unidad: selecciona el grupo, Mayús+clic en la unidad, Ctrl+%d.
 
 > Tap: select it (twice: jump to it). Hold: keep the selection here.
 pt Toque: seleciona (duas vezes: vai até ele). Segure: guarda a seleção aqui.

@@ -4,6 +4,9 @@ extends RefCounted
 ## the running version first). Add an entry for every pushed version (see CLAUDE.md).
 
 const NOTES := [
+	{"v": "0.24.34", "items": [
+		"GROUP KEYS AS IN STARCRAFT 2: Shift+number ADDS the selection to that group; Alt+number sets the group and takes those units out of every other group (Shift+Alt+number adds them and takes them out); Ctrl+number sets it, the number selects it, as before. The group buttons take the same modifiers on a click. (Shift+number used to add the group to the selection.)",
+	]},
 	{"v": "0.24.33", "items": [
 		"SETTINGS IN TABS: the Settings page is split into GAMEPLAY (language, device, command keys or one-finger drag, layout and hotkeys, tooltips, build grid, replays kept, online relay), DISPLAY (full screen, interface size, minimap solidity, powder smoke, area marks, expansion spots, charge bars), SOUND, EXPERIMENTAL (turning gears, marching band, Clockwork lab) and OTHER (patch notes, animation viewer, reset settings). The tab you pick stays picked until you close the game.",
 		"FULL SCREEN ON A COMPUTER: a FULL SCREEN switch in Settings > DISPLAY; the Windows program also switches with F11 or Alt+Enter and starts the way you left it. In a browser the switch works from the click (F11 still works too).",

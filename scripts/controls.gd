@@ -539,7 +539,7 @@ func _key(e: InputEventKey) -> void:
 	if game.spectating() and not e.ctrl_pressed and not e.shift_pressed and not e.meta_pressed \
 			and e.keycode >= KEY_0 and e.keycode <= KEY_8 and game.spectator.hotkey(int(e.keycode - KEY_0)):
 		return
-	# the hotkey bar: 1-9 and 0 groups (Ctrl sets, Ctrl+Shift adds, Shift joins the group to the selection), F1 idle, F2 army,
+	# the hotkey bar: 1-9 and 0 groups (StarCraft 2: Ctrl sets, Shift adds, Alt steals, Shift+Alt steals and adds), F1 idle, F2 army,
 	# F3 make, F4-F10 camera views (Shift+F saves)
 	if Settings.pc() and hud and hud.bar.key(e):
 		return

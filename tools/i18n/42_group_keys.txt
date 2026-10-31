@@ -1,0 +1,9 @@
+# 0.24.34: StarCraft 2's group keys (Shift+N add, Alt+N steal)
+
+> Select something to put in group %d.
+pt Selecione algo para pôr no grupo %d.
+es Selecciona algo para poner en el grupo %d.
+
+> Group %d: %d (taken out of the other groups).
+pt Grupo %d: %d (tirados dos outros grupos).
+es Grupo %d: %d (sacados de los demás grupos).

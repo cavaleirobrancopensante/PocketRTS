@@ -107,14 +107,15 @@ func release(p: Vector2) -> void:
 		if held > HOLD_S:
 			mode = "set"
 		elif Settings.pc():
+			# (the same as the keys: Ctrl set, Shift add, Alt steal, Shift+Alt steal and add)
 			var ctrl := Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_META)
 			var shift := Input.is_key_pressed(KEY_SHIFT)
-			if ctrl and shift:
+			if Input.is_key_pressed(KEY_ALT):
+				mode = "steal_add" if shift else "steal"
+			elif shift:
 				mode = "add"
 			elif ctrl:
 				mode = "set"
-			elif shift:
-				mode = "join"
 		activate(id, mode, held)
 
 
@@ -163,14 +164,16 @@ func key(e: InputEventKey) -> bool:
 	elif kc == KEY_0:
 		g = 9
 	if g >= 0:
+		# StarCraft 2's keys (the owner's friend, 2026-10-31): Ctrl+N set, Shift+N ADD the selection to the group,
+		# Alt+N STEAL (set, taking the selected out of every other group), Shift+Alt+N steal and add
 		var mode := ""
 		var ctrl: bool = e.ctrl_pressed or e.meta_pressed
-		if ctrl and e.shift_pressed:
+		if e.alt_pressed:
+			mode = "steal_add" if e.shift_pressed else "steal"
+		elif e.shift_pressed:
 			mode = "add"
 		elif ctrl:
 			mode = "set"
-		elif e.shift_pressed:
-			mode = "join"
 		_flash[GROUP0 + g] = Time.get_ticks_msec()
 		group_do(g, mode, true)
 		return true
@@ -218,6 +221,19 @@ func group_do(g: int, mode: String, can_jump := true) -> void:
 					added += 1
 			gm.groups[g] = cur
 			hud.toast("Added %d to group %d (now %d)." % [added, n, cur.size()], false)
+		"steal", "steal_add":
+			if sel.is_empty():
+				hud.toast("Select something to put in group %d." % n)
+				return
+			for i in gm.groups.size():
+				if i != g:
+					gm.groups[i] = _alive(gm.groups[i]).filter(func(x) -> bool: return not sel.has(x))
+			var into: Array = _alive(gm.groups[g]) if mode == "steal_add" else []
+			for x in sel:
+				if not into.has(x):
+					into.append(x)
+			gm.groups[g] = into
+			hud.toast("Group %d: %d (taken out of the other groups)." % [n, into.size()], false)
 		"join":
 			var al: Array = _alive(gm.groups[g])
 			if al.is_empty():
@@ -348,7 +364,7 @@ func tip(id: int) -> Dictionary:
 			return {"title": "Make" + (" (F3)" if pc else ""), "body": "Select every building that makes something (the Town Hall too), to train from all of them at once."}
 	var g := group_of(id)
 	var n := g + 1 if g < 9 else 0
-	return {"title": "Group %d" % n, "body": ("%d: select it (twice: jump to it). Shift+%d: add it to your selection. Ctrl+%d: set it to the selection. Ctrl+Shift+%d: add the selection to it. To drop a unit: select the group, Shift+click the unit off, Ctrl+%d." % [n, n, n, n, n]) if pc
+	return {"title": "Group %d" % n, "body": ("%d: select it (twice: jump to it). Ctrl+%d: set it to the selection. Shift+%d: add the selection to it. Alt+%d: set it and take those units out of every other group (Shift+Alt+%d: add them and take them out). To drop a unit: select the group, Shift+click the unit off, Ctrl+%d." % [n, n, n, n, n, n]) if pc
 		else "Tap: select it (twice: jump to it). Hold: keep the selection here."}
 
 
